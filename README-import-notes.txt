@@ -789,3 +789,9 @@ v2-156
 - Fixed recurring paycheck occurrence-only edits, including hours override, so saving "This occurrence only" now stores that specific occurrence instead of silently falling back to the base recurring paycheck.
 - Added per-occurrence override storage for recurring transactions. This preserves custom edits to one date while keeping the original recurring series intact.
 - Transaction CSV import/export now includes occurrenceOverridesJSON so occurrence-only edits are preserved during batch export/import.
+
+v2-157
+- Reimbursement transactions now clear through the normal Mark cleared action. The separate Mark reimbursement cleared context-menu item was removed.
+- When a pending reimbursement is marked cleared, it becomes a regular cleared transfer and leaves the expected reimbursement bucket.
+- Calendar chip status styling now normalizes cleared/planned classes so cleared transactions should not keep planned/dashed styling.
+- No import/export schema changes needed.

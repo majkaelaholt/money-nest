@@ -4036,11 +4036,7 @@ function setupContextMenuEvents(){
   };
 
   const markReimbursed = document.getElementById("ctxMarkReimbursed");
-  if(markReimbursed) markReimbursed.onclick = (e)=>{
-    e.stopPropagation();
-    const id = contextTxId;
-    if(id){ hideTxContextMenu(); markPendingReimbursementCleared(id); }
-  };
+  if(markReimbursed) markReimbursed.style.display = "none";
 
   const duplicate = document.getElementById("ctxDuplicate");
   if(duplicate) duplicate.onclick = (e)=>{
@@ -4445,7 +4441,8 @@ function renderCalendar(){
       ? `--chip-bg:${softColor}; --chip-outline:${cat.color}; border-left-color:${cat.color}; background:${softColor}`
       : `--chip-bg:rgba(160,150,140,.14); --chip-outline:#b8b1a8; border-left-color:#b8b1a8; background:rgba(160,150,140,.14)`;
     const isPositive = calendarEntryIsPositive(tx);
-    return `<div class="tx-chip ${extraClass} ${tx.status} ${highlighted ? "" : "muted-category"}" draggable="true" style="${style}" data-tx="${tx.originalId || tx.id}" data-generated="${!!tx.generated}" data-original-date="${tx.originalDate || tx.date}" data-occurrence-date="${tx.date}" data-calendar-side="${tx.calendarSide || ""}" data-calendar-account="${tx.calendarAccountId || ""}">
+    const chipStatus = tx.status === "cleared" ? "cleared" : "planned";
+    return `<div class="tx-chip ${extraClass} ${chipStatus} ${highlighted ? "" : "muted-category"}" draggable="true" style="${style}" data-tx="${tx.originalId || tx.id}" data-generated="${!!tx.generated}" data-original-date="${tx.originalDate || tx.date}" data-occurrence-date="${tx.date}" data-calendar-side="${tx.calendarSide || ""}" data-calendar-account="${tx.calendarAccountId || ""}">
       <span class="tx-name">${highlighted ? cat.emoji : "◦"} ${calendarEntryLabel(tx)}</span>
       <span class="tx-chip-amount">${isPositive?'+':'-'}${money(tx.amount)}</span>
     </div>`;
@@ -6104,7 +6101,17 @@ function getRealTx(id){ return data.transactions.find(t => t.id === id); }
 window.toggleCleared = (id)=>{
   const tx = getRealTx(id);
   if(!tx) return;
-  tx.status = tx.status === "cleared" ? "planned" : "cleared";
+  const nextStatus = tx.status === "cleared" ? "planned" : "cleared";
+  tx.status = nextStatus;
+
+  // Pending reimbursements should clear through the normal status toggle.
+  // When Mak marks the reimbursement cleared, it becomes a regular cleared transfer
+  // and should no longer stay in the pending/expected reimbursement bucket.
+  if(nextStatus === "cleared" && tx.pendingReimbursement){
+    tx.pendingReimbursement = false;
+    tx.reimbursementToAccountId = tx.transferToAccountId || tx.reimbursementToAccountId || "";
+  }
+
   saveData();
 };
 function statusButton(tx, mode="normal"){
@@ -6337,6 +6344,8 @@ function showTxContextMenu(event, id, meta={}){
     const canCreatePayment = tx.type === "expense" && !!tx.debtAccountId && isCreditCardDebt(debt);
     createCardPayment.style.display = canCreatePayment ? "block" : "none";
   }
+  const markReimbursed = document.getElementById("ctxMarkReimbursed");
+  if(markReimbursed) markReimbursed.style.display = "none";
   menu.classList.add("open");
 
   const menuWidth = 235;
