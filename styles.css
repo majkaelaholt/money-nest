@@ -1,0 +1,2790 @@
+:root{
+  --bg:#f5efe6; --panel:#fffaf3; --panel-2:#f1e3d0; --ink:#2e2a24;
+  --muted:#766b5d; --line:#dfd0bd; --accent:#8c6f4d; --accent-2:#b7835a;
+  --green:#59745a; --red:#a34f45; --yellow:#b87f21; --blue:#647c8f;
+  --shadow:0 18px 45px rgba(73,55,34,.10); --radius:22px;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink);background:linear-gradient(135deg,#f8f1e8,#efe0ce)}
+button,input,select,textarea{font:inherit}
+.app-shell{display:flex;min-height:100vh}
+.sidebar{width:280px;padding:22px;background:rgba(255,250,243,.78);border-right:1px solid var(--line);position:sticky;top:0;height:100vh}
+.brand{display:flex;gap:12px;align-items:center;margin-bottom:26px}
+.brand-mark{width:46px;height:46px;border-radius:16px;display:grid;place-items:center;background:var(--panel-2);font-size:24px;box-shadow:var(--shadow);overflow:hidden}
+.brand-mark img{width:100%;height:100%;display:block;object-fit:cover;border-radius:16px}
+h1,h2,h3,p{margin:0}.brand h1{font-size:22px}.brand p,.hint,.eyebrow{color:var(--muted);font-size:13px}
+.eyebrow{text-transform:uppercase;letter-spacing:.08em;font-weight:800}
+.nav{display:grid;gap:8px}.nav-btn{border:0;background:transparent;text-align:left;padding:12px 14px;border-radius:15px;color:var(--muted);cursor:pointer;font-weight:800}
+.nav-btn.active,.nav-btn:hover{background:var(--panel-2);color:var(--ink)}
+.side-card{margin-top:24px;padding:16px;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);box-shadow:var(--shadow);display:grid;gap:10px}
+.main{flex:1;padding:24px;min-width:0}.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;gap:16px}.topbar h2{font-size:34px;letter-spacing:-.04em}.top-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+button,.file-label{border:0;border-radius:999px;padding:10px 14px;cursor:pointer;font-weight:800}.primary{background:var(--accent);color:white}.ghost,.file-label{background:rgba(255,250,243,.8);color:var(--accent);border:1px solid var(--line)}.full{width:100%}.small{padding:8px 12px;font-size:13px}.file-label input{display:none}
+.view{display:none}.view.active{display:block}.grid{display:grid;gap:14px}.cards-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.card,.panel{background:rgba(255,250,243,.9);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}.card{padding:18px}.card .value,.value{font-size:26px;font-weight:950;margin-top:8px}.card .sub,.sub{font-size:12px;color:var(--muted);margin-top:4px}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}.panel{padding:18px;margin-bottom:16px}.panel-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}.stack{display:grid;gap:10px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px;border-radius:16px;background:#f8efe4;border:1px solid #ead9c5}.row.clickable{cursor:pointer}.row.clickable:hover{transform:translateY(-1px);box-shadow:var(--shadow)}
+.row-title{font-weight:950}.row-sub{color:var(--muted);font-size:12px;margin-top:2px}.amount{font-weight:950;white-space:nowrap}.amount.good{color:var(--green)}.amount.bad{color:var(--red)}.amount.warn{color:var(--yellow)}
+.calendar-toolbar{display:flex;align-items:center;gap:12px;width:max-content;flex-wrap:wrap}.inline-label{display:flex;align-items:center;gap:8px;font-weight:900;color:var(--muted);font-size:13px}.inline-label select{min-width:180px}
+.calendar{display:grid;grid-template-columns:repeat(7,minmax(140px,1fr));background:var(--line);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}.day-head,.day{background:rgba(255,250,243,.94);min-height:122px;padding:10px;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}.day-head{min-height:auto;font-size:12px;font-weight:950;text-align:center;color:var(--muted)}.day.other{background:rgba(246,238,226,.7);color:#9a8d7d}.day-top{display:flex;justify-content:space-between;gap:8px;font-size:12px}.day-num{font-weight:950}.day-balance{font-weight:950;color:var(--accent)}
+.tx-chip{margin-top:6px;padding:5px 7px;border-radius:9px;font-size:11px;font-weight:850;display:flex;justify-content:space-between;gap:6px;cursor:pointer;border-left:5px solid var(--accent);background:#eadac6}.tx-chip.planned{opacity:.72;border-style:dashed}.tx-chip .tx-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.account-list,.budget-list,.debt-groups,.category-list{display:grid;gap:12px}.account-card{display:grid;grid-template-columns:1.5fr repeat(3,1fr) auto;gap:12px;align-items:center;padding:14px;border-radius:18px;background:#f8efe4;border:1px solid #ead9c5;cursor:pointer}.account-card:hover{transform:translateY(-1px);box-shadow:var(--shadow)}
+.label{font-size:12px;color:var(--muted);font-weight:850;text-transform:uppercase;letter-spacing:.05em}
+.debt-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.debt-group{background:#f8efe4;border:1px solid #ead9c5;border-radius:18px;padding:14px}.debt-company{display:flex;justify-content:space-between;cursor:pointer;padding:12px;border-radius:14px;background:#fff7ee;margin-top:8px}.debt-cards{display:none;margin-top:8px;gap:8px}.debt-company.open + .debt-cards{display:grid}
+.progress{height:9px;border-radius:999px;background:#ead9c5;overflow:hidden;margin-top:8px}.progress span{display:block;height:100%;background:var(--accent);border-radius:inherit}
+.notes{display:grid;gap:10px;color:var(--muted);line-height:1.45}.detail-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:16px}.detail-actions{display:flex;gap:10px;flex-wrap:wrap}.ledger{display:grid;gap:8px}.ledger-row{display:grid;grid-template-columns:130px 1.4fr 1fr 110px 100px;gap:10px;align-items:center;padding:11px;border-radius:15px;background:#f8efe4;border:1px solid #ead9c5}.ledger-row.header{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:950;background:transparent;border:0}.ledger-row:not(.header){cursor:pointer}.ledger-row:not(.header):hover{box-shadow:var(--shadow)}
+.cat-preview{display:inline-flex;align-items:center;gap:7px;padding:6px 9px;border-radius:999px;font-weight:850;font-size:12px}.category-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:12px;border-radius:16px;background:#f8efe4;border:1px solid #ead9c5}
+dialog{border:0;background:transparent;width:min(560px,calc(100% - 24px))}dialog::backdrop{background:rgba(46,42,36,.45);backdrop-filter:blur(3px)}
+.modal-card{background:var(--panel);border-radius:26px;padding:20px;border:1px solid var(--line);box-shadow:0 30px 90px rgba(0,0,0,.25);display:grid;gap:12px}
+label{display:grid;gap:6px;font-weight:900;font-size:13px;color:var(--muted)}input,select,textarea{width:100%;border:1px solid var(--line);border-radius:13px;padding:11px;background:white;color:var(--ink)}input[type=color]{height:42px;padding:5px}textarea{min-height:80px;resize:vertical}.two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px}.checkbox{display:flex;align-items:center;gap:8px}.checkbox input{width:auto}.modal-actions{display:flex;justify-content:flex-end;gap:10px;align-items:center}.icon-btn{background:#f2e2cf;color:var(--ink);font-size:18px;padding:7px 12px}.danger{color:var(--red)}.empty{color:var(--muted);padding:18px;text-align:center;border:1px dashed var(--line);border-radius:16px;background:#fbf3e9}
+@media(max-width:1000px){.app-shell{display:block}.sidebar{position:static;width:auto;height:auto}.nav{grid-template-columns:repeat(3,1fr)}.cards-4,.split,.debt-grid{grid-template-columns:1fr}.calendar{grid-template-columns:repeat(7,minmax(120px,1fr));overflow:auto}.account-card{grid-template-columns:1fr 1fr}.ledger-row{grid-template-columns:1fr 1fr}.ledger-row.header{display:none}}
+@media(max-width:640px){.main{padding:14px}.topbar{display:block}.top-actions{margin-top:12px}.nav{grid-template-columns:repeat(2,1fr)}.calendar{display:block;background:transparent;border:0}.day-head{display:none}.day{margin-bottom:10px;border:1px solid var(--line);border-radius:16px;min-height:auto}.day.other{display:none}.two-col{grid-template-columns:1fr}.detail-head{display:block}.detail-actions{margin-top:12px}}
+
+.bill-list{display:grid;gap:12px}
+.bill-card{display:grid;grid-template-columns:1.4fr 1fr 1fr auto;gap:12px;align-items:center;padding:14px;border-radius:18px;background:#f8efe4;border:1px solid #ead9c5;cursor:pointer}
+.bill-card:hover{transform:translateY(-1px);box-shadow:var(--shadow)}
+.recurrence-box{display:grid;gap:12px;padding:12px;border-radius:18px;background:#fbf3e9;border:1px solid var(--line)}
+.recurrence-details{display:none;gap:12px}
+.recurrence-details.active{display:grid}
+@media(max-width:1000px){.bill-card{grid-template-columns:1fr 1fr}}
+@media(max-width:640px){.bill-card{grid-template-columns:1fr}}
+
+.form-section{
+  display:grid;
+  gap:12px;
+  padding:12px;
+  border-radius:18px;
+  background:#fbf3e9;
+  border:1px solid var(--line);
+}
+.form-details{
+  border:1px solid var(--line);
+  border-radius:18px;
+  background:#fbf3e9;
+  overflow:hidden;
+}
+.form-details summary{
+  cursor:pointer;
+  padding:13px 14px;
+  font-weight:950;
+  color:var(--accent);
+  list-style:none;
+}
+.form-details summary::-webkit-details-marker{display:none}
+.form-details summary::after{
+  content:"＋";
+  float:right;
+}
+.form-details[open] summary::after{
+  content:"–";
+}
+.details-inner{
+  display:grid;
+  gap:12px;
+  padding:0 12px 12px;
+}
+
+.bill-filters{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:12px;
+  margin-bottom:14px;
+  padding:12px;
+  border-radius:18px;
+  background:#fbf3e9;
+  border:1px solid var(--line);
+}
+.bill-card{
+  display:grid;
+  grid-template-columns:minmax(260px,1.35fr) minmax(190px,.8fr) minmax(230px,.9fr) minmax(110px,.45fr);
+  gap:16px;
+  align-items:center;
+}
+.bill-card > *{
+  min-width:0;
+}
+.bill-card .cat-preview{
+  justify-self:start;
+}
+.bill-repeat{
+  min-width:230px;
+}
+.bill-amount{
+  text-align:right;
+}
+@media(max-width:1000px){
+  .bill-filters{grid-template-columns:1fr 1fr}
+  .bill-card{
+    grid-template-columns:1fr 1fr;
+  }
+  .bill-repeat{min-width:0}
+  .bill-amount{text-align:left}
+}
+@media(max-width:640px){
+  .bill-filters{grid-template-columns:1fr}
+  .bill-card{grid-template-columns:1fr}
+}
+
+.status-toggle{
+  border-radius:999px;
+  padding:5px 8px;
+  font-size:11px;
+  line-height:1;
+  border:1px solid rgba(46,42,36,.18);
+  background:rgba(255,250,243,.85);
+  color:var(--accent);
+  white-space:nowrap;
+}
+.status-toggle.cleared{background:rgba(89,116,90,.16);color:var(--green)}
+.status-toggle.planned{background:rgba(184,127,33,.14);color:var(--yellow)}
+.tx-chip .status-toggle{margin-left:4px;padding:4px 6px;font-size:10px}
+.tx-chip-actions{display:flex;align-items:center;gap:4px;flex-shrink:0}
+.ledger-status-cell{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.context-menu{display:none;position:fixed;z-index:9999;min-width:210px;padding:8px;border-radius:16px;background:var(--panel);border:1px solid var(--line);box-shadow:0 18px 50px rgba(0,0,0,.22)}
+.context-menu.open{display:grid;gap:4px}
+.context-menu button{border-radius:12px;background:transparent;color:var(--ink);text-align:left;padding:10px 12px}
+.context-menu button:hover{background:#f2e2cf}
+.context-menu .danger-text{color:var(--red)}
+
+
+/* v2.11 calendar readability fix */
+.tx-chip{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:3px;
+  align-items:start;
+  padding:6px 7px;
+}
+.tx-chip .tx-name{
+  white-space:normal;
+  overflow:visible;
+  text-overflow:clip;
+  line-height:1.2;
+}
+.tx-chip-actions{
+  width:100%;
+  justify-content:space-between;
+}
+.day{
+  min-height:150px;
+}
+@media(max-width:640px){
+  .day{min-height:auto}
+}
+
+
+/* v2.15 visual fixes */
+.upcoming-row{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto auto;
+  gap:12px;
+  align-items:center;
+  padding:12px;
+  border-radius:16px;
+  background:#f8efe4;
+  border:1px solid #ead9c5;
+}
+.upcoming-main{min-width:0}
+.upcoming-row .row-title{
+  white-space:normal;
+  overflow-wrap:anywhere;
+}
+.upcoming-row .row-sub{
+  line-height:1.35;
+}
+.upcoming-actions{
+  display:flex;
+  justify-content:flex-end;
+}
+.upcoming-row .amount{
+  text-align:right;
+  min-width:82px;
+}
+
+.calendar{
+  grid-template-columns:repeat(7,minmax(118px,1fr));
+}
+.day{
+  min-height:112px;
+  padding:7px;
+}
+.day-top{
+  margin-bottom:4px;
+}
+.tx-chip{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:5px;
+  align-items:center;
+  margin-top:4px;
+  padding:4px 6px;
+  border-radius:7px;
+  font-size:11px;
+  line-height:1.1;
+  border-left-width:4px;
+}
+.tx-chip .tx-name{
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.tx-chip-amount{
+  font-weight:950;
+  white-space:nowrap;
+}
+.tx-chip.planned{
+  border-style:solid;
+  outline:1px dashed rgba(46,42,36,.45);
+  outline-offset:-2px;
+}
+.transaction-filters{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+  gap:12px;
+  margin-bottom:14px;
+  padding:12px;
+  border-radius:18px;
+  background:#fbf3e9;
+  border:1px solid var(--line);
+}
+@media(max-width:1000px){
+  .transaction-filters{grid-template-columns:1fr 1fr}
+  .upcoming-row{grid-template-columns:1fr auto}
+  .upcoming-row .amount{grid-column:2;text-align:right}
+}
+@media(max-width:640px){
+  .transaction-filters{grid-template-columns:1fr}
+  .upcoming-row{grid-template-columns:1fr}
+  .upcoming-row .amount{text-align:left}
+}
+
+
+/* v2.16 targeted fixes */
+#upcomingList .row{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+}
+.upcoming-row{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:12px;
+  align-items:center;
+  padding:10px 12px;
+  border-radius:16px;
+  background:#f8efe4;
+  border:1px solid #ead9c5;
+  min-height:auto;
+}
+.upcoming-main{
+  min-width:0;
+}
+.upcoming-row .row-title{
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.upcoming-row .row-sub{
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.upcoming-row .amount{
+  text-align:right;
+  min-width:75px;
+}
+
+.calendar{
+  grid-template-columns:repeat(7,minmax(118px,1fr));
+}
+.day{
+  min-height:102px;
+  padding:6px;
+}
+.day-top{
+  font-size:11px;
+  margin-bottom:3px;
+}
+.tx-chip{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  gap:5px;
+  margin-top:3px;
+  padding:4px 5px;
+  border-radius:7px;
+  font-size:10.5px;
+  line-height:1.1;
+  min-height:22px;
+  border-left-width:4px;
+}
+.tx-chip .tx-name{
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.tx-chip-amount{
+  font-weight:950;
+  white-space:nowrap;
+}
+.tx-chip .status-toggle,
+.upcoming-row .status-toggle{
+  display:none;
+}
+.transaction-filters{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+  gap:12px;
+  margin-bottom:14px;
+  padding:12px;
+  border-radius:18px;
+  background:#fbf3e9;
+  border:1px solid var(--line);
+}
+.bill-filters{
+  grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+}
+@media(max-width:1000px){
+  .transaction-filters,
+  .bill-filters{grid-template-columns:1fr 1fr}
+}
+@media(max-width:640px){
+  .transaction-filters,
+  .bill-filters{grid-template-columns:1fr}
+  .upcoming-row .row-title,
+  .upcoming-row .row-sub{white-space:normal}
+}
+
+
+/* v2.17 stability/layout patch */
+.upcoming-row,
+.day-modal-row{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:12px;
+  align-items:center;
+  padding:10px 12px;
+  border-radius:16px;
+  background:#f8efe4;
+  border:1px solid #ead9c5;
+  min-height:auto;
+}
+.upcoming-main,
+.day-modal-main{
+  min-width:0;
+}
+.upcoming-row .row-title,
+.upcoming-row .row-sub,
+.day-modal-row .row-title,
+.day-modal-row .row-sub{
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.upcoming-row .amount,
+.day-modal-row .amount{
+  text-align:right;
+  min-width:74px;
+  max-width:120px;
+}
+#dayModal .modal-card{
+  overflow:hidden;
+}
+#dayModalTransactions{
+  max-height:58vh;
+  overflow:auto;
+  padding-right:4px;
+}
+#dayModalTransactions .status-toggle{
+  display:none;
+}
+.tx-chip .status-toggle,
+.upcoming-row .status-toggle{
+  display:none !important;
+}
+#txContextMenu{
+  filter:none;
+}
+@media(max-width:640px){
+  .upcoming-row,
+  .day-modal-row{
+    grid-template-columns:1fr;
+  }
+  .upcoming-row .row-title,
+  .upcoming-row .row-sub,
+  .day-modal-row .row-title,
+  .day-modal-row .row-sub{
+    white-space:normal;
+  }
+  .upcoming-row .amount,
+  .day-modal-row .amount{
+    text-align:left;
+    max-width:none;
+  }
+}
+
+
+/* v2.18 one-page calendar fit */
+#calendar.view.active{
+  height:calc(100vh - 120px);
+  display:flex;
+  flex-direction:column;
+  min-height:0;
+}
+#calendar .calendar-toolbar{
+  flex:0 0 auto;
+  margin-bottom:10px;
+  padding:12px;
+}
+#calendarGrid.calendar{
+  flex:1 1 auto;
+  min-height:0;
+  display:grid;
+  grid-template-columns:repeat(7,minmax(0,1fr));
+  grid-template-rows:auto repeat(6,minmax(0,1fr));
+  overflow:hidden;
+}
+#calendarGrid .day-head{
+  min-height:0;
+  padding:6px 4px;
+}
+#calendarGrid .day{
+  min-height:0;
+  height:auto;
+  padding:5px;
+  overflow:hidden;
+}
+#calendarGrid .day-top{
+  font-size:10.5px;
+  line-height:1.1;
+  margin-bottom:2px;
+}
+#calendarGrid .tx-chip{
+  margin-top:2px;
+  min-height:18px;
+  padding:3px 4px;
+  font-size:9.5px;
+  border-radius:6px;
+}
+#calendarGrid .tx-chip-amount{
+  font-size:9.5px;
+}
+.more-chip{
+  margin-top:2px;
+  padding:2px 4px;
+  font-size:9.5px;
+  line-height:1.1;
+  border-radius:6px;
+  color:var(--muted);
+  background:rgba(255,250,243,.75);
+  border:1px dashed var(--line);
+}
+@media(max-width:1000px){
+  #calendar.view.active{
+    height:auto;
+    display:block;
+  }
+  #calendarGrid.calendar{
+    overflow:auto;
+  }
+}
+@media(max-width:640px){
+  #calendarGrid.calendar{
+    display:block;
+  }
+}
+
+
+/* v2.19 stability + calendar overflow indicators */
+#dayModal .modal-card{
+  max-width:620px;
+}
+#dayModalTransactions{
+  max-height:58vh;
+  overflow:auto;
+}
+.day-modal-row{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:12px;
+  align-items:center;
+  padding:10px 12px;
+  border-radius:16px;
+  background:#f8efe4;
+  border:1px solid #ead9c5;
+}
+.day-modal-main{min-width:0}
+.day-modal-row .row-title,
+.day-modal-row .row-sub{
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.day-modal-row .amount{
+  min-width:74px;
+  max-width:120px;
+  text-align:right;
+  justify-self:end;
+}
+
+#calendarGrid .day{
+  position:relative;
+}
+#calendarGrid .more-chip{
+  cursor:pointer;
+  font-weight:900;
+  text-align:center;
+}
+.day-hover-list{
+  display:none;
+  position:absolute;
+  z-index:50;
+  left:4px;
+  right:4px;
+  top:24px;
+  padding:4px;
+  border-radius:10px;
+  background:rgba(255,250,243,.98);
+  border:1px solid var(--line);
+  box-shadow:0 12px 35px rgba(0,0,0,.18);
+  max-height:220px;
+  overflow:auto;
+}
+#calendarGrid .day:hover .day-hover-list,
+#calendarGrid .day:focus-within .day-hover-list{
+  display:block;
+}
+.hover-chip{
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) auto !important;
+}
+@media(max-width:640px){
+  .day-hover-list{display:none !important}
+  .day-modal-row{grid-template-columns:1fr}
+  .day-modal-row .amount{text-align:left;justify-self:start;max-width:none}
+}
+
+
+/* v2.20 right-click + calendar overflow patch */
+#txContextMenu{
+  pointer-events:auto;
+}
+#txContextMenu.open{
+  display:grid !important;
+}
+#txContextMenu button{
+  width:100%;
+}
+
+/* Allow expanded day hover panel to visually escape the calendar cell */
+#calendarGrid.calendar{
+  overflow:visible !important;
+}
+#calendarGrid .day{
+  overflow:visible !important;
+  isolation:isolate;
+}
+#calendarGrid .day:hover{
+  z-index:100;
+}
+#calendarGrid .more-chip{
+  display:block;
+  cursor:pointer;
+  font-weight:950;
+  text-align:center;
+  color:var(--accent);
+  background:rgba(255,250,243,.92);
+}
+.day-hover-list{
+  pointer-events:auto;
+  min-width:100%;
+}
+#calendarGrid .day:hover .day-hover-list,
+#calendarGrid .day:focus-within .day-hover-list{
+  display:block !important;
+}
+.day-hover-list .tx-chip{
+  font-size:10px;
+  margin-top:2px;
+}
+
+
+/* v2.21 calendar: reliable +more instead of hover expansion */
+#calendarGrid .day{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+#calendarGrid .day-top{
+  flex:0 0 auto;
+}
+#calendarGrid .tx-chip{
+  flex:0 0 auto;
+}
+#calendarGrid .more-chip{
+  display:block !important;
+  flex:0 0 auto;
+  margin-top:auto;
+  padding:2px 4px;
+  font-size:10px;
+  line-height:1.1;
+  font-weight:950;
+  text-align:center;
+  color:var(--accent);
+  background:rgba(255,250,243,.95);
+  border:1px dashed var(--line);
+  border-radius:6px;
+  cursor:pointer;
+}
+.day-hover-list{
+  display:none !important;
+}
+#calendarGrid .day:hover .day-hover-list,
+#calendarGrid .day:focus-within .day-hover-list{
+  display:none !important;
+}
+
+/* slightly thinner chips so the +more line has room */
+#calendarGrid .tx-chip{
+  min-height:17px;
+  padding:2px 4px;
+  font-size:9.25px;
+}
+#calendarGrid .tx-chip-amount{
+  font-size:9.25px;
+}
+
+/* v2.24 startup/modal/calendar badge fixes */
+#dashboard.view.active{display:block !important}
+#calendarGrid .day{position:relative}
+#calendarGrid .more-chip{
+  display:block !important;
+  position:absolute;
+  right:4px;
+  bottom:4px;
+  z-index:60;
+  min-width:42px;
+  padding:2px 5px;
+  font-size:10px;
+  line-height:1.1;
+  font-weight:950;
+  text-align:center;
+  color:var(--accent);
+  background:rgba(255,250,243,.98);
+  border:1px solid var(--accent);
+  border-radius:999px;
+  cursor:pointer;
+  box-shadow:0 3px 10px rgba(0,0,0,.12);
+}
+
+/* v2.24 debts */
+.bill-filters{grid-template-columns:repeat(5,minmax(0,1fr))}
+.debt-account-card{
+  display:grid;
+  grid-template-columns:minmax(230px,1.2fr) minmax(110px,.55fr) minmax(140px,.7fr) minmax(150px,.75fr);
+  gap:12px;
+  align-items:center;
+  padding:12px;
+  border-radius:16px;
+  background:#fff7ee;
+  border:1px solid #ead9c5;
+}
+.debt-account-card:hover{box-shadow:var(--shadow);transform:translateY(-1px)}
+@media(max-width:1000px){
+  .bill-filters{grid-template-columns:1fr 1fr}
+  .debt-account-card{grid-template-columns:1fr 1fr}
+}
+@media(max-width:640px){
+  .bill-filters,.debt-account-card{grid-template-columns:1fr}
+}
+
+/* v2.25 debt management upgrade */
+.debt-account-card{
+  grid-template-columns:minmax(210px,1.25fr) minmax(105px,.55fr) minmax(125px,.65fr) minmax(125px,.7fr) minmax(105px,.55fr);
+}
+.debt-frozen{
+  opacity:.72;
+}
+.debt-status-pill{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:max-content;
+  max-width:100%;
+  padding:5px 9px;
+  border-radius:999px;
+  background:#ead9c5;
+  color:var(--muted);
+  font-weight:950;
+  font-size:12px;
+  white-space:nowrap;
+}
+.debt-status-pill.good{
+  background:rgba(89,116,90,.18);
+  color:var(--green);
+}
+.debt-status-pill.warn{
+  background:rgba(184,127,33,.16);
+  color:var(--yellow);
+}
+.debt-status-pill.bad{
+  background:rgba(163,79,69,.14);
+  color:var(--red);
+}
+.debt-metrics{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+  gap:12px;
+}
+.card.mini{
+  padding:14px;
+}
+.card.mini .value{
+  font-size:20px;
+  word-break:break-word;
+}
+.debt-notes{
+  margin-top:12px;
+  padding:12px;
+  border-radius:16px;
+  background:#fbf3e9;
+  border:1px solid var(--line);
+}
+@media(max-width:1200px){
+  .debt-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .debt-account-card{grid-template-columns:1fr 1fr}
+}
+@media(max-width:640px){
+  .debt-metrics,.debt-account-card{grid-template-columns:1fr}
+}
+
+/* v2.26 hard fixes */
+#summaryCards:empty::before{content:none !important}
+#calendarGrid.calendar{overflow:visible !important}
+#calendarGrid .day{
+  position:relative;
+  overflow:visible !important;
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  isolation:isolate;
+}
+#calendarGrid .day:hover,
+#calendarGrid .day:focus-within{z-index:250}
+#calendarGrid .more-badge,
+#calendarGrid .more-chip{
+  display:block !important;
+  position:absolute !important;
+  right:4px;
+  bottom:4px;
+  z-index:80;
+  min-width:42px;
+  padding:2px 5px;
+  font-size:10px;
+  line-height:1.1;
+  font-weight:950;
+  text-align:center;
+  color:var(--accent);
+  background:rgba(255,250,243,.99);
+  border:1px solid var(--accent);
+  border-radius:999px;
+  cursor:pointer;
+  box-shadow:0 3px 10px rgba(0,0,0,.12);
+}
+.day-hover-list{
+  display:none !important;
+  position:absolute;
+  z-index:350;
+  left:4px;
+  right:4px;
+  top:24px;
+  padding:4px;
+  border-radius:10px;
+  background:rgba(255,250,243,.99);
+  border:1px solid var(--line);
+  box-shadow:0 14px 40px rgba(0,0,0,.22);
+  max-height:240px;
+  overflow:auto;
+}
+#calendarGrid .day:hover .day-hover-list,
+#calendarGrid .day:focus-within .day-hover-list{display:block !important}
+.day-hover-list .tx-chip{
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) auto !important;
+  font-size:9.75px;
+  margin-top:2px;
+}
+
+/* v2.27 visual customization + calendar drag/drop */
+.visual-dot{
+  display:inline-block;
+  width:10px;
+  height:10px;
+  border-radius:999px;
+  margin-right:6px;
+  vertical-align:middle;
+  border:1px solid rgba(0,0,0,.12);
+}
+.tx-chip[draggable="true"]{
+  cursor:grab;
+}
+.tx-chip[draggable="true"]:active{
+  cursor:grabbing;
+}
+#calendarGrid .day{
+  transition:background .12s ease, transform .12s ease;
+}
+#calendarGrid .day:has(.tx-chip:hover){
+  transform:none;
+}
+
+/* v2.28 full-card tint, collapsible debt groups, drag ordering */
+.tinted-card{
+  border-left:8px solid var(--card-color) !important;
+  background-blend-mode:normal;
+}
+.account-card[draggable="true"],
+.debt-account-card[draggable="true"]{
+  cursor:grab;
+}
+.account-card[draggable="true"]:active,
+.debt-account-card[draggable="true"]:active{
+  cursor:grabbing;
+}
+.debt-type-section{
+  border:1px solid var(--line);
+  border-radius:20px;
+  background:rgba(255,250,243,.9);
+  overflow:hidden;
+  box-shadow:var(--shadow);
+}
+.debt-type-section + .debt-type-section{
+  margin-top:12px;
+}
+.debt-type-summary{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:center;
+  padding:16px 18px;
+  font-weight:950;
+  cursor:pointer;
+  color:var(--ink);
+  background:#f8efe4;
+}
+.debt-type-summary::marker{
+  color:var(--accent);
+}
+.debt-type-body{
+  padding:14px;
+}
+.debt-type-section:not([open]) .debt-type-body{
+  display:none;
+}
+.debt-type-section:not([open]){
+  box-shadow:none;
+}
+
+/* v2.29 dashboard/action center */
+.attention-card .value{
+  color:var(--accent);
+}
+.dashboard-stack{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:18px;
+}
+.mini-head{
+  margin-bottom:8px;
+}
+.attention-row.bad{
+  border-left:5px solid var(--red);
+}
+.attention-row.warn{
+  border-left:5px solid var(--yellow);
+}
+@media(max-width:1000px){
+  .dashboard-stack{grid-template-columns:1fr}
+}
+
+/* v2.30 CSV tools + debt quick update */
+.top-actions{
+  flex-wrap:wrap;
+}
+.ghost.tiny{
+  padding:4px 8px;
+  font-size:11px;
+  margin-top:6px;
+}
+.file-label input{
+  display:none;
+}
+
+/* v2.31 CSV restore + danger zone */
+button.danger.full{
+  width:100%;
+  margin-top:8px;
+  background:rgba(163,79,69,.12);
+  color:var(--red);
+  border:1px solid rgba(163,79,69,.28);
+}
+button.danger.full:hover{
+  background:rgba(163,79,69,.18);
+}
+
+/* v2.32 dashboard render + Action Center layout */
+#safeSpendList:empty::before,
+#upcomingList:empty::before,
+#debtSnapshot:empty::before{
+  content:"Loading...";
+  display:block;
+  padding:14px;
+  color:var(--muted);
+}
+
+.action-center-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:18px;
+  align-items:start;
+}
+
+.action-column{
+  min-width:0;
+}
+
+.action-section-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  margin-bottom:10px;
+}
+
+.action-section-head h4{
+  margin:0 0 2px;
+  font-size:18px;
+}
+
+.action-list{
+  display:grid;
+  gap:10px;
+}
+
+.action-item{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:12px;
+  align-items:center;
+  padding:12px 14px;
+  border-radius:18px;
+  background:#f8efe4;
+  border:1px solid #ead9c5;
+}
+
+.action-item .row-title{
+  white-space:normal;
+  overflow-wrap:anywhere;
+}
+
+.action-item .row-sub{
+  line-height:1.35;
+}
+
+.attention-row.bad{
+  border-left:5px solid var(--red);
+}
+
+.attention-row.warn{
+  border-left:5px solid var(--yellow);
+}
+
+.debt-due-item .debt-status-pill{
+  justify-self:end;
+}
+
+@media(max-width:1100px){
+  .action-center-grid{
+    grid-template-columns:1fr;
+  }
+}
+
+@media(max-width:640px){
+  .action-item{
+    grid-template-columns:1fr;
+  }
+  .debt-due-item .debt-status-pill{
+    justify-self:start;
+  }
+}
+
+/* v2.34 cleaner hover-expanded calendar + drag from hover chips */
+.day-hover-list{
+  top:20px !important;
+  left:3px !important;
+  right:3px !important;
+  padding:6px !important;
+  border-radius:12px !important;
+  background:#fffaf3 !important;
+  border:1px solid #d9c4aa !important;
+  box-shadow:0 18px 45px rgba(47,35,23,.28) !important;
+  max-height:260px !important;
+  overflow:auto !important;
+  backdrop-filter:none !important;
+}
+.day-hover-list::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:12px;
+  background:#fffaf3;
+  z-index:-1;
+}
+.day-hover-list .tx-chip{
+  opacity:1 !important;
+  filter:none !important;
+  box-shadow:0 1px 4px rgba(47,35,23,.16);
+  border:1px solid rgba(47,35,23,.18);
+}
+.day-hover-list .tx-chip + .tx-chip{
+  margin-top:3px !important;
+}
+.day:has(.day-hover-list):hover > .tx-chip:not(.hover-chip){
+  opacity:.18;
+}
+.day:hover .more-chip{
+  opacity:.95;
+}
+.day-hover-list .tx-chip[draggable="true"]{
+  cursor:grab;
+}
+.day-hover-list .tx-chip[draggable="true"]:active{
+  cursor:grabbing;
+}
+
+/* v2.35 drag/drop calendar fix */
+body.dragging-tx #calendarGrid .day{
+  outline:1px dashed rgba(140,111,77,.35);
+  outline-offset:-3px;
+}
+#calendarGrid .day.drop-target{
+  background:#fff3d8 !important;
+  outline:2px solid var(--accent) !important;
+  outline-offset:-3px;
+}
+body.dragging-tx .day-hover-list{
+  pointer-events:auto !important;
+}
+
+/* v2.35 cleaner Action Center */
+.action-center-clean{
+  display:grid;
+  gap:20px;
+}
+.action-section{
+  min-width:0;
+}
+.action-section-head{
+  margin-bottom:10px;
+}
+.action-section-head h4{
+  margin:0;
+  font-size:18px;
+}
+.action-list.compact{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:10px;
+}
+.action-item{
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) auto;
+  gap:10px;
+  align-items:center;
+  padding:11px 13px;
+  border-radius:16px;
+  background:#f8efe4;
+  border:1px solid #ead9c5;
+}
+.action-icon{
+  font-size:18px;
+  line-height:1;
+}
+.action-main{
+  min-width:0;
+}
+.action-item .row-title{
+  white-space:normal;
+  overflow-wrap:anywhere;
+}
+.action-item .row-sub{
+  line-height:1.3;
+}
+.attention-row.bad{
+  border-left:5px solid var(--red);
+}
+.attention-row.warn{
+  border-left:5px solid var(--yellow);
+}
+.debt-due-item .debt-status-pill{
+  justify-self:end;
+}
+@media(max-width:640px){
+  .action-list.compact{
+    grid-template-columns:1fr;
+  }
+  .action-item{
+    grid-template-columns:auto 1fr;
+  }
+  .debt-due-item .debt-status-pill{
+    grid-column:2;
+    justify-self:start;
+  }
+}
+
+/* v2.36 remember expanded/collapsed debt sections */
+.debt-company.open + .debt-cards{
+  display:grid;
+}
+.debt-company:not(.open) + .debt-cards{
+  display:none;
+}
+.debt-type-section[open] .debt-type-body{
+  display:block;
+}
+
+/* v2.37 editable debt category labels */
+.debt-label-actions{
+  display:flex;
+  justify-content:flex-end;
+  margin-bottom:10px;
+}
+.debt-type-label-input{
+  font-weight:900;
+}
+
+
+/* v2.38 final Action Center cleanup */
+#debtSnapshot{
+  display:block;
+}
+
+.action-center-v2{
+  display:grid !important;
+  grid-template-columns:1fr !important;
+  gap:22px !important;
+  width:100%;
+}
+
+.action-section-v2{
+  display:block;
+  width:100%;
+  min-width:0;
+}
+
+.action-section-title{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:10px;
+  padding:0 2px;
+}
+
+.action-section-title h4{
+  margin:0;
+  font-size:18px;
+}
+
+.action-section-title span{
+  color:var(--muted);
+  font-size:13px;
+}
+
+.action-list-v2{
+  display:grid !important;
+  grid-template-columns:repeat(auto-fit, minmax(360px, 1fr)) !important;
+  gap:10px !important;
+  width:100%;
+}
+
+.action-row-v2{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:12px;
+  align-items:center;
+  padding:12px 14px;
+  border-radius:16px;
+  background:#f8efe4;
+  border:1px solid #ead9c5;
+  min-width:0;
+}
+
+.action-row-v2.bad{
+  border-left:5px solid var(--red);
+}
+
+.action-row-v2.warn{
+  border-left:5px solid var(--yellow);
+}
+
+.action-left{
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+  min-width:0;
+}
+
+.action-symbol{
+  flex:0 0 auto;
+  line-height:1.2;
+  font-size:18px;
+}
+
+.action-row-v2 .row-title{
+  white-space:normal;
+  overflow-wrap:anywhere;
+  line-height:1.2;
+}
+
+.action-row-v2 .row-sub{
+  line-height:1.3;
+  margin-top:2px;
+}
+
+.action-row-v2 .debt-status-pill{
+  justify-self:end;
+  align-self:center;
+}
+
+@media(max-width:900px){
+  .action-list-v2{
+    grid-template-columns:1fr !important;
+  }
+}
+
+@media(max-width:640px){
+  .action-row-v2{
+    grid-template-columns:1fr;
+  }
+  .action-row-v2 .debt-status-pill{
+    justify-self:start;
+  }
+}
+
+/* v2.39 debt card statement improvements */
+.debt-account-card .row-sub{
+  line-height:1.35;
+}
+
+/* v2.40 savings handling */
+.row-sub{
+  line-height:1.35;
+}
+
+
+/* v2.42: only dim calendar chips when a day has hidden transactions */
+#calendarGrid .day:not(:has(.day-hover-list)):hover > .tx-chip{
+  opacity:1 !important;
+  filter:none !important;
+}
+#calendarGrid .day:has(.day-hover-list):hover > .tx-chip:not(.hover-chip){
+  opacity:.18;
+}
+
+/* v2.43 savings goal display */
+.account-card .amount{
+  word-break:break-word;
+}
+
+/* v2.48 BNPL purchase workflow */
+.debt-label-actions{
+  gap:8px;
+  flex-wrap:wrap;
+}
+.bnpl-preview-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  margin:12px 0 8px;
+}
+#bnplPayments{
+  display:grid;
+  gap:8px;
+}
+.bnpl-payment-row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  padding:10px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:#fbf3e9;
+}
+@media(max-width:640px){
+  .bnpl-payment-row{
+    grid-template-columns:1fr;
+  }
+}
+
+/* v2.50 settings-only backup tools */
+.topbar{
+  align-items:flex-start;
+}
+.top-actions:empty{
+  display:none;
+}
+.settings-tools{
+  margin-top:18px;
+  padding:16px;
+  border:1px solid var(--line);
+  border-radius:18px;
+  background:#fbf3e9;
+}
+.settings-tools h3{
+  margin:0 0 6px;
+}
+.settings-button-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+  gap:10px;
+  margin-top:12px;
+}
+.settings-button-grid .ghost,
+.settings-button-grid .file-label{
+  width:100%;
+  justify-content:center;
+  text-align:center;
+}
+
+/* v2.51 compact page headers */
+.topbar{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:start;
+  gap:16px;
+  padding-bottom:10px;
+}
+
+.topbar-page-controls{
+  display:none;
+  justify-self:end;
+  align-self:start;
+}
+
+.topbar-page-controls.active{
+  display:block;
+}
+
+.topbar-page-controls .calendar-toolbar{
+  margin:0;
+  padding:10px 12px;
+  width:auto;
+  box-shadow:var(--shadow);
+}
+
+.topbar-page-controls .calendar-toolbar h3{
+  margin:0;
+  white-space:nowrap;
+}
+
+.topbar-page-controls .calendar-toolbar label{
+  margin-left:6px;
+}
+
+.topbar-page-controls .calendar-toolbar select{
+  min-width:210px;
+}
+
+#calendar .calendar-toolbar{
+  display:none;
+}
+
+@media(max-width:980px){
+  .topbar{
+    grid-template-columns:1fr;
+  }
+  .topbar-page-controls{
+    justify-self:start;
+    width:100%;
+  }
+  .topbar-page-controls .calendar-toolbar{
+    width:100%;
+    flex-wrap:wrap;
+  }
+  .topbar-page-controls .calendar-toolbar select{
+    min-width:180px;
+    flex:1;
+  }
+}
+
+/* v2.54 paycheck auto-calculation */
+#autoPaycheckLabel{
+  align-items:center;
+  gap:8px;
+}
+#autoPaycheckHint{
+  margin-top:6px;
+}
+
+/* v2.58 restore Calendar account/view selector */
+#calendar.view.active .calendar-toolbar,
+#calendar .calendar-toolbar{
+  display:flex !important;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+  margin:0 0 10px !important;
+  padding:8px 10px !important;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:#fbf3e9;
+  box-shadow:none;
+  width:auto;
+  flex:0 0 auto;
+}
+
+#calendar .calendar-toolbar h3{
+  margin:0 4px;
+  min-width:135px;
+  text-align:center;
+  white-space:nowrap;
+}
+
+#calendar .calendar-toolbar .inline-label{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  margin-left:8px;
+  font-size:12px;
+  font-weight:800;
+  color:var(--muted);
+}
+
+#calendar .calendar-toolbar select{
+  min-width:190px;
+}
+
+@media(max-width:720px){
+  #calendar .calendar-toolbar{
+    justify-content:flex-start;
+    flex-wrap:wrap;
+  }
+  #calendar .calendar-toolbar h3{
+    min-width:auto;
+  }
+  #calendar .calendar-toolbar select{
+    min-width:160px;
+    flex:1;
+  }
+}
+
+/* v2.59 move Calendar controls onto title line */
+.topbar{
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) auto !important;
+  align-items:center !important;
+  gap:16px !important;
+  padding-bottom:8px !important;
+}
+
+.page-header-controls{
+  display:none;
+  justify-self:end;
+  align-self:center;
+}
+
+.page-header-controls.active{
+  display:block;
+}
+
+.page-header-controls .calendar-toolbar{
+  display:flex !important;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+  margin:0 !important;
+  padding:8px 10px !important;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:#fbf3e9;
+  box-shadow:none;
+  width:auto;
+  flex:0 0 auto;
+}
+
+.page-header-controls .calendar-toolbar h3{
+  margin:0 4px;
+  min-width:130px;
+  text-align:center;
+  white-space:nowrap;
+}
+
+.page-header-controls .calendar-toolbar .inline-label{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  margin-left:8px;
+  font-size:12px;
+  font-weight:800;
+  color:var(--muted);
+}
+
+.page-header-controls .calendar-toolbar select{
+  min-width:190px;
+}
+
+#calendar.view.active{
+  height:calc(100vh - 96px) !important;
+}
+
+#calendar .calendar-toolbar{
+  display:none !important;
+}
+
+@media(max-width:980px){
+  .topbar{
+    grid-template-columns:1fr !important;
+    align-items:start !important;
+  }
+  .page-header-controls{
+    justify-self:start;
+    width:100%;
+  }
+  .page-header-controls .calendar-toolbar{
+    justify-content:flex-start;
+    flex-wrap:wrap;
+    width:100%;
+  }
+  .page-header-controls .calendar-toolbar select{
+    min-width:160px;
+    flex:1;
+  }
+}
+
+/* v2.60 account reconciliation balances */
+.account-balance-strip{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
+  margin:10px 0 14px;
+}
+.mini-balance-card{
+  padding:14px 16px;
+  border:1px solid var(--line);
+  border-radius:18px;
+  background:#fbf3e9;
+}
+.mini-balance-card .label{
+  color:var(--muted);
+  font-weight:950;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+  font-size:12px;
+}
+.mini-balance-card .amount{
+  font-size:22px;
+  margin-top:4px;
+}
+.ledger.with-balance .ledger-row{
+  grid-template-columns:120px minmax(220px,1.4fr) minmax(180px,.8fr) 130px 130px 140px;
+}
+.ledger .amount.projected{
+  color:var(--dark);
+}
+@media(max-width:1050px){
+  .account-balance-strip{
+    grid-template-columns:1fr;
+  }
+  .ledger.with-balance .ledger-row{
+    grid-template-columns:1fr;
+  }
+  .ledger.with-balance .ledger-row.header{
+    display:none;
+  }
+}
+
+/* v2.61 account running ledger + calendar selector restore */
+.page-header-controls{
+  display:none;
+  justify-self:end;
+  align-self:center;
+}
+.page-header-controls.active{
+  display:block !important;
+}
+.page-header-controls .calendar-toolbar,
+#calendar.view.active .calendar-toolbar{
+  display:flex !important;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+  margin:0 !important;
+  padding:8px 10px !important;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:#fbf3e9;
+  box-shadow:none;
+  width:auto;
+}
+.page-header-controls .calendar-toolbar h3,
+#calendar .calendar-toolbar h3{
+  margin:0 4px;
+  min-width:130px;
+  text-align:center;
+  white-space:nowrap;
+}
+.page-header-controls .calendar-toolbar .inline-label,
+#calendar .calendar-toolbar .inline-label{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  margin-left:8px;
+  font-size:12px;
+  font-weight:800;
+  color:var(--muted);
+}
+.page-header-controls .calendar-toolbar select,
+#calendar .calendar-toolbar select{
+  min-width:190px;
+}
+.ledger.with-balance .ledger-row{
+  grid-template-columns:120px minmax(220px,1.4fr) minmax(180px,.8fr) 130px 130px 140px;
+}
+.ledger .amount.projected{
+  color:var(--dark);
+}
+@media(max-width:980px){
+  .page-header-controls{
+    justify-self:start;
+    width:100%;
+  }
+  .page-header-controls .calendar-toolbar,
+  #calendar.view.active .calendar-toolbar{
+    justify-content:flex-start;
+    flex-wrap:wrap;
+    width:100%;
+  }
+  .page-header-controls .calendar-toolbar select,
+  #calendar .calendar-toolbar select{
+    min-width:160px;
+    flex:1;
+  }
+}
+
+/* v2.62 bank vs forecast account views */
+.account-mode-tabs{
+  display:flex;
+  gap:8px;
+  margin:8px 0 14px;
+}
+.account-mode-tabs button{
+  border:1px solid var(--line);
+  background:#fffaf3;
+  border-radius:999px;
+  padding:10px 14px;
+  font-weight:950;
+  cursor:pointer;
+  color:var(--muted);
+}
+.account-mode-tabs button.active{
+  background:var(--accent);
+  color:white;
+  border-color:var(--accent);
+}
+.transaction-filters input{
+  width:100%;
+  padding:12px 14px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:white;
+  font-weight:800;
+}
+
+/* v2.62 calendar selector: keep it inside Calendar page so it cannot vanish */
+#calendar.view.active .calendar-toolbar-local{
+  display:flex !important;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+  margin:0 0 8px !important;
+  padding:8px 10px !important;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:#fbf3e9;
+  box-shadow:none;
+  width:auto;
+  flex:0 0 auto;
+}
+#calendar.view.active .calendar-toolbar-local h3{
+  margin:0 4px;
+  min-width:130px;
+  text-align:center;
+  white-space:nowrap;
+}
+#calendar.view.active .calendar-toolbar-local .inline-label{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  margin-left:8px;
+  font-size:12px;
+  font-weight:800;
+  color:var(--muted);
+}
+#calendar.view.active .calendar-toolbar-local select{
+  min-width:190px;
+}
+.page-header-controls{
+  display:none !important;
+}
+@media(max-width:720px){
+  #calendar.view.active .calendar-toolbar-local{
+    justify-content:flex-start;
+    flex-wrap:wrap;
+  }
+  #calendar.view.active .calendar-toolbar-local select{
+    min-width:160px;
+    flex:1;
+  }
+}
+
+/* v2.63 account forecast window controls */
+.account-mode-tabs{
+  align-items:center;
+  flex-wrap:wrap;
+}
+.forecast-range-label{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-left:auto;
+  font-size:12px;
+  font-weight:950;
+  color:var(--muted);
+}
+.forecast-range-label select{
+  padding:10px 12px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:white;
+  font-weight:900;
+}
+@media(max-width:780px){
+  .forecast-range-label{
+    width:100%;
+    margin-left:0;
+    justify-content:space-between;
+  }
+  .forecast-range-label select{
+    flex:1;
+  }
+}
+
+/* v2.70 recurring edit save scope */
+.save-scope-box{
+  margin:12px 0;
+  padding:14px;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:#fbf3e9;
+}
+.save-scope-box .radio-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin:8px 0;
+  font-weight:850;
+}
+.save-scope-box input[type="radio"]{
+  width:auto;
+}
+
+/* v2.72 Calendar category highlighting */
+#calendarCategoryHighlight{
+  min-width:190px;
+  max-width:230px;
+  height:42px;
+  overflow:auto;
+}
+.tx-chip.muted-category{
+  opacity:.45;
+  filter:saturate(.25);
+}
+.tx-chip.muted-category .tx-name,
+.tx-chip.muted-category .tx-chip-amount{
+  color:#7f776e;
+}
+.calendar-toolbar-local .inline-label{
+  white-space:nowrap;
+}
+@media(max-width:980px){
+  #calendarCategoryHighlight{
+    min-width:160px;
+    max-width:none;
+    flex:1;
+  }
+}
+
+.calendar-highlight-dropdown{
+  min-width:190px;
+  max-width:230px;
+}
+.calendar-highlight-dropdown .check-dropdown-menu{
+  right:0;
+  left:auto;
+}
+@media(max-width:980px){
+  .calendar-highlight-dropdown{
+    min-width:160px;
+    max-width:none;
+    flex:1;
+  }
+}
+
+/* v2.73 recurring delete scope + clearer paycheck auto-calc */
+.save-scope-box{
+  margin:12px 0;
+  padding:14px;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:#fbf3e9;
+}
+.save-scope-box .radio-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin:8px 0;
+  font-weight:850;
+}
+.save-scope-box input[type="radio"]{
+  width:auto;
+}
+.delete-scope-box{
+  border-color:#e6c0b9;
+  background:#fff6f3;
+}
+.auto-paycheck-box{
+  margin-top:10px;
+  padding:12px;
+  border:1px dashed var(--line);
+  border-radius:14px;
+  background:#fffaf3;
+}
+.auto-paycheck-box input{
+  width:auto;
+}
+
+/* v2.75 dangerous reset/clear actions live in Settings only */
+.settings-button-grid .danger{
+  border-color:#e6c0b9;
+  background:#fff1ed;
+  color:#a34f45;
+}
+
+/* v2.76 Recent places sidebar */
+.recent-card{
+  display:grid;
+  gap:10px;
+}
+.side-card-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+}
+.side-card-head .eyebrow{
+  margin:0;
+}
+.tiny-link{
+  border:0;
+  background:transparent;
+  color:var(--muted);
+  font-weight:900;
+  cursor:pointer;
+  padding:4px 2px;
+}
+.recent-list{
+  display:grid;
+  gap:6px;
+}
+.recent-place{
+  width:100%;
+  display:grid;
+  grid-template-columns:auto 1fr;
+  align-items:center;
+  gap:8px;
+  text-align:left;
+  border:1px solid var(--line);
+  background:#fffaf3;
+  border-radius:14px;
+  padding:9px 10px;
+  cursor:pointer;
+}
+.recent-place:hover{
+  background:#fbf3e9;
+}
+.recent-icon{
+  width:24px;
+  text-align:center;
+}
+.recent-copy{
+  min-width:0;
+}
+.recent-copy b{
+  display:block;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:13px;
+}
+.recent-copy small{
+  display:block;
+  color:var(--muted);
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:11px;
+}
+.recent-empty{
+  font-size:12px;
+  color:var(--muted);
+  padding:8px 2px;
+}
+
+/* v2.82 Transaction templates / title autocomplete */
+.template-title-wrap{
+  position:relative;
+}
+.template-suggestions{
+  display:none;
+  position:absolute;
+  z-index:40;
+  left:0;
+  right:0;
+  top:100%;
+  margin-top:4px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:#fffaf3;
+  box-shadow:0 16px 32px rgba(80,60,40,.18);
+  overflow:hidden;
+}
+.template-suggestions.open{
+  display:grid;
+}
+.template-suggestions button{
+  border:0;
+  background:transparent;
+  text-align:left;
+  padding:10px 12px;
+  cursor:pointer;
+  border-bottom:1px solid var(--line);
+}
+.template-suggestions button:last-child{
+  border-bottom:0;
+}
+.template-suggestions button:hover{
+  background:#fbf3e9;
+}
+.template-suggestions b,
+.template-suggestions small{
+  display:block;
+}
+.template-suggestions small{
+  color:var(--muted);
+  margin-top:2px;
+}
+.template-list{
+  display:grid;
+  gap:8px;
+}
+.template-row{
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:10px;
+  align-items:center;
+  padding:12px;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:#fbf3e9;
+}
+.template-actions{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+}
+@media(max-width:720px){
+  .template-row{
+    grid-template-columns:1fr;
+  }
+  .template-actions{
+    justify-content:flex-start;
+  }
+}
+
+/* v2.83 recurring save/delete scope modal */
+.recurring-scope-card{
+  max-width:520px;
+}
+.scope-choice-grid{
+  display:grid;
+  gap:10px;
+  margin-top:12px;
+}
+.scope-choice{
+  text-align:left;
+  border:1px solid var(--line);
+  background:#fffaf3;
+  border-radius:16px;
+  padding:14px;
+  cursor:pointer;
+}
+.scope-choice:hover{
+  background:#fbf3e9;
+  transform:translateY(-1px);
+}
+.scope-choice b,
+.scope-choice span{
+  display:block;
+}
+.scope-choice span{
+  margin-top:4px;
+  color:var(--muted);
+  font-size:13px;
+}
+.scope-choice.danger-choice{
+  border-color:#e6c0b9;
+  background:#fff6f3;
+}
+.scope-choice.danger-choice:hover{
+  background:#fff1ed;
+}
+
+/* v2.87 Settings cleanup */
+.settings-stack{
+  display:grid;
+  gap:14px;
+  max-width:1100px;
+}
+.settings-tools-panel{
+  position:static;
+}
+.settings-collapsible{
+  padding:0;
+  overflow:hidden;
+}
+.settings-collapsible > summary{
+  list-style:none;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:18px 20px;
+  user-select:none;
+}
+.settings-collapsible > summary::-webkit-details-marker{
+  display:none;
+}
+.settings-collapsible > summary b{
+  display:block;
+  font-size:18px;
+}
+.settings-collapsible > summary small{
+  display:block;
+  color:var(--muted);
+  margin-top:2px;
+}
+.settings-collapsible > summary::after{
+  content:"▾";
+  font-weight:900;
+  color:var(--muted);
+  transition:transform .15s ease;
+}
+.settings-collapsible[open] > summary::after{
+  transform:rotate(180deg);
+}
+.summary-pill{
+  margin-left:auto;
+  border:1px solid var(--line);
+  background:#fffaf3;
+  border-radius:999px;
+  padding:5px 10px;
+  font-size:12px;
+  font-weight:900;
+  color:var(--muted);
+}
+.settings-collapse-body{
+  border-top:1px solid var(--line);
+  padding:16px 20px 20px;
+}
+.compact-head{
+  margin-bottom:12px;
+}
+.compact-head .hint{
+  margin:0;
+}
+@media(max-width:900px){
+  .settings-tools-panel{
+    position:static;
+  }
+}
+
+/* v2.89 Paycheck estimator */
+.paycheck-profile-list{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+}
+.paycheck-profile-card{
+  border:1px solid var(--line);
+  border-radius:18px;
+  background:#fffaf3;
+  padding:14px;
+}
+.paycheck-profile-card h4{
+  margin:0 0 10px;
+  font-size:18px;
+}
+#paycheckHoursWrap{
+  margin-top:10px;
+}
+@media(max-width:850px){
+  .paycheck-profile-list{
+    grid-template-columns:1fr;
+  }
+}
+
+/* v2.91 Bills category multi-select */
+#billCategoryFilter{
+  min-width:190px;
+  max-width:240px;
+  height:42px;
+  overflow:auto;
+}
+@media(max-width:980px){
+  #billCategoryFilter{
+    min-width:160px;
+    max-width:none;
+    flex:1;
+  }
+}
+
+/* v2.92 Custom checklist dropdown for Bills categories */
+.check-dropdown{
+  position:relative;
+}
+.check-dropdown-btn{
+  width:100%;
+  height:42px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:#fffaf3;
+  padding:0 14px;
+  text-align:left;
+  font-weight:900;
+  cursor:pointer;
+}
+.check-dropdown-btn::after{
+  content:"▾";
+  float:right;
+  color:var(--muted);
+}
+.check-dropdown.open .check-dropdown-btn::after{
+  content:"▴";
+}
+.check-dropdown-menu{
+  display:none;
+  position:absolute;
+  z-index:80;
+  top:calc(100% + 4px);
+  left:0;
+  min-width:230px;
+  max-height:360px;
+  overflow:auto;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:#fffaf3;
+  box-shadow:0 16px 32px rgba(80,60,40,.18);
+  padding:8px;
+}
+.check-dropdown.open .check-dropdown-menu{
+  display:grid;
+  gap:2px;
+}
+.check-row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:7px 8px;
+  border-radius:10px;
+  cursor:pointer;
+  font-weight:700;
+  white-space:nowrap;
+}
+.check-row:hover{
+  background:#fbf3e9;
+}
+.check-row input{
+  width:auto;
+}
+.bill-filters .check-dropdown{
+  min-width:190px;
+}
+
+/* v2.94 override: settings backup panel scrolls normally */
+.settings-tools-panel{ position:static !important; top:auto !important; z-index:auto !important; }
+
+/* v2.95 Bills occurrence-based status badges */
+.status-toggle.due{
+  border-color:#d79b38;
+  background:#fff2d8;
+  color:#9a5d00;
+}
+.bill-status-badge{
+  cursor:default;
+}
+
+/* v2.97 Bills cleared fallback remains non-clickable */
+.bill-status-badge.cleared{
+  cursor:default;
+}
+
+/* v2.100 Calendar planned vs cleared visibility */
+.calendar .tx-chip.planned,
+.calendar-grid .tx-chip.planned{
+  background:#fffaf3;
+  border-style:dashed;
+  border-color:rgba(80,60,40,.48);
+  box-shadow:0 1px 0 rgba(80,60,40,.22);
+  opacity:.92;
+}
+.calendar .tx-chip.planned .tx-name,
+.calendar-grid .tx-chip.planned .tx-name{
+  color:var(--muted);
+}
+.calendar .tx-chip.planned .tx-chip-amount,
+.calendar-grid .tx-chip.planned .tx-chip-amount{
+  color:var(--muted);
+}
+.calendar .tx-chip.cleared,
+.calendar-grid .tx-chip.cleared{
+  background:#fbf3e9;
+  border-style:solid;
+  border-color:rgba(80,60,40,.68);
+  opacity:1;
+}
+.calendar .tx-chip.cleared::before,
+.calendar-grid .tx-chip.cleared::before{
+  content:"✓";
+  font-size:10px;
+  font-weight:900;
+  color:#4d7a52;
+  margin-right:3px;
+}
+.calendar .tx-chip.planned::before,
+.calendar-grid .tx-chip.planned::before{
+  content:"○";
+  font-size:10px;
+  font-weight:900;
+  color:#b27720;
+  margin-right:3px;
+}
+
+/* v2.101 fix: keep calendar chips compact */
+.calendar .tx-chip,
+.calendar-grid .tx-chip{
+  min-height:0 !important;
+  height:auto !important;
+  line-height:1.15 !important;
+  padding:3px 6px !important;
+  align-items:center !important;
+}
+
+.calendar .tx-chip::before,
+.calendar-grid .tx-chip::before{
+  content:none !important;
+  display:none !important;
+  margin:0 !important;
+}
+
+.calendar .tx-chip.planned,
+.calendar-grid .tx-chip.planned{
+  background:#fff7ee !important;
+  border-style:solid !important;
+  border-color:rgba(80,60,40,.45) !important;
+  border-left-style:solid !important;
+  opacity:.78 !important;
+  box-shadow:none !important;
+  outline:1px dashed rgba(80,60,40,.28);
+  outline-offset:-2px;
+}
+
+.calendar .tx-chip.cleared,
+.calendar-grid .tx-chip.cleared{
+  background:#eadac6 !important;
+  border-style:solid !important;
+  border-color:rgba(80,60,40,.62) !important;
+  opacity:1 !important;
+  outline:none !important;
+}
+
+.calendar .tx-chip.planned .tx-name,
+.calendar-grid .tx-chip.planned .tx-name,
+.calendar .tx-chip.planned .tx-chip-amount,
+.calendar-grid .tx-chip.planned .tx-chip-amount{
+  color:inherit !important;
+}
+
+.calendar .tx-chip .tx-name,
+.calendar-grid .tx-chip .tx-name{
+  min-width:0;
+}
+
+.calendar .tx-chip .tx-chip-amount,
+.calendar-grid .tx-chip .tx-chip-amount{
+  white-space:nowrap;
+}
+
+/* v2.102 restore compact category-colored planned chips */
+.calendar .tx-chip,
+.calendar-grid .tx-chip{
+  padding:3px 6px !important;
+  min-height:0 !important;
+  height:auto !important;
+  line-height:1.15 !important;
+  align-items:center !important;
+}
+
+.calendar .tx-chip::before,
+.calendar-grid .tx-chip::before{
+  content:none !important;
+  display:none !important;
+}
+
+.calendar .tx-chip.planned,
+.calendar-grid .tx-chip.planned{
+  background:var(--chip-bg, #fff7ee) !important;
+  opacity:.82 !important;
+  box-shadow:none !important;
+  outline:1px dashed var(--chip-outline, rgba(80,60,40,.38)) !important;
+  outline-offset:-2px !important;
+  border-style:solid !important;
+  border-left-style:solid !important;
+}
+
+.calendar .tx-chip.cleared,
+.calendar-grid .tx-chip.cleared{
+  background:var(--chip-bg, #eadac6) !important;
+  opacity:1 !important;
+  outline:none !important;
+  border-style:solid !important;
+  border-left-style:solid !important;
+}
+
+.calendar .tx-chip .tx-name,
+.calendar-grid .tx-chip .tx-name{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.calendar .tx-chip .tx-chip-amount,
+.calendar-grid .tx-chip .tx-chip-amount{
+  white-space:nowrap;
+}
+
+/* v2.103 rollback: restore original compact calendar chip look */
+.calendar .tx-chip,
+.calendar-grid .tx-chip{
+  margin-top:6px !important;
+  padding:5px 7px !important;
+  border-radius:9px !important;
+  font-size:11px !important;
+  font-weight:850 !important;
+  display:flex !important;
+  justify-content:space-between !important;
+  gap:6px !important;
+  cursor:pointer !important;
+  border-left-width:5px !important;
+  border-left-style:solid !important;
+  min-height:0 !important;
+  height:auto !important;
+  line-height:normal !important;
+  align-items:center !important;
+  box-shadow:none !important;
+  outline:none !important;
+}
+
+.calendar .tx-chip::before,
+.calendar-grid .tx-chip::before{
+  content:none !important;
+  display:none !important;
+}
+
+.calendar .tx-chip.planned,
+.calendar-grid .tx-chip.planned{
+  opacity:.72 !important;
+  border-style:dashed !important;
+  border-left-style:solid !important;
+  outline:none !important;
+  box-shadow:none !important;
+}
+
+.calendar .tx-chip.cleared,
+.calendar-grid .tx-chip.cleared{
+  opacity:1 !important;
+  border-style:solid !important;
+  border-left-style:solid !important;
+  outline:none !important;
+  box-shadow:none !important;
+}
+
+.calendar .tx-chip .tx-name,
+.calendar-grid .tx-chip .tx-name{
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  white-space:nowrap !important;
+  min-width:0 !important;
+}
+
+.calendar .tx-chip .tx-chip-amount,
+.calendar-grid .tx-chip .tx-chip-amount{
+  white-space:nowrap !important;
+}
+
+/* v2.104 true rollback: no dotted/dashed full boxes on calendar chips */
+.calendar .tx-chip,
+.calendar-grid .tx-chip{
+  margin-top:6px !important;
+  padding:5px 7px !important;
+  border-radius:9px !important;
+  font-size:11px !important;
+  font-weight:850 !important;
+  display:flex !important;
+  justify-content:space-between !important;
+  align-items:center !important;
+  gap:6px !important;
+  min-height:0 !important;
+  height:auto !important;
+  line-height:1.15 !important;
+  outline:none !important;
+  box-shadow:none !important;
+  border-top:0 !important;
+  border-right:0 !important;
+  border-bottom:0 !important;
+  border-left-width:5px !important;
+  border-left-style:solid !important;
+}
+
+.calendar .tx-chip::before,
+.calendar-grid .tx-chip::before,
+.calendar .tx-chip::after,
+.calendar-grid .tx-chip::after{
+  content:none !important;
+  display:none !important;
+}
+
+.calendar .tx-chip.planned,
+.calendar-grid .tx-chip.planned{
+  opacity:.72 !important;
+  border-style:none !important;
+  border-left-style:solid !important;
+  outline:none !important;
+  box-shadow:none !important;
+}
+
+.calendar .tx-chip.cleared,
+.calendar-grid .tx-chip.cleared{
+  opacity:1 !important;
+  border-style:none !important;
+  border-left-style:solid !important;
+  outline:none !important;
+  box-shadow:none !important;
+}
+
+.calendar .tx-chip .tx-name,
+.calendar-grid .tx-chip .tx-name{
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  white-space:nowrap !important;
+  min-width:0 !important;
+}
+
+.calendar .tx-chip .tx-chip-amount,
+.calendar-grid .tx-chip .tx-chip-amount{
+  white-space:nowrap !important;
+}
+
+/* v2.105 compact planned chips: dashed outline, category color, no bulk */
+.calendar .tx-chip,
+.calendar-grid .tx-chip{
+  box-sizing:border-box !important;
+  margin-top:6px !important;
+  padding:4px 7px !important;
+  border-radius:8px !important;
+  font-size:11px !important;
+  font-weight:850 !important;
+  display:flex !important;
+  justify-content:space-between !important;
+  align-items:center !important;
+  gap:6px !important;
+  min-height:0 !important;
+  height:auto !important;
+  line-height:1.1 !important;
+  box-shadow:none !important;
+  outline:none !important;
+}
+
+.calendar .tx-chip::before,
+.calendar-grid .tx-chip::before,
+.calendar .tx-chip::after,
+.calendar-grid .tx-chip::after{
+  content:none !important;
+  display:none !important;
+}
+
+.calendar .tx-chip.planned,
+.calendar-grid .tx-chip.planned{
+  opacity:.78 !important;
+  border-top:1px dashed var(--chip-outline, rgba(80,60,40,.42)) !important;
+  border-right:1px dashed var(--chip-outline, rgba(80,60,40,.42)) !important;
+  border-bottom:1px dashed var(--chip-outline, rgba(80,60,40,.42)) !important;
+  border-left-width:5px !important;
+  border-left-style:solid !important;
+  border-left-color:var(--chip-outline, rgba(80,60,40,.42)) !important;
+}
+
+.calendar .tx-chip.cleared,
+.calendar-grid .tx-chip.cleared{
+  opacity:1 !important;
+  border-top:1px solid rgba(80,60,40,.35) !important;
+  border-right:1px solid rgba(80,60,40,.35) !important;
+  border-bottom:1px solid rgba(80,60,40,.35) !important;
+  border-left-width:5px !important;
+  border-left-style:solid !important;
+}
+
+.calendar .tx-chip .tx-name,
+.calendar-grid .tx-chip .tx-name{
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  white-space:nowrap !important;
+  min-width:0 !important;
+}
+
+.calendar .tx-chip .tx-chip-amount,
+.calendar-grid .tx-chip .tx-chip-amount{
+  white-space:nowrap !important;
+}
+
+/* v2.106 slightly more compact calendar chips */
+.calendar .tx-chip,
+.calendar-grid .tx-chip{
+  margin-top:4px !important;
+  padding:2px 5px !important;
+  border-radius:7px !important;
+  font-size:10.5px !important;
+  line-height:1.05 !important;
+  gap:4px !important;
+}
+
+.calendar .tx-chip.planned,
+.calendar-grid .tx-chip.planned,
+.calendar .tx-chip.cleared,
+.calendar-grid .tx-chip.cleared{
+  border-left-width:4px !important;
+}
+
+.calendar .tx-chip .tx-name,
+.calendar-grid .tx-chip .tx-name{
+  max-width:100%;
+}
+
+.calendar .tx-chip-amount,
+.calendar-grid .tx-chip-amount{
+  font-size:10.5px !important;
+}
+
+/* v2.108 cleared calendar chips keep category color */
+.calendar .tx-chip.cleared,
+.calendar-grid .tx-chip.cleared{
+  background:var(--chip-bg, inherit) !important;
+  border-left-color:var(--chip-outline, currentColor) !important;
+  border-top:1px solid var(--chip-outline, rgba(80,60,40,.35)) !important;
+  border-right:1px solid var(--chip-outline, rgba(80,60,40,.35)) !important;
+  border-bottom:1px solid var(--chip-outline, rgba(80,60,40,.35)) !important;
+  border-left-width:4px !important;
+  border-left-style:solid !important;
+  opacity:1 !important;
+}
+
+.calendar .tx-chip.planned,
+.calendar-grid .tx-chip.planned{
+  background:var(--chip-bg, inherit) !important;
+  border-left-color:var(--chip-outline, currentColor) !important;
+}
+
+/* v2.110 BNPL installment loan metrics */
+.bnpl-metrics .value{
+  white-space:nowrap;
+}
+
+/* v2-132 debt type scoped account expand/collapse controls */
+.debt-type-summary-actions{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+  flex-wrap:wrap;
+  text-align:right;
+}
+.debt-type-summary-actions .tiny{
+  white-space:nowrap;
+}
+@media (max-width: 720px){
+  .debt-type-summary{
+    align-items:flex-start;
+  }
+  .debt-type-summary-actions{
+    flex-direction:column;
+    align-items:flex-end;
+  }
+}
+
+/* v2-138 calendar monthly balance highlights */
+.day.lowest-balance-day{
+  background:linear-gradient(0deg, rgba(218, 78, 78, .13), rgba(218, 78, 78, .13)), rgba(255,250,243,.94);
+  box-shadow:inset 0 0 0 2px rgba(180, 60, 60, .28);
+}
+.day.highest-balance-day{
+  background:linear-gradient(0deg, rgba(92, 166, 104, .14), rgba(92, 166, 104, .14)), rgba(255,250,243,.94);
+  box-shadow:inset 0 0 0 2px rgba(72, 135, 80, .28);
+}
+.day.lowest-balance-day .day-balance{
+  color:#9f3f3f;
+}
+.day.highest-balance-day .day-balance{
+  color:#3f7548;
+}
+
+
+
+/* v2-151 calendar today highlight */
+.day.today-day{
+  position:relative;
+  box-shadow:inset 0 0 0 3px rgba(122, 92, 62, .52), 0 0 0 1px rgba(122, 92, 62, .16);
+}
+.day.today-day .day-num{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:24px;
+  height:24px;
+  padding:0 6px;
+  border-radius:999px;
+  background:rgba(122, 92, 62, .18);
+  color:var(--text);
+  font-weight:900;
+}
+.day.today-day.lowest-balance-day{
+  box-shadow:inset 0 0 0 3px rgba(122, 92, 62, .52), inset 0 0 0 6px rgba(180, 60, 60, .20);
+}
+.day.today-day.highest-balance-day{
+  box-shadow:inset 0 0 0 3px rgba(122, 92, 62, .52), inset 0 0 0 6px rgba(72, 135, 80, .20);
+}
+
+/* v2-143 loan forecast settings */
+.subpanel{
+  border:1px solid var(--line);
+  border-radius:18px;
+  background:rgba(255,250,243,.62);
+  padding:14px;
+  display:grid;
+  gap:12px;
+}
+.subpanel h4{
+  margin:0;
+  color:var(--muted);
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  font-size:13px;
+}
+.three-col{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:12px;
+}
+@media(max-width:640px){.three-col{grid-template-columns:1fr}}
+
+/* v2.153 recent changes / undo */
+.inline-actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+}
+.change-row .row-sub{
+  color:var(--muted);
+}
+button:disabled{
+  opacity:.45;
+  cursor:not-allowed;
+}
+
+/* v2.154 detailed recent changes */
+.change-row{
+  display:block;
+}
+.change-row summary{
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:10px;
+  align-items:center;
+  cursor:pointer;
+  list-style:none;
+}
+.change-row summary::-webkit-details-marker{display:none}
+.change-row summary .row-title,
+.change-row summary .row-sub{display:block}
+.change-detail{
+  margin-top:10px;
+  padding-top:10px;
+  border-top:1px solid var(--line);
+  color:var(--muted);
+  font-size:13px;
+  display:grid;
+  gap:10px;
+}
+.change-detail ul{
+  margin:6px 0 0 18px;
+  padding:0;
+  display:grid;
+  gap:5px;
+}
+.change-detail li{line-height:1.35}
+.change-detail b{color:var(--ink)}
+.change-detail small{color:var(--muted)}
+.added-change{color:var(--green)}
+.deleted-change{color:var(--red)}
+
+/* v2.155 individual recent-change undo */
+.change-tx-line{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+}
+.change-tx-line > span{
+  min-width:0;
+  flex:1;
+}
+.change-tx-line .tiny{
+  white-space:nowrap;
+  margin-top:0;
+}
+@media(max-width:700px){
+  .change-tx-line{display:block}
+  .change-tx-line .tiny{margin-top:6px}
+}

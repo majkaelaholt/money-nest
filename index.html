@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Money Nest</title>
+  <link rel="stylesheet" href="styles.css"/>
+
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#8c6f4d">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Money Nest">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark"><img src="icons/brand-icon.png" alt="Money Nest icon"></div>
+        <div>
+          <h1>Money Nest</h1>
+          <p>cozy money command center</p>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <button class="nav-btn active" data-view="dashboard">Dashboard</button>
+        <button class="nav-btn" data-view="calendar">Calendar</button>
+        <button class="nav-btn" data-view="accounts">Accounts</button>
+        <button class="nav-btn" data-view="budgets">Budgets</button>
+        <button class="nav-btn" data-view="bills">Bills</button>
+        <button class="nav-btn" data-view="debts">Debts</button>
+        <button class="nav-btn" data-view="settings">Settings</button>
+      </nav>
+
+      <div class="side-card recent-card">
+        <div class="side-card-head">
+          <p class="eyebrow">Recent places</p>
+          <button type="button" class="tiny-link" id="clearRecentBtn">Clear</button>
+        </div>
+        <div id="recentPlacesList" class="recent-list"></div>
+        <button id="quickAddBtn" class="primary full">+ Transaction</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Welcome back, Mak</p>
+          <h2 id="viewTitle">Dashboard</h2>
+        </div>
+
+      </header>
+
+      <section id="dashboard" class="view active">
+        <div class="grid cards-4" id="summaryCards"></div>
+        <div class="split">
+          <section class="panel">
+            <div class="panel-head">
+              <h3>Safe to spend</h3>
+              <span class="hint">after planned bills</span>
+            </div>
+            <div id="safeSpendList" class="stack"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <h3>Upcoming</h3>
+              <span class="hint">next 14 days</span>
+            </div>
+            <div id="upcomingList" class="stack"></div>
+          </section>
+        </div>
+        <section class="panel">
+          <div class="panel-head">
+            <h3>Action Center</h3>
+            <span class="hint">attention + due soon</span>
+          </div>
+          <div id="debtSnapshot" class="debt-grid"></div>
+        </section>
+      </section>
+
+      <section id="calendar" class="view">
+        
+        <div class="calendar-toolbar panel calendar-toolbar-local">
+          <button id="prevMonth" class="ghost">‹</button>
+          <h3 id="monthLabel"></h3>
+          <button id="nextMonth" class="ghost">›</button>
+          <button id="todayBtn" class="ghost">Today</button>
+          <label class="inline-label">View
+            <select id="calendarAccountFilter"></select>
+          </label>
+          <label class="inline-label">Highlight
+            <div class="check-dropdown calendar-highlight-dropdown" id="calendarCategoryHighlightDropdown">
+              <button type="button" class="check-dropdown-btn" id="calendarCategoryHighlightBtn">All categories</button>
+              <div class="check-dropdown-menu" id="calendarCategoryHighlightMenu"></div>
+            </div>
+          </label>
+        </div>
+
+        <div class="calendar" id="calendarGrid"></div>
+      </section>
+
+      <section id="accounts" class="view">
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Cash accounts</h3>
+            <button class="primary small" id="addAccountBtn">+ Account</button>
+          </div>
+          <div id="accountList" class="account-list"></div>
+        </div>
+      </section>
+
+      <section id="accountDetail" class="view">
+        <div id="accountDetailContent"></div>
+      </section>
+
+      <section id="budgets" class="view">
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Monthly budgets by account</h3>
+            <button class="primary small" id="addBudgetBtn">+ Budget</button>
+          </div>
+          <div id="budgetList" class="budget-list"></div>
+        </div>
+      </section>
+
+
+      <section id="bills" class="view">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h3>Recurring bills & income</h3>
+              <p class="hint">Everything that repeats, even yearly stuff you forget exists until it jumpscares you.</p>
+            </div>
+            <button class="primary small" id="addBillBtn">+ Recurring</button>
+          </div>
+          <div class="bill-filters">
+            <label>Account / owner
+              <select id="billAccountFilter"></select>
+            </label>
+            <label>Categories
+              <div class="check-dropdown" id="billCategoryDropdown">
+                <button type="button" class="check-dropdown-btn" id="billCategoryDropdownBtn">All categories</button>
+                <div class="check-dropdown-menu" id="billCategoryDropdownMenu"></div>
+              </div>
+            </label>
+            <label>Type
+              <select id="billTypeFilter">
+                <option value="all">All types</option>
+                <option value="expense">Expenses</option>
+                <option value="income">Income</option>
+              <option value="paycheck">Paycheck</option>
+                <option value="transfer">Transfers / payments</option>
+              </select>
+            </label>
+            <label>Repeats
+              <select id="billRecurrenceFilter">
+                <option value="all">All repeat types</option>
+                <option value="weekly">Weekly</option>
+                <option value="biweekly">Bi-weekly</option>
+                <option value="monthly">Monthly</option>
+                <option value="last-day-month">Last day of month</option>
+                <option value="yearly">Yearly</option>
+                <option value="every-x-days">Every X days</option>
+                <option value="nth-weekday">Nth weekday</option>
+              </select>
+            </label>
+            <label>Sort
+              <select id="billSort">
+                <option value="date">Next date</option>
+                <option value="amount-desc">Amount: high to low</option>
+                <option value="amount-asc">Amount: low to high</option>
+                <option value="category">Category</option>
+                <option value="account">Account</option>
+              </select>
+            </label>
+          </div>
+
+          <div id="billsList" class="bill-list"></div>
+        </div>
+      </section>
+
+      <section id="debts" class="view">
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Debts</h3>
+            <button class="primary small" id="addDebtBtn">+ Debt</button>
+          </div>
+          <div id="debtGroups" class="debt-groups"></div>
+        </div>
+      </section>
+
+      <section id="debtDetail" class="view">
+        <div id="debtDetailContent"></div>
+      </section>
+
+      <section id="settings" class="view">
+        <div class="settings-stack">
+          <section class="panel settings-tools-panel">
+            <div class="panel-head">
+              <div>
+                <h3>Backup & batch editing</h3>
+                <p class="hint">Use JSON for full backup/restore. Use CSVs when you want to batch edit.</p>
+              </div>
+            </div>
+            <div class="settings-button-grid">
+              <button id="backupBtn" class="ghost">Export backup</button>
+              <button id="financialPictureBtn" class="ghost">Export financial picture</button>
+              <button id="extendedFinancialPictureBtn" class="ghost">Export 12-month picture</button>
+              <button id="csvExportBtn" class="ghost">Export editable CSVs</button>
+              <label class="ghost file-label">
+                Import backup
+                <input id="importInput" type="file" accept="application/json"/>
+              </label>
+              <label class="ghost file-label">
+                Import edited CSV
+                <input id="csvImportInput" type="file" accept=".csv,text/csv"/>
+              </label>
+              <button id="settingsSampleResetBtn" class="ghost">Reset sample data</button>
+              <button id="settingsClearAllBtn" class="danger ghost">Clear everything</button>
+            </div>
+          </section>
+
+          <details class="panel settings-collapsible">
+            <summary>
+              <span>
+                <b>Categories</b>
+                <small>Emojis/colors used across the app</small>
+              </span>
+              <span class="summary-pill" id="settingsCategoryCount">0</span>
+            </summary>
+            <div class="settings-collapse-body">
+              <div class="panel-head compact-head">
+                <p class="hint">Edit transaction category names, emojis, and colors.</p>
+                <button class="primary small" id="addCategoryBtn">+ Category</button>
+              </div>
+              <div id="categoryList" class="category-list"></div>
+            </div>
+          </details>
+
+          <details class="panel settings-collapsible">
+            <summary>
+              <span>
+                <b>Paycheck estimator</b>
+                <small>Hourly paycheck estimates for Mak and Ty</small>
+              </span>
+              <span class="summary-pill" id="settingsPaycheckCount">2</span>
+            </summary>
+            <div class="settings-collapse-body">
+              <p class="hint">Simple budgeting estimate: gross pay minus estimated deduction percentage/fixed deductions. Adjust these as real checks come in.</p>
+              <div id="paycheckProfileList" class="paycheck-profile-list">
+                <div class="paycheck-profile-card">
+                  <h4>Mak</h4>
+                  <div class="two-col">
+                    <label>Hourly rate
+                      <input id="makHourlyRate" type="number" step="0.01">
+                    </label>
+                    <label>Hours per workday
+                      <input id="makHoursPerWorkday" type="number" step="0.25">
+                    </label>
+                  </div>
+                  <div class="two-col">
+                    <label>Estimated deduction %
+                      <input id="makDeductionPercent" type="number" step="0.01">
+                    </label>
+                    <label>Fixed deduction per check
+                      <input id="makFixedDeduction" type="number" step="0.01">
+                    </label>
+                  </div>
+                  <p class="hint">Mak hours auto-calculate from pay-period weekdays, unless overridden on a paycheck.</p>
+                </div>
+                <div class="paycheck-profile-card">
+                  <h4>Ty</h4>
+                  <div class="two-col">
+                    <label>Hourly rate
+                      <input id="tyHourlyRate" type="number" step="0.01">
+                    </label>
+                    <label>Default hours per check
+                      <input id="tyDefaultHours" type="number" step="0.25">
+                    </label>
+                  </div>
+                  <div class="two-col">
+                    <label>Estimated deduction %
+                      <input id="tyDeductionPercent" type="number" step="0.01">
+                    </label>
+                    <label>Fixed deduction per check
+                      <input id="tyFixedDeduction" type="number" step="0.01">
+                    </label>
+                  </div>
+                  <p class="hint">Ty uses default hours unless you override the hours on a specific paycheck.</p>
+                </div>
+              </div>
+            </div>
+          </details>
+
+          <details class="panel settings-collapsible" open>
+            <summary>
+              <span>
+                <b>Recent changes</b>
+                <small>Undo the last saved change if something went sideways</small>
+              </span>
+              <span class="summary-pill">↩</span>
+            </summary>
+            <div class="settings-collapse-body">
+              <div class="panel-head compact-head">
+                <p class="hint">New edits are saved here going forward. Use this for “where did that transaction go?” moments.</p>
+                <div class="inline-actions">
+                  <button class="ghost small" id="undoLastChangeBtn">Undo last change</button>
+                  <button class="ghost small" id="clearChangeHistoryBtn">Clear history</button>
+                </div>
+              </div>
+              <div id="recentChangesList" class="template-list change-list"></div>
+            </div>
+          </details>
+
+          <details class="panel settings-collapsible">
+            <summary>
+              <span>
+                <b>Transaction templates</b>
+                <small>Saved title/category shortcuts for auto-fill</small>
+              </span>
+              <span class="summary-pill" id="settingsTemplateCount">0</span>
+            </summary>
+            <div class="settings-collapse-body">
+              <div class="panel-head compact-head">
+                <p class="hint">Saved title shortcuts for category/notes only. They do not save type, status, or account routing.</p>
+                <button class="primary small" id="addTemplateBtn">+ Template</button>
+              </div>
+              <div id="transactionTemplateList" class="template-list"></div>
+            </div>
+          </details>
+
+          <details class="panel settings-collapsible">
+            <summary>
+              <span>
+                <b>How this version works</b>
+                <small>Quick reference notes</small>
+              </span>
+              <span class="summary-pill">?</span>
+            </summary>
+            <div class="settings-collapse-body notes">
+              <p><b>Saved filters:</b> Money Nest now remembers the last filter/sort dropdowns you chose on Calendar, Bills, transaction ledgers, and account forecast views. Search text is temporary and will not hide things later.</p>
+              <p><b>Account forecast range:</b> Removed All Forecast because very long recurring schedules could freeze the Accounts page. Use Next 90 days for the longest saved forecast window.</p>
+              <p><b>Calendar filter:</b> view All, Mak Checking, Ty Checking, Joint Checking, etc.</p>
+              <p><b>Actual balance</b> uses cleared transactions only.</p>
+              <p><b>Projected balance</b> uses cleared + planned transactions.</p>
+              <p><b>Bills page:</b> recurring transactions live in one place so yearly, bi-weekly, weekday-based, last-day-of-month, and odd recurring bills are easier to manage.</p>
+              <p><b>Add transaction:</b> the form is grouped into collapsible sections so you only deal with the basics first. Autofill templates only apply title/category/notes and will not change type/status/account routing.</p>
+              <p><b>Paychecks:</b> use the Paycheck type for true paychecks. Regular Income can be used for Venmo, cash, refunds, etc. without affecting safe-to-spend.</p>
+              <p><b>Safe to spend:</b> On payday, paycheck accounts now use the following paycheck as the horizon, so Safe to Spend does not collapse to only today’s leftover balance.</p>
+              <p><b>Recent changes:</b> Settings has a Recent changes section that can undo the last saved edit going forward. JSON backup is still the full restore. CSV is best for batch editing existing data; import Accounts/Debts/Categories before Transactions if rebuilding from empty.</p>
+              <p><b>Debt balances:</b> Starting Balance is the default tracking baseline. For loans and medical payment plans, Statement/Current Balance + Date can be used as the live lender/provider baseline, so Current Balance starts from the latest provider balance and only counts cleared activity after that date.</p>
+              <p><b>BNPL installment status:</b> Buy Now, Pay Later accounts now infer Planned/Complete from their linked installment schedule when no manual status is set, and their Installment Status can be edited like other debt payment statuses.</p>
+              <p><b>Loan payoff forecast:</b> Auto loans can estimate principal/interest/fees from cleared payments that have a breakdown. Planned/recurring loan payments and blank cleared recurring payments can use that estimate, while manual payment breakdowns still override it.</p>
+              <p><b>Credit cards:</b> the Credit Line card and debt-list account rows show Available Credit using credit limit minus current balance.</p>
+              <p><b>Debts page:</b> each debt type section has Expand accounts / Collapse accounts buttons that only open or close the accounts inside that type.</p>
+              <p><b>Debt spending:</b> enter an expense directly on a credit card/Klarna/loan account to increase its balance.</p>
+              <p><b>Debt payments:</b> monthly payment totals use minimum/monthly due + manual extra by default. Enter a cleared transfer from cash and link a debt to reduce Current Balance; debt detail ledgers show those payments as positive/green.</p>
+              <p><b>Use card instead:</b> right-click a planned cash expense and choose “Use card instead” to keep the spending category/cash plan, create the card charge on the purchase date, and schedule the card payment for a separate payment date.</p>
+              <p><b>Create card payment:</b> right-click an existing credit-card purchase and choose “Create card payment” to create the cash-account payment afterward. You can also create a pending IOU/reimbursement in the same flow when another account fronted the payment.</p>
+              <p><b>Pending reimbursements:</b> use IOU / reimbursement on an account when one account fronts money and another will pay it back later. The paying account plans for money leaving, while the receiving account shows the expected reimbursement but does not count it as available until cleared.</p>
+              <p><b>Statements:</b> Statement Balance is kept separate. Use “Reset tracking baseline to this statement” when you want the statement balance/date to become the new Current Balance baseline.</p>
+              <p><b>Categories:</b> emojis/colors show on the calendar and account/debt ledgers.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="recurringScopeModal">
+    <form method="dialog" class="modal-card recurring-scope-card">
+      <div class="panel-head">
+        <h3 id="recurringScopeTitle">Recurring transaction</h3>
+        <button type="button" class="icon-btn" id="closeRecurringScope">×</button>
+      </div>
+      <p class="hint" id="recurringScopeHint">Choose how this change should apply.</p>
+      <div class="scope-choice-grid">
+        <button type="button" class="scope-choice" id="scopeChoiceOne">
+          <b id="scopeChoiceOneTitle">This occurrence only</b>
+          <span id="scopeChoiceOneSub">Only change this one date.</span>
+        </button>
+        <button type="button" class="scope-choice" id="scopeChoiceSeries">
+          <b id="scopeChoiceSeriesTitle">This and future occurrences</b>
+          <span id="scopeChoiceSeriesSub">Apply to the repeating series.</span>
+        </button>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="ghost" id="cancelRecurringScope">Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="transactionModal">
+    <form method="dialog" class="modal-card" id="transactionForm">
+      <div class="panel-head">
+        <h3 id="modalTitle">Add transaction</h3>
+        <button type="button" class="icon-btn" id="closeModal">×</button>
+      </div>
+
+      <input type="hidden" id="txId"/>
+
+      <section class="form-section">
+        <p class="eyebrow">Basics</p>
+
+        <label class="template-title-wrap">Title
+          <input id="txTitle" required autocomplete="off" placeholder="e.g. Ulta, Paycheck, Capital One payment"/>
+          <div id="txTemplateSuggestions" class="template-suggestions"></div>
+        </label>
+
+        <div class="two-col">
+          <label>Amount
+            <input id="txAmount" required type="number" step="0.01" placeholder="0.00"/>
+          </label>
+          <label>Date
+            <input id="txDate" required type="date"/>
+          </label>
+        </div>
+
+        <div class="two-col">
+          <label>Type
+            <select id="txType">
+              <option value="expense">Expense</option>
+              <option value="income">Income</option>
+              <option value="paycheck">Paycheck</option>
+              <option value="transfer">Transfer / Payment</option>
+            </select>
+          </label>
+          <label>Status
+            <select id="txStatus">
+              <option value="planned">Planned</option>
+              <option value="cleared">Cleared</option>
+            </select>
+          </label>
+        </div>
+
+        <label>Category
+          <select id="txCategory"></select>
+        </label>
+
+        <label class="checkbox auto-paycheck-box" id="autoPaycheckLabel">
+          <input id="txAutoPaycheck" type="checkbox">
+          Auto-calculate paycheck amount
+        </label>
+        <label id="paycheckHoursWrap">Hours override, optional
+          <input id="txPaycheckHoursOverride" type="number" step="0.25" placeholder="Leave blank to use default / calculated hours"/>
+        </label>
+        <p class="hint" id="autoPaycheckHint"></p>
+      </section>
+
+      <details class="form-details" open>
+        <summary>Account / transfer details</summary>
+        <div class="details-inner">
+          <label>Cash account money comes from
+            <select id="txAccount"></select>
+          </label>
+
+          <label>Debt account used for spending, optional
+            <select id="txDebtAccount">
+              <option value="">None</option>
+            </select>
+          </label>
+
+          <label>Transfer to cash account, optional
+            <select id="txTransferTo">
+              <option value="">None</option>
+            </select>
+          </label>
+
+          <label>Transfer/payment to debt, optional
+            <select id="txDebt">
+              <option value="">None</option>
+            </select>
+          </label>
+        </div>
+      </details>
+
+      <details class="form-details" id="txLoanBreakdownWrap">
+        <summary>Loan payment breakdown</summary>
+        <div class="details-inner">
+          <p class="hint">For loans with interest/fees, the cash payment leaves your bank, but only the principal portion lowers the loan balance.</p>
+          <div class="two-col">
+            <label>Principal paid
+              <input id="txLoanPrincipal" type="number" step="0.01" placeholder="Leave blank to auto-calc"/>
+            </label>
+            <label>Interest paid
+              <input id="txLoanInterest" type="number" step="0.01" placeholder="0.00"/>
+            </label>
+          </div>
+          <label>Fees paid
+            <input id="txLoanFees" type="number" step="0.01" placeholder="0.00"/>
+          </label>
+          <p class="hint" id="txLoanBreakdownHint"></p>
+        </div>
+      </details>
+
+      <details class="form-details">
+        <summary>Repeat settings</summary>
+        <div class="details-inner">
+          <label>Repeats
+            <select id="txRepeatRule">
+              <option value="none">Does not repeat</option>
+              <option value="weekly">Weekly / by day of week</option>
+              <option value="biweekly">Bi-weekly</option>
+              <option value="monthly">Monthly by date</option>
+              <option value="last-day-month">Last day of month</option>
+              <option value="yearly">Yearly</option>
+              <option value="every-x-days">Every _ days</option>
+              <option value="nth-weekday">Every _ weekday of the month</option>
+            </select>
+          </label>
+
+          <label>Weekend handling
+            <select id="txWeekendHandling">
+              <option value="none">Do not move</option>
+              <option value="next-monday">If weekend, move to Monday</option>
+              <option value="previous-friday">If weekend, move back to Friday</option>
+            </select>
+          </label>
+
+          <div id="recurrenceDetails" class="recurrence-details">
+            <div class="two-col">
+              <label>Every
+                <input id="txRepeatInterval" type="number" min="1" value="1"/>
+              </label>
+              <label id="repeatIntervalUnitLabel">Unit
+                <input id="txRepeatIntervalUnit" disabled value="week(s)"/>
+              </label>
+            </div>
+
+            <div class="two-col">
+              <label>Day of week
+                <select id="txRepeatWeekday">
+                  <option value="0">Sunday</option>
+                  <option value="1">Monday</option>
+                  <option value="2">Tuesday</option>
+                  <option value="3">Wednesday</option>
+                  <option value="4">Thursday</option>
+                  <option value="5">Friday</option>
+                  <option value="6">Saturday</option>
+                </select>
+              </label>
+              <label>Week of month
+                <select id="txRepeatOrdinal">
+                  <option value="1">1st</option>
+                  <option value="2">2nd</option>
+                  <option value="3">3rd</option>
+                  <option value="4">4th</option>
+                  <option value="-1">Last</option>
+                </select>
+              </label>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <details class="form-details">
+        <summary>Notes</summary>
+        <div class="details-inner">
+          <label>Notes
+            <textarea id="txNotes" placeholder="Optional"></textarea>
+          </label>
+        </div>
+      </details>
+
+      <div class="modal-actions">
+        <button type="button" class="ghost" id="duplicateTxBtn">Duplicate</button>
+        <button type="button" class="danger ghost" id="deleteTxBtn">Delete</button>
+        <button type="button" class="ghost" id="cancelTxBtn">Cancel</button>
+        <button class="primary" id="saveTxBtn">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="simpleModal">
+    <form method="dialog" class="modal-card" id="simpleForm">
+      <div class="panel-head">
+        <h3 id="simpleTitle">Add</h3>
+        <button type="button" class="icon-btn" id="closeSimple">×</button>
+      </div>
+      <div id="simpleFields"></div>
+      <div class="modal-actions">
+        <button type="button" class="danger ghost" id="deleteSimpleBtn">Delete</button>
+        <button type="button" class="ghost" id="cancelSimple">Cancel</button>
+        <button class="primary">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+
+  <dialog id="dayModal">
+    <div class="modal-card">
+      <div class="panel-head">
+        <div>
+          <h3 id="dayModalTitle">Day details</h3>
+          <p class="hint" id="dayModalSub"></p>
+        </div>
+        <button type="button" class="icon-btn" id="closeDayModal" onclick="document.getElementById('dayModal').close()">×</button>
+      </div>
+      <div id="dayModalTransactions" class="stack"></div>
+      <div class="modal-actions">
+        <button type="button" class="ghost" id="cancelDayModal" onclick="document.getElementById('dayModal').close()">Close</button>
+        <button type="button" class="primary" id="addDayTransactionBtn">+ Add transaction</button>
+      </div>
+    </div>
+  </dialog>
+
+  <div id="txContextMenu" class="context-menu">
+    <button id="ctxToggleCleared">✓ Mark cleared/planned</button>
+    <button id="ctxUseCardInstead">💳 Use card instead</button>
+    <button id="ctxCreateCardPayment">💸 Create card payment</button>
+    <button id="ctxMarkReimbursed">🤝 Mark reimbursement cleared</button>
+    <button id="ctxDuplicate">⧉ Duplicate</button>
+    <button id="ctxEdit">✎ Edit</button>
+    <button id="ctxDelete" class="danger-text">🗑 Delete</button>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
