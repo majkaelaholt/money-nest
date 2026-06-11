@@ -795,3 +795,22 @@ v2-157
 - When a pending reimbursement is marked cleared, it becomes a regular cleared transfer and leaves the expected reimbursement bucket.
 - Calendar chip status styling now normalizes cleared/planned classes so cleared transactions should not keep planned/dashed styling.
 - No import/export schema changes needed.
+
+v2-158
+- Fixed Mark cleared / Mark planned for recurring transactions so it saves an occurrence-only override instead of changing the whole recurring series/template.
+- Generated recurring occurrences now default to Planned unless that specific date has its own saved override.
+- Calendar/right-click and ledger status buttons now read the clicked occurrence status, so cleared one-off occurrences should display correctly without making every recurrence cleared.
+- No import/export schema changes needed.
+
+
+v2-159
+- Fixed JSON backup import so it uses a guarded importer instead of throwing a generic Script error.
+- Backup imports no longer create giant Recent changes before/after snapshots, which could make browser storage/import unreliable.
+- If import fails, Money Nest now shows a specific import error instead of only the global script-error toast.
+- No import/export schema changes needed.
+
+v2-160
+- Fixed edited recurring occurrence rows reopening as Add transaction instead of Edit transaction.
+- Generated/overridden recurring occurrences now keep their originalId pointed at the real recurring template, even when the displayed row uses a generated occurrence id.
+- This should let edited grocery/paycheck/car-payment occurrences reopen correctly from Calendar and Account detail.
+- No import/export schema changes needed.

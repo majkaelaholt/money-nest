@@ -3180,9 +3180,12 @@ function applyOccurrenceOverride(tx, originalISO, occurrenceISO){
     ...base,
     ...override,
     id: base.id,
-    originalId: tx.id,
+    // Generated occurrence rows may have display ids like templateId-YYYY-MM-DD.
+    // Keep originalId pointed at the real recurring template so edits reopen
+    // the existing occurrence instead of opening a blank Add Transaction form.
+    originalId: tx.originalId || tx.id,
     originalDate: originalISO,
-    generated: originalISO !== tx.date || !!base.generated,
+    generated: originalISO !== (tx.originalId ? originalISO : tx.date) || !!base.generated,
     recurrence: tx.recurrence || {type:"none", interval:1},
     repeat:false,
     dateOverrides: tx.dateOverrides || {},
@@ -3210,6 +3213,8 @@ function saveRecurringOccurrenceOverride(baseTx, formTx, occurrenceOriginalDate,
     loanInterestAmount: formTx.loanInterestAmount,
     loanFeeAmount: formTx.loanFeeAmount,
     loanBalanceAdjustment: formTx.loanBalanceAdjustment,
+    pendingReimbursement: !!formTx.pendingReimbursement,
+    reimbursementToAccountId: formTx.reimbursementToAccountId || "",
     autoPaycheck: !!formTx.autoPaycheck,
     autoMakPaycheck: !!formTx.autoMakPaycheck,
     paycheckHoursOverride: formTx.paycheckHoursOverride ?? "",
@@ -3287,7 +3292,11 @@ function expandedTransactions(untilISO){
           ...tx,
           id: tx.id + "-" + originalISO,
           originalId:tx.id,
-          status: occurrenceISO > todayISO() ? "planned" : tx.status,
+          // A recurring transaction is a template. Future/past generated
+          // occurrences should start as planned unless that exact date has
+          // its own saved override. Otherwise marking one occurrence cleared
+          // makes every generated occurrence look cleared.
+          status: "planned",
           generated:true
         }, originalISO, occurrenceISO);
         if(generatedOccurrence) out.push(generatedOccurrence);
@@ -4016,7 +4025,8 @@ function setupContextMenuEvents(){
   if(toggle) toggle.onclick = (e)=>{
     e.stopPropagation();
     const id = contextTxId;
-    if(id){ hideTxContextMenu(); toggleCleared(id); }
+    const meta = {...contextTxMeta};
+    if(id){ hideTxContextMenu(); toggleCleared(id, meta); }
   };
 
   const useCard = document.getElementById("ctxUseCardInstead");
@@ -6098,18 +6108,47 @@ function renderSelectors(){
 
 
 function getRealTx(id){ return data.transactions.find(t => t.id === id); }
-window.toggleCleared = (id)=>{
+function occurrenceForAction(tx, meta={}){
+  if(!tx) return null;
+  if(isRecurring(tx) && (meta.originalDate || meta.occurrenceDate)){
+    return transactionForOccurrenceForm(tx, meta.originalDate || tx.date, meta.occurrenceDate || meta.originalDate || tx.date);
+  }
+  return tx;
+}
+
+window.toggleCleared = (id, meta={})=>{
   const tx = getRealTx(id);
   if(!tx) return;
-  const nextStatus = tx.status === "cleared" ? "planned" : "cleared";
-  tx.status = nextStatus;
 
-  // Pending reimbursements should clear through the normal status toggle.
-  // When Mak marks the reimbursement cleared, it becomes a regular cleared transfer
-  // and should no longer stay in the pending/expected reimbursement bucket.
-  if(nextStatus === "cleared" && tx.pendingReimbursement){
-    tx.pendingReimbursement = false;
-    tx.reimbursementToAccountId = tx.transferToAccountId || tx.reimbursementToAccountId || "";
+  const originalDate = meta.originalDate || tx.date;
+  const occurrenceDate = meta.occurrenceDate || originalDate;
+  const actionTx = occurrenceForAction(tx, {originalDate, occurrenceDate}) || tx;
+  const nextStatus = actionTx.status === "cleared" ? "planned" : "cleared";
+
+  // Recurring rows are templates, so toggling cleared/planned should always
+  // affect only the clicked occurrence. This keeps weekly paychecks, loan
+  // payments, and other repeating items from all changing at once.
+  if(isRecurring(tx)){
+    const formTx = {
+      ...actionTx,
+      status: nextStatus,
+      date: actionTx.date || occurrenceDate
+    };
+    if(nextStatus === "cleared" && formTx.pendingReimbursement){
+      formTx.pendingReimbursement = false;
+      formTx.reimbursementToAccountId = formTx.transferToAccountId || formTx.reimbursementToAccountId || "";
+    }
+    saveRecurringOccurrenceOverride(tx, formTx, originalDate, occurrenceDate);
+  } else {
+    tx.status = nextStatus;
+
+    // Pending reimbursements should clear through the normal status toggle.
+    // When Mak marks the reimbursement cleared, it becomes a regular cleared transfer
+    // and should no longer stay in the pending/expected reimbursement bucket.
+    if(nextStatus === "cleared" && tx.pendingReimbursement){
+      tx.pendingReimbursement = false;
+      tx.reimbursementToAccountId = tx.transferToAccountId || tx.reimbursementToAccountId || "";
+    }
   }
 
   saveData();
@@ -6117,9 +6156,11 @@ window.toggleCleared = (id)=>{
 function statusButton(tx, mode="normal"){
   if(mode === "hidden") return "";
   const id = tx.originalId || tx.id;
-  const realTx = data.transactions.find(t => t.id === id) || tx;
-  const isCleared = realTx.status === "cleared";
-  return `<button class="status-toggle ${isCleared ? "cleared" : "planned"}" title="Mark ${isCleared ? "planned" : "cleared"}" onclick="event.stopPropagation(); toggleCleared('${id}')">${isCleared ? "✓ Cleared" : "○ Planned"}</button>`;
+  const actionTx = (tx.generated || tx.originalDate) ? tx : (getRealTx(id) || tx);
+  const isCleared = actionTx.status === "cleared";
+  const originalDate = tx.originalDate || tx.date || "";
+  const occurrenceDate = tx.date || originalDate;
+  return `<button class="status-toggle ${isCleared ? "cleared" : "planned"}" title="Mark ${isCleared ? "planned" : "cleared"}" onclick="event.stopPropagation(); toggleCleared('${id}',{originalDate:'${originalDate}', occurrenceDate:'${occurrenceDate}'})">${isCleared ? "✓ Cleared" : "○ Planned"}</button>`;
 }
 window.duplicateTransaction = (id)=>{
   const source = getRealTx(id);
@@ -6331,7 +6372,11 @@ function showTxContextMenu(event, id, meta={}){
   const tx = data.transactions.find(t => t.id === id);
   const toggle = document.getElementById("ctxToggleCleared");
   if(toggle && tx){
-    toggle.textContent = tx.status === "cleared" ? "○ Mark planned" : "✓ Mark cleared";
+    const actionTx = occurrenceForAction(tx, {
+      originalDate: meta.originalDate || tx.date,
+      occurrenceDate: meta.occurrenceDate || meta.originalDate || tx.date
+    }) || tx;
+    toggle.textContent = actionTx.status === "cleared" ? "○ Mark planned" : "✓ Mark cleared";
   }
   const useCard = document.getElementById("ctxUseCardInstead");
   if(useCard && tx){
@@ -8724,7 +8769,60 @@ if(document.getElementById("extendedFinancialPictureBtn")) extendedFinancialPict
 if(document.getElementById("csvExportBtn")) csvExportBtn.onclick = exportEditableCSVs;
 if(document.getElementById("settingsClearAllBtn")) settingsClearAllBtn.onclick = clearEverything;
 if(document.getElementById("csvImportInput")) csvImportInput.onchange = (e)=>{ const file = e.target.files[0]; if(!file) return; importEditedCSV(file); e.target.value = ""; };
-if(document.getElementById("importInput")) importInput.onchange = (e)=>{ const file = e.target.files[0]; if(!file) return; const reader = new FileReader(); reader.onload = ()=>{ data = normalizeData(JSON.parse(reader.result)); saveData(); alert("Backup imported."); }; reader.readAsText(file); };
+
+function backupImportCandidate(parsed){
+  if(parsed && typeof parsed === "object"){
+    if(parsed.moneyNest && typeof parsed.moneyNest === "object") return parsed.moneyNest;
+    if(parsed.data && typeof parsed.data === "object") return parsed.data;
+    if(parsed.backup && typeof parsed.backup === "object") return parsed.backup;
+  }
+  return parsed;
+}
+function validateBackupShape(candidate){
+  if(!candidate || typeof candidate !== "object" || Array.isArray(candidate)){
+    throw new Error("This file is not a Money Nest JSON backup.");
+  }
+  const hasMoneyNestData = ["accounts","transactions","debts","categories","settings","budgets"].some(key => Object.prototype.hasOwnProperty.call(candidate, key));
+  if(!hasMoneyNestData){
+    throw new Error("This JSON does not look like a Money Nest backup. Make sure you chose the JSON backup, not the financial-picture HTML report or a CSV file.");
+  }
+}
+function saveImportedBackupData(normalized){
+  const raw = JSON.stringify(normalized);
+  try{
+    localStorage.setItem(STORAGE_KEY, raw);
+  } catch(err){
+    // Importing a full backup should not also store a giant before/after undo snapshot.
+    // If browser storage is tight, clear local undo history and try once more.
+    try{ localStorage.removeItem(CHANGE_HISTORY_KEY); } catch(innerErr){}
+    localStorage.setItem(STORAGE_KEY, raw);
+  }
+}
+function importBackupJSON(file){
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const parsed = JSON.parse(reader.result);
+      const candidate = backupImportCandidate(parsed);
+      validateBackupShape(candidate);
+      const normalized = normalizeData(candidate);
+      suppressChangeHistory = true;
+      data = normalized;
+      saveImportedBackupData(data);
+      suppressChangeHistory = false;
+      try{ currentView = "dashboard"; setView("dashboard"); }
+      catch(renderErr){ console.warn("Backup imported, but dashboard render needed fallback", renderErr); render(); }
+      alert("Backup imported.");
+    } catch(err){
+      suppressChangeHistory = false;
+      console.error("Backup import failed", err);
+      alert(`Backup import failed: ${err.message || err}`);
+    }
+  };
+  reader.onerror = ()=> alert("Backup import failed: Money Nest could not read that file.");
+  reader.readAsText(file);
+}
+if(document.getElementById("importInput")) importInput.onchange = (e)=>{ const file = e.target.files[0]; if(!file) return; importBackupJSON(file); e.target.value = ""; };
 
 
 function bootMoneyNest(){
