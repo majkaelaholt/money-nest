@@ -209,10 +209,12 @@ Use this section to track things that need to be fixed or added later.
 
 - when using "create card payment", the created payment should default to "planned" status and not "cleared".
 - "today" highlight/box on calendar is off, e.g. it's 7pm mountain time on 6/16/26 but the calender is highlighting 6/17/26 as today.
+- transactions for transfering from savings to another cash account, it shows as "Savings -> Savings" because it uses the transaction title, it should show "account to account", depending on the chosen accouts. another example would be Ty moving money to Joint should show as "Ty -> Joint" instead of "Ty to Joint -> Joint".
 
-### Feature ideas
+### Feature ideas / Updates
 
--
+- In the "Credit Card Statements" portion of the "Action Center" card in the Dashboard, instead of all of the cards saying "Check Statement", the statements that likely haven't pulled yet (so tomorrow or after) should say "Upcoming", since I can't check those statements yet.
+- In the "Needs Attention" portion of the "Action Center" card in the Dashboard, I don't want to see when the "safe to spend is low" on any of the accounts, only if it's less than or equal to $0.
 
 ## Version Notes
 
