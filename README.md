@@ -208,7 +208,7 @@ Use this section to track things that need to be fixed or added later.
 ### Bugs
 
 - when using "create card payment", the created payment should default to "planned" status and not "cleared".
-- 
+- "today" highlight/box on calendar is off, e.g. it's 7pm mountain time on 6/16/26 but the calender is highlighting 6/17/26 as today.
 
 ### Feature ideas
 
