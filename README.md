@@ -215,6 +215,7 @@ Use this section to track things that need to be fixed or added later.
 
 - In the "Credit Card Statements" portion of the "Action Center" card in the Dashboard, instead of all of the cards saying "Check Statement", the statements that likely haven't pulled yet (so tomorrow or after) should say "Upcoming", since I can't check those statements yet.
 - In the "Needs Attention" portion of the "Action Center" card in the Dashboard, I don't want to see when the "safe to spend is low" on any of the accounts, only if it's less than or equal to $0.
+- Want to be able to reorder accounts on the accounts page.
 
 ## Version Notes
 
