@@ -216,6 +216,8 @@ Use this section to track things that need to be fixed or added later.
 - In the "Credit Card Statements" portion of the "Action Center" card in the Dashboard, instead of all of the cards saying "Check Statement", the statements that likely haven't pulled yet (so tomorrow or after) should say "Upcoming", since I can't check those statements yet.
 - In the "Needs Attention" portion of the "Action Center" card in the Dashboard, I don't want to see when the "safe to spend is low" on any of the accounts, only if it's less than or equal to $0.
 - Want to be able to reorder accounts on the accounts page.
+- Remove the "next payment due" date from the BNPL "edit debt" page. it doesnt update correctly and also the payments are set when the BNPL is added. BUT when a BNPL is added, need to add the due date in the notes so if I move the actual transaction date, I still know the real due date.
+- All dropdowns (status, category, type, date range, sort) in any account view (cash accounts, debt accounts, etc.) should have a place somewhere I can change the default dropdown option, and also have a "reset" button.
 
 ## Version Notes
 
