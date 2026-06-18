@@ -2810,3 +2810,6 @@ button:disabled{
 .util-sim-mini-grid b{display:block;font-size:1.15rem;margin:2px 0}
 .util-sim-mini-grid span{display:block;font-size:.82rem;color:var(--muted)}
 @media(max-width:700px){.util-sim-mini-grid{grid-template-columns:1fr}}
+.util-sim-target-line{display:flex;justify-content:space-between;gap:10px;align-items:center;margin:8px 0 12px;padding:10px 12px;border-radius:14px;background:rgba(140,111,77,.08);border:1px solid var(--line);font-size:.9rem}
+.util-sim-target-line span{color:var(--muted)}
+.util-sim-target-line b{font-size:1rem}

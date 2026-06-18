@@ -4428,8 +4428,7 @@ function calendarDisplayEntries(rawTxs){
 }
 function calendarEntryLabel(tx){
   if(tx.type === "transfer"){
-    if(tx.calendarSide === "in") return `${tx.title} ← ${accountById(tx.accountId)?.name || "account"}`;
-    if(tx.calendarSide === "out") return `${tx.title} → ${accountById(tx.transferToAccountId)?.name || "account"}`;
+    return transactionTransferLabel(tx);
   }
   return tx.title;
 }
@@ -4966,7 +4965,19 @@ function renderAccountDetail(){
   attachTransactionContextMenus();
 }
 
+function shortAccountName(account){
+  if(!account) return "account";
+  const name = account.name || "account";
+  if(account.owner && /checking/i.test(name)) return account.owner;
+  return name.replace(/\s+checking$/i, "").trim() || name;
+}
+function transactionTransferLabel(tx){
+  const from = tx.accountId ? shortAccountName(accountById(tx.accountId)) : tx.debtAccountId ? (debtById(tx.debtAccountId)?.name || "debt") : "No account";
+  const to = tx.transferToAccountId ? shortAccountName(accountById(tx.transferToAccountId)) : tx.linkedDebtId ? (debtById(tx.linkedDebtId)?.name || "debt") : "";
+  return to ? `${from} → ${to}` : from;
+}
 function transactionAccountText(tx){
+  if(tx.type === "transfer") return transactionTransferLabel(tx);
   const fromAccount = tx.accountId ? accountById(tx.accountId)?.name : tx.debtAccountId ? debtById(tx.debtAccountId)?.name : "No account";
   const toAccount = tx.transferToAccountId ? ` → ${accountById(tx.transferToAccountId)?.name || "account"}` : tx.linkedDebtId ? ` → ${debtById(tx.linkedDebtId)?.name || "debt"}` : "";
   return `${fromAccount}${toAccount}`;
@@ -5599,6 +5610,8 @@ function openCreditUtilizationSimulator(owner){
             <label>Sim statement balance<input id="utilSimStatement${i}" class="util-sim-input" type="number" step="0.01" value="${statement.toFixed(2)}"></label>
             <label>Payment amount<input id="utilSimPayment${i}" type="number" step="0.01" placeholder="0.00"></label>
             <label>&nbsp;<button type="button" class="ghost" onclick="applyUtilSimPayment(${i})">Apply payment to current</button></label>
+            <label>Target current utilization %<input id="utilSimTargetPct${i}" class="util-sim-target" type="number" step="0.1" min="0" max="100" placeholder="30"></label>
+            <label>&nbsp;<button type="button" class="ghost" onclick="applyUtilTargetPayment(${i})">Apply target payment</button></label>
           </div>
         </div>`;
       }).join("")}
@@ -5608,6 +5621,7 @@ function openCreditUtilizationSimulator(owner){
   deleteSimpleBtn.style.display = "none";
   simpleModal.showModal();
   document.querySelectorAll(".util-sim-input").forEach(input=>input.addEventListener("input", updateUtilSimSummary));
+  document.querySelectorAll(".util-sim-target").forEach(input=>input.addEventListener("input", updateUtilSimSummary));
   updateUtilSimSummary();
 }
 
@@ -5629,6 +5643,25 @@ function applyUtilSimPayment(index){
   updateUtilSimSummary();
 }
 
+function utilTargetPaymentNeeded(index){
+  const card = document.querySelectorAll(".util-sim-card")[index];
+  const cur = document.getElementById(`utilSimCurrent${index}`);
+  const target = document.getElementById(`utilSimTargetPct${index}`);
+  if(!card || !cur || !target || target.value === "") return null;
+  const limit = Number(card.dataset.limit || 0);
+  const current = Math.max(0, Number(cur.value || 0));
+  const targetPct = Math.max(0, Math.min(100, Number(target.value || 0)));
+  const targetBalance = Math.max(0, limit * (targetPct / 100));
+  return Math.max(0, current - targetBalance);
+}
+function applyUtilTargetPayment(index){
+  const cur = document.getElementById(`utilSimCurrent${index}`);
+  const needed = utilTargetPaymentNeeded(index);
+  if(!cur || needed === null) return;
+  cur.value = Math.max(0, Number(cur.value || 0) - needed).toFixed(2);
+  updateUtilSimSummary();
+}
+
 function updateUtilSimSummary(){
   const cards = Array.from(document.querySelectorAll(".util-sim-card"));
   cards.forEach((card, i)=>{
@@ -5638,11 +5671,14 @@ function updateUtilSimSummary(){
     const currentPct = limit ? (current / limit) * 100 : 0;
     const statementPct = limit ? (statement / limit) * 100 : 0;
     const cardSummary = document.getElementById(`utilSimCardSummary${i}`);
+    const targetInput = document.getElementById(`utilSimTargetPct${i}`);
+    const needed = utilTargetPaymentNeeded(i);
+    const targetLine = needed === null ? "" : `<div class="util-sim-target-line"><span>Payment needed for ${Number(targetInput?.value || 0)}% current util.</span><b>${money(needed)}</b></div>`;
     if(cardSummary){
       cardSummary.innerHTML = `<div class="util-sim-mini-grid">
         <div><div class="label">Card current util.</div><b class="${currentPct <= 30 ? "good" : currentPct <= 50 ? "warn" : "bad"}">${Math.round(currentPct)}%</b><span>${money(current)} / ${money(limit)}</span></div>
         <div><div class="label">Card statement util.</div><b class="${statementPct <= 30 ? "good" : statementPct <= 50 ? "warn" : "bad"}">${Math.round(statementPct)}%</b><span>${money(statement)} / ${money(limit)}</span></div>
-      </div>`;
+      </div>${targetLine}`;
     }
   });
   const limit = cards.reduce((s,card)=>s + Number(card.dataset.limit || 0), 0);
@@ -7177,7 +7213,8 @@ function createCardPaymentForCharge(id, meta={}){
   const reimbDefaults = defaultReimbursementAccounts(defaultPaying?.id || "");
   const amount = Number(tx.amount || 0);
   const category = categoryById(tx.categoryId);
-  const defaultPaymentStatus = (tx.status === "cleared" && (tx.date || todayISO()) <= todayISO()) ? "cleared" : "planned";
+  // Creating a card payment is usually a planning action; do not auto-clear it just because the card charge is cleared.
+  const defaultPaymentStatus = "planned";
 
   simpleTitle.textContent = "Create card payment";
   simpleFields.innerHTML = `
@@ -8252,11 +8289,11 @@ function renderBills(){
     list.innerHTML = recurring.map(tx => {
       const cat = categoryById(tx.categoryId);
       const account = billAccountLabel(tx);
-      const destination = tx.transferToAccountId ? ` → ${accountById(tx.transferToAccountId)?.name || "account"}` : tx.linkedDebtId ? ` → ${debtById(tx.linkedDebtId)?.name || "debt"}` : "";
+      const route = tx.type === "transfer" ? transactionTransferLabel(tx) : `${account}${tx.linkedDebtId ? ` → ${debtById(tx.linkedDebtId)?.name || "debt"}` : ""}`;
       return `<div class="bill-card" data-tx="${tx.id}" data-original-date="${tx.nextDate}" data-occurrence-date="${tx.nextDate}" onclick="openTransaction('${tx.id}',{generated:true, occurrenceOriginalDate:'${tx.nextDate}', occurrenceDate:'${tx.nextDate}'})">
         <div>
           <div class="row-title">${cat.emoji} ${tx.title}</div>
-          <div class="row-sub">${account}${destination}</div>
+          <div class="row-sub">${route}</div>
         </div>
         <div><span class="cat-preview" style="background:${hexToSoft(cat.color)}">${cat.emoji} ${cat.name}</span></div>
         <div class="bill-repeat">

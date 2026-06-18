@@ -834,3 +834,15 @@ v2-162
 v2-163
 - Fixed Simulate payoff button on Credit utilization cards. The owner name is now passed safely from the inline button handler, so opening the simulator should no longer throw Unexpected end of input.
 - No import/export schema changes needed.
+
+v2-164
+- Credit utilization simulator now shows current and statement utilization for each individual card, not just the owner total.
+- Per-card utilization updates immediately when simulated balances/payments change.
+- No import/export schema changes needed.
+
+v2-165
+- Credit utilization simulator now lets you enter a target current utilization percent for each card and shows the payment needed to reach that utilization.
+- Added an Apply target payment button for each card simulator row.
+- Create card payment now defaults the new payment to Planned instead of Cleared.
+- Transfer labels now use actual account-to-account routing, like Ty → Joint or Savings → Joint, instead of repeating the transaction title.
+- No import/export schema changes needed.
