@@ -5560,7 +5560,7 @@ function creditCardUtilizationSummariesHTML(){
       <div>
         <div class="row-title">${owner}</div>
         <div class="row-sub">${ownerCards.length} card${ownerCards.length === 1 ? "" : "s"} • limit ${money(limit)}</div>
-        <button class="ghost tiny" onclick="event.stopPropagation(); openCreditUtilizationSimulator(${jsString(owner)})">Simulate payoff</button>
+        <button class="ghost tiny" onclick='event.stopPropagation(); openCreditUtilizationSimulator(${jsString(owner)})'>Simulate payoff</button>
       </div>
       <div><div class="label">Current util.</div><div class="amount ${currentPct <= 30 ? "good" : currentPct <= 50 ? "warn" : "bad"}">${currentPct}%</div><div class="row-sub">${money(current)} current</div></div>
       <div><div class="label">Statement util.</div><div class="amount ${statementPct <= 30 ? "good" : statementPct <= 50 ? "warn" : "bad"}">${statementPct}%</div><div class="row-sub">${money(statement)} statements</div></div>

@@ -830,3 +830,7 @@ v2-162
 - Added a credit utilization payoff simulator from the Debts page utilization cards.
 - The simulator is scoped to the selected owner and lets you temporarily edit each card's current/statement balances or apply a test payment without changing real app data.
 - No import/export schema changes needed.
+
+v2-163
+- Fixed Simulate payoff button on Credit utilization cards. The owner name is now passed safely from the inline button handler, so opening the simulator should no longer throw Unexpected end of input.
+- No import/export schema changes needed.
