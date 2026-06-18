@@ -5593,6 +5593,7 @@ function openCreditUtilizationSimulator(owner){
             </div>
             <button type="button" class="ghost tiny" onclick="setUtilSimCardBalance(${i},0,0)">Pay off</button>
           </div>
+          <div id="utilSimCardSummary${i}" class="util-sim-card-summary"></div>
           <div class="two-col">
             <label>Sim current balance<input id="utilSimCurrent${i}" class="util-sim-input" type="number" step="0.01" value="${current.toFixed(2)}"></label>
             <label>Sim statement balance<input id="utilSimStatement${i}" class="util-sim-input" type="number" step="0.01" value="${statement.toFixed(2)}"></label>
@@ -5630,6 +5631,20 @@ function applyUtilSimPayment(index){
 
 function updateUtilSimSummary(){
   const cards = Array.from(document.querySelectorAll(".util-sim-card"));
+  cards.forEach((card, i)=>{
+    const limit = Number(card.dataset.limit || 0);
+    const current = Math.max(0, Number(document.getElementById(`utilSimCurrent${i}`)?.value || 0));
+    const statement = Math.max(0, Number(document.getElementById(`utilSimStatement${i}`)?.value || 0));
+    const currentPct = limit ? (current / limit) * 100 : 0;
+    const statementPct = limit ? (statement / limit) * 100 : 0;
+    const cardSummary = document.getElementById(`utilSimCardSummary${i}`);
+    if(cardSummary){
+      cardSummary.innerHTML = `<div class="util-sim-mini-grid">
+        <div><div class="label">Card current util.</div><b class="${currentPct <= 30 ? "good" : currentPct <= 50 ? "warn" : "bad"}">${Math.round(currentPct)}%</b><span>${money(current)} / ${money(limit)}</span></div>
+        <div><div class="label">Card statement util.</div><b class="${statementPct <= 30 ? "good" : statementPct <= 50 ? "warn" : "bad"}">${Math.round(statementPct)}%</b><span>${money(statement)} / ${money(limit)}</span></div>
+      </div>`;
+    }
+  });
   const limit = cards.reduce((s,card)=>s + Number(card.dataset.limit || 0), 0);
   const current = cards.reduce((s,_,i)=>s + Math.max(0, Number(document.getElementById(`utilSimCurrent${i}`)?.value || 0)), 0);
   const statement = cards.reduce((s,_,i)=>s + Math.max(0, Number(document.getElementById(`utilSimStatement${i}`)?.value || 0)), 0);
