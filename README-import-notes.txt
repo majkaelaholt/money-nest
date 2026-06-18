@@ -823,3 +823,10 @@ v2-161
 - Removed BNPL next payment due from Edit Debt and preserves original BNPL due dates in installment notes.
 - Added Settings > Dropdown defaults with reset/apply controls for account/debt transaction filters.
 - Added credit utilization summary by owner in Debts using statement and current balances.
+
+
+v2-162
+- Fixed local date handling so Money Nest uses the browser/local date instead of UTC. This prevents the app from thinking it is tomorrow late at night.
+- Added a credit utilization payoff simulator from the Debts page utilization cards.
+- The simulator is scoped to the selected owner and lets you temporarily edit each card's current/statement balances or apply a test payment without changing real app data.
+- No import/export schema changes needed.

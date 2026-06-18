@@ -20,7 +20,13 @@ const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
 function uid(){ return Math.random().toString(36).slice(2,10); }
 function money(n){ return (n < 0 ? "-" : "") + "$" + Math.abs(n || 0).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}); }
-function todayISO(){ return new Date().toISOString().slice(0,10); }
+function jsString(v){ return JSON.stringify(String(v ?? "")); }
+function todayISO(){
+  // Use the browser's local date, not UTC. toISOString() can roll the app into tomorrow
+  // at night for Mountain/Pacific/etc. time zones.
+  const d = new Date();
+  return toISO(d);
+}
 function parseDate(s){ return new Date(s + "T12:00:00"); }
 function toISO(d){
   const y = d.getFullYear();
@@ -5554,6 +5560,7 @@ function creditCardUtilizationSummariesHTML(){
       <div>
         <div class="row-title">${owner}</div>
         <div class="row-sub">${ownerCards.length} card${ownerCards.length === 1 ? "" : "s"} • limit ${money(limit)}</div>
+        <button class="ghost tiny" onclick="event.stopPropagation(); openCreditUtilizationSimulator(${jsString(owner)})">Simulate payoff</button>
       </div>
       <div><div class="label">Current util.</div><div class="amount ${currentPct <= 30 ? "good" : currentPct <= 50 ? "warn" : "bad"}">${currentPct}%</div><div class="row-sub">${money(current)} current</div></div>
       <div><div class="label">Statement util.</div><div class="amount ${statementPct <= 30 ? "good" : statementPct <= 50 ? "warn" : "bad"}">${statementPct}%</div><div class="row-sub">${money(statement)} statements</div></div>
@@ -5563,6 +5570,78 @@ function creditCardUtilizationSummariesHTML(){
     <div class="panel-head compact-head"><div><h3>Credit utilization</h3><p class="hint">By owner, using credit card limits, current balances, and statement balances.</p></div></div>
     <div class="utilization-grid">${rows}</div>
   </section>`;
+}
+
+
+function openCreditUtilizationSimulator(owner){
+  const cards = data.debts.filter(d => d.type === "Credit Card" && (d.owner || "Unassigned") === owner && Number(d.limit || 0) > 0);
+  if(!cards.length){ alert(`No credit cards found for ${owner}.`); return; }
+  simpleTitle.textContent = `${owner} credit utilization simulator`;
+  simpleFields.innerHTML = `
+    <p class="hint">Temporary what-if math only. Edit balances here to test payoff ideas; this will not save to your real card balances.</p>
+    <div id="utilSimSummary" class="util-sim-summary"></div>
+    <div class="stack">
+      ${cards.map((d,i)=>{
+        const current = Math.max(0, debtAmountLeftNow(d));
+        const statement = Math.max(0, Number(d.statementBalance || 0));
+        const limit = Number(d.limit || 0);
+        return `<div class="card compact-card util-sim-card" data-limit="${limit}">
+          <div class="panel-head compact-head">
+            <div>
+              <b>${d.emoji || "💳"} ${d.name}</b>
+              <p class="hint">Limit ${money(limit)} • current ${money(current)} • statement ${money(statement)}</p>
+            </div>
+            <button type="button" class="ghost tiny" onclick="setUtilSimCardBalance(${i},0,0)">Pay off</button>
+          </div>
+          <div class="two-col">
+            <label>Sim current balance<input id="utilSimCurrent${i}" class="util-sim-input" type="number" step="0.01" value="${current.toFixed(2)}"></label>
+            <label>Sim statement balance<input id="utilSimStatement${i}" class="util-sim-input" type="number" step="0.01" value="${statement.toFixed(2)}"></label>
+            <label>Payment amount<input id="utilSimPayment${i}" type="number" step="0.01" placeholder="0.00"></label>
+            <label>&nbsp;<button type="button" class="ghost" onclick="applyUtilSimPayment(${i})">Apply payment to current</button></label>
+          </div>
+        </div>`;
+      }).join("")}
+    </div>`;
+  simpleSubmit = ()=>{};
+  simpleDelete = null;
+  deleteSimpleBtn.style.display = "none";
+  simpleModal.showModal();
+  document.querySelectorAll(".util-sim-input").forEach(input=>input.addEventListener("input", updateUtilSimSummary));
+  updateUtilSimSummary();
+}
+
+function setUtilSimCardBalance(index, current, statement){
+  const cur = document.getElementById(`utilSimCurrent${index}`);
+  const stmt = document.getElementById(`utilSimStatement${index}`);
+  if(cur) cur.value = Number(current || 0).toFixed(2);
+  if(stmt) stmt.value = Number(statement || 0).toFixed(2);
+  updateUtilSimSummary();
+}
+
+function applyUtilSimPayment(index){
+  const cur = document.getElementById(`utilSimCurrent${index}`);
+  const pay = document.getElementById(`utilSimPayment${index}`);
+  if(!cur || !pay) return;
+  const next = Math.max(0, Number(cur.value || 0) - Number(pay.value || 0));
+  cur.value = next.toFixed(2);
+  pay.value = "";
+  updateUtilSimSummary();
+}
+
+function updateUtilSimSummary(){
+  const cards = Array.from(document.querySelectorAll(".util-sim-card"));
+  const limit = cards.reduce((s,card)=>s + Number(card.dataset.limit || 0), 0);
+  const current = cards.reduce((s,_,i)=>s + Math.max(0, Number(document.getElementById(`utilSimCurrent${i}`)?.value || 0)), 0);
+  const statement = cards.reduce((s,_,i)=>s + Math.max(0, Number(document.getElementById(`utilSimStatement${i}`)?.value || 0)), 0);
+  const currentPct = limit ? (current / limit) * 100 : 0;
+  const statementPct = limit ? (statement / limit) * 100 : 0;
+  const el = document.getElementById("utilSimSummary");
+  if(!el) return;
+  el.innerHTML = `<div class="utilization-card sim-result">
+    <div><div class="label">Total limit</div><div class="amount">${money(limit)}</div></div>
+    <div><div class="label">Sim current util.</div><div class="amount ${currentPct <= 30 ? "good" : currentPct <= 50 ? "warn" : "bad"}">${Math.round(currentPct)}%</div><div class="row-sub">${money(current)} current</div></div>
+    <div><div class="label">Sim statement util.</div><div class="amount ${statementPct <= 30 ? "good" : statementPct <= 50 ? "warn" : "bad"}">${Math.round(statementPct)}%</div><div class="row-sub">${money(statement)} statements</div></div>
+  </div>`;
 }
 
 function renderDebts(){

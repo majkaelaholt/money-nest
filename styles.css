@@ -2798,3 +2798,9 @@ button:disabled{
 .filter-reset-label{min-width:120px}
 .filter-reset-label button{width:100%}
 @media(max-width:700px){.utilization-card{grid-template-columns:1fr}.account-reorder-actions{justify-content:flex-start}}
+
+/* v2-162 additions */
+.util-sim-summary{margin:8px 0 14px}
+.util-sim-card{padding:14px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.52)}
+.util-sim-card .panel-head{margin-bottom:10px}
+.sim-result{background:rgba(246,240,229,.8)}
