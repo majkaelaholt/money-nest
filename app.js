@@ -2423,6 +2423,7 @@ const defaultUiPrefs = {
   calendarHighlightCategories: ["all"],
   billFilters: { account:"all", categories:["all"], type:"all", recurrence:"all", sort:"date" },
   transactionFilters: { status:"all", category:"all", type:"all", sort:"date-asc", dateRange:"upcoming-90", search:"" },
+  transactionFilterDefaults: { status:"all", category:"all", type:"all", sort:"date-asc", dateRange:"upcoming-90" },
   accountDetailMode: "bank",
   accountForecastRange: "today-forward"
 };
@@ -2440,6 +2441,7 @@ function loadUiPrefs(){
     if(saved.billFilters) prefs.billFilters = {...prefs.billFilters, ...saved.billFilters};
     if(Array.isArray(saved.billFilters?.categories)) prefs.billFilters.categories = saved.billFilters.categories;
     if(saved.transactionFilters) prefs.transactionFilters = {...prefs.transactionFilters, ...saved.transactionFilters};
+    if(saved.transactionFilterDefaults) prefs.transactionFilterDefaults = {...prefs.transactionFilterDefaults, ...saved.transactionFilterDefaults};
     if(saved.accountDetailMode) prefs.accountDetailMode = saved.accountDetailMode;
     if(saved.accountForecastRange) prefs.accountForecastRange = cleanAccountForecastRange(saved.accountForecastRange);
     return prefs;
@@ -2455,6 +2457,7 @@ function saveUiPrefs(){
       calendarHighlightCategories,
       billFilters,
       transactionFilters: {...transactionFilters, search:""},
+      transactionFilterDefaults,
       accountDetailMode,
       accountForecastRange
     }));
@@ -2475,6 +2478,7 @@ let suppressRecentTracking = false;
 loadRecentPlaces();
 let billFilters = {...defaultUiPrefs.billFilters, ...(uiPrefs.billFilters || {})};
 if(!Array.isArray(billFilters.categories)) billFilters.categories = [billFilters.category || "all"];
+let transactionFilterDefaults = {...defaultUiPrefs.transactionFilterDefaults, ...(uiPrefs.transactionFilterDefaults || {})};
 let transactionFilters = {...defaultUiPrefs.transactionFilters, ...(uiPrefs.transactionFilters || {})};
 
 
@@ -4157,8 +4161,6 @@ function dashboardNeedsAttention(){
     const safe = safeToSpend(a);
     if(safe.amount <= 0){
       items.push({level:"bad", title:`${a.name} safe to spend is ${money(safe.amount)}`, sub:safe.label, action:`openAccountDetail('${a.id}', 'dashboard')`});
-    } else if(safe.amount < 50){
-      items.push({level:"warn", title:`${a.name} safe to spend is low`, sub:`${money(safe.amount)} • ${safe.label}`, action:`openAccountDetail('${a.id}', 'dashboard')`});
     }
   });
 
@@ -4205,9 +4207,9 @@ function renderDashboard(){
         <p class="sub">next 30 days, estimated monthly</p>
       </article>
       <article class="card attention-card">
-        <p class="eyebrow">Low safe-to-spend</p>
-        <div class="value">${data.accounts.filter(a=>!isSavingsAccount(a) && safeToSpend(a).amount < 50).length}</div>
-        <p class="sub">accounts under $50 safe</p>
+        <p class="eyebrow">Overdraw risk</p>
+        <div class="value">${data.accounts.filter(a=>!isSavingsAccount(a) && safeToSpend(a).amount <= 0).length}</div>
+        <p class="sub">accounts at $0 or less safe</p>
       </article>
       <article class="card attention-card">
         <p class="eyebrow">Statements to check</p>
@@ -4295,7 +4297,9 @@ function renderDashboard(){
             <span>past due + next 7 days</span>
           </div>
           <div class="action-list-v2">
-            ${statementsToCheck.length ? statementsToCheck.map(d=>`<div class="action-row-v2 clickable" onclick="openDebtDetail('${d.id}')">
+            ${statementsToCheck.length ? statementsToCheck.map(d=>{
+              const upcoming = d.nextStatementDate > todayISO();
+              return `<div class="action-row-v2 clickable" onclick="openDebtDetail('${d.id}')">
               <div class="action-left">
                 <span class="action-symbol">${d.emoji || "💳"}</span>
                 <div>
@@ -4304,8 +4308,9 @@ function renderDashboard(){
                   <div class="row-sub">Previous statement ${d.statementDate}${d.statementBalance ? ` • ${money(d.statementBalance)}` : ""}</div>
                 </div>
               </div>
-              <div class="debt-status-pill warn">Check statement</div>
-            </div>`).join("") : `<div class="empty">No credit card statements past due or expected in the next 7 days.</div>`}
+              <div class="debt-status-pill ${upcoming ? "warn" : "bad"}">${upcoming ? "Upcoming" : "Check statement"}</div>
+            </div>`;
+            }).join("") : `<div class="empty">No credit card statements past due or expected in the next 7 days.</div>`}
           </div>
         </section>
       </div>`;
@@ -4697,6 +4702,19 @@ function setupReorder(selector, kind){
   });
 }
 
+
+window.moveAccount = (id, direction)=>{
+  const ordered = orderedAccounts();
+  const index = ordered.findIndex(a=>a.id === id);
+  const target = index + Number(direction || 0);
+  if(index < 0 || target < 0 || target >= ordered.length) return;
+  const [moved] = ordered.splice(index, 1);
+  ordered.splice(target, 0, moved);
+  ordered.forEach((a, i)=>a.order = i);
+  saveData();
+  renderAccounts();
+};
+
 function renderAccounts(){
   document.getElementById("accountList").innerHTML = orderedAccounts().map(a=>`
     <div class="account-card tinted-card" draggable="true" data-id="${a.id}" style="--card-color:${a.color || "#8c6f4d"}; background:${hexToSoft(a.color || "#8c6f4d")}" onclick="openAccountDetail('${a.id}', 'accounts')">
@@ -4710,7 +4728,11 @@ function renderAccounts(){
             <div class="row-sub">${savingsGoalAmount(a) ? `${savingsGoalProgress(a)}% of ${money(savingsGoalAmount(a))}${a.goalName ? ` • ${a.goalName}` : ""}` : "set a savings goal"}</div>
           </div>`
         : `<div><div class="label">Safe</div><div class="amount good">${money(safeToSpend(a).amount)}</div></div>`}
-      <button class="ghost small" onclick="event.stopPropagation(); simpleAccount('${a.id}')">Edit</button>
+      <div class="inline-actions account-reorder-actions">
+        <button class="ghost tiny" onclick="event.stopPropagation(); moveAccount('${a.id}', -1)">↑</button>
+        <button class="ghost tiny" onclick="event.stopPropagation(); moveAccount('${a.id}', 1)">↓</button>
+        <button class="ghost small" onclick="event.stopPropagation(); simpleAccount('${a.id}')">Edit</button>
+      </div>
     </div>`).join("");
   setupReorder(".account-card[data-id]", "account");
 }
@@ -5009,6 +5031,12 @@ function setTransactionFilter(key, value){
   render();
 }
 window.setTransactionFilter = setTransactionFilter;
+function resetTransactionFiltersToDefaults(){
+  transactionFilters = {...defaultUiPrefs.transactionFilters, ...transactionFilterDefaults, search:""};
+  saveUiPrefs();
+  render();
+}
+window.resetTransactionFiltersToDefaults = resetTransactionFiltersToDefaults;
 
 function renderTransactionFilters(options={}){
   const hideSort = !!options.hideSort;
@@ -5054,6 +5082,9 @@ function renderTransactionFilters(options={}){
         <option value="category" ${transactionFilters.sort==="category"?"selected":""}>Category A-Z</option>
       </select>
     </label>`}
+    <label class="filter-reset-label">Reset
+      <button type="button" class="ghost small" onclick="resetTransactionFiltersToDefaults()">Reset filters</button>
+    </label>
   </div>`;
 }
 
@@ -5507,9 +5538,36 @@ function bnplPaymentRowsHTML(total, count, firstDate, frequencyDays){
   }).join("");
 }
 
+
+function creditCardUtilizationSummariesHTML(){
+  const cards = data.debts.filter(d => d.type === "Credit Card" && Number(d.limit || 0) > 0);
+  if(!cards.length) return "";
+  const owners = [...new Set(cards.map(d=>d.owner || "Unassigned"))].sort();
+  const rows = owners.map(owner=>{
+    const ownerCards = cards.filter(d=>(d.owner || "Unassigned") === owner);
+    const limit = ownerCards.reduce((s,d)=>s+Number(d.limit || 0),0);
+    const current = ownerCards.reduce((s,d)=>s+Math.max(0, debtAmountLeftNow(d)),0);
+    const statement = ownerCards.reduce((s,d)=>s+Math.max(0, Number(d.statementBalance || 0)),0);
+    const currentPct = limit ? Math.round((current / limit) * 100) : 0;
+    const statementPct = limit ? Math.round((statement / limit) * 100) : 0;
+    return `<div class="utilization-card">
+      <div>
+        <div class="row-title">${owner}</div>
+        <div class="row-sub">${ownerCards.length} card${ownerCards.length === 1 ? "" : "s"} • limit ${money(limit)}</div>
+      </div>
+      <div><div class="label">Current util.</div><div class="amount ${currentPct <= 30 ? "good" : currentPct <= 50 ? "warn" : "bad"}">${currentPct}%</div><div class="row-sub">${money(current)} current</div></div>
+      <div><div class="label">Statement util.</div><div class="amount ${statementPct <= 30 ? "good" : statementPct <= 50 ? "warn" : "bad"}">${statementPct}%</div><div class="row-sub">${money(statement)} statements</div></div>
+    </div>`;
+  }).join("");
+  return `<section class="credit-util-summary">
+    <div class="panel-head compact-head"><div><h3>Credit utilization</h3><p class="hint">By owner, using credit card limits, current balances, and statement balances.</p></div></div>
+    <div class="utilization-grid">${rows}</div>
+  </section>`;
+}
+
 function renderDebts(){
   const groupedType = groupBy(orderedDebts(), "type");
-  document.getElementById("debtGroups").innerHTML = `<div class="panel-actions debt-label-actions"><button class="primary small" onclick="addBNPLPurchase()">+ BNPL purchase</button><button class="ghost small" onclick="editDebtTypes()">Edit debt category labels</button></div>` + Object.entries(groupedType).map(([type,debts])=>{
+  document.getElementById("debtGroups").innerHTML = creditCardUtilizationSummariesHTML() + `<div class="panel-actions debt-label-actions"><button class="primary small" onclick="addBNPLPurchase()">+ BNPL purchase</button><button class="ghost small" onclick="editDebtTypes()">Edit debt category labels</button></div>` + Object.entries(groupedType).map(([type,debts])=>{
     const typeTotal = debts.reduce((s,d)=>s+debtAmountLeftNow(d),0);
     const byCompany = groupBy(orderedDebts(debts), "company");
     return `<details class="debt-type-section" ${isDebtExpanded("openDebtTypes", type) ? "open" : ""} ontoggle="rememberExpanded('openDebtTypes','${type}',this.open)">
@@ -6071,6 +6129,77 @@ function clearChangeHistory(){
 }
 window.clearChangeHistory = clearChangeHistory;
 
+
+function renderDropdownDefaultsSettings(){
+  const target = document.getElementById("dropdownDefaultsList");
+  if(!target) return;
+  const d = {...defaultUiPrefs.transactionFilterDefaults, ...transactionFilterDefaults};
+  target.innerHTML = `
+    <p class="hint">Choose what account/debt transaction dropdowns reset to. Last-used filters still save while you work; use Reset filters in ledgers to return here.</p>
+    <div class="settings-default-grid">
+      <label>Status
+        <select id="defaultTxStatus">
+          <option value="all" ${d.status==="all"?"selected":""}>All statuses</option>
+          <option value="planned" ${d.status==="planned"?"selected":""}>Planned</option>
+          <option value="cleared" ${d.status==="cleared"?"selected":""}>Cleared</option>
+        </select>
+      </label>
+      <label>Category
+        <select id="defaultTxCategory">
+          <option value="all" ${d.category==="all"?"selected":""}>All categories</option>
+          ${data.categories.map(c=>`<option value="${c.id}" ${d.category===c.id?"selected":""}>${c.emoji} ${c.name}</option>`).join("")}
+        </select>
+      </label>
+      <label>Type
+        <select id="defaultTxType">
+          <option value="all" ${d.type==="all"?"selected":""}>All types</option>
+          <option value="expense" ${d.type==="expense"?"selected":""}>Expenses</option>
+          <option value="income" ${d.type==="income"?"selected":""}>Income</option>
+          <option value="paycheck" ${d.type==="paycheck"?"selected":""}>Paychecks</option>
+          <option value="transfer" ${d.type==="transfer"?"selected":""}>Transfers / payments</option>
+        </select>
+      </label>
+      <label>Date range
+        <select id="defaultTxDateRange">
+          <option value="upcoming-90" ${d.dateRange==="upcoming-90"?"selected":""}>Upcoming 90 days</option>
+          <option value="this-month" ${d.dateRange==="this-month"?"selected":""}>This month</option>
+          <option value="past-90" ${d.dateRange==="past-90"?"selected":""}>Past 90 days</option>
+          <option value="all" ${d.dateRange==="all"?"selected":""}>All dates</option>
+        </select>
+      </label>
+      <label>Sort
+        <select id="defaultTxSort">
+          <option value="date-asc" ${d.sort==="date-asc"?"selected":""}>Date: soonest first</option>
+          <option value="date-desc" ${d.sort==="date-desc"?"selected":""}>Date: newest / farthest first</option>
+          <option value="amount-desc" ${d.sort==="amount-desc"?"selected":""}>Amount: high to low</option>
+          <option value="amount-asc" ${d.sort==="amount-asc"?"selected":""}>Amount: low to high</option>
+          <option value="category" ${d.sort==="category"?"selected":""}>Category A-Z</option>
+        </select>
+      </label>
+    </div>
+    <div class="inline-actions">
+      <button class="primary small" onclick="saveDropdownDefaultsFromSettings()">Save dropdown defaults</button>
+      <button class="ghost small" onclick="resetDropdownDefaults()">Reset defaults</button>
+      <button class="ghost small" onclick="resetTransactionFiltersToDefaults()">Apply defaults now</button>
+    </div>`;
+}
+window.saveDropdownDefaultsFromSettings = ()=>{
+  transactionFilterDefaults = {
+    status:document.getElementById("defaultTxStatus")?.value || "all",
+    category:document.getElementById("defaultTxCategory")?.value || "all",
+    type:document.getElementById("defaultTxType")?.value || "all",
+    dateRange:document.getElementById("defaultTxDateRange")?.value || "upcoming-90",
+    sort:document.getElementById("defaultTxSort")?.value || "date-asc"
+  };
+  saveUiPrefs();
+  renderDropdownDefaultsSettings();
+};
+window.resetDropdownDefaults = ()=>{
+  transactionFilterDefaults = {...defaultUiPrefs.transactionFilterDefaults};
+  saveUiPrefs();
+  renderDropdownDefaultsSettings();
+};
+
 function renderSettings(){
   const categoryList = document.getElementById("categoryList");
   if(categoryList){
@@ -6088,6 +6217,7 @@ function renderSettings(){
   attachPaycheckSettingsListeners();
 
   renderTransactionTemplates();
+  renderDropdownDefaultsSettings();
 
   const templateCount = document.getElementById("settingsTemplateCount");
   if(templateCount) templateCount.textContent = `${data.settings?.transactionTemplates?.length || 0}`;
@@ -6644,6 +6774,7 @@ document.getElementById("transactionForm").onsubmit = async (e)=>{
   txModal.close();
   saveData();
   renderTransactionTemplates();
+  renderDropdownDefaultsSettings();
 };
 document.getElementById("deleteTxBtn").onclick = async ()=>{
   const id = txId.value;
@@ -7337,7 +7468,7 @@ window.addBNPLPurchase = ()=>{
           categoryId: "klarna",
           linkedDebtId: debtId,
           recurrence: {type:"none", interval:1, weekendHandling:"none"},
-          notes: `BNPL payment ${i+1} of ${paymentDates.length} for ${debtName}`
+          notes: `BNPL payment ${i+1} of ${paymentDates.length} for ${debtName} • Original due date ${date}`
         });
       });
     }
@@ -7360,7 +7491,7 @@ window.quickDebtDue = (id)=>{
   simpleFields.innerHTML = `
     <p class="hint">${d.emoji || "💳"} ${d.name}</p>
     <div class="two-col">
-      <label>${dueLabel}<input id="sDueDate" type="date" value="${d.dueDate || ""}"></label>
+      ${isBnpl ? `<p class="hint">BNPL due dates are set by the linked installment transactions. Edit/move those transactions directly; their notes preserve the original due date.</p>` : `<label>${dueLabel}<input id="sDueDate" type="date" value="${d.dueDate || ""}"></label>`}
       <label>${amountLabel}<input id="sMinDue" type="number" step="0.01" value="${d.minDue ?? 0}"></label>
     </div>
     ${isBnpl ? "" : `
@@ -7401,7 +7532,7 @@ window.quickDebtDue = (id)=>{
     extraInput?.addEventListener("input", syncTotalMonthly);
   },0);
   simpleSubmit = ()=>{
-    d.dueDate=sDueDate.value;
+    if(document.getElementById("sDueDate")) d.dueDate=sDueDate.value;
     d.minDue=Number(sMinDue.value || 0);
     if(!isBnpl){
       d.manualExtra = Number(document.getElementById("sManualExtra")?.value || 0);
@@ -7543,7 +7674,7 @@ window.simpleDebt = (id=null)=>{
       if(balanceLabel){ balanceLabel.style.display = ""; balanceLabel.childNodes[0].textContent = "Remaining balance"; }
       if(trackingStartDateLabel) trackingStartDateLabel.style.display = "none";
       if(limitLabel) limitLabel.style.display = "none";
-      if(dueDateLabel) dueDateLabel.childNodes[0].textContent = "Next payment due";
+      if(dueDateLabel) dueDateLabel.style.display = "none";
       if(minDueLabel) minDueLabel.childNodes[0].textContent = "Next payment amount";
       if(statementBalanceLabel) statementBalanceLabel.style.display = "none";
       if(statementDateLabel) statementDateLabel.style.display = "none";
@@ -7558,7 +7689,7 @@ window.simpleDebt = (id=null)=>{
       if(balanceLabel) balanceLabel.style.display = "none";
       if(trackingStartDateLabel) trackingStartDateLabel.style.display = "none";
       if(limitLabel) limitLabel.style.display = "none";
-      if(dueDateLabel) dueDateLabel.childNodes[0].textContent = "Next payment due";
+      if(dueDateLabel){ dueDateLabel.style.display = ""; dueDateLabel.childNodes[0].textContent = "Next payment due"; }
       if(minDueLabel) minDueLabel.childNodes[0].textContent = "Monthly payment";
       if(statementDateLabel){ statementDateLabel.style.display = ""; statementDateLabel.childNodes[0].textContent = "Statement / current date"; }
       if(statementBalanceLabel){ statementBalanceLabel.style.display = ""; statementBalanceLabel.childNodes[0].textContent = "Statement / current balance"; }
@@ -7575,7 +7706,7 @@ window.simpleDebt = (id=null)=>{
       if(balanceLabel) balanceLabel.style.display = "none";
       if(trackingStartDateLabel) trackingStartDateLabel.style.display = "";
       if(limitLabel){ limitLabel.style.display = isLoan ? "none" : ""; limitLabel.childNodes[0].textContent = "Credit line / limit"; }
-      if(dueDateLabel) dueDateLabel.childNodes[0].textContent = "Due date";
+      if(dueDateLabel){ dueDateLabel.style.display = ""; dueDateLabel.childNodes[0].textContent = "Due date"; }
       if(minDueLabel) minDueLabel.childNodes[0].textContent = "Minimum due";
       if(statementBalanceLabel) statementBalanceLabel.style.display = "";
       if(statementDateLabel) statementDateLabel.style.display = "";

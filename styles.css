@@ -2788,3 +2788,13 @@ button:disabled{
   .change-tx-line{display:block}
   .change-tx-line .tiny{margin-top:6px}
 }
+
+/* v2-161 additions */
+.account-reorder-actions{display:flex;gap:6px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+.credit-util-summary{margin:14px 0 18px;padding:16px;border:1px solid var(--line);border-radius:18px;background:rgba(255,255,255,.45)}
+.utilization-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.utilization-card{display:grid;grid-template-columns:1.2fr .8fr .8fr;gap:12px;align-items:center;padding:14px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.52)}
+.settings-default-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:10px 0 14px}
+.filter-reset-label{min-width:120px}
+.filter-reset-label button{width:100%}
+@media(max-width:700px){.utilization-card{grid-template-columns:1fr}.account-reorder-actions{justify-content:flex-start}}

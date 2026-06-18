@@ -809,8 +809,17 @@ v2-159
 - If import fails, Money Nest now shows a specific import error instead of only the global script-error toast.
 - No import/export schema changes needed.
 
-v2-160
+v2-161
 - Fixed edited recurring occurrence rows reopening as Add transaction instead of Edit transaction.
 - Generated/overridden recurring occurrences now keep their originalId pointed at the real recurring template, even when the displayed row uses a generated occurrence id.
 - This should let edited grocery/paycheck/car-payment occurrences reopen correctly from Calendar and Account detail.
 - No import/export schema changes needed.
+
+
+v2-161
+- Dashboard statement pills now say Upcoming for future statement dates and Check statement for today/past due.
+- Needs Attention only flags safe-to-spend when the account is at or below $0.
+- Added account reorder controls on account cards.
+- Removed BNPL next payment due from Edit Debt and preserves original BNPL due dates in installment notes.
+- Added Settings > Dropdown defaults with reset/apply controls for account/debt transaction filters.
+- Added credit utilization summary by owner in Debts using statement and current balances.
