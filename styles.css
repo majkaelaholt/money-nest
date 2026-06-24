@@ -1971,19 +1971,36 @@ body.dragging-tx .day-hover-list{
 .template-suggestions.open{
   display:grid;
 }
+.template-suggestion-row{
+  display:grid;
+  grid-template-columns:1fr auto;
+  align-items:stretch;
+  border-bottom:1px solid var(--line);
+}
+.template-suggestion-row:last-child{
+  border-bottom:0;
+}
 .template-suggestions button{
   border:0;
   background:transparent;
+  cursor:pointer;
+}
+.template-suggestion-main{
   text-align:left;
   padding:10px 12px;
-  cursor:pointer;
-  border-bottom:1px solid var(--line);
 }
-.template-suggestions button:last-child{
-  border-bottom:0;
-}
-.template-suggestions button:hover{
+.template-suggestion-main:hover,
+.template-suggestion-delete:hover{
   background:#fbf3e9;
+}
+.template-suggestion-delete{
+  width:40px;
+  font-size:18px;
+  color:var(--muted);
+  border-left:1px solid var(--line) !important;
+}
+.template-suggestion-delete:hover{
+  color:var(--danger);
 }
 .template-suggestions b,
 .template-suggestions small{

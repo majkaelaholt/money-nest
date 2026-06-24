@@ -846,3 +846,9 @@ v2-165
 - Create card payment now defaults the new payment to Planned instead of Cleared.
 - Transfer labels now use actual account-to-account routing, like Ty → Joint or Savings → Joint, instead of repeating the transaction title.
 - No import/export schema changes needed.
+
+v2-166
+- Transaction title suggestions now show an inline × delete button beside each saved template.
+- Deleting a suggestion from the title autocomplete removes that saved template immediately without going to Settings.
+- Template deletion still only affects the saved suggestion; it does not delete any existing transactions.
+- No import/export schema changes needed.

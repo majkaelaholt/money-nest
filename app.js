@@ -6043,13 +6043,23 @@ function renderTemplateSuggestions(){
 
     box.innerHTML = matches.map(t=>{
       const cat = categoryById(t.categoryId || "unassigned");
-      return `<button type="button" data-template-id="${t.id}">
-        <span><b>${t.title}</b><small>${cat.emoji} ${cat.name}</small></span>
-      </button>`;
+      return `<div class="template-suggestion-row">
+        <button type="button" class="template-suggestion-main" data-template-id="${t.id}">
+          <span><b>${t.title}</b><small>${cat.emoji} ${cat.name}</small></span>
+        </button>
+        <button type="button" class="template-suggestion-delete" data-template-delete-inline="${t.id}" title="Delete this saved suggestion" aria-label="Delete saved suggestion ${String(t.title || '').replace(/"/g, '&quot;')}">×</button>
+      </div>`;
     }).join("");
 
     box.querySelectorAll("[data-template-id]").forEach(btn=>{
       btn.onclick = () => applyTransactionTemplate(btn.dataset.templateId);
+    });
+    box.querySelectorAll("[data-template-delete-inline]").forEach(btn=>{
+      btn.onclick = (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        deleteTemplateSuggestion(btn.dataset.templateDeleteInline);
+      };
     });
 
     box.classList.add("open");
@@ -6060,6 +6070,18 @@ function renderTemplateSuggestions(){
 function hideTemplateSuggestions(){
   const box = document.getElementById("txTemplateSuggestions");
   if(box) box.classList.remove("open");
+}
+
+function deleteTemplateSuggestion(id){
+  data.settings ||= {};
+  data.settings.transactionTemplates ||= [];
+  const before = data.settings.transactionTemplates.length;
+  data.settings.transactionTemplates = data.settings.transactionTemplates.filter(t=>t.id !== id);
+  if(data.settings.transactionTemplates.length !== before){
+    saveData();
+    renderTemplateSuggestions();
+    renderTransactionTemplates();
+  }
 }
 function renderTransactionTemplates(){
   const list = document.getElementById("transactionTemplateList");
