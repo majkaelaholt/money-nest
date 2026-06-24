@@ -870,3 +870,13 @@ v2-169
 
 
 v2-171: tightened iPhone/mobile layout, made account/dashboard cards more compact, and changed mobile calendar controls to a fixed top bar so they do not scroll with the calendar.
+
+v2-172
+- Added README.md as the main GitHub project README/changelog file.
+- No app code or import/export schema changes needed.
+
+v2-173 notes:
+- iPhone Calendar header/title controls are fixed as one stacked header.
+- iPhone Accounts and Debts cards are more compact.
+- No JSON or CSV import/export schema changes.
+

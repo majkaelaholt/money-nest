@@ -3391,3 +3391,184 @@ button:disabled{
   .nav-emoji{font-size:17px !important}
   .nav-btn{min-height:40px}
 }
+
+/* v2-173 iPhone calendar header lock + denser app cards */
+@media(max-width:700px){
+  /* Calendar gets one fixed header stack: page title on top, controls directly underneath. */
+  body.money-nest-view-calendar .topbar{
+    position:fixed !important;
+    top:0 !important;
+    left:0 !important;
+    right:0 !important;
+    z-index:910 !important;
+    margin:0 !important;
+    padding:10px 14px 6px !important;
+    background:rgba(255,250,243,.96) !important;
+    border-bottom:1px solid rgba(224,207,185,.72) !important;
+    backdrop-filter:blur(12px);
+  }
+  body.money-nest-view-calendar .topbar .eyebrow{
+    font-size:10px !important;
+    line-height:1.05 !important;
+    margin:0 0 1px !important;
+  }
+  body.money-nest-view-calendar .topbar h2{
+    font-size:22px !important;
+    line-height:1.02 !important;
+    margin:0 !important;
+  }
+  body.money-nest-view-calendar #calendar.view.active{
+    padding-top:152px !important;
+  }
+  body.money-nest-view-calendar #calendar .calendar-toolbar.calendar-toolbar-local,
+  body.money-nest-view-calendar #calendar .calendar-toolbar{
+    top:55px !important;
+    padding:7px 10px 8px !important;
+    border-radius:0 0 18px 18px !important;
+    box-shadow:0 8px 20px rgba(73,55,34,.08) !important;
+  }
+  body.money-nest-view-calendar #calendarGrid .day{
+    scroll-margin-top:164px !important;
+  }
+
+  /* Accounts: remove the extra action row height and tighten metrics. */
+  .account-list{gap:8px !important;}
+  .account-card{
+    position:relative !important;
+    grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+    gap:5px 8px !important;
+    padding:9px 10px !important;
+    min-height:0 !important;
+  }
+  .account-card > div:first-child{
+    grid-column:1 / -1 !important;
+    padding-right:116px !important;
+  }
+  .account-card .row-title{
+    font-size:15px !important;
+    line-height:1.05 !important;
+  }
+  .account-card .row-sub{
+    font-size:10px !important;
+    line-height:1.12 !important;
+  }
+  .account-card .label{
+    font-size:9px !important;
+    line-height:1.05 !important;
+    letter-spacing:.14em !important;
+  }
+  .account-card .amount{
+    font-size:15px !important;
+    line-height:1.02 !important;
+    margin-top:1px !important;
+  }
+  .account-card .account-reorder-actions{
+    position:absolute !important;
+    top:8px !important;
+    right:8px !important;
+    grid-column:auto !important;
+    padding:0 !important;
+    gap:4px !important;
+  }
+  .account-card .account-reorder-actions .tiny{
+    width:26px !important;
+    min-width:26px !important;
+    height:26px !important;
+    min-height:26px !important;
+    font-size:13px !important;
+  }
+  .account-card .account-reorder-actions .small{
+    min-height:26px !important;
+    padding:4px 9px !important;
+    font-size:11px !important;
+  }
+
+  /* Debts: compact utilization cards and debt rows into mobile-friendly grids. */
+  .credit-util-summary{
+    padding:10px !important;
+    border-radius:17px !important;
+  }
+  .credit-util-summary .panel-head{
+    margin-bottom:7px !important;
+  }
+  .credit-util-summary .hint{
+    font-size:10px !important;
+    line-height:1.18 !important;
+  }
+  .utilization-grid{
+    gap:8px !important;
+  }
+  .utilization-card{
+    grid-template-columns:1fr 1fr !important;
+    gap:7px 10px !important;
+    padding:9px 10px !important;
+    border-radius:14px !important;
+    align-items:start !important;
+  }
+  .utilization-card > div:first-child{
+    grid-column:1 / -1 !important;
+    display:grid !important;
+    grid-template-columns:1fr auto !important;
+    gap:8px !important;
+    align-items:center !important;
+  }
+  .utilization-card .row-title{
+    font-size:14px !important;
+  }
+  .utilization-card .amount{
+    font-size:17px !important;
+  }
+  .utilization-card .label{
+    font-size:9px !important;
+    line-height:1.05 !important;
+  }
+  .debt-account-card{
+    grid-template-columns:1fr 1fr !important;
+    gap:7px 10px !important;
+    padding:9px 10px !important;
+    border-radius:14px !important;
+    align-items:start !important;
+  }
+  .debt-account-card > div:first-child{
+    grid-column:1 / -1 !important;
+  }
+  .debt-account-card .row-title{
+    font-size:14px !important;
+    line-height:1.08 !important;
+  }
+  .debt-account-card .row-sub{
+    font-size:10px !important;
+    line-height:1.18 !important;
+  }
+  .debt-account-card .label{
+    font-size:9px !important;
+    line-height:1.05 !important;
+    letter-spacing:.13em !important;
+  }
+  .debt-account-card .amount{
+    font-size:15px !important;
+    line-height:1.05 !important;
+  }
+  .debt-status-pill{
+    padding:4px 8px !important;
+    font-size:10px !important;
+  }
+  .debt-type-section{
+    padding:10px !important;
+    border-radius:16px !important;
+  }
+  .debt-type-summary{
+    gap:8px !important;
+  }
+  .debt-type-summary-actions{
+    gap:5px !important;
+  }
+}
+
+@media(max-width:390px){
+  body.money-nest-view-calendar #calendar.view.active{padding-top:148px !important;}
+  body.money-nest-view-calendar #calendar .calendar-toolbar.calendar-toolbar-local,
+  body.money-nest-view-calendar #calendar .calendar-toolbar{top:52px !important;}
+  .account-card > div:first-child{padding-right:104px !important;}
+  .account-card .account-reorder-actions .small{padding:4px 7px !important;}
+}

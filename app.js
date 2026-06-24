@@ -4246,6 +4246,8 @@ function setView(view){
   try{
     currentView = view;
     document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active", v.id===view));
+    document.body.classList.remove("money-nest-view-dashboard", "money-nest-view-calendar", "money-nest-view-accounts", "money-nest-view-bills", "money-nest-view-debts", "money-nest-view-settings", "money-nest-view-accountDetail", "money-nest-view-debtDetail");
+    document.body.classList.add(`money-nest-view-${view}`);
     document.querySelectorAll(".nav-btn").forEach(b=>b.classList.toggle("active", b.dataset.view===view));
     const titles = {accountDetail: accountById(selectedAccountId)?.name || "Account", debtDetail: debtById(selectedDebtId)?.name || "Debt"};
     const titleEl = document.getElementById("viewTitle");
