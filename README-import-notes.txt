@@ -857,3 +857,8 @@ Update in v2.167:
 - Added Supabase Cloud Sync settings.
 - Supports login/logout, Save to cloud, Load from cloud, and optional auto-save.
 - Cloud sync can be paused/off and JSON backups remain recommended.
+
+v2-168
+- Added an iPhone/mobile compact layout pass.
+- Mobile view now uses tighter spacing, smaller cards/buttons, horizontal top navigation, compact panels, and better modal scrolling.
+- Desktop layout remains unchanged.

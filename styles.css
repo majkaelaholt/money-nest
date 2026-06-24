@@ -2856,3 +2856,142 @@ button:disabled{
   margin-top:12px;
   flex-wrap:wrap;
 }
+
+/* v2-168 iPhone/mobile compactness pass */
+@media(max-width:700px){
+  :root{--radius:18px}
+  body{font-size:14px;-webkit-text-size-adjust:100%}
+  .app-shell{display:block;min-height:100dvh}
+  .sidebar{
+    position:sticky;
+    top:0;
+    z-index:50;
+    height:auto;
+    width:100%;
+    padding:10px 10px 8px;
+    border-right:0;
+    border-bottom:1px solid var(--line);
+    background:rgba(255,250,243,.96);
+    backdrop-filter:blur(10px);
+  }
+  .brand{margin-bottom:10px;gap:9px}
+  .brand-mark{width:34px;height:34px;border-radius:12px;font-size:18px}
+  .brand-mark img{border-radius:12px}
+  .brand h1{font-size:18px;line-height:1.1}
+  .brand p{font-size:11px}
+  .nav{
+    display:flex;
+    gap:6px;
+    overflow-x:auto;
+    padding-bottom:2px;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+  }
+  .nav::-webkit-scrollbar{display:none}
+  .nav-btn{
+    flex:0 0 auto;
+    padding:8px 10px;
+    border-radius:999px;
+    font-size:13px;
+    white-space:nowrap;
+    background:rgba(241,227,208,.55);
+  }
+  .side-card.recent-card{
+    margin-top:8px;
+    padding:10px;
+    border-radius:16px;
+    box-shadow:none;
+  }
+  .recent-list{max-height:92px;overflow:auto}
+  .main{padding:12px 10px 18px}
+  .topbar{margin-bottom:12px}
+  .topbar h2{font-size:26px;line-height:1.05}
+  .eyebrow{font-size:11px}
+  .panel,.card{padding:12px;border-radius:18px;box-shadow:0 10px 24px rgba(73,55,34,.08)}
+  .panel{margin-bottom:12px}
+  .panel-head{gap:8px;margin-bottom:10px;align-items:flex-start}
+  .panel-head h3{font-size:18px}
+  .hint,.row-sub,.sub{font-size:11px}
+  .card .value,.value{font-size:21px}
+  button,.file-label{padding:8px 11px;font-size:13px}
+  .small{padding:7px 10px;font-size:12px}
+  .grid,.stack,.account-list,.budget-list,.debt-groups,.category-list,.ledger{gap:8px}
+  .row{padding:10px;border-radius:14px;gap:8px;align-items:flex-start}
+  .row-title{font-size:14px}
+  .amount{font-size:14px}
+  .cards-4,.split,.debt-grid{grid-template-columns:1fr}
+  .account-card{
+    grid-template-columns:1fr;
+    gap:8px;
+    padding:11px;
+    border-radius:16px;
+  }
+  .account-card .amount{text-align:left}
+  .account-reorder-actions{justify-content:flex-start}
+  .debt-company{padding:10px;border-radius:14px}
+  .debt-group{padding:11px;border-radius:16px}
+  .debt-row,.utilization-card,.util-sim-card{padding:11px;border-radius:15px}
+  .ledger-row{
+    grid-template-columns:1fr;
+    gap:5px;
+    padding:10px;
+    border-radius:14px;
+  }
+  .ledger-row.header{display:none}
+  .bill-filters,.transaction-filters,.filters-grid{
+    grid-template-columns:1fr!important;
+    gap:8px;
+    padding:10px;
+    border-radius:16px;
+  }
+  .bill-card{grid-template-columns:1fr!important;gap:8px;padding:11px;border-radius:16px}
+  .calendar-toolbar{
+    width:100%;
+    gap:8px;
+    padding:10px;
+    position:sticky;
+    top:116px;
+    z-index:35;
+  }
+  .calendar-toolbar h3{font-size:18px;min-width:100%;order:-1}
+  .inline-label{width:100%;align-items:flex-start;display:grid;gap:5px}
+  .inline-label select,.inline-label .check-dropdown{width:100%;min-width:0}
+  .calendar{display:block;background:transparent;border:0;border-radius:0;overflow:visible}
+  .day{padding:8px;margin-bottom:8px;border-radius:15px;min-height:auto}
+  .day-top{font-size:12px}
+  .tx-chip{font-size:11px;padding:5px 6px;border-radius:8px;gap:5px}
+  .tx-chip .tx-name{line-height:1.18}
+  .status-toggle{font-size:10px;padding:4px 6px}
+  dialog{width:calc(100% - 12px);max-width:none;padding:0}
+  .modal-card{
+    max-height:92dvh;
+    overflow:auto;
+    padding:14px;
+    border-radius:22px;
+    gap:10px;
+  }
+  input,select,textarea{padding:10px;border-radius:12px;font-size:16px}
+  label{font-size:12px;gap:5px}
+  .two-col{grid-template-columns:1fr;gap:9px}
+  .form-section,.form-details{border-radius:16px}
+  .modal-actions{position:sticky;bottom:0;background:linear-gradient(180deg,rgba(255,250,243,0),var(--panel) 28%);padding-top:12px;flex-wrap:wrap}
+  .modal-actions button{flex:1 1 auto}
+  .check-dropdown-menu{
+    max-height:50dvh;
+    overflow:auto;
+  }
+  .context-menu{min-width:190px;max-width:calc(100vw - 18px)}
+  .context-menu button{padding:9px 10px;font-size:14px}
+  .settings-button-grid{grid-template-columns:1fr!important}
+  .cloud-button-column{padding-top:0;align-items:stretch}
+  .cloud-button-column button,.cloud-actions button{width:100%}
+}
+
+@media(max-width:390px){
+  .main{padding-left:8px;padding-right:8px}
+  .panel,.card{padding:10px}
+  .brand h1{font-size:17px}
+  .topbar h2{font-size:24px}
+  .calendar-toolbar{top:112px}
+  .nav-btn{font-size:12px;padding:7px 9px}
+}
