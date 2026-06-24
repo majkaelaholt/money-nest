@@ -14,7 +14,7 @@ button,input,select,textarea{font:inherit}
 .brand-mark img{width:100%;height:100%;display:block;object-fit:cover;border-radius:16px}
 h1,h2,h3,p{margin:0}.brand h1{font-size:22px}.brand p,.hint,.eyebrow{color:var(--muted);font-size:13px}
 .eyebrow{text-transform:uppercase;letter-spacing:.08em;font-weight:800}
-.nav{display:grid;gap:8px}.nav-btn{border:0;background:transparent;text-align:left;padding:12px 14px;border-radius:15px;color:var(--muted);cursor:pointer;font-weight:800}
+.nav{display:grid;gap:8px}.nav-btn{border:0;background:transparent;text-align:left;padding:12px 14px;border-radius:15px;color:var(--muted);cursor:pointer;font-weight:800}.nav-emoji{display:none}.nav-text{display:inline}
 .nav-btn.active,.nav-btn:hover{background:var(--panel-2);color:var(--ink)}
 .side-card{margin-top:24px;padding:16px;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);box-shadow:var(--shadow);display:grid;gap:10px}
 .main{flex:1;padding:24px;min-width:0}.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;gap:16px}.topbar h2{font-size:34px;letter-spacing:-.04em}.top-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
@@ -2999,7 +2999,7 @@ button:disabled{
 /* v2-169 mobile app-like layout + calendar sticky controls */
 @media(max-width:700px){
   body{
-    padding-bottom:calc(72px + env(safe-area-inset-bottom));
+    padding-bottom:calc(104px + env(safe-area-inset-bottom));
     overscroll-behavior-y:none;
   }
   .app-shell{
@@ -3009,49 +3009,61 @@ button:disabled{
   }
   .sidebar{
     position:fixed !important;
-    left:0;
-    right:0;
-    bottom:0;
+    left:10px;
+    right:10px;
+    bottom:8px;
     top:auto !important;
     z-index:900;
-    width:100%;
+    width:auto;
     height:auto;
-    padding:7px 8px calc(7px + env(safe-area-inset-bottom));
-    border-right:0;
-    border-bottom:0;
-    border-top:1px solid var(--line);
+    padding:8px 10px calc(8px + env(safe-area-inset-bottom));
+    border:1px solid rgba(212,190,163,.9);
+    border-radius:26px;
     background:rgba(255,250,243,.98);
-    backdrop-filter:blur(14px);
-    box-shadow:0 -12px 30px rgba(67,48,28,.14);
+    backdrop-filter:blur(16px);
+    box-shadow:0 -10px 30px rgba(67,48,28,.12);
   }
   .brand{display:none !important}
   .nav{
     display:grid;
-    grid-template-columns:repeat(7,minmax(56px,1fr));
+    grid-template-columns:repeat(7,minmax(0,1fr));
     gap:4px;
-    overflow-x:auto;
+    overflow:visible;
     padding:0;
     -webkit-overflow-scrolling:touch;
     scrollbar-width:none;
+    align-items:end;
   }
   .nav::-webkit-scrollbar{display:none}
   .nav-btn{
-    min-width:56px;
-    padding:7px 5px;
+    min-width:0;
+    padding:6px 2px 5px;
     border-radius:16px;
-    font-size:11px;
+    font-size:10px;
     line-height:1.05;
     white-space:normal;
     text-align:center;
+    background:transparent;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:3px;
+    color:var(--muted);
   }
+  .nav-emoji{display:block;font-size:20px;line-height:1}
+  .nav-text{display:none}
   .nav-btn.active{
     transform:none;
-    box-shadow:inset 0 0 0 1px rgba(140,111,77,.22);
+    background:rgba(166,130,84,.16);
+    color:var(--ink);
+    box-shadow:inset 0 0 0 1px rgba(140,111,77,.18);
   }
+  .nav-btn.active .nav-emoji{transform:translateY(-1px)}
   .side-card.recent-card{
     position:fixed;
-    right:12px;
-    bottom:calc(72px + env(safe-area-inset-bottom));
+    right:14px;
+    bottom:calc(86px + env(safe-area-inset-bottom));
     z-index:910;
     margin:0;
     padding:0;
@@ -3065,21 +3077,21 @@ button:disabled{
     display:none !important;
   }
   #quickAddBtn{
-    width:48px;
-    height:48px;
+    width:58px;
+    height:58px;
     border-radius:999px;
     padding:0;
     font-size:0;
-    box-shadow:0 10px 24px rgba(67,48,28,.22);
+    box-shadow:0 12px 28px rgba(67,48,28,.24);
   }
   #quickAddBtn::before{
-    content:"+";
-    font-size:27px;
+    content:"＋";
+    font-size:30px;
     line-height:1;
     font-weight:950;
   }
   .main{
-    padding:12px 10px calc(92px + env(safe-area-inset-bottom));
+    padding:12px 10px calc(108px + env(safe-area-inset-bottom));
   }
   .topbar{
     margin-bottom:10px;
@@ -3189,5 +3201,11 @@ button:disabled{
   #calendar .calendar-toolbar .inline-label{font-size:10px;gap:4px}
   #calendar .calendar-toolbar select,
   #calendar .calendar-toolbar .check-dropdown-btn{font-size:11px;padding:6px 7px}
-  .nav-btn{font-size:10.5px;min-width:52px;padding:7px 4px}
+  .nav-btn{font-size:10px;min-width:0;padding:6px 1px 5px}.nav-emoji{font-size:18px}
+}
+
+
+/* v2-170 iPhone bottom nav icon layout */
+@media(max-width:700px){
+  .sidebar{max-width:calc(100vw - 20px)}
 }
