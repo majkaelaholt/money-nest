@@ -862,3 +862,8 @@ v2-168
 - Added an iPhone/mobile compact layout pass.
 - Mobile view now uses tighter spacing, smaller cards/buttons, horizontal top navigation, compact panels, and better modal scrolling.
 - Desktop layout remains unchanged.
+
+v2-169
+- Made the iPhone/mobile layout more app-like with bottom navigation and a floating + Transaction button.
+- Fixed the Calendar mobile controls so the month/filter header stays pinned at the top while scrolling the calendar.
+- Kept desktop layout unchanged.
