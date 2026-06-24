@@ -1,29 +1,26 @@
 # Money Nest
 
-Money Nest is a personal budgeting, debt, and calendar-based cashflow app built for paycheck-to-paycheck planning, debt tracking, recurring bills, and short-term financial visibility.
+Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-It is designed as a cozy money command center for managing:
+Current version: `money-nest-v2-166`
 
-* cash accounts
-* planned and cleared transactions
-* recurring bills
-* paycheck estimates
-* credit cards
-* loans
-* BNPL/installment plans
-* medical payment plans
-* savings goals
-* reimbursements/IOUs
-* upcoming debt payments
-* projected balances
+## Important Notes
 
-## Current Version
+### Data is saved in the browser
 
-Current app version: `money-nest-v2-160`
+Money Nest currently saves data in browser storage.
 
-## How the App Works
+This means data is tied to the same:
 
-Money Nest runs as a static web app. It can be hosted with GitHub Pages using these files:
+* device
+* browser
+* website URL
+
+Closing the browser or shutting down the computer should not delete data. However, clearing browser/site data can remove saved Money Nest data.
+
+### GitHub hosts the app, not the data
+
+GitHub Pages hosts the app files, such as:
 
 * `index.html`
 * `app.js`
@@ -32,45 +29,33 @@ Money Nest runs as a static web app. It can be hosted with GitHub Pages using th
 * `favicon`
 * `icons/`
 
-The app data is stored locally in the browser using browser storage. Updating the app files on GitHub updates the app code, but does not automatically move or sync budget data between devices.
+Updating GitHub updates the app code. It does not automatically sync budget data between devices.
 
-## Important Data Notes
+### Always export a JSON backup before updating
 
-Money Nest data is saved per:
+Before replacing the app files on GitHub, export a JSON backup from Money Nest Settings.
 
-* device
-* browser
-* website URL
+The JSON backup is the full restore file and may include sensitive financial information. Do not upload JSON backups to a public GitHub repository.
 
-Data should remain available when closing/reopening the browser on the same device and same browser, unless browser/site storage is cleared.
+### Moving data to another device
 
-To move data to another device or browser, use:
+To use the same data on another device or browser:
 
-1. Settings → Export JSON backup
-2. Open Money Nest on the other device/browser
-3. Settings → Import JSON backup
-
-## Backup Reminder
-
-Before updating the hosted GitHub Pages files, export a JSON backup from Settings.
-
-The JSON backup is the full restore file and may include sensitive financial information such as:
-
-* account names
-* balances
-* debts
-* transactions
-* bills
-* income/paychecks
-* planned payments
-* notes
-* categories
-
-Do not upload JSON backups to a public GitHub repository.
+1. Export a JSON backup from the current device.
+2. Open Money Nest on the other device/browser.
+3. Import the JSON backup in Settings.
 
 ## Updating the GitHub Pages App
 
-When updating to a new Money Nest version, replace the app files in GitHub with the newest version.
+Safest update process:
+
+1. Export a JSON backup.
+2. Download/unzip the newest Money Nest version.
+3. Upload the new app files to GitHub.
+4. Commit the changes.
+5. Wait for GitHub Pages to deploy.
+6. Hard refresh the app.
+7. Confirm existing data still loads.
 
 Usually re-upload:
 
@@ -84,146 +69,327 @@ Also upload these if they changed:
 * `favicon`
 * `icons/`
 
-Safest update method:
+## App Behavior Notes
 
-1. Export a JSON backup from the live app.
-2. Download/unzip the newest Money Nest version.
-3. Upload the new app files to GitHub.
-4. Commit the changes.
-5. Wait for GitHub Pages to deploy.
-6. Hard refresh the app.
-7. Confirm existing data still loads.
+### Planned vs cleared transactions
 
-## Core Features
+Planned transactions affect forecasts, but cleared transactions represent what actually happened.
 
-### Dashboard
+Recurring transactions should usually remain planned by default, with individual occurrences marked cleared as needed.
 
-The dashboard shows a quick overview of:
+### Current balances
 
-* safe-to-spend amounts
-* upcoming transactions
-* action center items
-* debt payments due soon
-* credit card statements to check
-* savings goal progress
+Debt current balances should generally use the most recent statement/current balance as the baseline, then count cleared transactions after that date.
 
-### Calendar
+Starting balance is mainly for history/progress and should not always be used as the current balance baseline.
 
-The calendar supports:
+### Credit card payments
 
-* planned and cleared transactions
-* recurring transactions
-* account filters
-* category highlight filters
-* projected daily balances
-* highest balance day highlight
-* lowest balance day highlight
-* today highlight
-* right-click transaction actions
+Credit card purchases should count as the real spending category.
 
-### Accounts
-
-Accounts support:
-
-* cash account balances
-* forecast and history views
-* planned and cleared transactions
-* savings goals
-* planned transfers
-* pending reimbursements/IOUs
-
-### Bills
-
-Bills are based on recurring and planned transactions and support filtering/sorting.
-
-### Debts
-
-Debt tracking supports:
-
-* credit cards
-* loans
-* auto loans
-* BNPL/installment plans
-* Klarna-style purchases
-* medical payment plans
-* payment status
-* monthly payment totals
-* manual extra payments
-* estimated payoff dates
-* credit line and available credit
-* statement/current balance baselines
-* loan principal/interest/fee breakdowns
-* loan forecast estimates
-
-### Paychecks
-
-Money Nest supports paycheck estimating for:
-
-* Mak paycheck schedule
-* Ty weekly paycheck schedule
-* optional hours override
-* one-off occurrence edits
-
-## Special Workflows
-
-### Credit Card Rewards Workflow
-
-For planned cash expenses that are paid with a card:
-
-1. Plan the expense in the cash account.
-2. After using the card, right-click the planned expense.
-3. Choose `Use card instead`.
-4. Select the card, purchase date, payment account, and payment date.
-
-This creates a card spend transaction while still preserving the cashflow plan.
-
-### Existing Card Charge → Create Payment
-
-For card charges already entered first:
-
-1. Right-click the card transaction.
-2. Choose `Create card payment`.
-3. Select the cash account paying the card.
-4. Optionally create a reimbursement/IOU if another account fronted the money.
+Credit card payments should usually behave like transfers/payments, not new spending. This avoids double-counting categories like groceries, gas, or shopping.
 
 ### Reimbursements / IOUs
 
-Pending reimbursements allow one account to plan money leaving while another account shows expected money without treating it as available until cleared.
+Pending reimbursements are used when one account temporarily covers money for another account.
 
-When the reimbursement transaction is marked cleared, it becomes a normal cleared transfer.
+Expected reimbursement money should not be treated as available until the reimbursement is cleared.
 
-## Export Options
+### JSON vs CSV exports
 
-Money Nest includes multiple export options:
+Use JSON for full backup/restore.
 
-* JSON backup: full restore file
-* CSV exports: batch editing/reference
-* Financial picture report: readable short-term overview
-* 12-month financial picture report: longer-range overview
+Use CSV for reviewing or batch-editing data.
+
+## Planned Updates / Issues
+
+### Bugs
+
+* [ ]
+* [ ]
+* [ ]
+
+### Feature Ideas
+
+* [ ]
+* [ ]
+* [ ]
+
+### Data Cleanup
+
+* [ ]
+* [ ]
+* [ ]
+
+### Questions / Review Later
+
+* [ ]
+* [ ]
+* [ ]
 
 ## Version Notes
+
+### v2-166
+
+* Added inline delete buttons to transaction title suggestions/templates.
+* Typo/old templates can now be removed directly from the suggestion dropdown.
+* Deleting a suggestion removes only the saved template, not existing transactions.
+* No import/export schema changes needed.
+
+### v2-165
+
+* Added target utilization calculator to the credit utilization simulator.
+* The simulator can calculate how much payment is needed to bring a card down to a target utilization percent.
+* Create card payment now defaults to planned status.
+* Transfer labels now show account routing, such as `Ty → Joint`.
+
+### v2-164
+
+* Added per-card utilization details in the payoff simulator.
+* Card utilization updates immediately when simulated balances/payments change.
+
+### v2-163
+
+* Fixed the Simulate Payoff button issue in the credit utilization section.
+
+### v2-162
+
+* Fixed local date handling so the app uses the local browser date instead of UTC.
+* Added credit utilization payoff simulator by owner.
+
+### v2-161
+
+* Dashboard credit card statement labels now distinguish upcoming statements from statements ready to check.
+* Needs Attention safe-to-spend alerts only show when safe-to-spend is $0 or below.
+* Added account reorder controls.
+* Removed incorrect BNPL next payment due editing.
+* Added dropdown default settings.
+* Added credit utilization summary by owner.
 
 ### v2-160
 
 * Fixed edited recurring occurrences reopening as Add Transaction instead of Edit Transaction.
-* Calendar and account detail should now reopen the correct edited occurrence.
-* Applies to edited groceries, paychecks, car payments, and other recurring transactions.
+* Calendar and account detail now reopen the correct edited occurrence.
 
-### Recent major updates
+### v2-159
 
-* Added recurring occurrence overrides.
-* Added recent changes with undo and per-item undo.
-* Added reimbursement/IOU tracking.
-* Added card-first and cash-plan-first credit card workflows.
-* Added loan principal/interest/fee breakdowns.
+* Fixed JSON backup import issues.
+* Backup imports no longer create huge Recent Changes snapshots.
+* Import errors should now show more specific messages.
+
+### v2-158
+
+* Mark cleared / mark planned on recurring transactions now applies only to the clicked occurrence.
+* Recurring templates stay planned by default.
+* Individual cleared recurring dates are saved as occurrence overrides.
+
+### v2-157
+
+* Removed separate Mark Reimbursement Cleared action.
+* Normal Mark Cleared now clears reimbursement status too.
+* Adjusted calendar styling for planned/cleared transaction chips.
+
+### v2-156
+
+* Fixed recurring paycheck “This occurrence only” edits.
+* Hours overrides now save for one paycheck occurrence.
+* Added occurrence override export/import support.
+
+### v2-155
+
+* Recent Changes now supports per-item undo.
+* Added options to remove one added item, undo one edit, or restore one deleted item.
+
+### v2-154
+
+* Recent Changes now shows more detailed transaction summaries.
+* Added before/after details for edited transactions.
+
+### v2-153
+
+* Autofill templates no longer change transaction type, status, or account routing.
+* Added Settings → Recent Changes with Undo Last Change.
+
+### v2-152
+
+* Removed the extra TODAY text from the calendar.
+* Kept the bold border/date highlight for today.
+
+### v2-151
+
+* Calendar now highlights today with a bold border/date highlight.
+
+### v2-150
+
+* Replaced Calendar Highlight multi-select with a checkbox dropdown.
+* Category highlight choices are easier to click/toggle.
+
+### v2-149
+
+* Savings account cards now show all planned transfers in as the main amount.
+* Next 30 days amount remains as short-term context.
+
+### v2-148
+
+* Added Export 12-month picture.
+* Longer report includes upcoming transactions, planned cashflow, debt payments, statements, and projected cash.
+
+### v2-147
+
+* Added Export financial picture.
+* Report includes accounts, balances, debts, upcoming payments, statements, bills, and cashflow.
+
+### v2-146
+
+* Added statement/current balance fields for Medical debts.
+* Medical current balance can use statement/current balance plus cleared transactions after that date.
+
+### v2-145
+
+* Added forecast-only auto-loan payment history from Book1.
+* Future auto-loan payments can estimate more realistically as balance changes.
+
+### v2-144
+
+* Auto/loan current balance now uses statement balance and statement date as the lender baseline when provided.
+* Planned/recurring loan payments can auto-estimate principal, interest, and fees.
+
+### v2-143
+
 * Added loan payoff forecast settings.
-* Added financial picture exports.
-* Added dashboard statement reminders.
-* Added calendar high/low/today highlighting.
-* Added saved filters/sorts.
-* Improved debt current balance logic using statement/current balance baselines.
+* Future recurring loan payments can estimate principal, interest, and fees.
+* Added fee timing options.
 
-## Planned Updates
-Updates/ideas to implement.
-### Pending
-- 
+### v2-142
+
+* BNPL/Klarna rows now reflect installment status correctly.
+* Added installment status editing for BNPL accounts.
+
+### v2-141
+
+* Added loan payment breakdown fields for principal, interest, and fees.
+* Added loan balance adjustments.
+
+### v2-140
+
+* Removed All Forecast option from Accounts because it could crash the site.
+* Old saved All Forecast preferences now fall back safely.
+
+### v2-139
+
+* Safe to Spend now handles payday correctly.
+* On payday, paycheck accounts look toward the following paycheck.
+
+### v2-138
+
+* Calendar highlights the lowest and highest projected balance days of the month.
+
+### v2-137
+
+* Dashboard Debt Payments Due Soon now shows fewer items.
+* Credit card statement reminders only show past due/today/next 7 days.
+* Debts page credit card rows show Next Statement instead of After Payment.
+
+### v2-136
+
+* Added Dashboard Credit Card Statements section.
+
+### v2-135
+
+* Saved last filter/sort dropdown choices across major views.
+* Search boxes remain temporary.
+
+### v2-134
+
+* Transaction autofill only applies title, category, and notes.
+* Autofill no longer saves or applies account routing fields.
+
+### v2-133
+
+* Added Create Card Payment for existing credit card charges.
+* Optional reimbursement/IOU creation added.
+
+### v2-132
+
+* Added Expand Accounts / Collapse Accounts buttons inside each debt type section.
+
+### v2-131
+
+* Added IOU / reimbursement tracking.
+* Expected reimbursements do not count as available until cleared.
+
+### v2-130
+
+* Added Use Card Instead workflow for planned cash expenses paid with a credit card.
+
+### v2-129
+
+* Debt detail transactions show debt/card payments as positive because they reduce debt.
+
+### v2-128
+
+* Expand/collapse debt controls now affect debt types only.
+
+### v2-127
+
+* Added expand/collapse controls on the Debts page.
+
+### v2-126
+
+* Credit card rows on the Debts page now show Available Credit.
+
+### v2-125
+
+* Credit card detail pages now show Available Credit.
+
+### v2-124
+
+* Removed manual Current Balance editing for regular debt accounts.
+* Current Balance now calculates from baseline plus cleared activity.
+* Added tracking start date support.
+
+### v2-123
+
+* Fixed Debts page crash caused by recurring transaction expansion too far into the future.
+
+### v2-122
+
+* Current Balance now updates from cleared card/debt transactions.
+* Planned future payments do not affect Current Balance early.
+
+### v2-121
+
+* Credit card Current Balance now matches saved/editable Current Balance field.
+* Planned payments no longer reduce current balance early.
+
+### v2-120
+
+* Added Estimated Payoff card to debt detail pages.
+
+### v2-119
+
+* Monthly payment now supports Minimum Due + Manual Extra.
+* Plan payment defaults to monthly payment total.
+
+### v2-118
+
+* Medical/loan Current Balance now uses saved Current/Remaining Balance field.
+* Medical Paid So Far calculates from Starting Balance minus Current Balance.
+
+### v2-117
+
+* Debt groups/accounts start collapsed by default.
+* Expansion state is session-only.
+
+### v2-116
+
+* Fixed Medical account detail crash by adding missing medical payment plan helpers.
+
+### v2-115
+
+* Fixed Debts page crash from missing Medical debt helper.
+
+### v2-114
+
+* Improved BNPL and Medical balance labels/normalization.
+* BNPL purchases now save starting balance separately from current balance.
