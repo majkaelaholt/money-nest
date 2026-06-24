@@ -3822,3 +3822,168 @@ button:disabled{
   .settings-button-grid-v175 .ghost,
   .settings-button-grid-v175 .file-label{padding:12px 14px;border-radius:16px}
 }
+
+/* v2-176 mobile transaction/card fit + bottom dock clearance */
+@media(max-width:700px){
+  /* Give every scrollable app page enough breathing room above the fixed bottom dock. */
+  .main,
+  .view.active{
+    padding-bottom:calc(132px + env(safe-area-inset-bottom)) !important;
+  }
+  #calendarGrid.calendar{
+    padding-bottom:calc(128px + env(safe-area-inset-bottom)) !important;
+  }
+  #calendarGrid .day:last-child{
+    margin-bottom:calc(118px + env(safe-area-inset-bottom)) !important;
+  }
+
+  /* Calendar day header: keep the day number/balance actually inside the card. */
+  #calendarGrid .day{
+    overflow:hidden !important;
+  }
+  #calendarGrid .day-top{
+    min-height:28px !important;
+    padding:0 4px 6px !important;
+    margin:0 0 6px !important;
+    align-items:flex-start !important;
+  }
+  #calendarGrid .day-num{
+    display:inline-flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    min-width:24px !important;
+    height:24px !important;
+    padding:0 7px !important;
+    border-radius:999px !important;
+    line-height:1 !important;
+  }
+  #calendarGrid .day-balance{
+    max-width:64% !important;
+    text-align:right !important;
+    line-height:1.05 !important;
+    padding-top:2px !important;
+    white-space:nowrap !important;
+  }
+
+  /* Transaction ledgers on iPhone should behave like compact cards, not desktop tables. */
+  .ledger,
+  .ledger.with-balance{
+    width:100% !important;
+    max-width:100% !important;
+    overflow:visible !important;
+  }
+  .ledger .ledger-row,
+  .ledger.with-balance .ledger-row{
+    width:100% !important;
+    max-width:100% !important;
+    min-width:0 !important;
+    box-sizing:border-box !important;
+    display:grid !important;
+    grid-template-columns:minmax(0,1fr) auto !important;
+    gap:4px 8px !important;
+    padding:8px 9px !important;
+    border-radius:14px !important;
+    align-items:start !important;
+    overflow:hidden !important;
+  }
+  .ledger .ledger-row.header,
+  .ledger.with-balance .ledger-row.header{
+    display:none !important;
+  }
+  .ledger .ledger-row > *,
+  .ledger.with-balance .ledger-row > *{
+    min-width:0 !important;
+    max-width:100% !important;
+  }
+  .ledger .ledger-row > div:nth-child(1){
+    grid-column:1;
+    grid-row:1;
+    font-size:11px !important;
+    color:var(--muted) !important;
+    font-weight:850 !important;
+    white-space:nowrap !important;
+  }
+  .ledger .ledger-row > div:nth-child(2){
+    grid-column:1;
+    grid-row:2;
+    overflow:hidden !important;
+  }
+  .ledger .ledger-row > div:nth-child(2) b{
+    display:block !important;
+    max-width:100% !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    white-space:nowrap !important;
+    font-size:13px !important;
+    line-height:1.12 !important;
+  }
+  .ledger .ledger-row .row-sub{
+    display:-webkit-box !important;
+    -webkit-line-clamp:2 !important;
+    -webkit-box-orient:vertical !important;
+    overflow:hidden !important;
+    font-size:10px !important;
+    line-height:1.15 !important;
+  }
+  .ledger .ledger-row > div:nth-child(3){
+    grid-column:1;
+    grid-row:3;
+    overflow:hidden !important;
+  }
+  .ledger .ledger-row > div:nth-child(4){
+    grid-column:2;
+    grid-row:1;
+    justify-self:end !important;
+  }
+  .ledger .ledger-row > div:nth-child(5){
+    grid-column:2;
+    grid-row:2;
+    justify-self:end !important;
+    text-align:right !important;
+    white-space:nowrap !important;
+    font-size:13px !important;
+  }
+  .ledger.with-balance .ledger-row > div:nth-child(6){
+    grid-column:2;
+    grid-row:3;
+    justify-self:end !important;
+    text-align:right !important;
+    white-space:nowrap !important;
+    font-size:13px !important;
+  }
+  .ledger.with-balance .ledger-row > div:nth-child(6)::before{
+    content:"after ";
+    color:var(--muted);
+    font-size:10px;
+    font-weight:800;
+  }
+  .ledger .cat-preview{
+    max-width:100% !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    white-space:nowrap !important;
+    padding:4px 7px !important;
+    font-size:10px !important;
+  }
+  .ledger-status-cell{
+    justify-content:flex-end !important;
+  }
+  .ledger-status-cell .status-toggle{
+    font-size:9px !important;
+    padding:3px 6px !important;
+    min-height:0 !important;
+  }
+
+  /* Apply the same compact-card idea to bill/debt/statement rows that share the spacing issue. */
+  .bill-card,
+  .debt-row,
+  .debt-account-card,
+  .utilization-card,
+  .util-sim-card,
+  .change-row,
+  .row{
+    max-width:100% !important;
+    box-sizing:border-box !important;
+    overflow:hidden !important;
+  }
+}

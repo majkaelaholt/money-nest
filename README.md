@@ -2,7 +2,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-175`
+Current version: `money-nest-v2-176`
 
 ## Important Notes
 
@@ -136,6 +136,14 @@ Use CSV for reviewing or batch-editing data.
 * [ ]
 
 ## Version Notes
+
+### v2-176
+
+* Fixed iPhone transaction ledger rows so account detail transactions behave like compact cards instead of overflowing like desktop tables.
+* Added extra bottom spacing on mobile calendar pages so the final days are not hidden behind the bottom navigation dock.
+* Tightened calendar day-number positioning inside mobile day cards.
+* Applied the same mobile overflow protection to similar row/card layouts.
+* No import/export schema changes needed.
 
 ### v2-175
 
