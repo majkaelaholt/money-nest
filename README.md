@@ -201,20 +201,6 @@ Money Nest includes multiple export options:
 * Financial picture report: readable short-term overview
 * 12-month financial picture report: longer-range overview
 
-## Pending Updates / Issues to Fix
-
-Use this section to track things that need to be fixed or added later.
-
-### Bugs
-
-- when using "create card payment", the created payment should default to "planned" status and not "cleared".
-- "today" highlight/box on calendar is off, e.g. it's 7pm mountain time on 6/16/26 but the calender is highlighting 6/17/26 as today.
-- transactions for transfering from savings to another cash account, it shows as "Savings -> Savings" because it uses the transaction title, it should show "account to account", depending on the chosen accouts. another example would be Ty moving money to Joint should show as "Ty -> Joint" instead of "Ty to Joint -> Joint".
-
-### Feature ideas / Updates
-
-- When typing in a transaction title and suggestions/saved templates show, add an X next to them so I can delete templates I don't need. e.g. I saved a transaction with a typo once, so the next time I type something similar and I see the typo template, I can just delete it without going to settings.
-
 ## Version Notes
 
 ### v2-160
@@ -236,3 +222,8 @@ Use this section to track things that need to be fixed or added later.
 * Added calendar high/low/today highlighting.
 * Added saved filters/sorts.
 * Improved debt current balance logic using statement/current balance baselines.
+
+## Planned Updates
+Updates/ideas to implement.
+### Pending
+- 
