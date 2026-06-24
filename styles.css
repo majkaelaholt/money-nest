@@ -3572,3 +3572,253 @@ button:disabled{
   .account-card > div:first-child{padding-right:104px !important;}
   .account-card .account-reorder-actions .small{padding:4px 7px !important;}
 }
+
+/* v2-174 iPhone calendar/header de-sticky + shared card compaction */
+@media(max-width:700px){
+  /* Calendar header/controls are now normal page content again. They stay at the top
+     of the Calendar page, then scroll away instead of covering day cards. */
+  body.money-nest-view-calendar .topbar{
+    position:static !important;
+    top:auto !important;
+    left:auto !important;
+    right:auto !important;
+    z-index:auto !important;
+    margin:0 0 8px !important;
+    padding:0 !important;
+    background:transparent !important;
+    border-bottom:0 !important;
+    box-shadow:none !important;
+    backdrop-filter:none !important;
+  }
+  body.money-nest-view-calendar .topbar .eyebrow{
+    font-size:11px !important;
+    line-height:1.08 !important;
+    margin:0 0 1px !important;
+  }
+  body.money-nest-view-calendar .topbar h2{
+    font-size:23px !important;
+    line-height:1.04 !important;
+    margin:0 !important;
+  }
+  body.money-nest-view-calendar #calendar.view.active{
+    padding-top:0 !important;
+  }
+  body.money-nest-view-calendar #calendar .calendar-toolbar.calendar-toolbar-local,
+  body.money-nest-view-calendar #calendar .calendar-toolbar,
+  #calendar .calendar-toolbar.calendar-toolbar-local,
+  #calendar .calendar-toolbar{
+    position:static !important;
+    top:auto !important;
+    left:auto !important;
+    right:auto !important;
+    z-index:auto !important;
+    width:auto !important;
+    margin:0 0 10px !important;
+    padding:9px 10px !important;
+    border-radius:18px !important;
+    box-shadow:none !important;
+  }
+  body.money-nest-view-calendar #calendarGrid .day,
+  #calendarGrid .day{
+    scroll-margin-top:12px !important;
+    padding:8px !important;
+  }
+  #calendarGrid .day-top{
+    position:static !important;
+    top:auto !important;
+    z-index:auto !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:space-between !important;
+    gap:8px !important;
+    margin:0 0 6px !important;
+    padding:2px 4px 4px !important;
+    border-radius:0 !important;
+    background:transparent !important;
+    border:0 !important;
+    box-shadow:none !important;
+    backdrop-filter:none !important;
+    font-size:12px !important;
+    line-height:1.1 !important;
+  }
+  #calendarGrid .day-num,
+  #calendarGrid .day-balance{
+    line-height:1.1 !important;
+  }
+
+  /* Dashboard: compact every card/list pattern, not just account cards. */
+  #dashboard .panel,
+  #dashboard .card{
+    padding:10px 11px !important;
+    border-radius:17px !important;
+  }
+  #dashboard .panel-head,
+  #dashboard .action-section-title{
+    margin-bottom:7px !important;
+    gap:8px !important;
+    align-items:flex-end !important;
+  }
+  #dashboard .panel-head h3,
+  #dashboard .action-section-title h4{
+    font-size:17px !important;
+    line-height:1.08 !important;
+  }
+  #dashboard .action-section-title span,
+  #dashboard .hint,
+  #dashboard .sub{
+    font-size:11px !important;
+    line-height:1.2 !important;
+  }
+  #dashboard .dashboard-stack,
+  #dashboard .action-center-v2{
+    gap:12px !important;
+  }
+  #dashboard .action-list-v2{
+    gap:7px !important;
+  }
+  #dashboard .action-row-v2{
+    grid-template-columns:minmax(0,1fr) auto !important;
+    gap:8px !important;
+    padding:8px 9px !important;
+    border-radius:14px !important;
+    min-height:0 !important;
+    align-items:center !important;
+  }
+  #dashboard .action-left{
+    gap:7px !important;
+    align-items:center !important;
+  }
+  #dashboard .action-symbol{
+    font-size:16px !important;
+    line-height:1 !important;
+  }
+  #dashboard .action-row-v2 .row-title,
+  #dashboard .upcoming-row .row-title,
+  #dashboard .row .row-title{
+    font-size:14px !important;
+    line-height:1.1 !important;
+  }
+  #dashboard .action-row-v2 .row-sub,
+  #dashboard .upcoming-row .row-sub,
+  #dashboard .row .row-sub{
+    font-size:11px !important;
+    line-height:1.18 !important;
+    margin-top:1px !important;
+  }
+  #dashboard .action-row-v2 .debt-status-pill{
+    justify-self:end !important;
+    align-self:center !important;
+    padding:4px 7px !important;
+    font-size:10px !important;
+    white-space:nowrap !important;
+  }
+  #dashboard .row,
+  #dashboard .upcoming-row{
+    padding:8px 9px !important;
+    border-radius:14px !important;
+    gap:8px !important;
+    min-height:0 !important;
+  }
+  #dashboard .upcoming-row{
+    grid-template-columns:minmax(0,1fr) auto !important;
+  }
+  #dashboard .upcoming-row .amount,
+  #dashboard .row .amount{
+    font-size:14px !important;
+    min-width:auto !important;
+    text-align:right !important;
+  }
+}
+
+@media(max-width:390px){
+  body.money-nest-view-calendar #calendar.view.active{padding-top:0 !important;}
+  body.money-nest-view-calendar #calendar .calendar-toolbar.calendar-toolbar-local,
+  body.money-nest-view-calendar #calendar .calendar-toolbar{top:auto !important;}
+  #dashboard .action-row-v2{grid-template-columns:minmax(0,1fr) auto !important;}
+  #dashboard .action-row-v2 .debt-status-pill{font-size:9.5px !important;padding:3px 6px !important;}
+}
+
+/* v2-175 settings readability + local undo clarity */
+.settings-stack-v175{
+  gap:12px;
+}
+.settings-overview{
+  padding:18px 20px;
+  background:linear-gradient(135deg, #fffaf3, #f6eddf);
+}
+.settings-overview h3{
+  margin:0 0 5px;
+}
+.settings-overview .hint{
+  max-width:780px;
+}
+.settings-group-label{
+  margin:8px 2px -2px;
+  color:var(--muted);
+  font-weight:900;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  font-size:12px;
+}
+.settings-summary-main{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  min-width:0;
+}
+.settings-emoji{
+  width:38px;
+  height:38px;
+  border-radius:14px;
+  display:grid;
+  place-items:center;
+  background:#fff7ed;
+  border:1px solid var(--line);
+  flex:0 0 auto;
+  box-shadow:0 6px 14px rgba(90,68,46,.06);
+}
+.settings-collapsible > summary{
+  padding:14px 18px;
+}
+.settings-collapse-body{
+  padding:14px 18px 18px;
+}
+.settings-button-grid-v175{
+  grid-template-columns:repeat(auto-fit,minmax(210px,1fr));
+}
+.settings-button-grid-v175 .ghost,
+.settings-button-grid-v175 .file-label{
+  justify-content:flex-start;
+  text-align:left;
+}
+.settings-notes-compact{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  gap:10px;
+}
+.settings-notes-compact p{
+  margin:0;
+  padding:10px 12px;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:#fffaf3;
+}
+.change-row .row-sub{
+  display:block;
+}
+.change-detail small{
+  color:var(--muted);
+}
+@media(max-width:700px){
+  .settings-overview{padding:14px 16px;border-radius:22px}
+  .settings-collapsible > summary{padding:12px 14px;align-items:center}
+  .settings-collapse-body{padding:12px 14px 14px}
+  .settings-emoji{width:34px;height:34px;border-radius:12px}
+  .settings-collapsible > summary b{font-size:16px}
+  .settings-collapsible > summary small{font-size:12px;line-height:1.25}
+  .summary-pill{padding:4px 8px;font-size:11px}
+  .settings-notes-compact{grid-template-columns:1fr}
+  .settings-button-grid-v175{gap:8px}
+  .settings-button-grid-v175 .ghost,
+  .settings-button-grid-v175 .file-label{padding:12px 14px;border-radius:16px}
+}

@@ -198,51 +198,90 @@
       </section>
 
       <section id="settings" class="view">
-        <div class="settings-stack">
-          <section class="panel settings-tools-panel">
-            <div class="panel-head">
-              <div>
-                <h3>Backup & batch editing</h3>
-                <p class="hint">Use JSON for full backup/restore. Use CSVs when you want to batch edit.</p>
-              </div>
-            </div>
-            <div class="settings-button-grid">
-              <button id="backupBtn" class="ghost">Export backup</button>
-              <button id="financialPictureBtn" class="ghost">Export financial picture</button>
-              <button id="extendedFinancialPictureBtn" class="ghost">Export 12-month picture</button>
-              <button id="csvExportBtn" class="ghost">Export editable CSVs</button>
-              <label class="ghost file-label">
-                Import backup
-                <input id="importInput" type="file" accept="application/json"/>
-              </label>
-              <label class="ghost file-label">
-                Import edited CSV
-                <input id="csvImportInput" type="file" accept=".csv,text/csv"/>
-              </label>
-              <button id="settingsSampleResetBtn" class="ghost">Reset sample data</button>
-              <button id="settingsClearAllBtn" class="danger ghost">Clear everything</button>
+        <div class="settings-stack settings-stack-v175">
+          <section class="settings-overview panel">
+            <div>
+              <p class="eyebrow">Settings map</p>
+              <h3>⚙️ Money Nest controls</h3>
+              <p class="hint">Cloud sync and backups first, then editing/customization tools. Recent Changes is local browser undo history, so cloud save dates can be newer than this list.</p>
             </div>
           </section>
 
-          <details class="panel settings-collapsible" open>
+          <details class="panel settings-collapsible settings-sync-card" open>
             <summary>
-              <span>
-                <b>Cloud sync</b>
-                <small>Supabase login + manual/optional auto-save</small>
+              <span class="settings-summary-main">
+                <span class="settings-emoji">☁️</span>
+                <span>
+                  <b>Cloud sync</b>
+                  <small>Supabase login + manual/optional auto-save</small>
+                </span>
               </span>
               <span class="summary-pill" id="cloudSyncSummary">Off</span>
             </summary>
             <div class="settings-collapse-body">
-              <p class="hint">Use Supabase to save/load your Money Nest data across browsers/devices. Keep JSON backups too.</p>
+              <p class="hint">Use Supabase to save/load your Money Nest data across browsers/devices. Keep JSON backups too. Recent Changes/undo history stays local to this browser so it does not bloat cloud data.</p>
               <div id="cloudSyncPanel" class="cloud-sync-panel"></div>
             </div>
           </details>
 
+          <section class="panel settings-tools-panel settings-backup-card">
+            <div class="panel-head">
+              <div>
+                <h3>📦 Backup & reports</h3>
+                <p class="hint">Use JSON for full backup/restore. Use CSVs when you want to batch edit.</p>
+              </div>
+            </div>
+            <div class="settings-button-grid settings-button-grid-v175">
+              <button id="backupBtn" class="ghost">💾 Export backup</button>
+              <button id="financialPictureBtn" class="ghost">📄 Export financial picture</button>
+              <button id="extendedFinancialPictureBtn" class="ghost">🗓️ Export 12-month picture</button>
+              <button id="csvExportBtn" class="ghost">📊 Export editable CSVs</button>
+              <label class="ghost file-label">
+                📥 Import backup
+                <input id="importInput" type="file" accept="application/json"/>
+              </label>
+              <label class="ghost file-label">
+                📥 Import edited CSV
+                <input id="csvImportInput" type="file" accept=".csv,text/csv"/>
+              </label>
+              <button id="settingsSampleResetBtn" class="ghost">🧪 Reset sample data</button>
+              <button id="settingsClearAllBtn" class="danger ghost">🧨 Clear everything</button>
+            </div>
+          </section>
+
+          <details class="panel settings-collapsible settings-undo-card" open>
+            <summary>
+              <span class="settings-summary-main">
+                <span class="settings-emoji">↩️</span>
+                <span>
+                  <b>Recent changes</b>
+                  <small>Local undo history for this browser/device</small>
+                </span>
+              </span>
+              <span class="summary-pill">local</span>
+            </summary>
+            <div class="settings-collapse-body">
+              <div class="panel-head compact-head">
+                <p class="hint">New local edits are saved here going forward. Cloud save/load dates may be newer because undo history is intentionally not uploaded to Supabase.</p>
+                <div class="inline-actions">
+                  <button class="ghost small" id="undoLastChangeBtn">Undo last change</button>
+                  <button class="ghost small" id="clearChangeHistoryBtn">Clear history</button>
+                </div>
+              </div>
+              <div id="recentChangesList" class="template-list change-list"></div>
+            </div>
+          </details>
+
+          <div class="settings-group-label">Customize</div>
+
           <details class="panel settings-collapsible">
             <summary>
-              <span>
-                <b>Categories</b>
-                <small>Emojis/colors used across the app</small>
+              <span class="settings-summary-main">
+                <span class="settings-emoji">🏷️</span>
+                <span>
+                  <b>Categories</b>
+                  <small>Emojis/colors used across the app</small>
+                </span>
               </span>
               <span class="summary-pill" id="settingsCategoryCount">0</span>
             </summary>
@@ -257,9 +296,32 @@
 
           <details class="panel settings-collapsible">
             <summary>
-              <span>
-                <b>Paycheck estimator</b>
-                <small>Hourly paycheck estimates for Mak and Ty</small>
+              <span class="settings-summary-main">
+                <span class="settings-emoji">⚡</span>
+                <span>
+                  <b>Transaction templates</b>
+                  <small>Saved title/category shortcuts for auto-fill</small>
+                </span>
+              </span>
+              <span class="summary-pill" id="settingsTemplateCount">0</span>
+            </summary>
+            <div class="settings-collapse-body">
+              <div class="panel-head compact-head">
+                <p class="hint">Saved title shortcuts for category/notes only. They do not save type, status, or account routing.</p>
+                <button class="primary small" id="addTemplateBtn">+ Template</button>
+              </div>
+              <div id="transactionTemplateList" class="template-list"></div>
+            </div>
+          </details>
+
+          <details class="panel settings-collapsible">
+            <summary>
+              <span class="settings-summary-main">
+                <span class="settings-emoji">💵</span>
+                <span>
+                  <b>Paycheck estimator</b>
+                  <small>Hourly paycheck estimates for Mak and Ty</small>
+                </span>
               </span>
               <span class="summary-pill" id="settingsPaycheckCount">2</span>
             </summary>
@@ -310,12 +372,14 @@
             </div>
           </details>
 
-
           <details class="panel settings-collapsible">
             <summary>
-              <span>
-                <b>Dropdown defaults</b>
-                <small>Default filters for account/debt transaction views</small>
+              <span class="settings-summary-main">
+                <span class="settings-emoji">🎛️</span>
+                <span>
+                  <b>Dropdown defaults</b>
+                  <small>Default filters for account/debt transaction views</small>
+                </span>
               </span>
               <span class="summary-pill">filters</span>
             </summary>
@@ -324,52 +388,20 @@
             </div>
           </details>
 
-          <details class="panel settings-collapsible" open>
-            <summary>
-              <span>
-                <b>Recent changes</b>
-                <small>Undo the last saved change if something went sideways</small>
-              </span>
-              <span class="summary-pill">↩</span>
-            </summary>
-            <div class="settings-collapse-body">
-              <div class="panel-head compact-head">
-                <p class="hint">New edits are saved here going forward. Use this for “where did that transaction go?” moments.</p>
-                <div class="inline-actions">
-                  <button class="ghost small" id="undoLastChangeBtn">Undo last change</button>
-                  <button class="ghost small" id="clearChangeHistoryBtn">Clear history</button>
-                </div>
-              </div>
-              <div id="recentChangesList" class="template-list change-list"></div>
-            </div>
-          </details>
+          <div class="settings-group-label">Reference</div>
 
           <details class="panel settings-collapsible">
             <summary>
-              <span>
-                <b>Transaction templates</b>
-                <small>Saved title/category shortcuts for auto-fill</small>
-              </span>
-              <span class="summary-pill" id="settingsTemplateCount">0</span>
-            </summary>
-            <div class="settings-collapse-body">
-              <div class="panel-head compact-head">
-                <p class="hint">Saved title shortcuts for category/notes only. They do not save type, status, or account routing.</p>
-                <button class="primary small" id="addTemplateBtn">+ Template</button>
-              </div>
-              <div id="transactionTemplateList" class="template-list"></div>
-            </div>
-          </details>
-
-          <details class="panel settings-collapsible">
-            <summary>
-              <span>
-                <b>How this version works</b>
-                <small>Quick reference notes</small>
+              <span class="settings-summary-main">
+                <span class="settings-emoji">📚</span>
+                <span>
+                  <b>How this version works</b>
+                  <small>Quick reference notes</small>
+                </span>
               </span>
               <span class="summary-pill">?</span>
             </summary>
-            <div class="settings-collapse-body notes">
+            <div class="settings-collapse-body notes settings-notes-compact">
               <p><b>Saved filters:</b> Money Nest now remembers the last filter/sort dropdowns you chose on Calendar, Bills, transaction ledgers, and account forecast views. Search text is temporary and will not hide things later.</p>
               <p><b>Account forecast range:</b> Removed All Forecast because very long recurring schedules could freeze the Accounts page. Use Next 90 days for the longest saved forecast window.</p>
               <p><b>Calendar filter:</b> view All, Mak Checking, Ty Checking, Joint Checking, etc.</p>
@@ -380,19 +412,14 @@
               <p><b>Paychecks:</b> use the Paycheck type for true paychecks. Regular Income can be used for Venmo, cash, refunds, etc. without affecting safe-to-spend.</p>
               <p><b>Dates:</b> Money Nest uses your browser's local date so late-night use does not accidentally roll into tomorrow because of UTC time.</p>
               <p><b>Safe to spend:</b> On payday, paycheck accounts now use the following paycheck as the horizon, so Safe to Spend does not collapse to only today’s leftover balance.</p>
-              <p><b>Recent changes:</b> Settings has a Recent changes section that can undo saved edits going forward. JSON backup import is handled separately from undo history so restore files do not create huge change snapshots. CSV is best for batch editing existing data; import Accounts/Debts/Categories before Transactions if rebuilding from empty.</p>
-              <p><b>Recurring cleared status:</b> Mark cleared / Mark planned now applies only to the clicked occurrence. Recurring templates stay planned by default, and individual cleared dates are stored as occurrence overrides.</p>
-              <p><b>Debt balances:</b> Starting Balance is the default tracking baseline. For loans and medical payment plans, Statement/Current Balance + Date can be used as the live lender/provider baseline, so Current Balance starts from the latest provider balance and only counts cleared activity after that date.</p>
-              <p><b>BNPL installment status:</b> Buy Now, Pay Later accounts now infer Planned/Complete from their linked installment schedule when no manual status is set, and their Installment Status can be edited like other debt payment statuses.</p>
-              <p><b>Loan payoff forecast:</b> Auto loans can estimate principal/interest/fees from cleared payments that have a breakdown. Planned/recurring loan payments and blank cleared recurring payments can use that estimate, while manual payment breakdowns still override it.</p>
-              <p><b>Credit cards:</b> the Credit Line card and debt-list account rows show Available Credit using credit limit minus current balance. Debts also includes a by-owner utilization summary with a temporary payoff simulator for testing how paying down cards would change utilization.</p>
-              <p><b>Debts page:</b> each debt type section has Expand accounts / Collapse accounts buttons that only open or close the accounts inside that type.</p>
-              <p><b>Debt spending:</b> enter an expense directly on a credit card/Klarna/loan account to increase its balance.</p>
-              <p><b>Debt payments:</b> monthly payment totals use minimum/monthly due + manual extra by default. Enter a cleared transfer from cash and link a debt to reduce Current Balance; debt detail ledgers show those payments as positive/green.</p>
-              <p><b>Use card instead:</b> right-click a planned cash expense and choose “Use card instead” to keep the spending category/cash plan, create the card charge on the purchase date, and schedule the card payment for a separate payment date.</p>
-              <p><b>Create card payment:</b> right-click an existing credit-card purchase and choose “Create card payment” to create the cash-account payment afterward. You can also create a pending IOU/reimbursement in the same flow when another account fronted the payment.</p>
-              <p><b>Pending reimbursements:</b> use IOU / reimbursement on an account when one account fronts money and another will pay it back later. The paying account plans for money leaving, while the receiving account shows the expected reimbursement but does not count it as available until cleared.</p>
-              <p><b>Statements:</b> Statement Balance is kept separate. Use “Reset tracking baseline to this statement” when you want the statement balance/date to become the new Current Balance baseline.</p>
+              <p><b>Recent changes:</b> Settings has a Recent Changes section that can undo saved local edits going forward. JSON backup/cloud imports are handled separately from undo history so restore files do not create huge change snapshots. CSV is best for batch editing existing data; import Accounts/Debts/Categories before Transactions if rebuilding from empty.</p>
+              <p><b>Recurring cleared status:</b> Mark cleared / mark planned applies only to the clicked occurrence. Recurring templates stay planned by default, and individual cleared dates are stored as occurrence overrides.</p>
+              <p><b>Debt balances:</b> Starting Balance is the default tracking baseline. For loans and medical payment plans, Statement/Current Balance + Date can be used as the live lender/provider baseline.</p>
+              <p><b>BNPL installment status:</b> Buy Now, Pay Later accounts infer Planned/Complete from their linked installment schedule when no manual status is set.</p>
+              <p><b>Loan payoff forecast:</b> Auto loans can estimate principal/interest/fees from cleared payments that have a breakdown.</p>
+              <p><b>Credit cards:</b> credit rows show Available Credit and Debts includes by-owner utilization summaries with a payoff simulator.</p>
+              <p><b>Debt workflows:</b> Use Card Instead and Create Card Payment help connect cash plans, card charges, payments, and optional IOUs/reimbursements.</p>
+              <p><b>Statements:</b> Statement Balance is separate. Use “Reset tracking baseline to this statement” when you want the statement balance/date to become the new Current Balance baseline.</p>
               <p><b>Categories:</b> emojis/colors show on the calendar and account/debt ledgers.</p>
             </div>
           </details>

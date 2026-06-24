@@ -2990,8 +2990,30 @@ function loadChangeHistory(){
   catch(err){ return []; }
 }
 function saveChangeHistory(history){
-  try{ localStorage.setItem(CHANGE_HISTORY_KEY, JSON.stringify((history || []).slice(0,10))); }
-  catch(err){ console.warn("Could not save change history", err); }
+  // Recent Changes stores full before-snapshots so Undo can work. On iPhone/Safari,
+  // localStorage can fill up quickly, so save fewer items before giving up instead of
+  // silently letting history get stale.
+  const normalized = (history || []).filter(Boolean);
+  const attempts = [5, 3, 1];
+  for(const limit of attempts){
+    try{
+      localStorage.setItem(CHANGE_HISTORY_KEY, JSON.stringify(normalized.slice(0, limit)));
+      return;
+    } catch(err){
+      if(limit === attempts[attempts.length - 1]) console.warn("Could not save undoable change history", err);
+    }
+  }
+  // Last-resort: keep a tiny non-undoable breadcrumb so the list still reflects
+  // that a change happened, even if storage is too tight for restore snapshots.
+  try{
+    const tiny = normalized.slice(0, 5).map(item=>({
+      id:item.id || uid(),
+      at:item.at || new Date().toISOString(),
+      label:item.label || "Changed Money Nest data",
+      storageLimited:true
+    }));
+    localStorage.setItem(CHANGE_HISTORY_KEY, JSON.stringify(tiny));
+  } catch(err){}
 }
 
 function snapshotCategoryLabel(snapshot, categoryId){
@@ -3075,7 +3097,67 @@ function changeTxItemHTML(t, snapshot, className, historyIndex, kind, extraHTML=
   const id = String(t?.id || "").replace(/'/g, "\\'");
   return `<li class="${className || ""}"><div class="change-tx-line"><span>${txOneLine(t, snapshot)}${extraHTML}</span><button type="button" class="ghost tiny" onclick="event.preventDefault(); event.stopPropagation(); undoSingleTransactionChange(${historyIndex}, '${kind}', '${id}')">${changeActionLabel(kind)}</button></div></li>`;
 }
+function buildCompactChangeDetails(before, after){
+  const beforeTx = before.transactions || [];
+  const afterTx = after.transactions || [];
+  const beforeMap = new Map(beforeTx.map(t=>[t.id,t]));
+  const afterMap = new Map(afterTx.map(t=>[t.id,t]));
+  const added = afterTx.filter(t=>!beforeMap.has(t.id));
+  const removed = beforeTx.filter(t=>!afterMap.has(t.id));
+  const edited = afterTx
+    .filter(t=>beforeMap.has(t.id) && JSON.stringify(beforeMap.get(t.id)) !== JSON.stringify(t))
+    .map(t=>({before:beforeMap.get(t.id), after:t, diff:txDiffLine(beforeMap.get(t.id), t, before, after)}));
+  return {
+    added: added.slice(0, 12),
+    edited: edited.slice(0, 12),
+    removed: removed.slice(0, 12),
+    addedCount: added.length,
+    editedCount: edited.length,
+    removedCount: removed.length,
+    debtChanged: JSON.stringify(before.debts || []) !== JSON.stringify(after.debts || []),
+    accountChanged: JSON.stringify(before.accounts || []) !== JSON.stringify(after.accounts || []),
+    settingsChanged: JSON.stringify(before.settings || {}) !== JSON.stringify(after.settings || {}),
+    afterSnapshotLite: {
+      accounts: after.accounts || [],
+      debts: after.debts || [],
+      categories: after.categories || []
+    },
+    beforeSnapshotLite: {
+      accounts: before.accounts || [],
+      debts: before.debts || [],
+      categories: before.categories || []
+    }
+  };
+}
+function compactChangeDetailsHTML(details, historyIndex=0){
+  if(!details) return "";
+  const chunks = [];
+  const afterSnap = details.afterSnapshotLite || {};
+  const beforeSnap = details.beforeSnapshotLite || {};
+  const added = details.added || [];
+  const edited = details.edited || [];
+  const removed = details.removed || [];
+  if(added.length){
+    chunks.push(`<div><b>Added</b><ul>${added.map(t=>changeTxItemHTML(t, afterSnap, "added-change", historyIndex, "added")).join("")}${(details.addedCount || added.length) > added.length ? `<li>+${(details.addedCount || 0) - added.length} more</li>` : ""}</ul></div>`);
+  }
+  if(edited.length){
+    chunks.push(`<div><b>Edited</b><ul>${edited.map(pair=>changeTxItemHTML(pair.after, afterSnap, "", historyIndex, "edited", `<br><small>${pair.diff || "Transaction details changed"}</small>`)).join("")}${(details.editedCount || edited.length) > edited.length ? `<li>+${(details.editedCount || 0) - edited.length} more</li>` : ""}</ul></div>`);
+  }
+  if(removed.length){
+    chunks.push(`<div><b>Deleted</b><ul>${removed.map(t=>changeTxItemHTML(t, beforeSnap, "deleted-change", historyIndex, "deleted")).join("")}${(details.removedCount || removed.length) > removed.length ? `<li>+${(details.removedCount || 0) - removed.length} more</li>` : ""}</ul></div>`);
+  }
+  if(!chunks.length && details.debtChanged) chunks.push(`<div><b>Debt/account settings changed</b><small> Open a JSON backup if you need the exact audit trail.</small></div>`);
+  if(!chunks.length && details.accountChanged) chunks.push(`<div><b>Cash account settings changed</b><small> Open a JSON backup if you need the exact audit trail.</small></div>`);
+  if(!chunks.length && details.settingsChanged) chunks.push(`<div><b>Settings/templates changed</b><small> This may include filters, templates, paycheck settings, or app preferences.</small></div>`);
+  return chunks.join("");
+}
 function changeDetailsHTML(item, historyIndex=0){
+  if(item?.storageLimited){
+    return `<small>Recorded, but undo details were not saved because browser storage was tight. Export a JSON backup before big edits.</small>`;
+  }
+  if(item?.details){
+    return compactChangeDetailsHTML(item.details, historyIndex) || `<small>No detail summary available for this change.</small>`;
+  }
   try{
     const before = JSON.parse(item.before || "{}");
     const after = JSON.parse(item.after || "{}");
@@ -3107,16 +3189,26 @@ function undoSingleTransactionChange(historyIndex, kind, txId){
   const history = loadChangeHistory();
   const item = history[historyIndex];
   if(!item){ alert("That recent change is no longer available."); return; }
-  let before, after;
+  if(item.storageLimited){
+    alert("That entry was saved without undo details because browser storage was tight.");
+    return;
+  }
+  let before, after, beforeTx, afterTx;
   try{
-    before = JSON.parse(item.before || "{}");
-    after = JSON.parse(item.after || "{}");
+    before = item.before ? JSON.parse(item.before || "{}") : {};
+    after = item.after ? JSON.parse(item.after || "{}") : {};
+    if(item.details){
+      const editedPair = (item.details.edited || []).find(pair=>pair?.before?.id === txId || pair?.after?.id === txId);
+      beforeTx = (item.details.removed || []).find(t=>t.id === txId) || editedPair?.before || (before.transactions || []).find(t=>t.id === txId);
+      afterTx = (item.details.added || []).find(t=>t.id === txId) || editedPair?.after || (after.transactions || []).find(t=>t.id === txId);
+    } else {
+      beforeTx = (before.transactions || []).find(t=>t.id === txId);
+      afterTx = (after.transactions || []).find(t=>t.id === txId);
+    }
   } catch(err){
     alert("Could not read that change snapshot.");
     return;
   }
-  const beforeTx = (before.transactions || []).find(t=>t.id === txId);
-  const afterTx = (after.transactions || []).find(t=>t.id === txId);
   let label = "Undo this transaction change";
   if(kind === "added") label = `Remove added transaction: ${(afterTx?.title || "Untitled")}?`;
   if(kind === "edited") label = `Undo edit to transaction: ${(afterTx?.title || beforeTx?.title || "Untitled")}?`;
@@ -3183,12 +3275,17 @@ function summarizeDataChange(beforeRaw, afterRaw){
 function recordChangeSnapshot(beforeRaw, afterRaw){
   if(suppressChangeHistory || !beforeRaw || !afterRaw || beforeRaw === afterRaw) return;
   const history = loadChangeHistory();
+  let details = null;
+  try{ details = buildCompactChangeDetails(JSON.parse(beforeRaw || "{}"), JSON.parse(afterRaw || "{}")); }
+  catch(err){ details = null; }
   history.unshift({
     id: uid(),
     at: new Date().toISOString(),
     label: summarizeDataChange(beforeRaw, afterRaw),
     before: beforeRaw,
-    after: afterRaw
+    // v2-175: keep compact details instead of a second full after-snapshot so
+    // Recent Changes keeps saving reliably on iPhone/localStorage-limited browsers.
+    details
   });
   saveChangeHistory(history);
 }
@@ -6481,26 +6578,30 @@ function renderRecentChanges(){
   if(clearBtn) clearBtn.disabled = !history.length;
 
   if(!history.length){
-    list.innerHTML = `<div class="empty">No undoable changes recorded yet. New saves will appear here.</div>`;
+    list.innerHTML = `<div class="empty">No undoable changes recorded yet. New local edits will appear here. Cloud save/load dates can be newer because undo history stays on this browser only.</div>`;
     return;
   }
 
-  list.innerHTML = history.slice(0,8).map((item, index)=>`
+  list.innerHTML = history.slice(0,8).map((item, index)=>{
+    const canUndo = !!item.before && !item.storageLimited;
+    return `
     <details class="template-row change-row" ${index === 0 ? "open" : ""}>
       <summary>
         <span>
-          <span class="row-title">${item.label || "Changed Money Nest data"}</span>
-          <span class="row-sub">${recentChangeTimeLabel(item.at)}</span>
+          <span class="row-title">${item.label || "Changed Money Nest data"}${item.storageLimited ? " · storage-limited" : ""}</span>
+          <span class="row-sub">${recentChangeTimeLabel(item.at)} · local browser history</span>
         </span>
-        ${index === 0 ? `<button type="button" class="ghost small" onclick="event.preventDefault(); event.stopPropagation(); undoLastChange();">Undo</button>` : ""}
+        ${index === 0 && canUndo ? `<button type="button" class="ghost small" onclick="event.preventDefault(); event.stopPropagation(); undoLastChange();">Undo</button>` : ""}
       </summary>
       <div class="change-detail">${changeDetailsHTML(item, index)}</div>
-    </details>`).join("");
+    </details>`;
+  }).join("");
 }
 function undoLastChange(){
   const history = loadChangeHistory();
   const item = history.shift();
   if(!item){ alert("No recent change to undo."); return; }
+  if(!item.before || item.storageLimited){ alert("That recent change does not have an undo snapshot saved. Browser storage may have been full."); return; }
   if(!confirm(`Undo: ${item.label || "last change"}?`)) return;
   try{
     suppressChangeHistory = true;

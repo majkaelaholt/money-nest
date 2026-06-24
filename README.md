@@ -2,7 +2,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-173`
+Current version: `money-nest-v2-175`
 
 ## Important Notes
 
@@ -136,6 +136,21 @@ Use CSV for reviewing or batch-editing data.
 * [ ]
 
 ## Version Notes
+
+### v2-175
+
+* Cleaned up Settings into clearer sections with emoji headers: Cloud sync, Backup & reports, Recent changes, Customize, and Reference.
+* Clarified that Recent Changes is local browser undo history and does not necessarily match the latest cloud save/load date.
+* Made Recent Changes storage more reliable on iPhone/browser localStorage by saving compact change details and trimming history if storage gets tight.
+* Recent Changes now shows a storage-limited note instead of silently looking stale if undo snapshots cannot be saved.
+* No JSON/CSV import/export schema changes needed.
+
+### v2-174
+
+* Changed iPhone Calendar header/controls back to normal top-of-page content instead of fixed/sticky overlays.
+* Fixed mobile Calendar day headers/date numbers so they sit inside each day card correctly.
+* Further tightened Dashboard mobile cards/lists across similar sections, including Needs Attention, Debt Payments Due Soon, Credit Card Statements, Safe to Spend, and Upcoming Transactions.
+* No import/export schema changes needed.
 
 ### v2-173
 
