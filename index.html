@@ -224,6 +224,20 @@
             </div>
           </section>
 
+          <details class="panel settings-collapsible" open>
+            <summary>
+              <span>
+                <b>Cloud sync</b>
+                <small>Supabase login + manual/optional auto-save</small>
+              </span>
+              <span class="summary-pill" id="cloudSyncSummary">Off</span>
+            </summary>
+            <div class="settings-collapse-body">
+              <p class="hint">Use Supabase to save/load your Money Nest data across browsers/devices. Keep JSON backups too.</p>
+              <div id="cloudSyncPanel" class="cloud-sync-panel"></div>
+            </div>
+          </details>
+
           <details class="panel settings-collapsible">
             <summary>
               <span>
@@ -633,6 +647,7 @@
     <button id="ctxDelete" class="danger-text">🗑 Delete</button>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="app.js"></script>
 </body>
 </html>

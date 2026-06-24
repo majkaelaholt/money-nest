@@ -2830,3 +2830,29 @@ button:disabled{
 .util-sim-target-line{display:flex;justify-content:space-between;gap:10px;align-items:center;margin:8px 0 12px;padding:10px 12px;border-radius:14px;background:rgba(140,111,77,.08);border:1px solid var(--line);font-size:.9rem}
 .util-sim-target-line span{color:var(--muted)}
 .util-sim-target-line b{font-size:1rem}
+
+/* v2-167 Cloud sync */
+.cloud-sync-panel .cloud-status-card{
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap:12px;
+  padding:14px;
+  border:1px solid var(--border);
+  border-radius:18px;
+  background:rgba(255,255,255,.45);
+  margin-bottom:14px;
+}
+.cloud-sync-panel .small-value{
+  font-size:1.05rem;
+}
+.cloud-button-column{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:end;
+  gap:8px;
+  padding-top:22px;
+}
+.cloud-actions{
+  margin-top:12px;
+  flex-wrap:wrap;
+}

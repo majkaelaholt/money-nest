@@ -852,3 +852,8 @@ v2-166
 - Deleting a suggestion from the title autocomplete removes that saved template immediately without going to Settings.
 - Template deletion still only affects the saved suggestion; it does not delete any existing transactions.
 - No import/export schema changes needed.
+
+Update in v2.167:
+- Added Supabase Cloud Sync settings.
+- Supports login/logout, Save to cloud, Load from cloud, and optional auto-save.
+- Cloud sync can be paused/off and JSON backups remain recommended.

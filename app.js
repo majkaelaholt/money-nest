@@ -1,6 +1,244 @@
 const STORAGE_KEY = "moneyNest.v2.113";
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
+// v2.167: Supabase cloud sync helpers. This stores the full Money Nest JSON as one
+// per-user row in public.money_nest_data. RLS should restrict each row to auth.uid().
+const CLOUD_CONFIG_KEY = `${STORAGE_KEY}.cloudSync`;
+const DEFAULT_SUPABASE_URL = "https://phhfsoodpayvcblobmyn.supabase.co";
+const DEFAULT_SUPABASE_KEY = "sb_publishable_A0TLai1FSSYQMCfAd6JNEw_W8TWCkfl";
+let cloudClient = null;
+let cloudUser = null;
+let cloudAutoSaveTimer = null;
+let cloudSavingNow = false;
+
+function loadCloudConfig(){
+  try{
+    const saved = JSON.parse(localStorage.getItem(CLOUD_CONFIG_KEY) || "{}");
+    return {
+      url: saved.url || DEFAULT_SUPABASE_URL,
+      key: saved.key || DEFAULT_SUPABASE_KEY,
+      mode: saved.mode || "manual", // manual | auto | off
+      lastCloudSave: saved.lastCloudSave || "",
+      lastCloudLoad: saved.lastCloudLoad || ""
+    };
+  } catch(err){
+    return {url: DEFAULT_SUPABASE_URL, key: DEFAULT_SUPABASE_KEY, mode:"manual", lastCloudSave:"", lastCloudLoad:""};
+  }
+}
+function saveCloudConfig(patch={}){
+  const next = {...loadCloudConfig(), ...patch};
+  localStorage.setItem(CLOUD_CONFIG_KEY, JSON.stringify(next));
+  return next;
+}
+function cloudConfigReady(config=loadCloudConfig()){
+  return !!(config.url && config.key && String(config.url).startsWith("https://"));
+}
+function cloudLibReady(){ return !!(window.supabase && typeof window.supabase.createClient === "function"); }
+function getCloudClient(){
+  const config = loadCloudConfig();
+  if(!cloudConfigReady(config)) throw new Error("Add your Supabase project URL and publishable key first.");
+  if(!cloudLibReady()) throw new Error("Supabase library did not load. Check your internet connection, then refresh.");
+  if(!cloudClient || cloudClient.__moneyNestUrl !== config.url || cloudClient.__moneyNestKey !== config.key){
+    cloudClient = window.supabase.createClient(config.url, config.key);
+    cloudClient.__moneyNestUrl = config.url;
+    cloudClient.__moneyNestKey = config.key;
+  }
+  return cloudClient;
+}
+async function getCloudUser(refresh=false){
+  if(cloudUser && !refresh) return cloudUser;
+  const client = getCloudClient();
+  const {data: userData, error} = await client.auth.getUser();
+  if(error && !String(error.message || "").toLowerCase().includes("auth session missing")) console.warn("Cloud user check", error);
+  cloudUser = userData?.user || null;
+  return cloudUser;
+}
+function fmtCloudTime(iso){
+  if(!iso) return "Never";
+  try{ return new Date(iso).toLocaleString(); } catch(err){ return iso; }
+}
+function cloudStatusText(config=loadCloudConfig()){
+  if(config.mode === "off") return "Off";
+  if(!cloudConfigReady(config)) return "Setup needed";
+  if(cloudUser?.email) return config.mode === "auto" ? `Auto • ${cloudUser.email}` : `Manual • ${cloudUser.email}`;
+  return config.mode === "auto" ? "Auto • not logged in" : "Manual • not logged in";
+}
+async function renderCloudSyncSettings(){
+  const wrap = document.getElementById("cloudSyncPanel");
+  const pill = document.getElementById("cloudSyncSummary");
+  if(!wrap) return;
+  const config = loadCloudConfig();
+  try{ await getCloudUser(true); } catch(err){ cloudUser = null; }
+  if(pill) pill.textContent = cloudStatusText(config);
+  wrap.innerHTML = `
+    <div class="cloud-status-card">
+      <div>
+        <p class="eyebrow">Status</p>
+        <div class="value small-value">${cloudUser?.email ? "Signed in" : "Not signed in"}</div>
+        <p class="sub">${cloudUser?.email ? cloudUser.email : "Log in before saving/loading cloud data."}</p>
+      </div>
+      <div>
+        <p class="eyebrow">Last cloud save</p>
+        <div class="value small-value">${fmtCloudTime(config.lastCloudSave)}</div>
+        <p class="sub">Last cloud load: ${fmtCloudTime(config.lastCloudLoad)}</p>
+      </div>
+    </div>
+    <div class="two-col">
+      <label>Supabase project URL
+        <input id="cloudSupabaseUrl" type="url" value="${escapeAttr(config.url || "")}" placeholder="https://your-project.supabase.co">
+      </label>
+      <label>Supabase publishable/anon key
+        <input id="cloudSupabaseKey" type="password" value="${escapeAttr(config.key || "")}" placeholder="sb_publishable... or anon key">
+      </label>
+    </div>
+    <div class="two-col">
+      <label>Cloud sync mode
+        <select id="cloudSyncMode">
+          <option value="manual" ${config.mode === "manual" ? "selected" : ""}>Manual only</option>
+          <option value="auto" ${config.mode === "auto" ? "selected" : ""}>Auto-save after changes</option>
+          <option value="off" ${config.mode === "off" ? "selected" : ""}>Off / paused</option>
+        </select>
+      </label>
+      <label>Email
+        <input id="cloudEmail" type="email" value="${escapeAttr(cloudUser?.email || "")}" placeholder="you@example.com">
+      </label>
+    </div>
+    <div class="two-col">
+      <label>Password
+        <input id="cloudPassword" type="password" placeholder="Supabase login password">
+      </label>
+      <div class="cloud-button-column">
+        <button class="ghost small" type="button" onclick="saveCloudSettingsFromForm()">Save cloud settings</button>
+        <button class="ghost small" type="button" onclick="toggleCloudKeyVisibility()">Show/hide key</button>
+      </div>
+    </div>
+    <div class="inline-actions cloud-actions">
+      <button class="primary small" type="button" onclick="cloudSignUpFromForm()">Create login</button>
+      <button class="primary small" type="button" onclick="cloudLoginFromForm()">Log in</button>
+      <button class="ghost small" type="button" onclick="cloudLogout()">Log out</button>
+      <button class="ghost small" type="button" onclick="cloudSaveNow()">Save to cloud</button>
+      <button class="ghost small" type="button" onclick="cloudLoadNow()">Load from cloud</button>
+    </div>
+    <p class="hint"><b>Safety:</b> Manual only is safest while testing. Auto-save can be paused anytime by setting Cloud sync mode to Off / paused. Keep JSON backups as your emergency save file.</p>
+  `;
+}
+window.saveCloudSettingsFromForm = ()=>{
+  const old = loadCloudConfig();
+  const url = document.getElementById("cloudSupabaseUrl")?.value.trim() || "";
+  const key = document.getElementById("cloudSupabaseKey")?.value.trim() || "";
+  const mode = document.getElementById("cloudSyncMode")?.value || "manual";
+  saveCloudConfig({url, key, mode});
+  if(old.url !== url || old.key !== key){ cloudClient = null; cloudUser = null; }
+  renderCloudSyncSettings();
+  alert(mode === "off" ? "Cloud sync paused." : "Cloud settings saved.");
+};
+window.toggleCloudKeyVisibility = ()=>{
+  const input = document.getElementById("cloudSupabaseKey");
+  if(input) input.type = input.type === "password" ? "text" : "password";
+};
+async function cloudEmailPasswordFromForm(){
+  const old = loadCloudConfig();
+  const url = document.getElementById("cloudSupabaseUrl")?.value.trim() || "";
+  const key = document.getElementById("cloudSupabaseKey")?.value.trim() || "";
+  const mode = document.getElementById("cloudSyncMode")?.value || "manual";
+  saveCloudConfig({url, key, mode});
+  if(old.url !== url || old.key !== key){ cloudClient = null; cloudUser = null; }
+  const email = document.getElementById("cloudEmail")?.value.trim();
+  const password = document.getElementById("cloudPassword")?.value || "";
+  if(!email || !password) throw new Error("Enter your email and password first.");
+  return {email, password};
+}
+window.cloudSignUpFromForm = async()=>{
+  try{
+    const {email, password} = await cloudEmailPasswordFromForm();
+    const client = getCloudClient();
+    const {data: authData, error} = await client.auth.signUp({email, password});
+    if(error) throw error;
+    cloudUser = authData?.user || null;
+    await renderCloudSyncSettings();
+    alert("Cloud login created. If Supabase asks for email confirmation, check your email before logging in.");
+  } catch(err){ alert(`Cloud signup failed: ${err.message || err}`); }
+};
+window.cloudLoginFromForm = async()=>{
+  try{
+    const {email, password} = await cloudEmailPasswordFromForm();
+    const client = getCloudClient();
+    const {data: authData, error} = await client.auth.signInWithPassword({email, password});
+    if(error) throw error;
+    cloudUser = authData?.user || null;
+    await renderCloudSyncSettings();
+    alert("Logged in to cloud sync.");
+  } catch(err){ alert(`Cloud login failed: ${err.message || err}`); }
+};
+window.cloudLogout = async()=>{
+  try{
+    const client = getCloudClient();
+    await client.auth.signOut();
+    cloudUser = null;
+    await renderCloudSyncSettings();
+    alert("Logged out of cloud sync.");
+  } catch(err){ alert(`Cloud logout failed: ${err.message || err}`); }
+};
+async function requireCloudUser(){
+  const user = await getCloudUser(true);
+  if(!user) throw new Error("Log in to cloud sync first.");
+  return user;
+}
+function cloudPayload(){
+  // Keep undo history local only. The cloud row is the app data itself.
+  return JSON.parse(JSON.stringify(data));
+}
+async function saveDataToCloud({silent=false}={}){
+  const config = loadCloudConfig();
+  if(config.mode === "off") throw new Error("Cloud sync is paused/off.");
+  const user = await requireCloudUser();
+  const client = getCloudClient();
+  cloudSavingNow = true;
+  const now = new Date().toISOString();
+  const {error} = await client.from("money_nest_data").upsert({user_id:user.id, data:cloudPayload(), updated_at:now}, {onConflict:"user_id"});
+  cloudSavingNow = false;
+  if(error) throw error;
+  saveCloudConfig({lastCloudSave: now});
+  if(!silent){ await renderCloudSyncSettings(); alert("Saved Money Nest data to Supabase."); }
+}
+window.cloudSaveNow = async()=>{
+  try{ await saveDataToCloud(); }
+  catch(err){ cloudSavingNow = false; alert(`Cloud save failed: ${err.message || err}`); }
+};
+window.cloudLoadNow = async()=>{
+  try{
+    const config = loadCloudConfig();
+    if(config.mode === "off") throw new Error("Cloud sync is paused/off.");
+    const user = await requireCloudUser();
+    const client = getCloudClient();
+    const {data: row, error} = await client.from("money_nest_data").select("data, updated_at").eq("user_id", user.id).maybeSingle();
+    if(error) throw error;
+    if(!row?.data) throw new Error("No cloud backup found yet. Use Save to cloud first.");
+    const ok = confirm(`Load cloud data from ${fmtCloudTime(row.updated_at)}? This will replace the data currently in this browser. Export a JSON backup first if you are unsure.`);
+    if(!ok) return;
+    suppressChangeHistory = true;
+    data = normalizeData(row.data);
+    saveImportedBackupData(data);
+    suppressChangeHistory = false;
+    saveCloudConfig({lastCloudLoad: new Date().toISOString()});
+    currentView = "dashboard";
+    setView("dashboard");
+    await renderCloudSyncSettings();
+    alert("Loaded Money Nest data from Supabase.");
+  } catch(err){ suppressChangeHistory = false; alert(`Cloud load failed: ${err.message || err}`); }
+};
+function maybeQueueCloudAutoSave(){
+  const config = loadCloudConfig();
+  if(config.mode !== "auto" || cloudSavingNow) return;
+  clearTimeout(cloudAutoSaveTimer);
+  cloudAutoSaveTimer = setTimeout(async()=>{
+    try{ await saveDataToCloud({silent:true}); }
+    catch(err){ console.warn("Auto cloud save failed", err); }
+  }, 1500);
+}
+
+
+
 // v2.80: compatibility shim for browsers that do not expose element IDs as global variables.
 (function bindDomIdGlobals(){
   const ids = ['accountDetail', 'accountDetailContent', 'accountList', 'accounts', 'addAccountBtn', 'addBillBtn', 'addBudgetBtn', 'addCategoryBtn', 'addDayTransactionBtn', 'addDebtBtn', 'autoPaycheckHint', 'autoPaycheckLabel', 'backupBtn', 'financialPictureBtn', 'extendedFinancialPictureBtn', 'billAccountFilter', 'billCategoryFilter', 'billRecurrenceFilter', 'billSort', 'billTypeFilter', 'bills', 'billsList', 'budgetList', 'budgets', 'calendar', 'calendarAccountFilter', 'calendarCategoryHighlight', 'calendarCategoryHighlightDropdown', 'calendarCategoryHighlightBtn', 'calendarCategoryHighlightMenu', 'calendarGrid', 'cancelDayModal', 'cancelSimple', 'cancelTxBtn', 'categoryList', 'clearRecentBtn', 'closeDayModal', 'closeModal', 'closeSimple', 'csvExportBtn', 'csvImportInput', 'ctxDelete', 'ctxDuplicate', 'ctxEdit', 'ctxCreateCardPayment', 'ctxMarkReimbursed', 'ctxToggleCleared', 'ctxUseCardInstead', 'dashboard', 'dayModal', 'dayModalSub', 'dayModalTitle', 'dayModalTransactions', 'debtDetail', 'debtDetailContent', 'debtGroups', 'debtSnapshot', 'debts', 'deleteSimpleBtn', 'deleteTxBtn', 'duplicateTxBtn', 'importInput', 'modalTitle', 'monthLabel', 'nextMonth', 'prevMonth', 'quickAddBtn', 'recentPlacesList', 'recentChangesList', 'undoLastChangeBtn', 'clearChangeHistoryBtn', 'recurrenceDetails', 'repeatIntervalUnitLabel', 'safeSpendList', 'saveTxBtn', 'settings', 'settingsClearAllBtn', 'settingsSampleResetBtn', 'simpleFields', 'simpleForm', 'simpleModal', 'simpleTitle', 'summaryCards', 'todayBtn', 'transactionForm', 'transactionModal', 'txAccount', 'txAmount', 'txAutoPaycheck', 'txCategory', 'txContextMenu', 'txDate', 'txDebt', 'txDebtAccount', 'txLoanBreakdownWrap', 'txLoanPrincipal', 'txLoanInterest', 'txLoanFees', 'txLoanBreakdownHint', 'txDeleteAll', 'txDeleteOne', 'txDeleteScopeWrap', 'txId', 'txNotes', 'txRepeatInterval', 'txRepeatIntervalUnit', 'txRepeatOrdinal', 'txRepeatRule', 'txRepeatWeekday', 'txSaveScopeHint', 'txSaveScopeWrap', 'txScopeFuture', 'txScopeOne', 'txStatus', 'txTitle', 'txTransferTo', 'txType', 'txWeekendHandling', 'upcomingList', 'viewTitle', 'settingsPaycheckCount', 'paycheckProfileList', 'makHourlyRate', 'makHoursPerWorkday', 'makDeductionPercent', 'makFixedDeduction', 'tyHourlyRate', 'tyDefaultHours', 'tyDeductionPercent', 'tyFixedDeduction', 'paycheckHoursWrap', 'txPaycheckHoursOverride', 'billCategoryDropdown', 'billCategoryDropdownBtn', 'billCategoryDropdownMenu'];
@@ -18,6 +256,9 @@ const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 })();
 
 
+function escapeAttr(v){
+  return String(v ?? "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch] || ch));
+}
 function uid(){ return Math.random().toString(36).slice(2,10); }
 function money(n){ return (n < 0 ? "-" : "") + "$" + Math.abs(n || 0).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}); }
 function jsString(v){ return JSON.stringify(String(v ?? "")); }
@@ -2958,6 +3199,7 @@ function saveData(){
   localStorage.setItem(STORAGE_KEY, afterRaw);
   try {
     render();
+    maybeQueueCloudAutoSave();
   } catch (err) {
     console.error(err);
     document.body.insertAdjacentHTML("afterbegin", `<div style="margin:12px;padding:12px;border-radius:14px;background:#fff3f0;border:1px solid #d66;color:#5b2620;font-family:system-ui">
@@ -6370,6 +6612,7 @@ function renderSettings(){
 
   renderTransactionTemplates();
   renderDropdownDefaultsSettings();
+  renderCloudSyncSettings();
 
   const templateCount = document.getElementById("settingsTemplateCount");
   if(templateCount) templateCount.textContent = `${data.settings?.transactionTemplates?.length || 0}`;
