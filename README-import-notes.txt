@@ -867,3 +867,6 @@ v2-169
 - Made the iPhone/mobile layout more app-like with bottom navigation and a floating + Transaction button.
 - Fixed the Calendar mobile controls so the month/filter header stays pinned at the top while scrolling the calendar.
 - Kept desktop layout unchanged.
+
+
+v2-171: tightened iPhone/mobile layout, made account/dashboard cards more compact, and changed mobile calendar controls to a fixed top bar so they do not scroll with the calendar.
