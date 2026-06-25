@@ -5583,6 +5583,44 @@ function spendingPieTooltip(item, pieTotal){
   }
   return `${account}\n${item.cat.emoji} ${item.cat.name}: ${pct}% • ${money(item.amount)}`;
 }
+function budgetReviewPieData(stats){
+  const total = Math.max(0, Number(stats?.totalSpent || 0));
+  const categories = Array.isArray(stats?.categories) ? stats.categories : [];
+  const minStandaloneAmount = 100;
+  const minStandalonePct = 0.03;
+  const maxSlicesBeforeOther = 12;
+
+  let visible = [];
+  let grouped = [];
+  categories.forEach(item=>{
+    const pct = total ? Number(item.amount || 0) / total : 0;
+    const hasBudget = Number(item.budgetAmount || 0) > 0;
+    const isMeaningful = hasBudget || Number(item.amount || 0) >= minStandaloneAmount || pct >= minStandalonePct;
+    (isMeaningful ? visible : grouped).push(item);
+  });
+
+  if(visible.length > maxSlicesBeforeOther){
+    grouped = visible.slice(maxSlicesBeforeOther).concat(grouped);
+    visible = visible.slice(0, maxSlicesBeforeOther);
+  }
+
+  const otherAmount = grouped.reduce((s,c)=>s+Number(c.amount || 0),0);
+  const data = visible.concat(otherAmount > 0.005 ? [{
+    categoryId:"other",
+    cat:{name:"Other", emoji:"➕", color:"#9c7a54"},
+    amount:otherAmount,
+    budgetAmount:0,
+    children:grouped
+  }] : []);
+
+  return {
+    data,
+    grouped,
+    cutoff:minStandaloneAmount,
+    maxSlices:maxSlicesBeforeOther,
+    note:`Categories $${minStandaloneAmount}+ or 3%+ of spending show separately; tiny categories roll into Other.`
+  };
+}
 function budgetActualSpent(budget, monthRange){
   return expandedTransactions(monthRange.end)
     .filter(tx => tx.date >= monthRange.start && tx.date <= monthRange.end)
@@ -5684,10 +5722,8 @@ function renderBudgetReview(){
   const budgetMood = stats.overBudgetCount
     ? `${stats.overBudgetCount} over budget`
     : (stats.budgetRows.length ? "all tracked budgets okay" : "no budgets set yet");
-  const pieSource = stats.categories.slice(0,6);
-  const pieOtherItems = stats.categories.slice(6);
-  const pieOther = pieOtherItems.reduce((s,c)=>s+c.amount,0);
-  const pieData = pieSource.concat(pieOther > 0.005 ? [{categoryId:"other", cat:{name:"Other", emoji:"➕", color:"#9c7a54"}, amount:pieOther, budgetAmount:0, children:pieOtherItems}] : []);
+  const pieGroup = budgetReviewPieData(stats);
+  const pieData = pieGroup.data;
   const pieTotal = Math.max(0, stats.totalSpent);
   let pieCursor = 0;
   const pieSlices = pieData.map((item, index)=>{
@@ -5756,7 +5792,7 @@ function renderBudgetReview(){
         <div class="section-kicker">Where money went</div>
         <h4>Spending by category</h4>
         ${spendingPie}
-        <p class="hint">Pie chart uses cleared spending plus card-paid category spending. Transfer/payment outflows are included when the checkbox is on. Tap a slice/category to add a budget.</p>
+        <p class="hint">Pie chart uses cleared spending plus card-paid category spending. Transfer/payment outflows are included when the checkbox is on. ${pieGroup.note} Tap a slice/category to add a budget.</p>
       </section>
       <section class="budget-insight-card">
         <div class="section-kicker">Monthly pattern</div>
@@ -7726,7 +7762,7 @@ window.addBudgetFromReview = (categoryId)=>{
 };
 window.chooseOtherBudgetCategory = ()=>{
   const stats = budgetReviewStats();
-  const otherItems = stats.categories.slice(6);
+  const otherItems = budgetReviewPieData(stats).grouped;
   if(!otherItems.length){
     alert("No smaller categories to budget right now.");
     return;
