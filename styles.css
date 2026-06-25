@@ -4075,3 +4075,33 @@ button:disabled{
   .spending-pie{max-width:150px}
   .spending-legend{width:100%}
 }
+
+/* v2-180: interactive Budget Review pie + flow controls */
+.budget-review-check{
+  align-self:end;
+  display:flex !important;
+  flex-direction:row !important;
+  align-items:center;
+  gap:8px !important;
+  min-height:42px;
+  padding:10px 12px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:rgba(255,250,243,.75);
+  color:var(--ink) !important;
+  text-transform:none !important;
+  letter-spacing:0 !important;
+  font-size:13px !important;
+  font-weight:850 !important;
+}
+.budget-review-check input{width:auto;accent-color:var(--accent)}
+.spending-pie{display:block;overflow:visible;background:transparent;border-radius:0;border:0;box-shadow:0 10px 22px rgba(73,55,34,.08)}
+.spending-pie-slice{cursor:pointer;transition:transform .16s ease, filter .16s ease, opacity .16s ease;transform-origin:21px 21px;stroke:rgba(255,250,243,.82);stroke-width:.35}
+.spending-pie-slice:hover,.spending-pie-slice:focus{transform:scale(1.035);filter:brightness(1.05);outline:none;opacity:.95}
+.spending-pie-hole{fill:rgba(255,250,243,.86);stroke:var(--line);stroke-width:.35;pointer-events:none}
+.spending-legend-row{width:100%;border:0;border-bottom:1px solid rgba(220,200,176,.55);background:transparent;text-align:left;color:var(--ink);font:inherit;cursor:pointer}
+.spending-legend-row:hover,.spending-legend-row:focus{background:rgba(156,122,84,.08);border-radius:12px;outline:none;padding-left:6px;padding-right:6px}
+@media(max-width:700px){
+  .budget-review-check{grid-column:1 / -1;min-height:38px;padding:8px 10px;font-size:12px !important}
+  .spending-pie{max-width:130px}
+}

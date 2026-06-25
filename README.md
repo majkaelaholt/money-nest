@@ -2,7 +2,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-179`
+Current version: `money-nest-v2-180`
 
 ## Important Notes
 
@@ -136,6 +136,16 @@ Use CSV for reviewing or batch-editing data.
 * [ ]
 
 ## Version Notes
+
+### v2-180
+
+* Made Budget Review spending pie interactive.
+* Hovering or long-pressing chart slices/legend rows shows account, percent, and amount details.
+* The Other slice now summarizes the smaller grouped categories.
+* Tapping a slice or legend row opens Add Budget with that account/category preselected.
+* Added an Include transfers/card payments option so account review can show where money moved, including card-paid spending categories.
+* Budget performance now counts card-paid category payments, such as groceries paid back to a credit card.
+* No import/export schema changes needed.
 
 ### v2-179
 
