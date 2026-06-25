@@ -237,30 +237,37 @@
             </div>
           </details>
 
-          <section class="panel settings-tools-panel settings-backup-card">
-            <div class="panel-head">
-              <div>
-                <h3>📦 Backup & reports</h3>
-                <p class="hint">Use JSON for full backup/restore. Use CSVs when you want to batch edit.</p>
+          <details class="panel settings-collapsible settings-tools-panel settings-backup-card">
+            <summary>
+              <span class="settings-summary-main">
+                <span class="settings-emoji">📦</span>
+                <span>
+                  <b>Backup & reports</b>
+                  <small>JSON backups, reports, CSV import/export</small>
+                </span>
+              </span>
+              <span class="summary-pill">safety</span>
+            </summary>
+            <div class="settings-collapse-body">
+              <p class="hint">Use JSON for full backup/restore. Use CSVs when you want to batch edit.</p>
+              <div class="settings-button-grid settings-button-grid-v175">
+                <button id="backupBtn" class="ghost">💾 Export backup</button>
+                <button id="financialPictureBtn" class="ghost">📄 Export financial picture</button>
+                <button id="extendedFinancialPictureBtn" class="ghost">🗓️ Export 12-month picture</button>
+                <button id="csvExportBtn" class="ghost">📊 Export editable CSVs</button>
+                <label class="ghost file-label">
+                  📥 Import backup
+                  <input id="importInput" type="file" accept="application/json"/>
+                </label>
+                <label class="ghost file-label">
+                  📥 Import edited CSV
+                  <input id="csvImportInput" type="file" accept=".csv,text/csv"/>
+                </label>
+                <button id="settingsSampleResetBtn" class="ghost">🧪 Reset sample data</button>
+                <button id="settingsClearAllBtn" class="danger ghost">🧨 Clear everything</button>
               </div>
             </div>
-            <div class="settings-button-grid settings-button-grid-v175">
-              <button id="backupBtn" class="ghost">💾 Export backup</button>
-              <button id="financialPictureBtn" class="ghost">📄 Export financial picture</button>
-              <button id="extendedFinancialPictureBtn" class="ghost">🗓️ Export 12-month picture</button>
-              <button id="csvExportBtn" class="ghost">📊 Export editable CSVs</button>
-              <label class="ghost file-label">
-                📥 Import backup
-                <input id="importInput" type="file" accept="application/json"/>
-              </label>
-              <label class="ghost file-label">
-                📥 Import edited CSV
-                <input id="csvImportInput" type="file" accept=".csv,text/csv"/>
-              </label>
-              <button id="settingsSampleResetBtn" class="ghost">🧪 Reset sample data</button>
-              <button id="settingsClearAllBtn" class="danger ghost">🧨 Clear everything</button>
-            </div>
-          </section>
+          </details>
 
           <details class="panel settings-collapsible settings-undo-card" open>
             <summary>

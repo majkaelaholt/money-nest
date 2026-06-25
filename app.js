@@ -4848,8 +4848,9 @@ function renderCalendar(){
 
   let html = heads;
   calendarDays.forEach(day => {
-    const visibleTx = day.dayTx.slice(0,3);
-    const hiddenCount = Math.max(0, day.dayTx.length - visibleTx.length);
+    const mobileCalendar = window.matchMedia && window.matchMedia("(max-width: 700px)").matches;
+    const visibleTx = mobileCalendar ? day.dayTx : day.dayTx.slice(0,3);
+    const hiddenCount = mobileCalendar ? 0 : Math.max(0, day.dayTx.length - visibleTx.length);
     const isCurrentMonth = day.date.getMonth() === monthStart.getMonth();
     const isLowestBalance = isCurrentMonth && lowestMonthBalance !== null && Number(day.projectedTotal || 0) === lowestMonthBalance;
     const isHighestBalance = isCurrentMonth && highestMonthBalance !== null && Number(day.projectedTotal || 0) === highestMonthBalance && highestMonthBalance !== lowestMonthBalance;
@@ -5629,6 +5630,22 @@ function budgetActualSpent(budget, monthRange){
     .filter(tx => !budget.accountId || txMatchesBudgetAccount(tx, budget.accountId))
     .reduce((sum, tx)=>sum + Number(tx.amount || 0), 0);
 }
+
+function budgetAverageMonthlySpent(budget, months=6){
+  const selectedStart = parseDate(`${budgetReviewMonth}-01`);
+  const values = [];
+  for(let i=months-1; i>=0; i--){
+    const month = toISO(addMonths(selectedStart, -i)).slice(0,7);
+    values.push(budgetActualSpent(budget, budgetMonthRange(month)));
+  }
+  const active = values.filter(v => Math.abs(Number(v || 0)) > 0.005);
+  const divisor = active.length || values.length || 1;
+  return {
+    average: values.reduce((sum,v)=>sum+Number(v||0),0) / divisor,
+    months: values.length,
+    activeMonths: active.length
+  };
+}
 function budgetReviewStats(monthValue=budgetReviewMonth, accountId=budgetReviewAccount){
   const range = budgetMonthRange(monthValue);
   const monthTx = expandedTransactions(range.end).filter(tx => tx.date >= range.start && tx.date <= range.end);
@@ -5814,16 +5831,19 @@ function renderBudgets(){
   const monthRange = budgetMonthRange(budgetReviewMonth);
   document.getElementById("budgetList").innerHTML = (data.budgets || []).map(b=>{
     const spent = budgetActualSpent(b, monthRange);
-    const pct = Math.min(100, b.amount ? (spent/b.amount)*100 : 0);
+    const avg = budgetAverageMonthlySpent(b, 6);
     const acc = accountById(b.accountId), cat = categoryById(b.categoryId);
-    return `<div class="row budget-target-row">
+    const avgLabel = avg.activeMonths ? `${money(avg.average)} avg/month over ${avg.activeMonths} active month${avg.activeMonths === 1 ? "" : "s"}` : "No spending history yet";
+    return `<div class="row budget-target-row budget-set-row">
       <div class="budget-target-main" style="flex:1">
         <div class="budget-category-title"><span class="cat-preview" style="background:${hexToSoft(cat.color)}">${cat.emoji} ${cat.name}</span></div>
         <div class="budget-account-sub">${acc?.emoji || "💵"} ${acc?.name || "Unknown account"}</div>
-        <div class="row-sub">${money(spent)} spent of ${money(b.amount)} in ${monthRange.label}</div>
-        <div class="progress"><span style="width:${pct}%"></span></div>
+        <div class="budget-set-meta">
+          <span><b>${money(b.amount)}</b> monthly budget</span>
+          <span>${avgLabel}</span>
+          <span>${money(spent)} spent in ${monthRange.label}</span>
+        </div>
       </div>
-      <div class="amount">${money(Math.max(0,b.amount-spent))} left</div>
       <button class="ghost small" onclick="simpleBudget('${b.id}')">Edit</button>
     </div>`;
   }).join("") || `<div class="empty-state">No budgets yet. Add one to start tracking monthly targets.</div>`;
@@ -9137,7 +9157,11 @@ setupContextMenuEvents();
 document.querySelectorAll(".nav-btn").forEach(btn=>btn.addEventListener("click",()=>setView(btn.dataset.view)));
 prevMonth.onclick = ()=>{ calendarDate = addMonths(calendarDate,-1); renderCalendar(); };
 nextMonth.onclick = ()=>{ calendarDate = addMonths(calendarDate,1); renderCalendar(); };
-todayBtn.onclick = ()=>{ calendarDate = new Date(); renderCalendar(); };
+function scrollCalendarToToday(){
+  const todayEl = document.querySelector(`#calendarGrid .day[data-day="${todayISO()}"]`);
+  if(todayEl) todayEl.scrollIntoView({behavior:"smooth", block:"center"});
+}
+todayBtn.onclick = ()=>{ calendarDate = new Date(); renderCalendar(); setTimeout(scrollCalendarToToday, 80); };
 if(document.getElementById("calendarAccountFilter")) calendarAccountFilter.onchange = e=>{ calendarFilter = e.target.value; saveUiPrefs(); renderCalendar(); };
 const calendarCategoryHighlightBtnEl = document.getElementById("calendarCategoryHighlightBtn");
 if(calendarCategoryHighlightBtnEl) calendarCategoryHighlightBtnEl.onclick = (e)=>{
