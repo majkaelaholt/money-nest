@@ -4021,6 +4021,19 @@ button:disabled{
 .budget-target-row .amount{white-space:nowrap}
 .empty-state{padding:14px;border:1px dashed var(--line);border-radius:16px;color:var(--muted);background:rgba(255,250,243,.55);font-weight:750}
 
+
+/* v2-179: Budget Review spending pie */
+.spending-pie-card{display:grid;gap:8px}
+.spending-pie-wrap{display:grid;grid-template-columns:minmax(150px,220px) minmax(0,1fr);gap:14px;align-items:center}
+.spending-pie{width:100%;aspect-ratio:1;border-radius:999px;border:1px solid var(--line);box-shadow:inset 0 0 0 18px rgba(255,250,243,.78),0 10px 22px rgba(73,55,34,.08);background:#ead9c5}
+.spending-legend{display:grid;gap:7px;min-width:0}
+.spending-legend-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:7px 8px;align-items:center;padding:7px 0;border-bottom:1px solid rgba(220,200,176,.55)}
+.spending-legend-row:last-child{border-bottom:0}
+.legend-dot{width:10px;height:10px;border-radius:999px;box-shadow:0 0 0 2px rgba(255,250,243,.85)}
+.legend-name{font-weight:900;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.spending-legend-row b{font-weight:950;white-space:nowrap}
+.spending-legend-row small{grid-column:2 / 4;color:var(--muted);font-size:12px;margin-top:-4px}
+
 @media(max-width:900px){
   .budget-review-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
   .budget-review-grid{grid-template-columns:1fr}
@@ -4036,6 +4049,14 @@ button:disabled{
   .mini-card small{font-size:10px;line-height:1.15}
   .budget-insight-card{padding:11px;border-radius:18px}
   .budget-insight-card h4{font-size:17px;margin-bottom:8px}
+  .spending-pie-wrap{grid-template-columns:96px minmax(0,1fr);gap:10px}
+  .spending-pie{box-shadow:inset 0 0 0 10px rgba(255,250,243,.78),0 8px 18px rgba(73,55,34,.07)}
+  .spending-legend{gap:3px}
+  .spending-legend-row{padding:4px 0;gap:5px 6px;grid-template-columns:auto minmax(0,1fr) auto}
+  .legend-dot{width:8px;height:8px}
+  .legend-name{font-size:12px}
+  .spending-legend-row b{font-size:12px}
+  .spending-legend-row small{font-size:10px;line-height:1.1}
   .section-kicker{font-size:10px;letter-spacing:.12em}
   .budget-bar-row{padding:6px 0}
   .budget-bar-label{font-size:13px;gap:6px}
@@ -4050,4 +4071,7 @@ button:disabled{
 @media(max-width:390px){
   .budget-review-controls{grid-template-columns:1fr}
   .budget-review-summary{grid-template-columns:1fr}
+  .spending-pie-wrap{grid-template-columns:1fr;justify-items:center;text-align:left}
+  .spending-pie{max-width:150px}
+  .spending-legend{width:100%}
 }

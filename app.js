@@ -5618,7 +5618,6 @@ function renderBudgetReview(){
   const el = document.getElementById("budgetReview");
   if(!el) return;
   const stats = budgetReviewStats();
-  const maxCat = Math.max(1, ...stats.categories.slice(0,8).map(c=>c.amount));
   const trend = budgetTrendMonths(6, budgetReviewAccount);
   const maxTrend = Math.max(1, ...trend.map(t=>t.spent));
   const monthOptions = [];
@@ -5635,16 +5634,32 @@ function renderBudgetReview(){
   const budgetMood = stats.overBudgetCount
     ? `${stats.overBudgetCount} over budget`
     : (stats.budgetRows.length ? "all tracked budgets okay" : "no budgets set yet");
-  const topCategories = stats.categories.slice(0,8).map(c=>{
-    const pct = Math.max(2, Math.round((c.amount / maxCat) * 100));
-    const budgetNote = c.budgetAmount ? `${money(c.amount)} of ${money(c.budgetAmount)}` : `${money(c.amount)} unbudgeted`;
-    const overClass = c.budgetAmount && c.amount > c.budgetAmount ? "over" : "";
-    return `<div class="budget-bar-row ${overClass}">
-      <div class="budget-bar-label"><span>${c.cat.emoji} ${c.cat.name}</span><b>${money(c.amount)}</b></div>
-      <div class="budget-bar-track"><span style="width:${pct}%;background:${hexToSoft(c.cat.color)};border-color:${c.cat.color}"></span></div>
-      <div class="row-sub">${budgetNote}</div>
-    </div>`;
-  }).join("") || `<div class="empty-state">No cleared spending for ${stats.range.label} yet.</div>`;
+  const pieSource = stats.categories.slice(0,6);
+  const pieOther = stats.categories.slice(6).reduce((s,c)=>s+c.amount,0);
+  const pieData = pieSource.concat(pieOther > 0.005 ? [{categoryId:"other", cat:{name:"Other", emoji:"➕", color:"#9c7a54"}, amount:pieOther, budgetAmount:0}] : []);
+  const pieTotal = Math.max(0, stats.totalSpent);
+  let pieCursor = 0;
+  const pieSegments = pieData.map(item=>{
+    const start = pieTotal ? (pieCursor / pieTotal) * 100 : 0;
+    pieCursor += item.amount;
+    const end = pieTotal ? (pieCursor / pieTotal) * 100 : 0;
+    return `${item.cat.color} ${start.toFixed(2)}% ${end.toFixed(2)}%`;
+  }).join(", ");
+  const spendingPie = pieData.length ? `<div class="spending-pie-wrap">
+      <div class="spending-pie" style="background:conic-gradient(${pieSegments})" aria-label="Spending by category"></div>
+      <div class="spending-legend">
+        ${pieData.map(item=>{
+          const pct = pieTotal ? Math.round((item.amount / pieTotal) * 100) : 0;
+          const budgetNote = item.budgetAmount ? `${money(item.amount)} of ${money(item.budgetAmount)}` : `${money(item.amount)} spent`;
+          return `<div class="spending-legend-row">
+            <span class="legend-dot" style="background:${item.cat.color}"></span>
+            <span class="legend-name">${item.cat.emoji} ${item.cat.name}</span>
+            <b>${pct}%</b>
+            <small>${budgetNote}</small>
+          </div>`;
+        }).join("")}
+      </div>
+    </div>` : `<div class="empty-state">No cleared spending for ${stats.range.label} yet.</div>`;
 
   const budgetRows = stats.budgetRows.map(r=>{
     const pct = Math.min(140, Math.max(0, r.pct));
@@ -5676,10 +5691,11 @@ function renderBudgetReview(){
       <article class="mini-card"><span>🕵️ Unbudgeted</span><b>${money(stats.unbudgetedSpent)}</b><small>spending without a budget</small></article>
     </div>
     <div class="budget-review-grid">
-      <section class="budget-insight-card">
+      <section class="budget-insight-card spending-pie-card">
         <div class="section-kicker">Where money went</div>
-        <h4>Top spending categories</h4>
-        ${topCategories}
+        <h4>Spending by category</h4>
+        ${spendingPie}
+        <p class="hint">Pie chart uses cleared expense transactions only. Budget progress bars stay in the budget performance section below.</p>
       </section>
       <section class="budget-insight-card">
         <div class="section-kicker">Monthly pattern</div>
