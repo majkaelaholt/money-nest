@@ -2,7 +2,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-176`
+Current version: `money-nest-v2-177`
 
 ## Important Notes
 
@@ -136,6 +136,15 @@ Use CSV for reviewing or batch-editing data.
 * [ ]
 
 ## Version Notes
+
+### v2-177
+
+* Removed the delete/edit "whole recurring series" option so past/cleared history is not accidentally changed.
+* Delete recurring transaction choices are now only "this occurrence only" or "this and future occurrences."
+* Edit recurring transaction choices are now only "this occurrence only" or "this and future occurrences."
+* Fixed "delete this and future occurrences" so it stops the recurring series before the selected date and removes future generated occurrences.
+* Fixed skipped recurring occurrences so old `9999-12-31` skip markers do not show as real future transactions.
+* No import/export schema changes needed.
 
 ### v2-176
 

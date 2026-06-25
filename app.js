@@ -3353,9 +3353,15 @@ function moveWeekendDate(date, handling){
   }
   return d;
 }
+const RECURRENCE_SKIP_DATE = "9999-12-31";
+function isSkippedOccurrenceDate(value){
+  return value === RECURRENCE_SKIP_DATE || value === "__deleted__";
+}
 function occurrenceDateFor(tx, dateObj){
   const originalISO = toISO(dateObj);
-  if(tx.dateOverrides && tx.dateOverrides[originalISO]) return tx.dateOverrides[originalISO];
+  const overrideDate = tx.dateOverrides?.[originalISO];
+  if(isSkippedOccurrenceDate(overrideDate)) return RECURRENCE_SKIP_DATE;
+  if(overrideDate) return overrideDate;
   const moved = moveWeekendDate(dateObj, tx.recurrence?.weekendHandling || "none");
   return toISO(moved);
 }
@@ -3515,6 +3521,7 @@ function occurrenceOverrideFor(tx, originalISO){
 }
 
 function applyOccurrenceOverride(tx, originalISO, occurrenceISO){
+  if(isSkippedOccurrenceDate(occurrenceISO)) return null;
   const override = occurrenceOverrideFor(tx, originalISO);
   const base = {
     ...tx,
@@ -6809,7 +6816,7 @@ function askRecurringScope(mode){
     const modal = document.getElementById("recurringScopeModal");
     if(!modal){
       const one = confirm(mode === "delete"
-        ? "Delete only this occurrence?\n\nOK = this occurrence only\nCancel = whole recurring series"
+        ? "Delete only this occurrence?\n\nOK = this occurrence only\nCancel = this and future occurrences"
         : "Save only this occurrence?\n\nOK = this occurrence only\nCancel = this and future occurrences");
       resolve(one ? "one" : "future");
       return;
@@ -6819,15 +6826,8 @@ function askRecurringScope(mode){
     const hint = document.getElementById("recurringScopeHint");
     const one = document.getElementById("scopeChoiceOne");
     const series = document.getElementById("scopeChoiceSeries");
-    let all = document.getElementById("scopeChoiceAll");
-    if(!all && series?.parentElement){
-      all = document.createElement("button");
-      all.type = "button";
-      all.className = "scope-choice danger-choice";
-      all.id = "scopeChoiceAll";
-      all.innerHTML = `<b>Delete the whole recurring series</b><span>Remove this repeating bill completely.</span>`;
-      series.parentElement.appendChild(all);
-    }
+    const all = document.getElementById("scopeChoiceAll");
+    if(all) all.remove();
     const oneTitle = document.getElementById("scopeChoiceOneTitle");
     const oneSub = document.getElementById("scopeChoiceOneSub");
     const seriesTitle = document.getElementById("scopeChoiceSeriesTitle");
@@ -6837,28 +6837,25 @@ function askRecurringScope(mode){
 
     if(mode === "delete"){
       if(title) title.textContent = "Delete recurring transaction";
-      if(hint) hint.textContent = "Choose how much of this repeating transaction to delete.";
+      if(hint) hint.textContent = "Past/cleared history will be kept. Choose whether to remove just this date or stop the series from here forward.";
       if(oneTitle) oneTitle.textContent = "Delete this occurrence only";
       if(oneSub) oneSub.textContent = "Remove only this one date.";
       if(seriesTitle) seriesTitle.textContent = "Delete this and future occurrences";
-      if(seriesSub) seriesSub.textContent = "Keep past occurrences, stop this repeating transaction from this date forward.";
+      if(seriesSub) seriesSub.textContent = "Keep past/cleared history and stop future repeats from this date forward.";
       if(series) series.classList.add("danger-choice");
-      if(all) all.style.display = "block";
     } else {
       if(title) title.textContent = "Save recurring transaction";
-      if(hint) hint.textContent = "Do you want this edit to affect only this date or the repeating transaction?";
+      if(hint) hint.textContent = "Past/cleared history will be kept. Choose whether this edit is only for this date or starts from here forward.";
       if(oneTitle) oneTitle.textContent = "This occurrence only";
       if(oneSub) oneSub.textContent = "Create a one-time change for this date.";
-      if(seriesTitle) seriesTitle.textContent = "This and future occurrences / recurring series";
-      if(seriesSub) seriesSub.textContent = "Update the repeating transaction from here forward.";
+      if(seriesTitle) seriesTitle.textContent = "This and future occurrences";
+      if(seriesSub) seriesSub.textContent = "Start the edited version from this date forward without changing past history.";
       if(series) series.classList.remove("danger-choice");
-      if(all) all.style.display = "none";
     }
 
     const cleanup = (value)=>{
       one.onclick = null;
       series.onclick = null;
-      if(all) all.onclick = null;
       cancel.onclick = null;
       close.onclick = null;
       modal.oncancel = null;
@@ -6867,8 +6864,7 @@ function askRecurringScope(mode){
     };
 
     one.onclick = ()=>cleanup("one");
-    series.onclick = ()=>cleanup(mode === "delete" ? "future" : "future");
-    if(all) all.onclick = ()=>cleanup("all");
+    series.onclick = ()=>cleanup("future");
     cancel.onclick = ()=>cleanup("");
     close.onclick = ()=>cleanup("");
     modal.oncancel = (e)=>{ e.preventDefault(); cleanup(""); };
@@ -6910,16 +6906,19 @@ function deleteRecurringSeriesAndOrphans(baseTx){
 function deleteRecurringOccurrence(baseTx, occurrenceOriginalDate, occurrenceDate){
   if(!baseTx) return;
   baseTx.dateOverrides ||= {};
+  baseTx.occurrenceOverrides ||= {};
 
-  const skipValue = "9999-12-31";
   const targetOriginal = occurrenceOriginalDate || baseTx.date;
   const targetDisplay = occurrenceDate || occurrenceOriginalDate || baseTx.date;
 
-  // Direct skip for the date we were given.
-  if(targetOriginal){
-    baseTx.dateOverrides[targetOriginal] = skipValue;
-    if(baseTx.occurrenceOverrides) delete baseTx.occurrenceOverrides[targetOriginal];
-  }
+  const markSkipped = (originalISO)=>{
+    if(!originalISO) return;
+    baseTx.dateOverrides[originalISO] = RECURRENCE_SKIP_DATE;
+    baseTx.occurrenceOverrides[originalISO] = {deleted:true};
+  };
+
+  // Direct skip for the source date we were given.
+  markSkipped(targetOriginal);
 
   // If the Bills page/calendar passed the displayed/moved date, find the matching
   // recurrence source date and skip that too. This keeps Bills and Calendar in sync.
@@ -6935,8 +6934,7 @@ function deleteRecurringOccurrence(baseTx, occurrenceOriginalDate, occurrenceDat
         const originalISO = toISO(cursor);
         const moved = occurrenceDateFor(baseTx, cursor);
         if(originalISO === target || moved === target){
-          baseTx.dateOverrides[originalISO] = skipValue;
-          baseTx.dateOverrides[target] = skipValue;
+          markSkipped(originalISO);
         }
       }
       cursor = addDays(cursor, 1);
@@ -6949,9 +6947,34 @@ function deleteRecurringOccurrence(baseTx, occurrenceOriginalDate, occurrenceDat
 
 function deleteRecurringFuture(baseTx, originalDate){
   if(!baseTx) return;
-  const cutoff = parseDate(originalDate || baseTx.date);
+  const cutoffISO = originalDate || baseTx.date;
+  const cutoff = parseDate(cutoffISO);
   const until = addDays(cutoff, -1);
+
+  // Stop the repeating generator before the clicked occurrence, which removes
+  // the clicked date and every future generated date while keeping past history.
   baseTx.recurrenceUntil = toISO(until);
+
+  // If this recurring item starts on/after the cutoff and is still planned,
+  // remove the template row itself. Otherwise a first future occurrence can stay
+  // visible because base occurrences are rendered before recurrence expansion.
+  if(baseTx.date >= cutoffISO && baseTx.status !== "cleared"){
+    data.transactions = data.transactions.filter(t=>t.id !== baseTx.id);
+    return;
+  }
+
+  // Clean up any one-off overrides on or after the cutoff so edited/skipped
+  // future occurrences do not hang around after choosing delete future.
+  if(baseTx.occurrenceOverrides){
+    Object.keys(baseTx.occurrenceOverrides).forEach(date=>{
+      if(date >= cutoffISO) delete baseTx.occurrenceOverrides[date];
+    });
+  }
+  if(baseTx.dateOverrides){
+    Object.keys(baseTx.dateOverrides).forEach(date=>{
+      if(date >= cutoffISO) delete baseTx.dateOverrides[date];
+    });
+  }
 }
 
 function deleteTransactionWithScope(id, scope="all", meta={}){
@@ -7208,22 +7231,29 @@ function makeOneTimeFromSeriesEdit(baseTx, formTx, occurrenceOriginalDate, occur
 }
 
 function updateSeriesFromDate(baseTx, formTx, occurrenceOriginalDate){
-  // First/base occurrence: update the recurring transaction directly.
+  const cutoffISO = occurrenceOriginalDate || baseTx.date;
+
+  // First/base occurrence: update the recurring transaction directly. This is
+  // safe for future-first templates, but the UI no longer offers a "whole past
+  // series" option.
   if(!occurrenceOriginalDate || occurrenceOriginalDate === baseTx.date){
     Object.assign(baseTx, {...formTx, id:baseTx.id, dateOverrides: baseTx.dateOverrides || {}, occurrenceOverrides: baseTx.occurrenceOverrides || {}});
     return;
   }
 
-  // Future generated occurrence: end old series at this occurrence by skipping that occurrence forward,
-  // then create a new recurring series beginning on the edited date.
-  deleteRecurringOccurrence(baseTx, occurrenceOriginalDate || baseTx.date, occurrenceOriginalDate || baseTx.date);
+  // Future generated occurrence: end the old series BEFORE this occurrence,
+  // then start a new recurring series on the edited date. This makes "this and
+  // future occurrences" actually stop all old future generated transactions.
+  deleteRecurringFuture(baseTx, cutoffISO);
 
   data.transactions.push({
     ...formTx,
     id: uid(),
+    date: formTx.date || cutoffISO,
     recurrence: formTx.recurrence || baseTx.recurrence || {type:"none", interval:1},
     repeat:false,
-    dateOverrides:{}
+    dateOverrides:{},
+    occurrenceOverrides:{}
   });
 }
 
