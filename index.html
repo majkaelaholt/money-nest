@@ -118,9 +118,22 @@
       </section>
 
       <section id="budgets" class="view">
+        <div class="panel budget-review-panel">
+          <div class="panel-head">
+            <div>
+              <h3>Budget review</h3>
+              <p class="hint">See how the month went, what went over budget, and where the money actually went.</p>
+            </div>
+          </div>
+          <div id="budgetReview" class="budget-review"></div>
+        </div>
+
         <div class="panel">
           <div class="panel-head">
-            <h3>Monthly budgets by account</h3>
+            <div>
+              <h3>Monthly budgets by account</h3>
+              <p class="hint">These targets are used by the review above.</p>
+            </div>
             <button class="primary small" id="addBudgetBtn">+ Budget</button>
           </div>
           <div id="budgetList" class="budget-list"></div>

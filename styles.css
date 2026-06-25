@@ -3987,3 +3987,67 @@ button:disabled{
     overflow:hidden !important;
   }
 }
+
+/* v2-178: Budget Review dashboard */
+.budget-review-panel{overflow:hidden}
+.budget-review{display:grid;gap:14px}
+.budget-review-controls{display:flex;flex-wrap:wrap;gap:10px;align-items:end}
+.budget-review-controls label{display:grid;gap:5px;font-size:12px;font-weight:850;color:var(--muted);letter-spacing:.02em}
+.budget-review-controls select{min-width:180px}
+.budget-review-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.mini-card{border:1px solid var(--line);border-radius:18px;background:rgba(255,250,243,.82);padding:12px;display:grid;gap:4px;min-width:0}
+.mini-card span{font-size:12px;font-weight:900;color:var(--muted);letter-spacing:.03em;text-transform:uppercase}
+.mini-card b{font-size:20px;line-height:1.05;color:var(--ink)}
+.mini-card small{color:var(--muted);font-size:12px}
+.budget-review-grid{display:grid;grid-template-columns:1.25fr .75fr;gap:12px}
+.budget-insight-card{border:1px solid var(--line);border-radius:22px;background:rgba(255,250,243,.72);padding:14px;box-shadow:0 10px 24px rgba(73,55,34,.06);min-width:0}
+.budget-insight-card h4{margin:2px 0 12px;font-size:20px}
+.section-kicker{font-size:11px;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);font-weight:950}
+.budget-bar-row{display:grid;gap:5px;padding:8px 0;border-bottom:1px solid rgba(220,200,176,.55)}
+.budget-bar-row:last-child{border-bottom:0}
+.budget-bar-label{display:flex;justify-content:space-between;gap:8px;align-items:center;font-weight:850}
+.budget-bar-label span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.budget-bar-label b{white-space:nowrap}
+.budget-bar-track{height:13px;background:#ead9c5;border-radius:999px;overflow:hidden}
+.budget-bar-track span{display:block;height:100%;border-radius:999px;border:1px solid transparent;background:var(--panel-2)}
+.budget-bar-row.over .budget-bar-label b,.budget-review-row.over .amount{color:var(--danger)}
+.budget-trend-chart{height:185px;display:grid;grid-template-columns:repeat(6,1fr);gap:8px;align-items:end;padding:8px 0 2px}
+.trend-bar-item{height:100%;display:grid;grid-template-rows:1fr auto;gap:6px;align-items:end;justify-items:center;color:var(--muted);font-weight:850}
+.trend-bar{display:block;width:100%;max-width:42px;border-radius:12px 12px 5px 5px;background:linear-gradient(180deg,var(--accent),rgba(156,122,84,.35));min-height:6px}
+.budget-performance-card{display:grid;gap:8px}
+.budget-review-list{display:grid;gap:8px}
+.budget-review-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px;border:1px solid rgba(220,200,176,.7);border-radius:16px;background:rgba(255,255,255,.34)}
+.budget-review-main{min-width:0}
+.budget-target-row .amount{white-space:nowrap}
+.empty-state{padding:14px;border:1px dashed var(--line);border-radius:16px;color:var(--muted);background:rgba(255,250,243,.55);font-weight:750}
+
+@media(max-width:900px){
+  .budget-review-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .budget-review-grid{grid-template-columns:1fr}
+}
+@media(max-width:700px){
+  .budget-review{gap:10px}
+  .budget-review-controls{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .budget-review-controls select{min-width:0;width:100%;font-size:14px;padding:9px 10px}
+  .budget-review-summary{grid-template-columns:1fr 1fr;gap:8px}
+  .mini-card{padding:10px;border-radius:16px;gap:2px}
+  .mini-card span{font-size:10px;letter-spacing:.05em}
+  .mini-card b{font-size:16px;word-break:break-word}
+  .mini-card small{font-size:10px;line-height:1.15}
+  .budget-insight-card{padding:11px;border-radius:18px}
+  .budget-insight-card h4{font-size:17px;margin-bottom:8px}
+  .section-kicker{font-size:10px;letter-spacing:.12em}
+  .budget-bar-row{padding:6px 0}
+  .budget-bar-label{font-size:13px;gap:6px}
+  .budget-bar-track{height:11px}
+  .budget-trend-chart{height:130px;gap:5px}
+  .trend-bar{max-width:30px;border-radius:10px 10px 4px 4px}
+  .trend-bar-item small{font-size:10px}
+  .budget-review-row,.budget-target-row{display:grid !important;grid-template-columns:1fr !important;gap:6px !important;padding:9px !important;border-radius:15px !important}
+  .budget-review-row .amount,.budget-target-row .amount{justify-self:start;font-size:13px}
+  .budget-target-row button{justify-self:start}
+}
+@media(max-width:390px){
+  .budget-review-controls{grid-template-columns:1fr}
+  .budget-review-summary{grid-template-columns:1fr}
+}

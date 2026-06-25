@@ -241,7 +241,7 @@ function maybeQueueCloudAutoSave(){
 
 // v2.80: compatibility shim for browsers that do not expose element IDs as global variables.
 (function bindDomIdGlobals(){
-  const ids = ['accountDetail', 'accountDetailContent', 'accountList', 'accounts', 'addAccountBtn', 'addBillBtn', 'addBudgetBtn', 'addCategoryBtn', 'addDayTransactionBtn', 'addDebtBtn', 'autoPaycheckHint', 'autoPaycheckLabel', 'backupBtn', 'financialPictureBtn', 'extendedFinancialPictureBtn', 'billAccountFilter', 'billCategoryFilter', 'billRecurrenceFilter', 'billSort', 'billTypeFilter', 'bills', 'billsList', 'budgetList', 'budgets', 'calendar', 'calendarAccountFilter', 'calendarCategoryHighlight', 'calendarCategoryHighlightDropdown', 'calendarCategoryHighlightBtn', 'calendarCategoryHighlightMenu', 'calendarGrid', 'cancelDayModal', 'cancelSimple', 'cancelTxBtn', 'categoryList', 'clearRecentBtn', 'closeDayModal', 'closeModal', 'closeSimple', 'csvExportBtn', 'csvImportInput', 'ctxDelete', 'ctxDuplicate', 'ctxEdit', 'ctxCreateCardPayment', 'ctxMarkReimbursed', 'ctxToggleCleared', 'ctxUseCardInstead', 'dashboard', 'dayModal', 'dayModalSub', 'dayModalTitle', 'dayModalTransactions', 'debtDetail', 'debtDetailContent', 'debtGroups', 'debtSnapshot', 'debts', 'deleteSimpleBtn', 'deleteTxBtn', 'duplicateTxBtn', 'importInput', 'modalTitle', 'monthLabel', 'nextMonth', 'prevMonth', 'quickAddBtn', 'recentPlacesList', 'recentChangesList', 'undoLastChangeBtn', 'clearChangeHistoryBtn', 'recurrenceDetails', 'repeatIntervalUnitLabel', 'safeSpendList', 'saveTxBtn', 'settings', 'settingsClearAllBtn', 'settingsSampleResetBtn', 'simpleFields', 'simpleForm', 'simpleModal', 'simpleTitle', 'summaryCards', 'todayBtn', 'transactionForm', 'transactionModal', 'txAccount', 'txAmount', 'txAutoPaycheck', 'txCategory', 'txContextMenu', 'txDate', 'txDebt', 'txDebtAccount', 'txLoanBreakdownWrap', 'txLoanPrincipal', 'txLoanInterest', 'txLoanFees', 'txLoanBreakdownHint', 'txDeleteAll', 'txDeleteOne', 'txDeleteScopeWrap', 'txId', 'txNotes', 'txRepeatInterval', 'txRepeatIntervalUnit', 'txRepeatOrdinal', 'txRepeatRule', 'txRepeatWeekday', 'txSaveScopeHint', 'txSaveScopeWrap', 'txScopeFuture', 'txScopeOne', 'txStatus', 'txTitle', 'txTransferTo', 'txType', 'txWeekendHandling', 'upcomingList', 'viewTitle', 'settingsPaycheckCount', 'paycheckProfileList', 'makHourlyRate', 'makHoursPerWorkday', 'makDeductionPercent', 'makFixedDeduction', 'tyHourlyRate', 'tyDefaultHours', 'tyDeductionPercent', 'tyFixedDeduction', 'paycheckHoursWrap', 'txPaycheckHoursOverride', 'billCategoryDropdown', 'billCategoryDropdownBtn', 'billCategoryDropdownMenu'];
+  const ids = ['accountDetail', 'accountDetailContent', 'accountList', 'accounts', 'addAccountBtn', 'addBillBtn', 'addBudgetBtn', 'addCategoryBtn', 'addDayTransactionBtn', 'addDebtBtn', 'autoPaycheckHint', 'autoPaycheckLabel', 'backupBtn', 'financialPictureBtn', 'extendedFinancialPictureBtn', 'billAccountFilter', 'billCategoryFilter', 'billRecurrenceFilter', 'billSort', 'billTypeFilter', 'bills', 'billsList', 'budgetList', 'budgetReview', 'budgets', 'calendar', 'calendarAccountFilter', 'calendarCategoryHighlight', 'calendarCategoryHighlightDropdown', 'calendarCategoryHighlightBtn', 'calendarCategoryHighlightMenu', 'calendarGrid', 'cancelDayModal', 'cancelSimple', 'cancelTxBtn', 'categoryList', 'clearRecentBtn', 'closeDayModal', 'closeModal', 'closeSimple', 'csvExportBtn', 'csvImportInput', 'ctxDelete', 'ctxDuplicate', 'ctxEdit', 'ctxCreateCardPayment', 'ctxMarkReimbursed', 'ctxToggleCleared', 'ctxUseCardInstead', 'dashboard', 'dayModal', 'dayModalSub', 'dayModalTitle', 'dayModalTransactions', 'debtDetail', 'debtDetailContent', 'debtGroups', 'debtSnapshot', 'debts', 'deleteSimpleBtn', 'deleteTxBtn', 'duplicateTxBtn', 'importInput', 'modalTitle', 'monthLabel', 'nextMonth', 'prevMonth', 'quickAddBtn', 'recentPlacesList', 'recentChangesList', 'undoLastChangeBtn', 'clearChangeHistoryBtn', 'recurrenceDetails', 'repeatIntervalUnitLabel', 'safeSpendList', 'saveTxBtn', 'settings', 'settingsClearAllBtn', 'settingsSampleResetBtn', 'simpleFields', 'simpleForm', 'simpleModal', 'simpleTitle', 'summaryCards', 'todayBtn', 'transactionForm', 'transactionModal', 'txAccount', 'txAmount', 'txAutoPaycheck', 'txCategory', 'txContextMenu', 'txDate', 'txDebt', 'txDebtAccount', 'txLoanBreakdownWrap', 'txLoanPrincipal', 'txLoanInterest', 'txLoanFees', 'txLoanBreakdownHint', 'txDeleteAll', 'txDeleteOne', 'txDeleteScopeWrap', 'txId', 'txNotes', 'txRepeatInterval', 'txRepeatIntervalUnit', 'txRepeatOrdinal', 'txRepeatRule', 'txRepeatWeekday', 'txSaveScopeHint', 'txSaveScopeWrap', 'txScopeFuture', 'txScopeOne', 'txStatus', 'txTitle', 'txTransferTo', 'txType', 'txWeekendHandling', 'upcomingList', 'viewTitle', 'settingsPaycheckCount', 'paycheckProfileList', 'makHourlyRate', 'makHoursPerWorkday', 'makDeductionPercent', 'makFixedDeduction', 'tyHourlyRate', 'tyDefaultHours', 'tyDeductionPercent', 'tyFixedDeduction', 'paycheckHoursWrap', 'txPaycheckHoursOverride', 'billCategoryDropdown', 'billCategoryDropdownBtn', 'billCategoryDropdownMenu'];
   ids.forEach(id=>{
     if(!/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(id)) return;
     try{
@@ -2727,6 +2727,8 @@ let billFilters = {...defaultUiPrefs.billFilters, ...(uiPrefs.billFilters || {})
 if(!Array.isArray(billFilters.categories)) billFilters.categories = [billFilters.category || "all"];
 let transactionFilterDefaults = {...defaultUiPrefs.transactionFilterDefaults, ...(uiPrefs.transactionFilterDefaults || {})};
 let transactionFilters = {...defaultUiPrefs.transactionFilters, ...(uiPrefs.transactionFilters || {})};
+let budgetReviewMonth = todayISO().slice(0,7);
+let budgetReviewAccount = "all";
 
 
 function standardCategories(){
@@ -5517,19 +5519,195 @@ function renderLedger(txs, options={}){
   </div>`;
 }
 
+function budgetMonthRange(monthValue){
+  const safe = /^\d{4}-\d{2}$/.test(monthValue || "") ? monthValue : todayISO().slice(0,7);
+  const start = `${safe}-01`;
+  return {month:safe, start, end:toISO(endOfMonth(parseDate(start))), label:parseDate(start).toLocaleString(undefined,{month:"long", year:"numeric"})};
+}
+function isBudgetReviewExpense(tx){
+  if(!tx || tx.status !== "cleared") return false;
+  if(tx.type !== "expense") return false;
+  if(isPendingReimbursementTx(tx)) return false;
+  return Number(tx.amount || 0) > 0;
+}
+function isBudgetReviewIncome(tx){
+  if(!tx || tx.status !== "cleared") return false;
+  return (tx.type === "income" || tx.type === "paycheck") && Number(tx.amount || 0) > 0;
+}
+function txMatchesBudgetAccount(tx, accountId){
+  if(!accountId || accountId === "all") return true;
+  return tx.accountId === accountId;
+}
+function budgetActualSpent(budget, monthRange){
+  return expandedTransactions(monthRange.end)
+    .filter(tx => tx.date >= monthRange.start && tx.date <= monthRange.end)
+    .filter(tx => isBudgetReviewExpense(tx))
+    .filter(tx => tx.categoryId === budget.categoryId)
+    .filter(tx => !budget.accountId || txMatchesBudgetAccount(tx, budget.accountId))
+    .reduce((sum, tx)=>sum + Number(tx.amount || 0), 0);
+}
+function budgetReviewStats(monthValue=budgetReviewMonth, accountId=budgetReviewAccount){
+  const range = budgetMonthRange(monthValue);
+  const monthTx = expandedTransactions(range.end).filter(tx => tx.date >= range.start && tx.date <= range.end);
+  const expenses = monthTx.filter(isBudgetReviewExpense).filter(tx => txMatchesBudgetAccount(tx, accountId));
+  const income = monthTx.filter(isBudgetReviewIncome).filter(tx => txMatchesBudgetAccount(tx, accountId));
+  const budgets = (data.budgets || []).filter(b => accountId === "all" || !b.accountId || b.accountId === accountId);
+
+  const byCategory = new Map();
+  expenses.forEach(tx=>{
+    const key = tx.categoryId || "uncat";
+    byCategory.set(key, (byCategory.get(key) || 0) + Number(tx.amount || 0));
+  });
+  const categories = [...byCategory.entries()].map(([categoryId, amount])=>{
+    const cat = categoryById(categoryId);
+    const budgetAmount = budgets.filter(b=>b.categoryId === categoryId).reduce((s,b)=>s+Number(b.amount || 0),0);
+    return {categoryId, cat, amount, budgetAmount, over:Math.max(0, amount-budgetAmount)};
+  }).sort((a,b)=>b.amount-a.amount);
+
+  const budgetRows = budgets.map(b=>{
+    const spent = budgetActualSpent(b, range);
+    const amount = Number(b.amount || 0);
+    return {
+      budget:b,
+      account:accountById(b.accountId),
+      cat:categoryById(b.categoryId),
+      spent,
+      amount,
+      left: amount - spent,
+      pct: amount ? Math.round((spent / amount) * 100) : 0
+    };
+  }).sort((a,b)=>{
+    const overA = a.left < 0 ? 0 : 1;
+    const overB = b.left < 0 ? 0 : 1;
+    return overA-overB || b.spent-a.spent;
+  });
+
+  const totalSpent = expenses.reduce((s,tx)=>s+Number(tx.amount || 0),0);
+  const totalIncome = income.reduce((s,tx)=>s+Number(tx.amount || 0),0);
+  const totalBudgeted = budgets.reduce((s,b)=>s+Number(b.amount || 0),0);
+  const spentInBudgetedCategories = categories.filter(c=>c.budgetAmount > 0).reduce((s,c)=>s+c.amount,0);
+  const unbudgetedSpent = Math.max(0, totalSpent - spentInBudgetedCategories);
+  const overBudgetCount = budgetRows.filter(r=>r.left < -0.005).length;
+
+  return {range, monthTx, expenses, income, budgets, categories, budgetRows, totalSpent, totalIncome, totalBudgeted, unbudgetedSpent, overBudgetCount};
+}
+function budgetTrendMonths(count=6, accountId=budgetReviewAccount){
+  const selectedStart = parseDate(`${budgetReviewMonth}-01`);
+  return Array.from({length:count}, (_,i)=>{
+    const d = addMonths(selectedStart, i-(count-1));
+    const range = budgetMonthRange(toISO(d).slice(0,7));
+    const spent = expandedTransactions(range.end)
+      .filter(tx => tx.date >= range.start && tx.date <= range.end)
+      .filter(isBudgetReviewExpense)
+      .filter(tx => txMatchesBudgetAccount(tx, accountId))
+      .reduce((s,tx)=>s+Number(tx.amount || 0),0);
+    return {month:range.month, label:parseDate(range.start).toLocaleString(undefined,{month:"short"}), spent};
+  });
+}
+function setBudgetReviewMonth(value){
+  budgetReviewMonth = /^\d{4}-\d{2}$/.test(value || "") ? value : todayISO().slice(0,7);
+  renderBudgets();
+}
+function setBudgetReviewAccount(value){
+  budgetReviewAccount = value || "all";
+  renderBudgets();
+}
+window.setBudgetReviewMonth = setBudgetReviewMonth;
+window.setBudgetReviewAccount = setBudgetReviewAccount;
+function renderBudgetReview(){
+  const el = document.getElementById("budgetReview");
+  if(!el) return;
+  const stats = budgetReviewStats();
+  const maxCat = Math.max(1, ...stats.categories.slice(0,8).map(c=>c.amount));
+  const trend = budgetTrendMonths(6, budgetReviewAccount);
+  const maxTrend = Math.max(1, ...trend.map(t=>t.spent));
+  const monthOptions = [];
+  const selectedStart = parseDate(`${budgetReviewMonth}-01`);
+  for(let i=-12; i<=3; i++){
+    const d = addMonths(selectedStart, i);
+    const value = toISO(d).slice(0,7);
+    const label = parseDate(`${value}-01`).toLocaleString(undefined,{month:"short", year:"numeric"});
+    monthOptions.push(`<option value="${value}" ${value===budgetReviewMonth?"selected":""}>${label}</option>`);
+  }
+  const accountOptions = [`<option value="all" ${budgetReviewAccount==="all"?"selected":""}>All accounts</option>`]
+    .concat(orderedAccounts().map(a=>`<option value="${a.id}" ${budgetReviewAccount===a.id?"selected":""}>${a.emoji || "💵"} ${a.name}</option>`));
+
+  const budgetMood = stats.overBudgetCount
+    ? `${stats.overBudgetCount} over budget`
+    : (stats.budgetRows.length ? "all tracked budgets okay" : "no budgets set yet");
+  const topCategories = stats.categories.slice(0,8).map(c=>{
+    const pct = Math.max(2, Math.round((c.amount / maxCat) * 100));
+    const budgetNote = c.budgetAmount ? `${money(c.amount)} of ${money(c.budgetAmount)}` : `${money(c.amount)} unbudgeted`;
+    const overClass = c.budgetAmount && c.amount > c.budgetAmount ? "over" : "";
+    return `<div class="budget-bar-row ${overClass}">
+      <div class="budget-bar-label"><span>${c.cat.emoji} ${c.cat.name}</span><b>${money(c.amount)}</b></div>
+      <div class="budget-bar-track"><span style="width:${pct}%;background:${hexToSoft(c.cat.color)};border-color:${c.cat.color}"></span></div>
+      <div class="row-sub">${budgetNote}</div>
+    </div>`;
+  }).join("") || `<div class="empty-state">No cleared spending for ${stats.range.label} yet.</div>`;
+
+  const budgetRows = stats.budgetRows.map(r=>{
+    const pct = Math.min(140, Math.max(0, r.pct));
+    const status = r.left < -0.005 ? `Over by ${money(Math.abs(r.left))}` : `${money(r.left)} left`;
+    return `<div class="budget-review-row ${r.left < -0.005 ? "over" : ""}">
+      <div class="budget-review-main">
+        <div class="row-title">${r.account?.emoji || "💵"} ${r.account?.name || "All accounts"} • <span class="cat-preview" style="background:${hexToSoft(r.cat.color)}">${r.cat.emoji} ${r.cat.name}</span></div>
+        <div class="row-sub">${money(r.spent)} spent of ${money(r.amount)} • ${r.pct}% used</div>
+        <div class="progress"><span style="width:${Math.min(100,pct)}%"></span></div>
+      </div>
+      <div class="amount ${r.left < -0.005 ? "bad" : "good"}">${status}</div>
+    </div>`;
+  }).join("") || `<div class="empty-state">Add budgets below to compare targets against real spending.</div>`;
+
+  const trendBars = trend.map(t=>`<div class="trend-bar-item" title="${t.label}: ${money(t.spent)}">
+      <span class="trend-bar" style="height:${Math.max(6, Math.round((t.spent / maxTrend) * 100))}%"></span>
+      <small>${t.label}</small>
+    </div>`).join("");
+
+  el.innerHTML = `
+    <div class="budget-review-controls">
+      <label>Month<select onchange="setBudgetReviewMonth(this.value)">${monthOptions.join("")}</select></label>
+      <label>Account<select onchange="setBudgetReviewAccount(this.value)">${accountOptions.join("")}</select></label>
+    </div>
+    <div class="budget-review-summary">
+      <article class="mini-card"><span>💸 Spending</span><b>${money(stats.totalSpent)}</b><small>cleared expenses</small></article>
+      <article class="mini-card"><span>💰 Income</span><b>${money(stats.totalIncome)}</b><small>cleared income/paychecks</small></article>
+      <article class="mini-card"><span>🎯 Budget status</span><b>${budgetMood}</b><small>${money(stats.totalBudgeted)} budgeted</small></article>
+      <article class="mini-card"><span>🕵️ Unbudgeted</span><b>${money(stats.unbudgetedSpent)}</b><small>spending without a budget</small></article>
+    </div>
+    <div class="budget-review-grid">
+      <section class="budget-insight-card">
+        <div class="section-kicker">Where money went</div>
+        <h4>Top spending categories</h4>
+        ${topCategories}
+      </section>
+      <section class="budget-insight-card">
+        <div class="section-kicker">Monthly pattern</div>
+        <h4>Last 6 months spending</h4>
+        <div class="budget-trend-chart">${trendBars}</div>
+        <p class="hint">Uses cleared expense transactions only.</p>
+      </section>
+    </div>
+    <section class="budget-insight-card budget-performance-card">
+      <div class="section-kicker">Budget performance</div>
+      <h4>How you did vs budget</h4>
+      <div class="budget-review-list">${budgetRows}</div>
+    </section>`;
+}
 function renderBudgets(){
-  const now = new Date(), start = toISO(startOfMonth(now)), end = toISO(endOfMonth(now));
-  document.getElementById("budgetList").innerHTML = data.budgets.map(b=>{
-    const spent = expandedTransactions(end).filter(tx => tx.date >= start && tx.date <= end && tx.accountId === b.accountId && tx.categoryId === b.categoryId && tx.type !== "income" && tx.status === "cleared").reduce((s,tx)=>s+tx.amount,0);
+  renderBudgetReview();
+  const monthRange = budgetMonthRange(budgetReviewMonth);
+  document.getElementById("budgetList").innerHTML = (data.budgets || []).map(b=>{
+    const spent = budgetActualSpent(b, monthRange);
     const pct = Math.min(100, b.amount ? (spent/b.amount)*100 : 0);
     const acc = accountById(b.accountId), cat = categoryById(b.categoryId);
-    return `<div class="row">
+    return `<div class="row budget-target-row">
       <div style="flex:1"><div class="row-title">${acc?.name || "Unknown"} • <span class="cat-preview" style="background:${hexToSoft(cat.color)}">${cat.emoji} ${cat.name}</span></div>
-      <div class="row-sub">${money(spent)} spent of ${money(b.amount)}</div><div class="progress"><span style="width:${pct}%"></span></div></div>
+      <div class="row-sub">${money(spent)} spent of ${money(b.amount)} in ${monthRange.label}</div><div class="progress"><span style="width:${pct}%"></span></div></div>
       <div class="amount">${money(Math.max(0,b.amount-spent))} left</div>
       <button class="ghost small" onclick="simpleBudget('${b.id}')">Edit</button>
     </div>`;
-  }).join("");
+  }).join("") || `<div class="empty-state">No budgets yet. Add one to start tracking monthly targets.</div>`;
 }
 
 
