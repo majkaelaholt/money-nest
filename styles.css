@@ -4105,3 +4105,111 @@ button:disabled{
   .budget-review-check{grid-column:1 / -1;min-height:38px;padding:8px 10px;font-size:12px !important}
   .spending-pie{max-width:130px}
 }
+
+/* v2-182: Budget cards read category-first, account-second */
+.budget-target-main{display:grid;gap:4px;min-width:0}
+.budget-category-title{font-size:16px;font-weight:950;line-height:1.15;display:flex;align-items:center;gap:8px;min-width:0}
+.budget-category-title .cat-preview{font-size:14px;padding:5px 9px;max-width:100%}
+.budget-account-sub{font-size:12px;color:var(--muted);font-weight:850;line-height:1.2;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.budget-target-row{align-items:center}
+.budget-performance-card .hint{margin-top:-6px;margin-bottom:4px}
+@media(max-width:700px){
+  .budget-category-title{font-size:15px}
+  .budget-category-title .cat-preview{font-size:13px;padding:5px 8px}
+  .budget-account-sub{font-size:11px}
+}
+
+
+/* v2-183: iPhone safe-area polish + roomier bottom dock */
+@media(max-width:700px){
+  html,
+  body{
+    min-height:100%;
+    background:linear-gradient(135deg,#f8f1e8,#efe0ce) !important;
+  }
+  body{
+    padding-bottom:calc(122px + env(safe-area-inset-bottom)) !important;
+  }
+  .app-shell{
+    min-height:100dvh;
+    background:linear-gradient(135deg,#f8f1e8,#efe0ce) !important;
+  }
+  .main{
+    /* Pull the app content up slightly while keeping a tiny status-bar safe cushion. */
+    padding-top:max(6px, env(safe-area-inset-top)) !important;
+    padding-left:10px !important;
+    padding-right:10px !important;
+    padding-bottom:calc(142px + env(safe-area-inset-bottom)) !important;
+  }
+  .topbar{
+    margin-top:0 !important;
+    margin-bottom:10px !important;
+  }
+  .topbar .eyebrow{
+    line-height:1.05 !important;
+  }
+  .topbar h2{
+    line-height:1.02 !important;
+  }
+
+  /* Bigger, better-centered iPhone bottom dock with safer edge spacing. */
+  .sidebar{
+    left:20px !important;
+    right:20px !important;
+    bottom:calc(14px + env(safe-area-inset-bottom)) !important;
+    max-width:calc(100vw - 40px) !important;
+    padding:8px 12px calc(10px + env(safe-area-inset-bottom)) !important;
+    border-radius:30px !important;
+    overflow:hidden !important;
+    box-shadow:0 -12px 34px rgba(67,48,28,.16) !important;
+  }
+  .nav{
+    grid-template-columns:repeat(7,minmax(0,1fr)) !important;
+    gap:7px !important;
+    align-items:center !important;
+    justify-items:center !important;
+  }
+  .nav-btn{
+    width:100% !important;
+    min-height:50px !important;
+    padding:7px 2px !important;
+    border-radius:20px !important;
+    align-items:center !important;
+    justify-content:center !important;
+  }
+  .nav-emoji{
+    font-size:21px !important;
+    line-height:1 !important;
+  }
+  .nav-btn.active{
+    background:rgba(166,130,84,.18) !important;
+    box-shadow:inset 0 0 0 1px rgba(140,111,77,.22) !important;
+  }
+
+  /* Keep the floating add button above the larger dock. */
+  .side-card.recent-card{
+    right:22px !important;
+    bottom:calc(92px + env(safe-area-inset-bottom)) !important;
+  }
+  #quickAddBtn{
+    width:54px !important;
+    height:54px !important;
+  }
+  #quickAddBtn::before{
+    font-size:30px !important;
+  }
+}
+
+@media(max-width:390px){
+  .sidebar{
+    left:16px !important;
+    right:16px !important;
+    max-width:calc(100vw - 32px) !important;
+    padding-left:10px !important;
+    padding-right:10px !important;
+  }
+  .nav{gap:5px !important}
+  .nav-btn{min-height:48px !important;border-radius:18px !important}
+  .nav-emoji{font-size:20px !important}
+  .side-card.recent-card{right:18px !important}
+}

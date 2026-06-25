@@ -2,7 +2,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-181`
+Current version: `money-nest-v2-183`
 
 ## Important Notes
 
@@ -136,6 +136,21 @@ Use CSV for reviewing or batch-editing data.
 * [ ]
 
 ## Version Notes
+
+### v2-183
+
+* Reduced excess iPhone top safe-area whitespace by using full viewport safe-area handling.
+* Enlarged and re-centered the iPhone bottom navigation dock so it has more edge breathing room.
+* Adjusted the floating add button position to sit above the larger bottom dock.
+* No import/export schema changes needed.
+
+### v2-182
+
+* Clarified the difference between Budget Review and Monthly Budget Targets.
+* Budget Review now includes helper text explaining it is a read-only snapshot for the selected month/account.
+* Budget cards now display the category as the main label and the account as smaller secondary text.
+* Applied the category-first layout to both Budget Performance and Monthly Budget Targets.
+* No JSON/CSV schema changes needed.
 
 ### v2-181
 

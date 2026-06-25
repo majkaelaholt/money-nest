@@ -5761,8 +5761,9 @@ function renderBudgetReview(){
     const pct = Math.min(140, Math.max(0, r.pct));
     const status = r.left < -0.005 ? `Over by ${money(Math.abs(r.left))}` : `${money(r.left)} left`;
     return `<div class="budget-review-row ${r.left < -0.005 ? "over" : ""}">
-      <div class="budget-review-main">
-        <div class="row-title">${r.account?.emoji || "💵"} ${r.account?.name || "All accounts"} • <span class="cat-preview" style="background:${hexToSoft(r.cat.color)}">${r.cat.emoji} ${r.cat.name}</span></div>
+      <div class="budget-review-main budget-target-main">
+        <div class="budget-category-title"><span class="cat-preview" style="background:${hexToSoft(r.cat.color)}">${r.cat.emoji} ${r.cat.name}</span></div>
+        <div class="budget-account-sub">${r.account?.emoji || "💵"} ${r.account?.name || "All accounts"}</div>
         <div class="row-sub">${money(r.spent)} spent of ${money(r.amount)} • ${r.pct}% used</div>
         <div class="progress"><span style="width:${Math.min(100,pct)}%"></span></div>
       </div>
@@ -5804,6 +5805,7 @@ function renderBudgetReview(){
     <section class="budget-insight-card budget-performance-card">
       <div class="section-kicker">Budget performance</div>
       <h4>How you did vs budget</h4>
+      <p class="hint">Review-only snapshot for the selected month/account. Use this to see how the month is going; edit the targets in the section below.</p>
       <div class="budget-review-list">${budgetRows}</div>
     </section>`;
 }
@@ -5815,8 +5817,12 @@ function renderBudgets(){
     const pct = Math.min(100, b.amount ? (spent/b.amount)*100 : 0);
     const acc = accountById(b.accountId), cat = categoryById(b.categoryId);
     return `<div class="row budget-target-row">
-      <div style="flex:1"><div class="row-title">${acc?.name || "Unknown"} • <span class="cat-preview" style="background:${hexToSoft(cat.color)}">${cat.emoji} ${cat.name}</span></div>
-      <div class="row-sub">${money(spent)} spent of ${money(b.amount)} in ${monthRange.label}</div><div class="progress"><span style="width:${pct}%"></span></div></div>
+      <div class="budget-target-main" style="flex:1">
+        <div class="budget-category-title"><span class="cat-preview" style="background:${hexToSoft(cat.color)}">${cat.emoji} ${cat.name}</span></div>
+        <div class="budget-account-sub">${acc?.emoji || "💵"} ${acc?.name || "Unknown account"}</div>
+        <div class="row-sub">${money(spent)} spent of ${money(b.amount)} in ${monthRange.label}</div>
+        <div class="progress"><span style="width:${pct}%"></span></div>
+      </div>
       <div class="amount">${money(Math.max(0,b.amount-spent))} left</div>
       <button class="ghost small" onclick="simpleBudget('${b.id}')">Edit</button>
     </div>`;
