@@ -4085,7 +4085,7 @@ function safeToSpend(account){
       if(bal < min){ min = bal; minDate = toISO(cursor); }
       cursor.setDate(cursor.getDate()+1);
     }
-    return { amount: Math.max(0, min), label:`lowest day: ${minDate} (${money(min)})` };
+    return { amount: Number(min), label:`lowest day: ${minDate} (${money(min)})` };
   }
 
   // Personal paycheck accounts: safe-to-spend is the LOWEST balance BEFORE the next paycheck.
@@ -4102,7 +4102,7 @@ function safeToSpend(account){
     // If payday is today, use today's pre-payday projected balance as the practical floor.
     if(end < cursor){
       const bal = accountBalance(account.id, true, now);
-      return { amount: Math.max(0, bal), label:`before next paycheck: ${next}` };
+      return { amount: Number(bal), label:`before next paycheck: ${next}` };
     }
 
     while(cursor <= end){
@@ -4111,11 +4111,11 @@ function safeToSpend(account){
       if(bal < min){ min = bal; minDate = iso; }
       cursor.setDate(cursor.getDate()+1);
     }
-    return { amount: Math.max(0, min), label:`lowest before paycheck: ${minDate} (${money(min)})` };
+    return { amount: Number(min), label:`lowest before paycheck: ${minDate} (${money(min)})` };
   }
 
   const projected = accountBalance(account.id, true, toISO(addMonths(new Date(),1)));
-  return { amount: Math.max(0, projected), label:"next 30 days" };
+  return { amount: Number(projected), label:"next 30 days" };
 }
 function visibleTransactionsForAccount(accountId, untilISO="2999-12-31"){
   return expandedTransactions(untilISO).filter(tx=>tx.accountId===accountId || tx.transferToAccountId===accountId);
@@ -5142,6 +5142,20 @@ function forecastWindowTransactions(accountId, untilISO){
   return visibleTransactionsForAccount(accountId, untilISO);
 }
 
+function forecastTxInRange(tx, rangeInfo){
+  if(!tx || !rangeInfo) return false;
+  if(tx.date > rangeInfo.end) return false;
+  // Forecast view should not hide old still-planned items.
+  // A past planned/pending bill is still part of the future cash problem until Mak clears, edits, or deletes it.
+  if(tx.status !== "cleared" && tx.date < todayISO()) return true;
+  return tx.date >= rangeInfo.start && tx.date <= rangeInfo.end;
+}
+
+function forecastVisibleStart(txs, rangeInfo){
+  const dates = txs.map(tx => tx.date).filter(Boolean).sort();
+  return dates[0] || rangeInfo.start;
+}
+
 function renderForecastRangeControl(accountId){
   accountForecastRange = cleanAccountForecastRange(accountForecastRange);
   const acc = accountById(accountId);
@@ -5277,8 +5291,8 @@ function renderAccountDetail(){
     saveUiPrefs();
     rangeInfo = forecastRangeDates(accountForecastRange);
     txs = forecastWindowTransactions(a.id, rangeInfo.end)
-      .filter(tx => tx.date >= rangeInfo.start && tx.date <= rangeInfo.end);
-    balances = accountRunningBalanceMap(a.id, rangeInfo.end, rangeInfo.start);
+      .filter(tx => forecastTxInRange(tx, rangeInfo));
+    balances = accountRunningBalanceMap(a.id, rangeInfo.end, forecastVisibleStart(txs, rangeInfo));
   }
 
   const filtered = filteredLedgerTransactions(txs);
@@ -9161,7 +9175,11 @@ function scrollCalendarToToday(){
   const todayEl = document.querySelector(`#calendarGrid .day[data-day="${todayISO()}"]`);
   if(todayEl) todayEl.scrollIntoView({behavior:"smooth", block:"center"});
 }
-todayBtn.onclick = ()=>{ calendarDate = new Date(); renderCalendar(); setTimeout(scrollCalendarToToday, 80); };
+function scrollCalendarToTodaySoon(){
+  setTimeout(scrollCalendarToToday, 60);
+  setTimeout(scrollCalendarToToday, 180);
+}
+todayBtn.onclick = ()=>{ calendarDate = new Date(); renderCalendar(); scrollCalendarToTodaySoon(); };
 if(document.getElementById("calendarAccountFilter")) calendarAccountFilter.onchange = e=>{ calendarFilter = e.target.value; saveUiPrefs(); renderCalendar(); };
 const calendarCategoryHighlightBtnEl = document.getElementById("calendarCategoryHighlightBtn");
 if(calendarCategoryHighlightBtnEl) calendarCategoryHighlightBtnEl.onclick = (e)=>{

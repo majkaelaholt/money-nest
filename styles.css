@@ -4382,3 +4382,35 @@ button:disabled{
     font-size:12px;
   }
 }
+
+
+/* v2-186: mobile date input, forecast/safe-to-spend polish */
+@media(max-width:700px){
+  input[type="date"]{
+    -webkit-appearance:none !important;
+    appearance:none !important;
+    display:block !important;
+    width:100% !important;
+    max-width:100% !important;
+    min-width:0 !important;
+    height:46px !important;
+    min-height:46px !important;
+    line-height:1.2 !important;
+    padding:10px 14px !important;
+    box-sizing:border-box !important;
+    text-align:left !important;
+  }
+  input[type="date"]::-webkit-date-and-time-value{
+    text-align:left !important;
+    min-height:0 !important;
+    line-height:1.2 !important;
+    padding:0 !important;
+  }
+  input[type="date"]::-webkit-calendar-picker-indicator{
+    margin-left:auto !important;
+  }
+  #transactionModal .form-section,
+  #transactionModal .form-details{
+    overflow:hidden;
+  }
+}

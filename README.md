@@ -2,7 +2,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-185`
+Current version: `money-nest-v2-186`
 
 ## Important Notes
 
@@ -136,6 +136,14 @@ Use CSV for reviewing or batch-editing data.
 * [ ]
 
 ## Version Notes
+
+### v2-186
+
+* Forecast View now includes past planned/pending transactions through the selected range instead of hiding old pending items.
+* Safe to Spend now shows the actual lowest projected balance, including negative amounts, instead of clamping overdraw risk to $0.
+* Fixed the mobile date field layout in the Add/Edit Transaction modal.
+* Added a small Today-button scroll retry so iPhone has more time to render before scrolling to today.
+* No import/export schema changes needed.
 
 ### v2-185
 
