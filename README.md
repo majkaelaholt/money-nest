@@ -2,7 +2,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-186`
+Current version: `money-nest-v2-187`
 
 ## Important Notes
 
@@ -99,9 +99,9 @@ Credit card payments should usually behave like transfers/payments, not new spen
 
 ### Reimbursements / IOUs
 
-Pending reimbursements are used when one account temporarily covers money for another account.
+IOU / reimbursement transactions are used when one account temporarily covers money for another account.
 
-Expected reimbursement money should not be treated as available until the reimbursement is cleared.
+These now behave like normal planned transfers in forecasts and Safe to Spend, while still keeping the IOU label for tracking.
 
 ### JSON vs CSV exports
 
@@ -136,6 +136,13 @@ Use CSV for reviewing or batch-editing data.
 * [ ]
 
 ## Version Notes
+
+### v2-187
+
+* IOU / reimbursement transactions now behave like normal planned transfers in projected balances and Safe to Spend.
+* The IOU option still exists when creating card payments, but receiving accounts now count the planned payback immediately in forecasts.
+* Updated account-detail labels so planned IOUs are described as included in projected balance instead of “not available yet.”
+* No import/export schema changes needed.
 
 ### v2-186
 

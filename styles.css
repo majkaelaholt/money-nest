@@ -4414,3 +4414,5 @@ button:disabled{
     overflow:hidden;
   }
 }
+
+/* v2-187: IOU/reimbursement transactions now count like normal planned transfers; no style changes. */

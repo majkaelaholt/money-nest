@@ -3684,13 +3684,10 @@ function pendingReimbursementsFromAccount(accountId, throughISO="2999-12-31"){
 function txEffectOnCash(tx, accountId, projected=true){
   if(!projected && tx.status !== "cleared") return 0;
 
-  // Transfers between cash accounts:
-  // from accountId = money leaves; transferToAccountId = money arrives.
-  // Pending reimbursements are intentionally conservative: the payer account plans
-  // for money leaving, but the receiving account does NOT count it as available
-  // until the reimbursement is actually cleared.
+  // Transfers between cash accounts behave like normal planned/cleared money movement.
+  // IOU / reimbursement transactions are still labeled for tracking, but they no
+  // longer hide the receiving side from projected balances or Safe to Spend.
   if(tx.type === "transfer" && tx.transferToAccountId === accountId){
-    if(isPendingReimbursementTx(tx)) return 0;
     return tx.amount;
   }
 
@@ -5261,9 +5258,9 @@ function renderAccountBalanceCards(accountId){
       <div class="row-sub">longer forecast</div>
     </div>
     ${expectedIn90 ? `<div class="mini-balance-card">
-      <div class="label">Expected reimbursements</div>
+      <div class="label">Planned IOUs in</div>
       <div class="amount good">${money(expectedIn90)}</div>
-      <div class="row-sub">pending / not available yet</div>
+      <div class="row-sub">included in projected balance</div>
     </div>` : ""}
   </div>`;
 }
@@ -5500,9 +5497,9 @@ function renderLedger(txs, options={}){
       } else if(showBalance && isPendingReimbursementTx(tx) && tx.transferToAccountId === options.accountId){
         sign = "+";
         amountClass = "good";
-        context = `Expected reimbursement from ${accountById(tx.accountId)?.name || "account"} (pending / not counted yet)`;
+        context = `Planned reimbursement from ${accountById(tx.accountId)?.name || "account"}`;
       } else if(showBalance && isPendingReimbursementTx(tx) && tx.accountId === options.accountId){
-        context = `Pending reimbursement to ${accountById(tx.transferToAccountId)?.name || "account"}`;
+        context = `Planned reimbursement to ${accountById(tx.transferToAccountId)?.name || "account"}`;
       } else if(showBalance && tx.type === "transfer" && tx.transferToAccountId === options.accountId){
         sign = "+";
         amountClass = "good";
@@ -7984,7 +7981,7 @@ function createCardPaymentForCharge(id, meta={}){
       </label>
     </div>
     <label>Payment title<input id="cardPayTitle" value="${(tx.title || `Payment to ${debt?.name || "card"}`).replace(/"/g,'&quot;')}"></label>
-    <label class="checkbox"><input id="cardPayCreateIou" type="checkbox"> Also create pending reimbursement / IOU to pay this cash account back later</label>
+    <label class="checkbox"><input id="cardPayCreateIou" type="checkbox"> Also create planned reimbursement / IOU to pay this cash account back later</label>
     <div id="cardPayIouFields" class="nested-card" style="display:none; margin-top:10px;">
       <div class="two-col">
         <label>From / paying later
@@ -7998,7 +7995,7 @@ function createCardPaymentForCharge(id, meta={}){
         <label>Repayment date<input id="cardPayIouDate" type="date" value="${nextPaycheckDate(reimbDefaults.from || cashAccounts[0]?.id || "")}"></label>
         <label>IOU title<input id="cardPayIouTitle" value="Pay back ${defaultPaying?.name || "cash account"}"></label>
       </div>
-      <p class="hint">Pending reimbursements reduce the paying-later account forecast, but do not make the receiving account look like it already has the money.</p>
+      <p class="hint">This creates a normal planned transfer between cash accounts, labeled as an IOU so it is easier to track.</p>
     </div>
   `;
   setTimeout(()=>{
@@ -8074,7 +8071,7 @@ function createCardPaymentForCharge(id, meta={}){
         reimbursementToAccountId: to,
         recurrence: {type:"none", interval:1, weekendHandling:"none"},
         repeat: false,
-        notes: `Pending reimbursement for ${tx.title || "card purchase"} paid from ${accountById(to)?.name || "cash account"}.`,
+        notes: `Planned IOU / reimbursement for ${tx.title || "card purchase"} paid from ${accountById(to)?.name || "cash account"}.`,
         dateOverrides: {}
       });
     }
@@ -8097,9 +8094,9 @@ function defaultReimbursementAccounts(selectedId){
 function openPendingReimbursement(selectedAccountId=""){
   if(data.accounts.length < 2){ alert("Add at least two cash accounts first."); return; }
   const defaults = defaultReimbursementAccounts(selectedAccountId);
-  simpleTitle.textContent = "Plan pending reimbursement / IOU";
+  simpleTitle.textContent = "Plan reimbursement / IOU";
   simpleFields.innerHTML = `
-    <p class="hint">Use this when one cash account fronts money and another account will pay it back later. The paying account plans for money leaving, but the receiving account only shows it as expected — not available — until cleared.</p>
+    <p class="hint">Use this when one cash account fronts money and another account will pay it back later. This creates a normal planned transfer that counts in projected balances and Safe to Spend.</p>
     <div class="two-col">
       <label>From / paying later
         <select id="reimbFrom">${data.accounts.map(a=>`<option value="${a.id}" ${a.id===defaults.from ? "selected" : ""}>${a.emoji || "💵"} ${a.name}</option>`).join("")}</select>
@@ -8127,7 +8124,7 @@ function openPendingReimbursement(selectedAccountId=""){
     if(!amount){ alert("Enter an amount."); return; }
     data.transactions.push({
       id: uid(),
-      title: document.getElementById("reimbTitle")?.value || "Pending reimbursement",
+      title: document.getElementById("reimbTitle")?.value || "Planned reimbursement",
       amount,
       date: document.getElementById("reimbDate")?.value || todayISO(),
       type: "transfer",
@@ -8141,7 +8138,7 @@ function openPendingReimbursement(selectedAccountId=""){
       reimbursementToAccountId: to,
       recurrence: {type:"none", interval:1, weekendHandling:"none"},
       repeat: false,
-      notes: document.getElementById("reimbNotes")?.value || "Pending reimbursement: does not increase the receiving account until cleared.",
+      notes: document.getElementById("reimbNotes")?.value || "Planned IOU / reimbursement. Counts like a normal planned transfer.",
       dateOverrides: {}
     });
   };
