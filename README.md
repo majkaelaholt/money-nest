@@ -2,7 +2,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-188`
+Current version: `money-nest-v2-189`
 
 ## Important Notes
 
@@ -52,6 +52,18 @@ Or, when logged in with Supabase:
 1. Save to cloud from the device with the correct data.
 2. Open Money Nest on the other device/browser.
 3. Load from cloud.
+
+## Codex / AI Editing Notes
+
+Future Codex chats should read `CODEX.md` and `README.md` before editing Money Nest.
+
+`CODEX.md` contains the project rules for AI/code-agent work, including data safety, Supabase cloud sync, localStorage, JSON/CSV import/export compatibility, versioning, README updates, mobile layout rules, and behaviors that should not be broken.
+
+When starting a new Codex chat, use:
+
+```text
+Before editing, read CODEX.md and README.md. Follow CODEX.md as the project rules/source of truth.
+```
 
 ## Updating the GitHub Pages App
 
@@ -136,6 +148,12 @@ Use CSV for reviewing or batch-editing data.
 * [ ]
 
 ## Version Notes
+
+### v2-189
+
+* Added Codex / AI Editing Notes to the README.
+* Documented that future Codex chats should read CODEX.md and README.md before editing.
+* Documentation-only update; no app behavior or import/export schema changes.
 
 ### v2-188
 
