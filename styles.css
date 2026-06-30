@@ -4416,3 +4416,28 @@ button:disabled{
 }
 
 /* v2-187: IOU/reimbursement transactions now count like normal planned transfers; no style changes. */
+
+/* v2-188 flexible transaction templates */
+.template-fields-line{
+  margin-top:3px;
+  font-size:12px;
+}
+.template-field-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:8px 12px;
+  margin-top:10px;
+}
+.template-field-toggle{
+  background:#fffaf3;
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:8px 10px;
+  color:var(--ink);
+}
+.template-fields-editor h4{
+  margin-bottom:4px;
+}
+@media(max-width:640px){
+  .template-field-grid{grid-template-columns:1fr;}
+}

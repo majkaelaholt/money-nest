@@ -6651,16 +6651,108 @@ function renderDebtDetail(){
 function templateKey(title){
   return String(title || "").trim().toLowerCase();
 }
-function cleanTemplateFromTx(tx){
-  // Transaction title autofill should only remember merchant/basic description fields.
-  // Do not save type/status or account/debt/transfer routing. A title like “Les Schwab”
-  // might be a card charge, a cash expense, or a payment depending on where Mak starts.
+function txTypeLabel(type){
+  return ({expense:"Expense", income:"Income", paycheck:"Paycheck", transfer:"Transfer / Payment"})[type] || String(type || "Transaction");
+}
+const DEFAULT_TEMPLATE_FIELDS = {
+  title:true,
+  categoryId:true,
+  notes:true,
+  type:false,
+  status:false,
+  accountId:false,
+  debtAccountId:false,
+  transferToAccountId:false,
+  linkedDebtId:false
+};
+const TEMPLATE_FIELD_LABELS = {
+  title:"title",
+  categoryId:"category",
+  notes:"notes",
+  type:"type",
+  status:"status",
+  accountId:"cash account",
+  debtAccountId:"card/debt used",
+  transferToAccountId:"cash transfer-to",
+  linkedDebtId:"payment debt"
+};
+function normalizeTemplateFields(fields){
+  return {...DEFAULT_TEMPLATE_FIELDS, ...(fields || {}), title:true};
+}
+function boolFromCSV(value, fallback=false){
+  if(value === undefined || value === null || value === "") return fallback;
+  const v = String(value).trim().toLowerCase();
+  return ["1","true","yes","y","on","checked"].includes(v);
+}
+function templateSavedFieldNames(t){
+  const fields = normalizeTemplateFields(t?.fields);
+  return Object.keys(TEMPLATE_FIELD_LABELS).filter(key=>fields[key]).map(key=>TEMPLATE_FIELD_LABELS[key]);
+}
+function templateFieldSummary(t){
+  const names = templateSavedFieldNames(t).filter(name=>name !== "title");
+  return names.length ? `Saves ${names.join(", ")}` : "Saves title only";
+}
+function templateVariantLabel(t){
+  const cat = categoryById(t.categoryId || "unassigned");
+  const bits = [];
+  if(normalizeTemplateFields(t.fields).categoryId) bits.push(`${cat.emoji} ${cat.name}`);
+  if(normalizeTemplateFields(t.fields).type && t.type) bits.push(txTypeLabel(t.type));
+  if(normalizeTemplateFields(t.fields).accountId && t.accountId) bits.push(accountById(t.accountId)?.name || "cash account");
+  if(normalizeTemplateFields(t.fields).debtAccountId && t.debtAccountId) bits.push(debtById(t.debtAccountId)?.name || "card/debt");
+  if(normalizeTemplateFields(t.fields).transferToAccountId && t.transferToAccountId) bits.push(`to ${accountById(t.transferToAccountId)?.name || "cash"}`);
+  if(normalizeTemplateFields(t.fields).linkedDebtId && t.linkedDebtId) bits.push(`pay ${debtById(t.linkedDebtId)?.name || "debt"}`);
+  return bits.join(" • ") || templateFieldSummary(t);
+}
+function normalizeTransactionTemplate(t, {legacySafe=true}={}){
+  const baseFields = legacySafe && !t?.fields
+    ? {...DEFAULT_TEMPLATE_FIELDS}
+    : normalizeTemplateFields(t?.fields);
   return {
+    id: t?.id || uid(),
+    title: String(t?.title || "").trim(),
+    type: t?.type || "expense",
+    status: t?.status || "planned",
+    categoryId: t?.categoryId || "unassigned",
+    accountId: t?.accountId || "",
+    debtAccountId: t?.debtAccountId || "",
+    transferToAccountId: t?.transferToAccountId || "",
+    linkedDebtId: t?.linkedDebtId || "",
+    notes: t?.notes || "",
+    fields: normalizeTemplateFields(baseFields)
+  };
+}
+function templateSignature(t){
+  const n = normalizeTransactionTemplate(t, {legacySafe:false});
+  const f = normalizeTemplateFields(n.fields);
+  return JSON.stringify({
+    title: templateKey(n.title),
+    categoryId: f.categoryId ? n.categoryId : "",
+    notes: f.notes ? n.notes : "",
+    type: f.type ? n.type : "",
+    status: f.status ? n.status : "",
+    accountId: f.accountId ? n.accountId : "",
+    debtAccountId: f.debtAccountId ? n.debtAccountId : "",
+    transferToAccountId: f.transferToAccountId ? n.transferToAccountId : "",
+    linkedDebtId: f.linkedDebtId ? n.linkedDebtId : "",
+    fields: f
+  });
+}
+function cleanTemplateFromTx(tx){
+  // Auto-remember a safe/basic template. Custom templates in Settings can opt into
+  // type, status, and routing fields per title so “Shell” can have multiple versions.
+  return normalizeTransactionTemplate({
     id: tx.templateId || uid(),
     title: String(tx.title || "").trim(),
+    type: tx.type || "expense",
+    status: tx.status || "planned",
     categoryId: tx.categoryId || "unassigned",
-    notes: tx.notes || ""
-  };
+    accountId: tx.accountId || "",
+    debtAccountId: tx.debtAccountId || "",
+    transferToAccountId: tx.transferToAccountId || "",
+    linkedDebtId: tx.linkedDebtId || "",
+    notes: tx.notes || "",
+    fields: {...DEFAULT_TEMPLATE_FIELDS}
+  }, {legacySafe:false});
 }
 function rememberTransactionTemplate(tx){
   if(!tx || !tx.title || !String(tx.title).trim()) return;
@@ -6671,35 +6763,47 @@ function rememberTransactionTemplate(tx){
   const key = templateKey(tpl.title);
   if(!key) return;
 
-  const existing = data.settings.transactionTemplates.find(t => templateKey(t.title) === key);
+  // Multiple templates can share the same title; only update an exact safe-template match.
+  const sig = templateSignature(tpl);
+  const existing = data.settings.transactionTemplates.find(t => templateSignature(t) === sig);
   if(existing){
     Object.assign(existing, {...tpl, id: existing.id});
   } else {
     data.settings.transactionTemplates.push(tpl);
   }
 
-  data.settings.transactionTemplates.sort((a,b)=>String(a.title || "").localeCompare(String(b.title || "")));
+  data.settings.transactionTemplates = data.settings.transactionTemplates.map(t=>normalizeTransactionTemplate(t));
+  data.settings.transactionTemplates.sort((a,b)=>String(a.title || "").localeCompare(String(b.title || "")) || templateVariantLabel(a).localeCompare(templateVariantLabel(b)));
 }
 function matchingTransactionTemplates(query){
   const q = templateKey(query);
   if(!q) return [];
   return (data.settings?.transactionTemplates || [])
+    .map(t=>normalizeTransactionTemplate(t))
     .filter(t => templateKey(t.title).includes(q))
-    .slice(0,8);
+    .slice(0,10);
 }
 function applyTransactionTemplate(templateId){
-  const tpl = (data.settings?.transactionTemplates || []).find(t => t.id === templateId);
-  if(!tpl) return;
+  const tpl = normalizeTransactionTemplate((data.settings?.transactionTemplates || []).find(t => t.id === templateId));
+  if(!tpl || !tpl.title) return;
 
+  const fields = normalizeTemplateFields(tpl.fields);
   const txTitleEl = document.getElementById("txTitle");
   const txCategoryEl = document.getElementById("txCategory");
   const txNotesEl = document.getElementById("txNotes");
 
-  if(txTitleEl) txTitleEl.value = tpl.title || txTitleEl.value;
-  if(txCategoryEl && tpl.categoryId) txCategoryEl.value = tpl.categoryId;
-  // Intentionally do not autofill type/status/account/card/debt/transfer routing.
-  // Templates only suggest the title/category/notes so routing stays intentional.
-  if(txNotesEl && tpl.notes && !txNotesEl.value) txNotesEl.value = tpl.notes;
+  if(fields.title && txTitleEl) txTitleEl.value = tpl.title || txTitleEl.value;
+  if(fields.categoryId && txCategoryEl && tpl.categoryId) txCategoryEl.value = tpl.categoryId;
+  if(fields.type && document.getElementById("txType")) txType.value = tpl.type || txType.value;
+  if(fields.status && document.getElementById("txStatus")) txStatus.value = tpl.status || txStatus.value;
+
+  updateTransactionFormUI();
+
+  if(fields.accountId && document.getElementById("txAccount")) txAccount.value = tpl.accountId || "";
+  if(fields.debtAccountId && document.getElementById("txDebtAccount")) txDebtAccount.value = tpl.debtAccountId || "";
+  if(fields.transferToAccountId && document.getElementById("txTransferTo")) txTransferTo.value = tpl.transferToAccountId || "";
+  if(fields.linkedDebtId && document.getElementById("txDebt")) txDebt.value = tpl.linkedDebtId || "";
+  if(fields.notes && txNotesEl && tpl.notes && !txNotesEl.value) txNotesEl.value = tpl.notes;
 
   updateTransactionFormUI();
   hideTemplateSuggestions();
@@ -6718,10 +6822,9 @@ function renderTemplateSuggestions(){
     }
 
     box.innerHTML = matches.map(t=>{
-      const cat = categoryById(t.categoryId || "unassigned");
       return `<div class="template-suggestion-row">
         <button type="button" class="template-suggestion-main" data-template-id="${t.id}">
-          <span><b>${t.title}</b><small>${cat.emoji} ${cat.name}</small></span>
+          <span><b>${escapeAttr(t.title)}</b><small>${escapeAttr(templateVariantLabel(t))} • ${escapeAttr(templateFieldSummary(t))}</small></span>
         </button>
         <button type="button" class="template-suggestion-delete" data-template-delete-inline="${t.id}" title="Delete this saved suggestion" aria-label="Delete saved suggestion ${String(t.title || '').replace(/"/g, '&quot;')}">×</button>
       </div>`;
@@ -6764,19 +6867,20 @@ function renderTransactionTemplates(){
   if(!list) return;
   data.settings ||= {};
   data.settings.transactionTemplates ||= [];
+  data.settings.transactionTemplates = data.settings.transactionTemplates.map(t=>normalizeTransactionTemplate(t));
 
   const templates = data.settings.transactionTemplates;
   if(!templates.length){
-    list.innerHTML = `<div class="empty">No templates yet. Saving a transaction will remember its title/type/category automatically.</div>`;
+    list.innerHTML = `<div class="empty">No templates yet. Saving a transaction will remember a basic title/category shortcut. Add or edit templates here for type/status/account routing.</div>`;
     return;
   }
 
   list.innerHTML = templates.map(t=>{
-    const cat = categoryById(t.categoryId || "unassigned");
-    return `<div class="template-row">
+    return `<div class="template-row template-row-v188">
       <div>
-        <div class="row-title">${t.title}</div>
-        <div class="row-sub">${cat.emoji} ${cat.name}</div>
+        <div class="row-title">${escapeAttr(t.title)}</div>
+        <div class="row-sub">${escapeAttr(templateVariantLabel(t))}</div>
+        <div class="row-sub template-fields-line">${escapeAttr(templateFieldSummary(t))}</div>
       </div>
       <div class="template-actions">
         <button class="ghost small" data-template-edit="${t.id}">Edit</button>
@@ -6798,44 +6902,103 @@ function deleteTemplate(id){
   data.settings.transactionTemplates = (data.settings.transactionTemplates || []).filter(t=>t.id !== id);
   saveData();
 }
+function templateCheckbox(key, label, checked){
+  return `<label class="checkbox template-field-toggle"><input type="checkbox" id="sTplField_${key}" ${checked ? "checked" : ""}> ${label}</label>`;
+}
 function simpleTemplate(id=null){
   data.settings ||= {};
   data.settings.transactionTemplates ||= [];
-  const tpl = id ? data.settings.transactionTemplates.find(t=>t.id===id) : null;
+  const tpl = id ? normalizeTransactionTemplate(data.settings.transactionTemplates.find(t=>t.id===id)) : normalizeTransactionTemplate({}, {legacySafe:false});
+  const fields = normalizeTemplateFields(id ? tpl.fields : DEFAULT_TEMPLATE_FIELDS);
 
-  simpleTitle.textContent = tpl ? "Edit transaction template" : "Add transaction template";
+  simpleTitle.textContent = id ? "Edit transaction template" : "Add transaction template";
   simpleFields.innerHTML = `
-    <label>Title<input id="sTplTitle" value="${tpl?.title || ""}" placeholder="McDonalds" required></label>
-    <label>Category<select id="sTplCategory">${sortedCategories().map(c=>`<option value="${c.id}">${c.emoji} ${c.name}</option>`).join("")}</select></label>
-    <label>Notes<textarea id="sTplNotes">${tpl?.notes || ""}</textarea></label>
-    <p class="hint">Templates do not save transaction type/status or account routing, so they will not accidentally move a transaction to the wrong account.</p>
+    <label>Title<input id="sTplTitle" value="${escapeAttr(tpl?.title || "")}" placeholder="Shell" required></label>
+    <div class="two-col">
+      <label>Category<select id="sTplCategory">${sortedCategories().map(c=>`<option value="${c.id}">${c.emoji} ${c.name}</option>`).join("")}</select></label>
+      <label>Type<select id="sTplType">
+        <option value="expense">Expense</option>
+        <option value="income">Income</option>
+        <option value="paycheck">Paycheck</option>
+        <option value="transfer">Transfer / Payment</option>
+      </select></label>
+    </div>
+    <div class="two-col">
+      <label>Status<select id="sTplStatus"><option value="planned">Planned</option><option value="cleared">Cleared</option></select></label>
+      <label>Cash account money comes from<select id="sTplAccount"><option value="">None</option>${data.accounts.map(a=>`<option value="${a.id}">${a.name}</option>`).join("")}</select></label>
+    </div>
+    <div class="two-col">
+      <label>Debt account used for spending<select id="sTplDebtAccount"><option value="">None</option>${data.debts.map(d=>`<option value="${d.id}">${d.company} • ${d.name}</option>`).join("")}</select></label>
+      <label>Transfer to cash account<select id="sTplTransferTo"><option value="">None</option>${data.accounts.map(a=>`<option value="${a.id}">${a.name}</option>`).join("")}</select></label>
+    </div>
+    <label>Transfer/payment to debt<select id="sTplLinkedDebt"><option value="">None</option>${data.debts.map(d=>`<option value="${d.id}">${d.company} • ${d.name}</option>`).join("")}</select></label>
+    <label>Notes<textarea id="sTplNotes">${escapeAttr(tpl?.notes || "")}</textarea></label>
+    <div class="subpanel template-fields-editor">
+      <h4>What this template should apply</h4>
+      <p class="hint">Title is always saved so the shortcut can appear. Turn on only the fields this specific template should autofill.</p>
+      <div class="template-field-grid">
+        ${templateCheckbox("categoryId", "Category", fields.categoryId)}
+        ${templateCheckbox("notes", "Notes", fields.notes)}
+        ${templateCheckbox("type", "Type", fields.type)}
+        ${templateCheckbox("status", "Status", fields.status)}
+        ${templateCheckbox("accountId", "Cash account", fields.accountId)}
+        ${templateCheckbox("debtAccountId", "Debt/card used for spending", fields.debtAccountId)}
+        ${templateCheckbox("transferToAccountId", "Transfer to cash account", fields.transferToAccountId)}
+        ${templateCheckbox("linkedDebtId", "Payment to debt", fields.linkedDebtId)}
+      </div>
+    </div>
+    <p class="hint">One title can have multiple templates. Example: Shell can have one Gas template and one Food template.</p>
   `;
 
-  const catEl = document.getElementById("sTplCategory");
-
-  if(tpl){
-    if(catEl) catEl.value = tpl.categoryId || "unassigned";
-  }
+  const set = (id,value)=>{ const el = document.getElementById(id); if(el) el.value = value ?? ""; };
+  set("sTplCategory", tpl.categoryId || "unassigned");
+  set("sTplType", tpl.type || "expense");
+  set("sTplStatus", tpl.status || "planned");
+  set("sTplAccount", tpl.accountId || "");
+  set("sTplDebtAccount", tpl.debtAccountId || "");
+  set("sTplTransferTo", tpl.transferToAccountId || "");
+  set("sTplLinkedDebt", tpl.linkedDebtId || "");
 
   simpleSubmit = ()=>{
     const titleEl = document.getElementById("sTplTitle");
     if(!titleEl || !titleEl.value.trim()) return;
-    const payload = {
-      id: tpl?.id || uid(),
+    const nextFields = normalizeTemplateFields({
+      categoryId: !!document.getElementById("sTplField_categoryId")?.checked,
+      notes: !!document.getElementById("sTplField_notes")?.checked,
+      type: !!document.getElementById("sTplField_type")?.checked,
+      status: !!document.getElementById("sTplField_status")?.checked,
+      accountId: !!document.getElementById("sTplField_accountId")?.checked,
+      debtAccountId: !!document.getElementById("sTplField_debtAccountId")?.checked,
+      transferToAccountId: !!document.getElementById("sTplField_transferToAccountId")?.checked,
+      linkedDebtId: !!document.getElementById("sTplField_linkedDebtId")?.checked
+    });
+    const payload = normalizeTransactionTemplate({
+      id: id || uid(),
       title: titleEl.value.trim(),
       categoryId: document.getElementById("sTplCategory")?.value || "unassigned",
-      notes: document.getElementById("sTplNotes")?.value || ""
-    };
+      type: document.getElementById("sTplType")?.value || "expense",
+      status: document.getElementById("sTplStatus")?.value || "planned",
+      accountId: document.getElementById("sTplAccount")?.value || "",
+      debtAccountId: document.getElementById("sTplDebtAccount")?.value || "",
+      transferToAccountId: document.getElementById("sTplTransferTo")?.value || "",
+      linkedDebtId: document.getElementById("sTplLinkedDebt")?.value || "",
+      notes: document.getElementById("sTplNotes")?.value || "",
+      fields: nextFields
+    }, {legacySafe:false});
 
-    const existing = data.settings.transactionTemplates.find(t => templateKey(t.title) === templateKey(payload.title));
-    if(tpl) Object.assign(tpl, payload);
-    else if(existing) Object.assign(existing, {...payload, id:existing.id});
-    else data.settings.transactionTemplates.push(payload);
+    if(id){
+      const existing = data.settings.transactionTemplates.find(t => t.id === id);
+      if(existing) Object.assign(existing, payload, {id});
+    } else {
+      data.settings.transactionTemplates.push(payload);
+    }
 
-    data.settings.transactionTemplates.sort((a,b)=>String(a.title || "").localeCompare(String(b.title || "")));
+    data.settings.transactionTemplates = data.settings.transactionTemplates
+      .map(t=>normalizeTransactionTemplate(t))
+      .sort((a,b)=>String(a.title || "").localeCompare(String(b.title || "")) || templateVariantLabel(a).localeCompare(templateVariantLabel(b)));
   };
-  simpleDelete = tpl ? ()=>deleteTemplate(tpl.id) : null;
-  deleteSimpleBtn.style.display = tpl ? "inline-block" : "none";
+  simpleDelete = id ? ()=>deleteTemplate(id) : null;
+  deleteSimpleBtn.style.display = id ? "inline-block" : "none";
   simpleModal.showModal();
 }
 
@@ -9529,13 +9692,22 @@ function exportEditableCSVs(){
     notes:tx.notes || ""
   }));
 
-  const templateHeaders = ["id","title","type","categoryId","accountId","debtAccountId","transferToAccountId","linkedDebtId","notes"];
-  const templateRows = (data.settings?.transactionTemplates || []).map(t=>({
-    id:t.id, title:t.title || "", type:t.type || "expense", categoryId:t.categoryId || "unassigned",
-    accountId:t.accountId || "", debtAccountId:t.debtAccountId || "",
-    transferToAccountId:t.transferToAccountId || "", linkedDebtId:t.linkedDebtId || "",
-    notes:t.notes || ""
-  }));
+  const templateHeaders = [
+    "id","title","type","status","categoryId","accountId","debtAccountId","transferToAccountId","linkedDebtId","notes",
+    "saveTitle","saveCategory","saveNotes","saveType","saveStatus","saveAccount","saveDebtSpendingAccount","saveTransferToAccount","savePaymentDebt"
+  ];
+  const templateRows = (data.settings?.transactionTemplates || []).map(raw=>{
+    const t = normalizeTransactionTemplate(raw);
+    const f = normalizeTemplateFields(t.fields);
+    return {
+      id:t.id, title:t.title || "", type:t.type || "expense", status:t.status || "planned", categoryId:t.categoryId || "unassigned",
+      accountId:t.accountId || "", debtAccountId:t.debtAccountId || "",
+      transferToAccountId:t.transferToAccountId || "", linkedDebtId:t.linkedDebtId || "",
+      notes:t.notes || "",
+      saveTitle:!!f.title, saveCategory:!!f.categoryId, saveNotes:!!f.notes, saveType:!!f.type, saveStatus:!!f.status,
+      saveAccount:!!f.accountId, saveDebtSpendingAccount:!!f.debtAccountId, saveTransferToAccount:!!f.transferToAccountId, savePaymentDebt:!!f.linkedDebtId
+    };
+  });
 
   downloadText(`money-nest-categories-${dateStamp}.csv`, makeCSV(categoryRows, categoryHeaders), "text/csv");
   downloadText(`money-nest-accounts-${dateStamp}.csv`, makeCSV(accountRows, accountHeaders), "text/csv");
@@ -9652,23 +9824,38 @@ function importEditedCSV(file){
       data.settings.transactionTemplates ||= [];
       rows.forEach(row=>{
         const id = row.id || uid();
-        const payload = {
+        const hasNewFieldColumns = headers.some(h=>h.startsWith("save"));
+        const fields = hasNewFieldColumns ? normalizeTemplateFields({
+          title: boolFromCSV(row.saveTitle, true),
+          categoryId: boolFromCSV(row.saveCategory, true),
+          notes: boolFromCSV(row.saveNotes, true),
+          type: boolFromCSV(row.saveType, false),
+          status: boolFromCSV(row.saveStatus, false),
+          accountId: boolFromCSV(row.saveAccount, false),
+          debtAccountId: boolFromCSV(row.saveDebtSpendingAccount, false),
+          transferToAccountId: boolFromCSV(row.saveTransferToAccount, false),
+          linkedDebtId: boolFromCSV(row.savePaymentDebt, false)
+        }) : {...DEFAULT_TEMPLATE_FIELDS};
+        const payload = normalizeTransactionTemplate({
           id,
           title: row.title || "",
           type: row.type || "expense",
+          status: row.status || "planned",
           categoryId: row.categoryId || "unassigned",
           accountId: row.accountId || "",
           debtAccountId: row.debtAccountId || "",
           transferToAccountId: row.transferToAccountId || "",
           linkedDebtId: row.linkedDebtId || "",
-          notes: row.notes || ""
-        };
+          notes: row.notes || "",
+          fields
+        }, {legacySafe:false});
         if(!payload.title) return;
-        const existing = data.settings.transactionTemplates.find(t => t.id === id || templateKey(t.title) === templateKey(payload.title));
+        const existing = data.settings.transactionTemplates.find(t => t.id === id);
         if(existing) Object.assign(existing, {...payload, id: existing.id});
         else data.settings.transactionTemplates.push(payload);
       });
-      data.settings.transactionTemplates.sort((a,b)=>String(a.title || "").localeCompare(String(b.title || "")));
+      data.settings.transactionTemplates = data.settings.transactionTemplates.map(t=>normalizeTransactionTemplate(t));
+      data.settings.transactionTemplates.sort((a,b)=>String(a.title || "").localeCompare(String(b.title || "")) || templateVariantLabel(a).localeCompare(templateVariantLabel(b)));
       saveData();
       alert("Transaction templates CSV imported.");
       return;

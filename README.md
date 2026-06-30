@@ -2,7 +2,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-187`
+Current version: `money-nest-v2-188`
 
 ## Important Notes
 
@@ -136,6 +136,14 @@ Use CSV for reviewing or batch-editing data.
 * [ ]
 
 ## Version Notes
+
+### v2-188
+
+* Settings sections now default closed when opening Settings.
+* Transaction templates now support multiple saved templates with the same title.
+* Each transaction template can choose which fields it applies, including category, notes, type, status, cash account, debt/card account, cash transfer destination, and payment debt.
+* Template suggestions now show the saved variant and fields so similar titles like `Shell` can be separated by category/type.
+* Transaction template CSV export/import now includes template field-toggle columns while preserving older template CSV compatibility.
 
 ### v2-187
 
