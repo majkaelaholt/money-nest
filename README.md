@@ -2,7 +2,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-189`
+Current version: `money-nest-v2-190`
 
 ## Important Notes
 
@@ -148,6 +148,13 @@ Use CSV for reviewing or batch-editing data.
 * [ ]
 
 ## Version Notes
+
+### v2-190
+
+* Dashboard Upcoming now excludes cleared transactions, including cleared recurring occurrence overrides.
+* Calendar now initializes to the current local month on app load instead of a stale hard-coded month.
+* Today uses the local date helper before scrolling to today's calendar card on mobile.
+* No JSON/CSV schema changes needed.
 
 ### v2-189
 

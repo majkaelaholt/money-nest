@@ -2717,7 +2717,7 @@ let accountDetailMode = uiPrefs.accountDetailMode || "bank";
 let accountForecastRange = cleanAccountForecastRange(uiPrefs.accountForecastRange || "today-forward");
 let accountBackTarget = "accounts";
 let selectedDayISO = null;
-let calendarDate = new Date("2026-06-01T12:00:00");
+let calendarDate = parseDate(todayISO());
 let calendarFilter = uiPrefs.calendarFilter || "all";
 let calendarHighlightCategories = Array.isArray(uiPrefs.calendarHighlightCategories) ? uiPrefs.calendarHighlightCategories : ["all"];
 let recentPlaces = [];
@@ -4583,8 +4583,9 @@ function renderDashboard(){
       </div>`;
     }).join("");
 
-    const upcoming = expandedTransactions(toISO(addMonths(new Date(), 1)))
-      .filter(tx => tx.date >= todayISO() && tx.date <= toISO(new Date(Date.now()+14*864e5)))
+    const upcomingEnd = toISO(addDays(parseDate(todayISO()), 14));
+    const upcoming = expandedTransactions(toISO(addMonths(parseDate(todayISO()), 1)))
+      .filter(tx => tx.date >= todayISO() && tx.date <= upcomingEnd && tx.status !== "cleared")
       .slice(0,10);
 
     document.getElementById("upcomingList").innerHTML = upcoming.length ? upcoming.map(tx=>{
@@ -9339,7 +9340,7 @@ function scrollCalendarToTodaySoon(){
   setTimeout(scrollCalendarToToday, 60);
   setTimeout(scrollCalendarToToday, 180);
 }
-todayBtn.onclick = ()=>{ calendarDate = new Date(); renderCalendar(); scrollCalendarToTodaySoon(); };
+todayBtn.onclick = ()=>{ calendarDate = parseDate(todayISO()); renderCalendar(); scrollCalendarToTodaySoon(); };
 if(document.getElementById("calendarAccountFilter")) calendarAccountFilter.onchange = e=>{ calendarFilter = e.target.value; saveUiPrefs(); renderCalendar(); };
 const calendarCategoryHighlightBtnEl = document.getElementById("calendarCategoryHighlightBtn");
 if(calendarCategoryHighlightBtnEl) calendarCategoryHighlightBtnEl.onclick = (e)=>{
