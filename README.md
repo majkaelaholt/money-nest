@@ -2,7 +2,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-192`
+Current version: `money-nest-v2-193`
 
 ## Important Notes
 
@@ -148,6 +148,13 @@ Use CSV for reviewing or batch-editing data.
 * [ ]
 
 ## Version Notes
+
+### v2-193
+
+* Bills page now shows the next upcoming recurring occurrence instead of anchoring recurring rows to stale past June dates.
+* Recurring bill status now treats future occurrences as Planned even if an older occurrence/template was cleared, so the recurring list is less misleading.
+* Ended/expired recurring items still fall back to their latest occurrence instead of disappearing.
+* No JSON/CSV schema changes needed.
 
 ### v2-192
 

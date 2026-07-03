@@ -9090,74 +9090,89 @@ function recurrenceOccursOn(tx, cursor, start){
 }
 
 
-function billOccurrenceDisplayDate(tx){
-  // Bills should show the next actionable occurrence:
-  // - unpaid recent past/today = Due
-  // - cleared recurring item = jump to the first future occurrence after today
+function billFutureOccurrenceDate(tx){
   try{
     const todayISOValue = todayISO();
     const today = parseDate(todayISOValue);
     const start = parseDate(tx.date);
     const horizon = parseDate(toISO(addMonths(new Date(), 24)));
 
-    let cursor = new Date(Math.max(start.getTime(), addDays(today, -60).getTime()));
+    // Start a little before today so weekend-shifted or moved occurrences whose
+    // source date was earlier can still show as today's/upcoming bill.
+    let cursor = new Date(Math.max(start.getTime(), addDays(today, -14).getTime()));
     cursor = parseDate(toISO(cursor));
-
-    let lastPastOrToday = "";
-    let firstFuture = "";
 
     while(cursor <= horizon){
       if(recurrenceOccursOn(tx, cursor, start)){
         const originalISO = toISO(cursor);
-
         if(tx.recurrenceUntil && originalISO > tx.recurrenceUntil){
           cursor = addDays(cursor, 1);
           continue;
         }
 
         const moved = occurrenceDateFor(tx, cursor);
-
-        // Skip occurrences that were explicitly removed. Check both the source
-        // recurrence date and the moved/display date.
-        if(moved === "9999-12-31" || tx.dateOverrides?.[originalISO] === "9999-12-31"){
+        if(moved === RECURRENCE_SKIP_DATE || isSkippedOccurrenceDate(tx.dateOverrides?.[originalISO])){
           cursor = addDays(cursor, 1);
           continue;
         }
 
-        if(moved <= todayISOValue){
-          lastPastOrToday = moved;
-        } else {
-          firstFuture = moved;
-          break;
+        if(moved >= todayISOValue) return moved;
+      }
+      cursor = addDays(cursor, 1);
+    }
+
+    return "";
+  } catch(err){
+    console.warn("Could not calculate future bill occurrence for", tx?.title, err);
+    return "";
+  }
+}
+
+function latestBillOccurrenceDate(tx){
+  try{
+    const todayISOValue = todayISO();
+    const today = parseDate(todayISOValue);
+    const start = parseDate(tx.date);
+    let cursor = parseDate(toISO(start));
+    let latest = "";
+
+    while(cursor <= today){
+      if(recurrenceOccursOn(tx, cursor, start)){
+        const originalISO = toISO(cursor);
+        if(!tx.recurrenceUntil || originalISO <= tx.recurrenceUntil){
+          const moved = occurrenceDateFor(tx, cursor);
+          if(moved !== RECURRENCE_SKIP_DATE && !isSkippedOccurrenceDate(tx.dateOverrides?.[originalISO]) && moved <= todayISOValue){
+            latest = moved;
+          }
         }
       }
       cursor = addDays(cursor, 1);
     }
 
-    if(tx.status === "cleared"){
-      // Once the current/base occurrence is paid, Bills should move forward.
-      return firstFuture || lastPastOrToday || "";
-    }
-
-    return lastPastOrToday || firstFuture || "";
+    return latest;
   } catch(err){
-    console.warn("Could not calculate bill occurrence for", tx?.title, err);
-    return tx?.date || todayISO();
+    console.warn("Could not calculate latest bill occurrence for", tx?.title, err);
+    return tx?.date || "";
   }
+}
+
+function billOccurrenceDisplayDate(tx){
+  // Bills is a recurring-template list, so show the next upcoming occurrence by
+  // default instead of anchoring the whole list to stale past planned dates.
+  const future = billFutureOccurrenceDate(tx);
+  if(future) return future;
+  return latestBillOccurrenceDate(tx) || tx?.date || todayISO();
 }
 
 function billOccurrenceStatus(tx){
   const date = tx.nextDate || billOccurrenceDisplayDate(tx);
   const today = todayISO();
 
-  if(tx.status === "cleared"){
-    // If a future date was found, the bill is planned again.
-    // If no future occurrence was found and it falls back to today/past, keep it Cleared.
-    return date > today ? "planned" : "cleared";
-  }
-
-  if(date <= today) return "due";
-  return "planned";
+  // Future recurring occurrences should be treated as planned even if a prior
+  // occurrence/template was cleared. The Bills page is for what's next.
+  if(date > today) return "planned";
+  if(tx.status === "cleared") return "cleared";
+  return "due";
 }
 function billStatusBadge(tx){
   const status = billOccurrenceStatus(tx);
