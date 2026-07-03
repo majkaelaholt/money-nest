@@ -9090,17 +9090,78 @@ function recurrenceOccursOn(tx, cursor, start){
 }
 
 
-function billFutureOccurrenceDate(tx){
+function billLooseTitle(value){
+  return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+function billLooseTitleMatch(a, b){
+  const aa = billLooseTitle(a);
+  const bb = billLooseTitle(b);
+  if(!aa || !bb) return false;
+  return aa === bb || aa.includes(bb) || bb.includes(aa);
+}
+function billRouteMatches(template, other){
+  if(!template || !other) return false;
+  const sameType = String(template.type || "") === String(other.type || "");
+  if(!sameType) return false;
+
+  const sameSource = String(template.accountId || "") === String(other.accountId || "");
+  const sameCashDestination = String(template.transferToAccountId || "") === String(other.transferToAccountId || "");
+  const sameDebtTarget = String(template.linkedDebtId || "") === String(other.linkedDebtId || "");
+  const sameDebtAccount = String(template.debtAccountId || "") === String(other.debtAccountId || "");
+  const sameCategory = String(template.categoryId || "") === String(other.categoryId || "");
+  const amountClose = Math.abs(Number(template.amount || 0) - Number(other.amount || 0)) < 0.01;
+  const titleMatch = billLooseTitleMatch(template.title, other.title) || billLooseTitleMatch(template.notes, other.notes);
+
+  const exactRoute = sameSource && sameCashDestination && sameDebtTarget && sameDebtAccount;
+  const linkedDebtStrong = !!template.linkedDebtId && sameDebtTarget;
+  const cashTransferStrong = !!template.transferToAccountId && sameSource && sameCashDestination;
+  const debtAccountStrong = !!template.debtAccountId && sameSource && sameDebtAccount;
+
+  // Prefer stable routing/category/amount matches, but allow a looser match for
+  // moved/early card, loan, and BNPL payments whose title changed slightly.
+  if(exactRoute && (amountClose || sameCategory || titleMatch)) return true;
+  if((linkedDebtStrong || cashTransferStrong || debtAccountStrong) && (amountClose || sameCategory || titleMatch)) return true;
+  return false;
+}
+function findLooseBillPaymentMatch(template, originalISO, occurrenceISO){
+  try{
+    const anchor = parseDate(originalISO || occurrenceISO || template.date || todayISO());
+    const start = toISO(addDays(anchor, -21));
+    const end = toISO(addDays(anchor, 45));
+    const candidates = data.transactions
+      .filter(other => other && other.id !== template.id && other.originalId !== template.id)
+      .filter(other => !isRecurring(other))
+      .filter(other => other.date >= start && other.date <= end)
+      .filter(other => billRouteMatches(template, other));
+
+    if(!candidates.length) return null;
+    candidates.sort((a,b)=>{
+      const aCleared = a.status === "cleared" ? 0 : 1;
+      const bCleared = b.status === "cleared" ? 0 : 1;
+      if(aCleared !== bCleared) return aCleared - bCleared;
+      const aDist = Math.abs(daysBetween(anchor, parseDate(a.date)));
+      const bDist = Math.abs(daysBetween(anchor, parseDate(b.date)));
+      if(aDist !== bDist) return aDist - bDist;
+      return String(a.date || "").localeCompare(String(b.date || ""));
+    });
+    return candidates[0] || null;
+  } catch(err){
+    console.warn("Could not match loose bill payment for", template?.title, err);
+    return null;
+  }
+}
+function billOccurrenceInfo(tx){
   try{
     const todayISOValue = todayISO();
     const today = parseDate(todayISOValue);
     const start = parseDate(tx.date);
     const horizon = parseDate(toISO(addMonths(new Date(), 24)));
+    const lookbackISO = toISO(addDays(today, -75));
 
-    // Start a little before today so weekend-shifted or moved occurrences whose
-    // source date was earlier can still show as today's/upcoming bill.
-    let cursor = new Date(Math.max(start.getTime(), addDays(today, -14).getTime()));
-    cursor = parseDate(toISO(cursor));
+    let cursor = parseDate(toISO(start));
+    let firstFuture = null;
+    let firstPastDue = null;
+    let latestHandled = null;
 
     while(cursor <= horizon){
       if(recurrenceOccursOn(tx, cursor, start)){
@@ -9116,18 +9177,65 @@ function billFutureOccurrenceDate(tx){
           continue;
         }
 
-        if(moved >= todayISOValue) return moved;
+        const occurrence = applyOccurrenceOverride({
+          ...tx,
+          id: originalISO === tx.date ? tx.id : `${tx.id}-${originalISO}`,
+          originalId: tx.id,
+          status: originalISO === tx.date ? tx.status : "planned",
+          generated: originalISO !== tx.date
+        }, originalISO, moved);
+
+        if(occurrence){
+          const looseMatch = findLooseBillPaymentMatch(tx, originalISO, occurrence.date);
+          const matchedDate = looseMatch?.date || "";
+          const displayDate = matchedDate || occurrence.date;
+          const matchedHandled = !!looseMatch;
+          const cleared = occurrence.status === "cleared" || looseMatch?.status === "cleared";
+          const handled = cleared || matchedHandled;
+          const info = {
+            date: displayDate,
+            originalDate: originalISO,
+            status: cleared ? "cleared" : "planned",
+            matched: looseMatch || null,
+            handled
+          };
+
+          if(displayDate >= todayISOValue){
+            firstFuture = info;
+            break;
+          }
+
+          if(handled){
+            latestHandled = {...info, status: cleared ? "cleared" : "planned"};
+          } else if(displayDate >= lookbackISO && !firstPastDue){
+            firstPastDue = {...info, status:"due"};
+          }
+        }
       }
       cursor = addDays(cursor, 1);
     }
 
-    return "";
+    // If something old is truly unresolved, keep surfacing it; otherwise show the
+    // next scheduled occurrence. This avoids stale June cards when a payment was
+    // dragged, moved, or handled by a matching one-off payment.
+    if(firstPastDue) return firstPastDue;
+    if(firstFuture) return firstFuture;
+    if(latestHandled) return latestHandled;
+
+    const latest = latestBillOccurrenceDate(tx) || tx?.date || todayISOValue;
+    if(tx.recurrenceUntil && tx.recurrenceUntil < todayISOValue){
+      return {date: latest, originalDate: tx.recurrenceUntil || latest, status:"ended", handled:true};
+    }
+    return {date: latest, originalDate: latest, status: tx.status === "cleared" ? "cleared" : "due", handled: tx.status === "cleared"};
   } catch(err){
-    console.warn("Could not calculate future bill occurrence for", tx?.title, err);
-    return "";
+    console.warn("Could not calculate bill occurrence info for", tx?.title, err);
+    return {date: tx?.date || todayISO(), originalDate: tx?.date || todayISO(), status: tx?.status === "cleared" ? "cleared" : "due", handled: tx?.status === "cleared"};
   }
 }
-
+function billFutureOccurrenceDate(tx){
+  const info = billOccurrenceInfo(tx);
+  return info.date >= todayISO() ? info.date : "";
+}
 function latestBillOccurrenceDate(tx){
   try{
     const todayISOValue = todayISO();
@@ -9157,29 +9265,19 @@ function latestBillOccurrenceDate(tx){
 }
 
 function billOccurrenceDisplayDate(tx){
-  // Bills is a recurring-template list, so show the next upcoming occurrence by
-  // default instead of anchoring the whole list to stale past planned dates.
-  const future = billFutureOccurrenceDate(tx);
-  if(future) return future;
-  return latestBillOccurrenceDate(tx) || tx?.date || todayISO();
+  return billOccurrenceInfo(tx).date || tx?.date || todayISO();
 }
 
 function billOccurrenceStatus(tx){
-  const date = tx.nextDate || billOccurrenceDisplayDate(tx);
-  const today = todayISO();
-
-  // Future recurring occurrences should be treated as planned even if a prior
-  // occurrence/template was cleared. The Bills page is for what's next.
-  if(date > today) return "planned";
-  if(tx.status === "cleared") return "cleared";
-  return "due";
+  return tx.billInfo?.status || billOccurrenceInfo(tx).status || "planned";
 }
 function billStatusBadge(tx){
   const status = billOccurrenceStatus(tx);
-  const label = status === "cleared" ? "✓ Cleared" : status === "due" ? "⚠ Due" : "○ Planned";
-  return `<span class="status-toggle ${status} bill-status-badge" title="${status === "due" ? "Due or overdue and not cleared" : "Next occurrence status"}">${label}</span>`;
+  const label = status === "cleared" ? "✓ Cleared" : status === "due" ? "⚠ Due" : status === "ended" ? "✓ Ended" : "○ Planned";
+  const cssStatus = status === "ended" ? "cleared ended" : status;
+  const title = status === "due" ? "Due or overdue and not matched to a moved/early payment" : status === "ended" ? "Recurring series ended" : "Next occurrence status";
+  return `<span class="status-toggle ${cssStatus} bill-status-badge" title="${title}">${label}</span>`;
 }
-
 
 function nextOccurrenceDate(tx){
   try{
@@ -9332,7 +9430,10 @@ function renderBills(){
       .filter(tx => {
         try{ return billMatchesFilters(tx); } catch(err){ return false; }
       })
-      .map(tx => ({...tx, nextDate: billOccurrenceDisplayDate(tx)}))
+      .map(tx => {
+        const info = billOccurrenceInfo(tx);
+        return {...tx, nextDate: info.date, billInfo: info};
+      })
       .filter(tx => tx.nextDate);
 
     recurring.sort((a,b)=>{
@@ -9353,7 +9454,7 @@ function renderBills(){
       const cat = categoryById(tx.categoryId);
       const account = billAccountLabel(tx);
       const route = tx.type === "transfer" ? transactionTransferLabel(tx) : `${account}${tx.linkedDebtId ? ` → ${debtById(tx.linkedDebtId)?.name || "debt"}` : ""}`;
-      return `<div class="bill-card" data-tx="${tx.id}" data-original-date="${tx.nextDate}" data-occurrence-date="${tx.nextDate}" onclick="openTransaction('${tx.id}',{generated:true, occurrenceOriginalDate:'${tx.nextDate}', occurrenceDate:'${tx.nextDate}'})">
+      return `<div class="bill-card" data-tx="${tx.id}" data-original-date="${tx.billInfo?.originalDate || tx.nextDate}" data-occurrence-date="${tx.nextDate}" onclick="openTransaction('${tx.id}',{generated:true, occurrenceOriginalDate:'${tx.billInfo?.originalDate || tx.nextDate}', occurrenceDate:'${tx.nextDate}'})">
         <div>
           <div class="row-title">${cat.emoji} ${tx.title}</div>
           <div class="row-sub">${route}</div>
@@ -9642,7 +9743,10 @@ function financialPictureData(options={}){
   const debts = orderedDebts(data.debts || []);
   const recurringBills = (data.transactions || [])
     .filter(tx => isRecurring(tx))
-    .map(tx => ({...tx, nextDate: billOccurrenceDisplayDate(tx)}))
+    .map(tx => {
+        const info = billOccurrenceInfo(tx);
+        return {...tx, nextDate: info.date, billInfo: info};
+      })
     .filter(tx => tx.nextDate)
     .sort((a,b)=>String(a.nextDate || "").localeCompare(String(b.nextDate || "")) || String(a.title || "").localeCompare(String(b.title || "")));
   const upcomingTransactions = expandedTransactions(horizonDate)
