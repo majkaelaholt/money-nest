@@ -2672,10 +2672,13 @@ const defaultUiPrefs = {
   transactionFilters: { status:"all", category:"all", type:"all", sort:"date-asc", dateRange:"upcoming-90", search:"" },
   transactionFilterDefaults: { status:"all", category:"all", type:"all", sort:"date-asc", dateRange:"upcoming-90" },
   accountDetailMode: "bank",
-  accountForecastRange: "today-forward"
+  accountForecastRange: "next-90",
+  accountForecastCustomStart: "",
+  accountForecastCustomEnd: ""
 };
-const allowedAccountForecastRanges = new Set(["today-forward", "this-month", "next-paycheck", "next-30", "next-60", "next-90"]);
+const allowedAccountForecastRanges = new Set(["this-month", "next-paycheck", "next-30", "next-60", "next-90", "custom"]);
 function cleanAccountForecastRange(range){
+  if(range === "today-forward") return "next-90";
   return allowedAccountForecastRanges.has(range) ? range : "next-90";
 }
 function cloneUiPrefs(obj){ return JSON.parse(JSON.stringify(obj)); }
@@ -2691,6 +2694,8 @@ function loadUiPrefs(){
     if(saved.transactionFilterDefaults) prefs.transactionFilterDefaults = {...prefs.transactionFilterDefaults, ...saved.transactionFilterDefaults};
     if(saved.accountDetailMode) prefs.accountDetailMode = saved.accountDetailMode;
     if(saved.accountForecastRange) prefs.accountForecastRange = cleanAccountForecastRange(saved.accountForecastRange);
+    if(saved.accountForecastCustomStart) prefs.accountForecastCustomStart = saved.accountForecastCustomStart;
+    if(saved.accountForecastCustomEnd) prefs.accountForecastCustomEnd = saved.accountForecastCustomEnd;
     return prefs;
   } catch(err){
     console.warn("Could not load Money Nest UI preferences", err);
@@ -2706,7 +2711,9 @@ function saveUiPrefs(){
       transactionFilters: {...transactionFilters, search:""},
       transactionFilterDefaults,
       accountDetailMode,
-      accountForecastRange
+      accountForecastRange,
+      accountForecastCustomStart,
+      accountForecastCustomEnd
     }));
   } catch(err){
     console.warn("Could not save Money Nest UI preferences", err);
@@ -2714,7 +2721,9 @@ function saveUiPrefs(){
 }
 const uiPrefs = loadUiPrefs();
 let accountDetailMode = uiPrefs.accountDetailMode || "bank";
-let accountForecastRange = cleanAccountForecastRange(uiPrefs.accountForecastRange || "today-forward");
+let accountForecastRange = cleanAccountForecastRange(uiPrefs.accountForecastRange || "next-90");
+let accountForecastCustomStart = uiPrefs.accountForecastCustomStart || "";
+let accountForecastCustomEnd = uiPrefs.accountForecastCustomEnd || "";
 let accountBackTarget = "accounts";
 let selectedDayISO = null;
 let calendarDate = parseDate(todayISO());
@@ -4469,23 +4478,76 @@ function nextDebtDueDate(d, fromISO=todayISO()){
   }
   return toISO(candidate);
 }
+function debtDashboardDueDate(d, fromISO=todayISO()){
+  // BNPL/Klarna installments should use the actual next planned installment
+  // transaction instead of a manually-entered debt due day. Otherwise the
+  // dashboard can claim "no planned payment found" while the installment
+  // rows clearly exist on the debt detail page.
+  if(isBNPLDebt(d)){
+    const next = bnplNextPayment(d.id);
+    if(next?.date) return next.date;
+  }
+  if(isMedicalDebt(d)){
+    const next = medicalNextPayment(d);
+    if(next?.date) return next.date;
+  }
+  return nextDebtDueDate(d, fromISO);
+}
+function normalizeMatchText(value){
+  return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+function debtPaymentMatches(d, tx){
+  if(!d || !tx || tx.type !== "transfer") return false;
+  if(tx.linkedDebtId === d.id || tx.debtAccountId === d.id) return true;
+
+  // Fallback for older/manual payments that were entered as transfers but did not
+  // keep a stable linkedDebtId. This lets early planned payments like
+  // "Ty PlayStation6229" count as handled for the matching card/debt without
+  // requiring an exact due-date match.
+  const haystack = normalizeMatchText([tx.title, tx.notes, tx.linkedDebtId, tx.debtAccountId].filter(Boolean).join(" "));
+  const debtNames = [d.id, d.name, `${d.owner || ""} ${d.name || ""}`]
+    .map(normalizeMatchText)
+    .filter(Boolean);
+  return !!haystack && debtNames.some(name => name.length >= 4 && haystack.includes(name));
+}
+function debtPaymentSearchWindow(d, dueISO){
+  const dueDate = parseDate(dueISO);
+  const beforeDays = isBNPLDebt(d) ? 60 : 35;
+  const afterDays = isBNPLDebt(d) ? 7 : 0;
+  return {
+    start: toISO(addDays(dueDate, -beforeDays)),
+    end: toISO(addDays(dueDate, afterDays))
+  };
+}
+function plannedDebtPaymentInfo(d, dueISO){
+  if(!d || !dueISO) return null;
+  const window = debtPaymentSearchWindow(d, dueISO);
+  const today = todayISO();
+  const candidates = expandedTransactions(window.end)
+    .filter(tx =>
+      debtPaymentMatches(d, tx) &&
+      tx.date >= window.start &&
+      tx.date <= window.end &&
+      ["planned", "cleared"].includes(tx.status)
+    )
+    .sort((a,b)=>{
+      const aPlanned = a.status !== "cleared" ? 0 : 1;
+      const bPlanned = b.status !== "cleared" ? 0 : 1;
+      const aFuture = a.status !== "cleared" && a.date >= today ? 0 : 1;
+      const bFuture = b.status !== "cleared" && b.date >= today ? 0 : 1;
+      return aPlanned - bPlanned || aFuture - bFuture || a.date.localeCompare(b.date);
+    });
+  return candidates[0] || null;
+}
 function hasPlannedDebtPayment(d, dueISO){
-  if(!dueISO) return false;
-  const windowStart = toISO(addDays(parseDate(dueISO), -10));
-  const windowEnd = dueISO;
-  return expandedTransactions(windowEnd).some(tx =>
-    tx.linkedDebtId === d.id &&
-    tx.date >= windowStart &&
-    tx.date <= windowEnd &&
-    tx.type === "transfer"
-  );
+  return !!plannedDebtPaymentInfo(d, dueISO);
 }
 function debtPaymentsDueSoon(days=30){
   const start = todayISO();
   const end = toISO(addDays(parseDate(start), days));
   return data.debts
-    .map(d => ({...d, nextDue: nextDebtDueDate(d, start)}))
-    .filter(d => d.nextDue && d.nextDue >= start && d.nextDue <= end)
+    .map(d => ({...d, nextDue: debtDashboardDueDate(d, start)}))
+    .filter(d => d.nextDue && d.nextDue >= start && d.nextDue <= end && debtDashboardNeedsPaymentPlanning(d))
     .sort((a,b)=>a.nextDue.localeCompare(b.nextDue));
 }
 
@@ -4507,6 +4569,23 @@ function creditCardStatementsToCheck(days=7){
     .sort((a,b)=>a.nextStatementDate.localeCompare(b.nextStatementDate) || (a.name || "").localeCompare(b.name || ""));
 }
 
+function debtDashboardAmountDue(d){
+  if(!d) return 0;
+  if(isBNPLDebt(d)) return bnplRemainingBalance(d.id, toISO(addMonths(new Date(),24)));
+  return debtAmountLeftNow(d);
+}
+function debtDashboardNeedsPaymentPlanning(d){
+  if(!d) return false;
+  if(isBNPLDebt(d)) return !!bnplNextPayment(d.id);
+  if(isMedicalDebt(d)) return !!medicalNextPayment(d) || debtDashboardAmountDue(d) > 0.005;
+  return debtDashboardAmountDue(d) > 0.005 || Number(d.minDue || 0) > 0.005;
+}
+function debtDashboardPaymentHandled(d, dueISO){
+  if(!d || !dueISO) return false;
+  if(["paid", "autopay", "scheduled", "skip"].includes(d.paymentStatus)) return true;
+  return !!plannedDebtPaymentInfo(d, dueISO);
+}
+
 function dashboardNeedsAttention(){
   const items = [];
   const today = todayISO();
@@ -4522,19 +4601,22 @@ function dashboardNeedsAttention(){
     .filter(tx => tx.status === "planned" && tx.date < today)
     .slice(0,5)
     .forEach(tx=>{
-      items.push({level:"warn", title:`Past planned: ${tx.title}`, sub:`${tx.date} • ${money(tx.amount)}`, action:`openTransaction('${tx.originalId || tx.id}')`});
+      items.push({level:"warn", title:`Past planned: ${tx.title}`, sub:`${tx.date} • ${money(tx.amount)} • ${transactionAccountText(tx)}`, action:`openTransaction('${tx.originalId || tx.id}')`});
     });
 
   data.debts.forEach(d=>{
-    if((d.type === "Credit Card" || d.type === "Klarna") && !d.dueDate){
-      items.push({level:"warn", title:`${d.name} missing due date`, sub:"Add a due date for reminders", action:`openDebtDetail('${d.id}')`});
+    const debtRoute = debtAttentionAccountText(d);
+    const needsPaymentPlanning = debtDashboardNeedsPaymentPlanning(d);
+    if((d.type === "Credit Card" || d.type === "Klarna") && !d.dueDate && !isBNPLDebt(d) && needsPaymentPlanning){
+      items.push({level:"warn", title:`${d.name} missing due date`, sub:`${debtRoute} • Add a due date for reminders`, action:`openDebtDetail('${d.id}')`});
     }
-    if((d.type === "Credit Card" || d.type === "Klarna") && !Number(d.minDue || 0)){
-      items.push({level:"warn", title:`${d.name} missing minimum due`, sub:"Add min due for payment planning", action:`openDebtDetail('${d.id}')`});
+    if((d.type === "Credit Card" || d.type === "Klarna") && !Number(d.minDue || 0) && !isBNPLDebt(d) && needsPaymentPlanning){
+      items.push({level:"warn", title:`${d.name} missing minimum due`, sub:`${debtRoute} • Add min due for payment planning`, action:`openDebtDetail('${d.id}')`});
     }
-    const due = nextDebtDueDate(d);
-    if(due && due <= toISO(addDays(parseDate(today), 7)) && !hasPlannedDebtPayment(d, due) && !["paid","autopay","scheduled","skip"].includes(d.paymentStatus)){
-      items.push({level:"bad", title:`${d.name} due soon`, sub:`Due ${due} • no planned payment found`, action:`openDebtDetail('${d.id}')`});
+    const due = debtDashboardDueDate(d);
+    const plannedTx = plannedDebtPaymentInfo(d, due);
+    if(due && due <= toISO(addDays(parseDate(today), 7)) && needsPaymentPlanning && !debtDashboardPaymentHandled(d, due)){
+      items.push({level:"bad", title:`${d.name} due soon`, sub:`${debtRoute} • Due ${due} • no planned payment found`, action:`openDebtDetail('${d.id}')`});
     }
   });
 
@@ -4628,18 +4710,23 @@ function renderDashboard(){
           </div>
           <div class="action-list-v2">
             ${dueSoonRows.length ? dueSoonRows.map(d=>{
-              const planned = hasPlannedDebtPayment(d, d.nextDue);
+              const plannedTx = plannedDebtPaymentInfo(d, d.nextDue);
+              const planned = !!plannedTx;
+              const paidEarly = plannedTx?.status === "cleared";
+              const plannedEarly = plannedTx?.status !== "cleared" && plannedTx?.date && d.nextDue && plannedTx.date < d.nextDue;
               const good = planned || ["paid","autopay","scheduled"].includes(d.paymentStatus);
+              const route = debtAttentionAccountText(d, plannedTx);
               return `<div class="action-row-v2 debt-due clickable" onclick="openDebtDetail('${d.id}')">
                 <div class="action-left">
                   <span class="action-symbol">${d.emoji || "💳"}</span>
                   <div>
                     <div class="row-title">${d.name}</div>
                     <div class="row-sub">Due ${d.nextDue} • Min ${debtMinDueText(d)}</div>
-                    <div class="row-sub">${debtPaymentStatusLabel(d.paymentStatus)}${planned ? " • payment planned" : ""}</div>
+                    <div class="row-sub">${route}</div>
+                    <div class="row-sub">${debtPaymentStatusLabel(d.paymentStatus)}${planned ? ` • ${paidEarly ? "paid early" : plannedEarly ? "planned early" : "payment planned"}${plannedTx?.date ? ` ${plannedTx.date}` : ""}` : ""}</div>
                   </div>
                 </div>
-                <div class="debt-status-pill ${good ? "good" : "warn"}">${planned ? "Planned" : debtPaymentStatusLabel(d.paymentStatus)}</div>
+                <div class="debt-status-pill ${good ? "good" : "warn"}">${planned ? (paidEarly ? "Paid early" : plannedEarly ? "Planned early" : "Planned") : debtPaymentStatusLabel(d.paymentStatus)}</div>
               </div>`;
             }).join("") : `<div class="empty">No debt due dates in the next 30 days.</div>`}
             ${dueSoonExtra ? `<div class="action-row-v2 clickable" onclick="setView('debts')"><div class="action-left"><span class="action-symbol">➕</span><div><div class="row-title">${dueSoonExtra} more due soon</div><div class="row-sub">Open Debts to review the rest.</div></div></div></div>` : ""}
@@ -5133,6 +5220,14 @@ function forecastRangeDates(range){
     return {start: today, end: toISO(addDays(now, 90)), label:"next 90 days"};
   }
 
+  if(range === "custom"){
+    const start = accountForecastCustomStart || today;
+    const fallbackEnd = toISO(addDays(now, 90));
+    let end = accountForecastCustomEnd || fallbackEnd;
+    if(end < start) end = start;
+    return {start, end, label:`custom: ${start} to ${end}`};
+  }
+
   return {start: today, end: toISO(addDays(now, 90)), label:"next 90 days"};
 }
 
@@ -5154,19 +5249,54 @@ function forecastVisibleStart(txs, rangeInfo){
   return dates[0] || rangeInfo.start;
 }
 
+function setAccountForecastRange(range){
+  accountForecastRange = cleanAccountForecastRange(range);
+  if(accountForecastRange === "custom"){
+    const today = todayISO();
+    if(!accountForecastCustomStart) accountForecastCustomStart = today;
+    if(!accountForecastCustomEnd) accountForecastCustomEnd = toISO(addDays(parseDate(today), 90));
+  }
+  saveUiPrefs();
+  renderAccountDetail();
+}
+window.setAccountForecastRange = setAccountForecastRange;
+window.setAccountForecastCustomStart = (value)=>{
+  accountForecastCustomStart = value || todayISO();
+  if(accountForecastCustomEnd && accountForecastCustomEnd < accountForecastCustomStart) accountForecastCustomEnd = accountForecastCustomStart;
+  saveUiPrefs();
+  renderAccountDetail();
+};
+window.setAccountForecastCustomEnd = (value)=>{
+  accountForecastCustomEnd = value || toISO(addDays(parseDate(todayISO()), 90));
+  if(accountForecastCustomStart && accountForecastCustomEnd < accountForecastCustomStart) accountForecastCustomStart = accountForecastCustomEnd;
+  saveUiPrefs();
+  renderAccountDetail();
+};
+
 function renderForecastRangeControl(accountId){
   accountForecastRange = cleanAccountForecastRange(accountForecastRange);
   const acc = accountById(accountId);
-  return `<label class="forecast-range-label">Forecast range
-    <select onchange="accountForecastRange=this.value; saveUiPrefs(); renderAccountDetail()">
-      <option value="today-forward" ${accountForecastRange==="today-forward"?"selected":""}>Today forward</option>
-      <option value="this-month" ${accountForecastRange==="this-month"?"selected":""}>This month</option>
-      ${acc?.paycheckAccount ? `<option value="next-paycheck" ${accountForecastRange==="next-paycheck"?"selected":""}>Through next paycheck</option>` : ""}
-      <option value="next-30" ${accountForecastRange==="next-30"?"selected":""}>Next 30 days</option>
-      <option value="next-60" ${accountForecastRange==="next-60"?"selected":""}>Next 60 days</option>
-      <option value="next-90" ${accountForecastRange==="next-90"?"selected":""}>Next 90 days</option>
-    </select>
-  </label>`;
+  const today = todayISO();
+  const customStart = accountForecastCustomStart || today;
+  const customEnd = accountForecastCustomEnd || toISO(addDays(parseDate(today), 90));
+  const customFields = accountForecastRange === "custom" ? `
+    <div class="forecast-custom-dates">
+      <label>From<input type="date" value="${escapeAttr(customStart)}" onchange="setAccountForecastCustomStart(this.value)"></label>
+      <label>To<input type="date" value="${escapeAttr(customEnd)}" onchange="setAccountForecastCustomEnd(this.value)"></label>
+    </div>` : "";
+  return `<div class="forecast-range-control">
+    <label class="forecast-range-label">Forecast range
+      <select onchange="setAccountForecastRange(this.value)">
+        <option value="this-month" ${accountForecastRange==="this-month"?"selected":""}>This month</option>
+        ${acc?.paycheckAccount ? `<option value="next-paycheck" ${accountForecastRange==="next-paycheck"?"selected":""}>Through next paycheck</option>` : ""}
+        <option value="next-30" ${accountForecastRange==="next-30"?"selected":""}>Next 30 days</option>
+        <option value="next-60" ${accountForecastRange==="next-60"?"selected":""}>Next 60 days</option>
+        <option value="next-90" ${accountForecastRange==="next-90"?"selected":""}>Next 90 days</option>
+        <option value="custom" ${accountForecastRange==="custom"?"selected":""}>Custom dates</option>
+      </select>
+    </label>
+    ${customFields}
+  </div>`;
 }
 
 
@@ -5345,6 +5475,12 @@ function transactionAccountText(tx){
   const fromAccount = tx.accountId ? accountById(tx.accountId)?.name : tx.debtAccountId ? debtById(tx.debtAccountId)?.name : "No account";
   const toAccount = tx.transferToAccountId ? ` → ${accountById(tx.transferToAccountId)?.name || "account"}` : tx.linkedDebtId ? ` → ${debtById(tx.linkedDebtId)?.name || "debt"}` : "";
   return `${fromAccount}${toAccount}`;
+}
+function debtAttentionAccountText(d, paymentTx=null){
+  if(paymentTx) return transactionAccountText(paymentTx);
+  const owner = d?.owner || "Unassigned";
+  const company = d?.company && d.company !== d.name ? ` • ${d.company}` : "";
+  return `${owner}${company} • ${d?.name || "Debt"}`;
 }
 
 
@@ -9340,7 +9476,7 @@ function scrollCalendarToTodaySoon(){
   setTimeout(scrollCalendarToToday, 60);
   setTimeout(scrollCalendarToToday, 180);
 }
-todayBtn.onclick = ()=>{ calendarDate = parseDate(todayISO()); renderCalendar(); scrollCalendarToTodaySoon(); };
+todayBtn.onclick = ()=>{ calendarDate = new Date(); renderCalendar(); scrollCalendarToTodaySoon(); };
 if(document.getElementById("calendarAccountFilter")) calendarAccountFilter.onchange = e=>{ calendarFilter = e.target.value; saveUiPrefs(); renderCalendar(); };
 const calendarCategoryHighlightBtnEl = document.getElementById("calendarCategoryHighlightBtn");
 if(calendarCategoryHighlightBtnEl) calendarCategoryHighlightBtnEl.onclick = (e)=>{

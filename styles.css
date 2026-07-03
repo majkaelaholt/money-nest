@@ -1752,30 +1752,63 @@ body.dragging-tx .day-hover-list{
   align-items:center;
   flex-wrap:wrap;
 }
+.forecast-range-control{
+  margin-left:auto;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+}
 .forecast-range-label{
   display:flex;
   align-items:center;
   gap:8px;
-  margin-left:auto;
   font-size:12px;
   font-weight:950;
   color:var(--muted);
 }
-.forecast-range-label select{
+.forecast-range-label select,
+.forecast-custom-dates input{
   padding:10px 12px;
   border:1px solid var(--line);
   border-radius:14px;
   background:white;
   font-weight:900;
 }
+.forecast-custom-dates{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.forecast-custom-dates label{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  font-size:12px;
+  font-weight:950;
+  color:var(--muted);
+}
 @media(max-width:780px){
-  .forecast-range-label{
+  .forecast-range-control{
     width:100%;
     margin-left:0;
+    align-items:stretch;
+  }
+  .forecast-range-label{
+    width:100%;
     justify-content:space-between;
   }
   .forecast-range-label select{
     flex:1;
+  }
+  .forecast-custom-dates{
+    width:100%;
+  }
+  .forecast-custom-dates label{
+    flex:1;
+    align-items:stretch;
+    flex-direction:column;
   }
 }
 

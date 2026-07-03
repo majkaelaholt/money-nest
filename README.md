@@ -2,7 +2,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-190`
+Current version: `money-nest-v2-192`
 
 ## Important Notes
 
@@ -148,6 +148,22 @@ Use CSV for reviewing or batch-editing data.
 * [ ]
 
 ## Version Notes
+
+### v2-192
+
+* Dashboard payment detection now counts planned payments made early within the payment window, not just cleared early payments.
+* Needs Attention and Debt Payments Due Soon now ignore paid-off cards/debts with no active amount due, so $0-due cards do not ask for missing minimums or payments.
+* Debt payment matching is more flexible for older/manual payment rows by checking stable debt links first, then matching clear debt names in payment titles/notes.
+* Removed the misleading Today forward option from Account Forecast View and added Custom date ranges with From/To date inputs.
+* No JSON/CSV schema changes needed.
+
+### v2-191
+
+* Needs Attention cards now include account/routing context so past planned items and due-soon debt alerts show where the money is coming from or going.
+* Debt/card/BNPL due-soon alerts now use smarter planned-payment matching based on linked debt IDs and actual installment/payment rows.
+* BNPL/Klarna due dates now prefer the next planned installment transaction, so valid planned installments are not incorrectly marked as missing.
+* Planned-payment matching now recognizes early cleared payments within the payment window.
+* No JSON/CSV schema changes needed.
 
 ### v2-190
 
