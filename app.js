@@ -119,7 +119,7 @@ async function renderCloudSyncSettings(){
       <button class="ghost small" type="button" onclick="cloudSaveNow()">Save to cloud</button>
       <button class="ghost small" type="button" onclick="cloudLoadNow()">Load from cloud</button>
     </div>
-    <p class="hint"><b>Safety:</b> Manual only is safest while testing. Auto-save can be paused anytime by setting Cloud sync mode to Off / paused. Keep JSON backups as your emergency save file.</p>
+    <p class="hint"><b>Safety:</b> Manual only is safest while testing. Money Nest warns before saving over newer cloud data or loading an older cloud copy over newer local edits. Keep JSON backups as your emergency save file.</p>
   `;
 }
 window.saveCloudSettingsFromForm = ()=>{
@@ -184,9 +184,77 @@ async function requireCloudUser(){
   if(!user) throw new Error("Log in to cloud sync first.");
   return user;
 }
+const LOCAL_META_KEY = `${STORAGE_KEY}.localMeta`;
+function loadLocalMeta(){
+  try{ return JSON.parse(localStorage.getItem(LOCAL_META_KEY) || "{}"); }
+  catch(err){ return {}; }
+}
+function saveLocalMeta(patch={}){
+  const next = {...loadLocalMeta(), ...patch};
+  try{ localStorage.setItem(LOCAL_META_KEY, JSON.stringify(next)); }
+  catch(err){ console.warn("Could not save local Money Nest metadata", err); }
+  return next;
+}
+function touchLocalMoneyNestData(){
+  saveLocalMeta({lastLocalChange:new Date().toISOString()});
+}
+function markCloudSeen(iso){
+  if(iso) saveLocalMeta({lastCloudSeen:iso});
+}
+function isoTimeValue(iso){
+  const value = Date.parse(iso || "");
+  return Number.isFinite(value) ? value : 0;
+}
+function newestISO(...values){
+  return values.filter(Boolean).sort((a,b)=>isoTimeValue(b)-isoTimeValue(a))[0] || "";
+}
+function isoIsAfter(a,b){
+  return !!a && isoTimeValue(a) > isoTimeValue(b);
+}
+function latestKnownCloudTimestamp(config=loadCloudConfig()){
+  const meta = loadLocalMeta();
+  return newestISO(config.lastCloudSave, config.lastCloudLoad, meta.lastCloudSeen);
+}
 function cloudPayload(){
-  // Keep undo history local only. The cloud row is the app data itself.
+  // Keep undo history and local-only metadata out of the Supabase data blob.
   return JSON.parse(JSON.stringify(data));
+}
+async function fetchCloudDataRow(client, user){
+  const {data: row, error} = await client.from("money_nest_data").select("data, updated_at").eq("user_id", user.id).maybeSingle();
+  if(error) throw error;
+  return row;
+}
+async function confirmCloudOverwriteIfNeeded(client, user, config, {silent=false}={}){
+  const row = await fetchCloudDataRow(client, user);
+  const knownCloud = latestKnownCloudTimestamp(config);
+  if(row?.updated_at && isoIsAfter(row.updated_at, knownCloud)){
+    const message = `Cloud data was updated at ${fmtCloudTime(row.updated_at)}, which is newer than this browser last saw (${fmtCloudTime(knownCloud)}). Saving now may overwrite changes from another device. Save to cloud anyway?`;
+    if(silent) throw new Error(`Cloud save skipped: the cloud copy is newer (${fmtCloudTime(row.updated_at)}). Load from cloud or save manually after reviewing.`);
+    if(!confirm(message)) return false;
+  }
+  return true;
+}
+function confirmCloudLoadIfNeeded(row, config){
+  const meta = loadLocalMeta();
+  const localChange = meta.lastLocalChange || "";
+  const knownCloud = latestKnownCloudTimestamp(config);
+  let message = `Load cloud data from ${fmtCloudTime(row.updated_at)}? This will replace the data currently in this browser. Export a JSON backup first if you are unsure.`;
+  if(localChange && row?.updated_at && isoIsAfter(localChange, row.updated_at)){
+    message = `This cloud save looks older than your local edits.
+
+Local edits: ${fmtCloudTime(localChange)}
+Cloud save: ${fmtCloudTime(row.updated_at)}
+
+Loading may replace newer local work with older cloud data. Load anyway?`;
+  } else if(row?.updated_at && knownCloud && isoIsAfter(knownCloud, row.updated_at)){
+    message = `This cloud save looks older than the cloud version this browser last saw.
+
+Last seen cloud: ${fmtCloudTime(knownCloud)}
+Selected cloud save: ${fmtCloudTime(row.updated_at)}
+
+Load anyway?`;
+  }
+  return confirm(message);
 }
 async function saveDataToCloud({silent=false}={}){
   const config = loadCloudConfig();
@@ -194,12 +262,19 @@ async function saveDataToCloud({silent=false}={}){
   const user = await requireCloudUser();
   const client = getCloudClient();
   cloudSavingNow = true;
-  const now = new Date().toISOString();
-  const {error} = await client.from("money_nest_data").upsert({user_id:user.id, data:cloudPayload(), updated_at:now}, {onConflict:"user_id"});
-  cloudSavingNow = false;
-  if(error) throw error;
-  saveCloudConfig({lastCloudSave: now});
-  if(!silent){ await renderCloudSyncSettings(); alert("Saved Money Nest data to Supabase."); }
+  try{
+    const okToSave = await confirmCloudOverwriteIfNeeded(client, user, config, {silent});
+    if(!okToSave){ cloudSavingNow = false; return false; }
+    const now = new Date().toISOString();
+    const {error} = await client.from("money_nest_data").upsert({user_id:user.id, data:cloudPayload(), updated_at:now}, {onConflict:"user_id"});
+    if(error) throw error;
+    saveCloudConfig({lastCloudSave: now});
+    markCloudSeen(now);
+    if(!silent){ await renderCloudSyncSettings(); alert("Saved Money Nest data to Supabase."); }
+    return true;
+  } finally {
+    cloudSavingNow = false;
+  }
 }
 window.cloudSaveNow = async()=>{
   try{ await saveDataToCloud(); }
@@ -211,16 +286,17 @@ window.cloudLoadNow = async()=>{
     if(config.mode === "off") throw new Error("Cloud sync is paused/off.");
     const user = await requireCloudUser();
     const client = getCloudClient();
-    const {data: row, error} = await client.from("money_nest_data").select("data, updated_at").eq("user_id", user.id).maybeSingle();
-    if(error) throw error;
+    const row = await fetchCloudDataRow(client, user);
     if(!row?.data) throw new Error("No cloud backup found yet. Use Save to cloud first.");
-    const ok = confirm(`Load cloud data from ${fmtCloudTime(row.updated_at)}? This will replace the data currently in this browser. Export a JSON backup first if you are unsure.`);
+    const ok = confirmCloudLoadIfNeeded(row, config);
     if(!ok) return;
     suppressChangeHistory = true;
     data = normalizeData(row.data);
     saveImportedBackupData(data);
     suppressChangeHistory = false;
     saveCloudConfig({lastCloudLoad: new Date().toISOString()});
+    markCloudSeen(row.updated_at);
+    saveLocalMeta({lastLocalChange: row.updated_at || new Date().toISOString()});
     currentView = "dashboard";
     setView("dashboard");
     await renderCloudSyncSettings();
@@ -3306,6 +3382,7 @@ function saveData(){
   const afterRaw = JSON.stringify(data);
   recordChangeSnapshot(beforeRaw, afterRaw);
   localStorage.setItem(STORAGE_KEY, afterRaw);
+  touchLocalMoneyNestData();
   try {
     render();
     maybeQueueCloudAutoSave();
@@ -6356,11 +6433,24 @@ function splitAmount(total, count){
   const remainder = cents - base * count;
   return Array.from({length:count}, (_,i)=>((base + (i < remainder ? 1 : 0)) / 100));
 }
-function bnplPaymentRowsHTML(total, count, firstDate, frequencyDays){
+function addMonthsClamped(date, months){
+  const source = new Date(date);
+  const day = source.getDate();
+  const candidate = new Date(source.getFullYear(), source.getMonth() + Number(months || 0), 1, 12);
+  candidate.setDate(Math.min(day, endOfMonth(candidate).getDate()));
+  return candidate;
+}
+function bnplPaymentDateForIndex(first, index, frequencyValue, scheduleMode="days"){
+  if(scheduleMode === "monthly-same-day"){
+    return toISO(addMonthsClamped(first, index * Math.max(1, Number(frequencyValue || 1))));
+  }
+  return toISO(addDays(first, index * Math.max(1, Number(frequencyValue || 14))));
+}
+function bnplPaymentRowsHTML(total, count, firstDate, frequencyValue, scheduleMode="days"){
   const amounts = splitAmount(total, count);
   const first = parseDate(firstDate || todayISO());
   return amounts.map((amt, i)=>{
-    const due = toISO(addDays(first, i * Number(frequencyDays || 14)));
+    const due = bnplPaymentDateForIndex(first, i, frequencyValue, scheduleMode);
     return `<div class="bnpl-payment-row">
       <label>Payment ${i+1} date<input class="bnpl-date" type="date" value="${due}"></label>
       <label>Amount<input class="bnpl-amount" type="number" step="0.01" value="${amt.toFixed(2)}"></label>
@@ -7694,6 +7784,41 @@ function attachTransactionContextMenus(){
   });
 }
 
+function safeAmountExpressionValue(expression){
+  const cleaned = String(expression || "")
+    .replace(/[,$]/g, "")
+    .replace(/[×x]/gi, "*")
+    .replace(/[÷]/g, "/")
+    .trim();
+  if(!cleaned) throw new Error("Enter something to calculate first.");
+  if(!/^[0-9+\-*/().\s]+$/.test(cleaned)){
+    throw new Error("Use only numbers, +, -, ×, ÷, *, /, and parentheses.");
+  }
+  const result = Function(`"use strict"; return (${cleaned});`)();
+  if(!Number.isFinite(result)) throw new Error("That calculation did not return a usable number.");
+  return Math.round(result * 100) / 100;
+}
+window.toggleAmountCalculator = ()=>{
+  const panel = document.getElementById("txAmountCalcPanel");
+  if(!panel) return;
+  panel.hidden = !panel.hidden;
+  if(!panel.hidden) document.getElementById("txAmountCalcExpression")?.focus();
+};
+window.clearAmountCalculator = ()=>{
+  const input = document.getElementById("txAmountCalcExpression");
+  if(input) input.value = "";
+};
+window.calculateTransactionAmount = ()=>{
+  try{
+    const input = document.getElementById("txAmountCalcExpression");
+    const result = safeAmountExpressionValue(input?.value || "");
+    txAmount.value = result.toFixed(2);
+    updateTransactionFormUI();
+  } catch(err){
+    alert(`Calculator error: ${err.message || err}`);
+  }
+};
+
 function updateTransactionFormUI(){
   const type = txType.value;
 
@@ -7991,6 +8116,10 @@ window.openTransaction = (id=null, defaults={})=>{
   if(document.getElementById("txPaycheckHoursOverride")) txPaycheckHoursOverride.value = tx?.paycheckHoursOverride ?? defaults.paycheckHoursOverride ?? "";
   setRecurrenceForm(tx?.recurrence || (tx?.repeat ? {type:"monthly", interval:1} : defaults.recurrence) || {type:"none", interval:1}, occurrenceDate);
   txNotes.value = tx?.notes || defaults.notes || "";
+  const calcPanel = document.getElementById("txAmountCalcPanel");
+  const calcInput = document.getElementById("txAmountCalcExpression");
+  if(calcPanel) calcPanel.hidden = true;
+  if(calcInput) calcInput.value = "";
 
   const isRecurringEdit = !!tx && isRecurring(tx);
 
@@ -8563,10 +8692,17 @@ window.addBNPLPurchase = ()=>{
       <label>First due date
         <input id="bnplFirstDate" type="date" value="${todayISO()}">
       </label>
-      <label>Every how many days?
-        <input id="bnplFrequency" type="number" min="1" step="1" value="14">
+      <label>Payment schedule
+        <select id="bnplScheduleMode">
+          <option value="days">Every N days</option>
+          <option value="monthly-same-day">Monthly on same date</option>
+        </select>
       </label>
     </div>
+
+    <label id="bnplFrequencyWrap"><span id="bnplFrequencyLabel">Every how many days?</span>
+      <input id="bnplFrequency" type="number" min="1" step="1" value="14">
+    </label>
 
     <label class="checkbox"><input id="bnplCreatePayments" type="checkbox" checked> Add each payment as a planned transaction</label>
 
@@ -8582,16 +8718,30 @@ window.addBNPLPurchase = ()=>{
   setTimeout(()=>{
     if(defaultAccount) bnplSourceAccount.value = defaultAccount.id;
 
+    const updateScheduleUI = ()=>{
+      const monthly = bnplScheduleMode.value === "monthly-same-day";
+      if(bnplFrequencyLabel) bnplFrequencyLabel.textContent = monthly ? "Every how many months?" : "Every how many days?";
+      if(monthly && Number(bnplFrequency.value || 0) > 12) bnplFrequency.value = 1;
+      if(monthly && !bnplFrequency.value) bnplFrequency.value = 1;
+      if(!monthly && !bnplFrequency.value) bnplFrequency.value = 14;
+    };
     const refresh = ()=>{
+      updateScheduleUI();
       const total = Number(bnplTotal.value || 0);
       const count = Math.max(1, Number(bnplCount.value || 1));
       const first = bnplFirstDate.value || todayISO();
-      const freq = Math.max(1, Number(bnplFrequency.value || 14));
-      bnplPayments.innerHTML = bnplPaymentRowsHTML(total, count, first, freq);
+      const mode = bnplScheduleMode.value || "days";
+      const fallbackFreq = mode === "monthly-same-day" ? 1 : 14;
+      const freq = Math.max(1, Number(bnplFrequency.value || fallbackFreq));
+      bnplPayments.innerHTML = bnplPaymentRowsHTML(total, count, first, freq, mode);
     };
 
     bnplRefreshSchedule.onclick = refresh;
-    [bnplTotal, bnplCount, bnplFirstDate, bnplFrequency].forEach(el=>el.addEventListener("change", refresh));
+    [bnplTotal, bnplCount, bnplFirstDate, bnplFrequency, bnplScheduleMode].forEach(el=>el.addEventListener("change", refresh));
+    bnplScheduleMode.addEventListener("change", ()=>{
+      if(bnplScheduleMode.value === "monthly-same-day") bnplFrequency.value = 1;
+      refresh();
+    });
     refresh();
   },0);
 
@@ -8605,6 +8755,11 @@ window.addBNPLPurchase = ()=>{
     const paymentAmounts = Array.from(document.querySelectorAll(".bnpl-amount")).map(x=>Number(x.value || 0));
     const firstDue = paymentDates[0] || "";
     const minDue = paymentAmounts[0] || 0;
+    const scheduleMode = document.getElementById("bnplScheduleMode")?.value || "days";
+    const scheduleFreq = Math.max(1, Number(document.getElementById("bnplFrequency")?.value || (scheduleMode === "monthly-same-day" ? 1 : 14)));
+    const scheduleText = scheduleMode === "monthly-same-day"
+      ? `monthly every ${scheduleFreq} month${scheduleFreq === 1 ? "" : "s"} on day ${parseDate(firstDue || todayISO()).getDate()}`
+      : `every ${scheduleFreq} day${scheduleFreq === 1 ? "" : "s"}`;
 
     const debtId = uid();
     const debtName = `${merchant} ${company}`;
@@ -8629,7 +8784,7 @@ window.addBNPLPurchase = ()=>{
       manualExtra: 0,
       paymentStatus: bnplCreatePayments.checked ? "scheduled" : "not-set",
       frozenLocked: false,
-      notes: `BNPL purchase: ${merchant}`
+      notes: `BNPL purchase: ${merchant} • Schedule: ${scheduleText}`
     });
 
     if(bnplCreatePayments.checked){
@@ -10270,6 +10425,7 @@ function importBackupJSON(file){
       suppressChangeHistory = true;
       data = normalized;
       saveImportedBackupData(data);
+      touchLocalMoneyNestData();
       suppressChangeHistory = false;
       try{ currentView = "dashboard"; setView("dashboard"); }
       catch(renderErr){ console.warn("Backup imported, but dashboard render needed fallback", renderErr); render(); }

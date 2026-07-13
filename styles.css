@@ -4474,3 +4474,28 @@ button:disabled{
 @media(max-width:640px){
   .template-field-grid{grid-template-columns:1fr;}
 }
+
+/* v2-195 transaction amount calculator */
+.amount-calc-toggle{
+  margin-top:6px;
+  width:max-content;
+}
+.amount-calculator-panel{
+  margin:-4px 0 12px;
+  padding:12px;
+  border:1px dashed var(--line);
+  border-radius:16px;
+  background:#fffaf3;
+}
+.amount-calculator-panel[hidden]{
+  display:none !important;
+}
+.amount-calculator-panel label{
+  margin:0 0 8px;
+}
+.amount-calculator-panel .inline-actions{
+  margin-top:8px;
+}
+#bnplFrequencyWrap{
+  margin-top:8px;
+}

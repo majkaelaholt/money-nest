@@ -491,10 +491,22 @@
         <div class="two-col">
           <label>Amount
             <input id="txAmount" required type="number" step="0.01" placeholder="0.00"/>
+            <button type="button" class="ghost tiny amount-calc-toggle" onclick="toggleAmountCalculator()">🧮 Calculator</button>
           </label>
           <label>Date
             <input id="txDate" required type="date"/>
           </label>
+        </div>
+
+        <div id="txAmountCalcPanel" class="amount-calculator-panel" hidden>
+          <label>Amount calculator
+            <input id="txAmountCalcExpression" type="text" inputmode="decimal" placeholder="e.g. 34.20 + 1.99 + 0.87"/>
+          </label>
+          <div class="inline-actions">
+            <button type="button" class="primary tiny" onclick="calculateTransactionAmount()">Use result</button>
+            <button type="button" class="ghost tiny" onclick="clearAmountCalculator()">Clear</button>
+          </div>
+          <p class="hint">Use +, -, ×, ÷, *, /, and parentheses. Helpful for fees or split charges.</p>
         </div>
 
         <div class="two-col">

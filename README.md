@@ -2,7 +2,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-194`
+Current version: `money-nest-v2-195`
 
 ## Important Notes
 
@@ -148,6 +148,13 @@ Use CSV for reviewing or batch-editing data.
 * [ ]
 
 ## Version Notes
+
+### v2-195
+
+* Added cloud sync safety checks before Save to cloud / Load from cloud so stale devices warn before overwriting newer cloud data or loading an older cloud copy over newer local edits.
+* Added an amount calculator inside the Add/Edit Transaction modal for quick fee/split/conversion math.
+* Added a BNPL payment schedule option for monthly installments on the same date, alongside the existing every-N-days schedule.
+* No JSON/CSV schema changes needed.
 
 ### v2-194
 
