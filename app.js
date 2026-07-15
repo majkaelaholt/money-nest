@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-235";
+const APP_VERSION = "2-236";
 const CURRENT_SCHEMA_VERSION = 224;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -10504,6 +10504,31 @@ function billDisplayedNextDate(baseTx, fallbackDate="", expandedRows=null){
   return nextLinked?.date || fallbackDate || billOccurrenceInfo(baseTx).date || baseTx.date || "";
 }
 
+// Resolve the occurrence that the bill-series editor should start from. Series
+// edits apply to the earliest uncleared occurrence and everything after it;
+// cleared history remains materialized and unchanged.
+function billSeriesEditOccurrence(baseTx){
+  const canonical = canonicalRecurringSeries(baseTx) || baseTx;
+  if(!canonical) return {generated:true, occurrenceOriginalDate:"", occurrenceDate:""};
+  const nextUncleared = billLinkedTransactions(canonical).find(row =>
+    row.status !== "cleared" && !!String(row.date || "")
+  );
+  if(nextUncleared){
+    const sourceId = recurringLinkedSourceId(nextUncleared);
+    return {
+      generated: !!nextUncleared.generated || !!nextUncleared.originalId || sourceId === canonical.id || nextUncleared.id !== canonical.id,
+      occurrenceOriginalDate: nextUncleared.originalDate || nextUncleared.overrideFrom || nextUncleared.date,
+      occurrenceDate: nextUncleared.date
+    };
+  }
+  const info = billOccurrenceInfo(canonical);
+  return {
+    generated:true,
+    occurrenceOriginalDate: info.originalDate || canonical.date,
+    occurrenceDate: info.date || canonical.date
+  };
+}
+
 function billTransactionRowHTML(tx){
   const account = accountById(tx.accountId);
   const cat = categoryById(tx.categoryId);
@@ -10521,14 +10546,10 @@ function openBillSeriesEditor(txId){
   const selected = data.transactions.find(t=>t.id === txId);
   const tx = canonicalRecurringSeries(selected) || selected;
   if(!tx || !isRecurring(tx)) return;
-  const info = billOccurrenceInfo(tx);
+  const editOccurrence = billSeriesEditOccurrence(tx);
   billSeriesEditId = tx.id;
   document.getElementById("billDetailModal")?.close();
-  openTransaction(tx.id, {
-    generated:true,
-    occurrenceOriginalDate:info.originalDate || tx.date,
-    occurrenceDate:info.date || tx.date
-  });
+  openTransaction(tx.id, editOccurrence);
 }
 
 function openBillDetails(txId){
@@ -11806,8 +11827,8 @@ window.openTransaction=(id=null,defaults={})=>openTransactionEditor(id,defaults)
 // Bill series editing is an explicit edit action, so bypass the review screen.
 const _openBillSeriesEditor223=openBillSeriesEditor; openBillSeriesEditor=function(txId){
   const selected=data.transactions.find(t=>t.id===txId); const tx=canonicalRecurringSeries(selected)||selected; if(!tx||!isRecurring(tx))return;
-  const info=billOccurrenceInfo(tx); billSeriesEditId=tx.id; document.getElementById('billDetailModal')?.close();
-  openTransactionEditor(tx.id,{generated:true,occurrenceOriginalDate:info.originalDate||tx.date,occurrenceDate:info.date||tx.date});
+  const editOccurrence=billSeriesEditOccurrence(tx); billSeriesEditId=tx.id; document.getElementById('billDetailModal')?.close();
+  openTransactionEditor(tx.id,editOccurrence);
 };
 
 
@@ -11844,3 +11865,4 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 
 // v2-234: Budgets support an optional custom emoji, preserved in JSON and budget CSV import/export.
 // v2-235: Monthly Budget Targets and Budget Performance are sorted alphabetically by displayed budget title.
+// v2-236: Bill series editing starts from the earliest uncleared linked occurrence, preserving cleared history and updating that occurrence forward.

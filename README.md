@@ -2,7 +2,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-235`
+Current version: `money-nest-v2-236`
 
 ## Important Notes
 
@@ -878,3 +878,9 @@ Use CSV for reviewing or batch-editing data.
 ### v2-235
 - Sorts Monthly Budget Targets alphabetically by displayed budget title.
 - Sorts How You Did vs Budget alphabetically by the same displayed title.
+
+
+### v2-236
+- Fixed **Edit series** so the editor loads the earliest uncleared occurrence shown in the bill history, rather than a later calculated recurrence date.
+- Series changes now start at that earliest uncleared date and regenerate every later planned occurrence while preserving all cleared history.
+- If no uncleared linked occurrence exists, the editor safely falls back to the next calculated recurrence date.
