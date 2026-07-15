@@ -6167,7 +6167,7 @@ function renderBudgetReview(){
     return `<path d="${pieSlicePath(start, end)}" fill="${escapeAttr(item.cat.color)}" class="spending-pie-slice" tabindex="0" role="button" onclick="${click}"><title>${escapeAttr(title)}</title></path>`;
   }).join("");
   const spendingPie = pieData.length ? `<div class="spending-pie-wrap">
-      <svg class="spending-pie" viewBox="0 0 42 42" aria-label="Interactive spending by category pie chart">${pieSlices}<circle cx="21" cy="21" r="9" class="spending-pie-hole"></circle></svg>
+      <svg class="spending-pie" viewBox="0 0 42 42" aria-label="Interactive spending by category pie chart"><defs><clipPath id="spendingPieClip"><circle cx="21" cy="21" r="20"></circle></clipPath></defs><g class="spending-pie-slices">${pieSlices}</g><circle cx="21" cy="21" r="9" class="spending-pie-hole"></circle></svg>
       <div class="spending-legend">
         ${pieData.map(item=>{
           const pct = pieTotal ? Math.round((item.amount / pieTotal) * 100) : 0;
@@ -8202,6 +8202,7 @@ if(document.getElementById("txAutoPaycheck")){
 }
 
 let txEditMeta = { generated:false, originalDate:"", occurrenceDate:"" };
+let billSeriesEditId = "";
 
 function transactionPayloadFromForm(id){
   const autoPaycheck = !!document.getElementById("txAutoPaycheck")?.checked;
@@ -8296,8 +8297,8 @@ if(document.getElementById("clearRecentBtn")) clearRecentBtn.onclick = ()=>{
   try{ localStorage.removeItem(`${STORAGE_KEY}.recentPlaces`); } catch(err){}
   renderRecentPlaces();
 };
-document.getElementById("closeModal").onclick = () => txModal.close();
-document.getElementById("cancelTxBtn").onclick = () => txModal.close();
+document.getElementById("closeModal").onclick = () => { billSeriesEditId = ""; txModal.close(); };
+document.getElementById("cancelTxBtn").onclick = () => { billSeriesEditId = ""; txModal.close(); };
 document.getElementById("transactionForm").onsubmit = async (e)=>{
   e.preventDefault();
   const id = document.getElementById("txId").value || uid();
@@ -8317,7 +8318,8 @@ document.getElementById("transactionForm").onsubmit = async (e)=>{
   }
 
   const isRecurringEdit = !!existing && isRecurring(existing);
-  const scope = isRecurringEdit ? await askRecurringScope("save") : "future";
+  const editingBillSeries = !!billSeriesEditId && existing?.id === billSeriesEditId;
+  const scope = isRecurringEdit ? (editingBillSeries ? "future" : await askRecurringScope("save")) : "future";
   if(isRecurringEdit && !scope) return;
 
   if(existing && isRecurringEdit && scope === "one"){
@@ -8331,6 +8333,7 @@ document.getElementById("transactionForm").onsubmit = async (e)=>{
   }
 
   rememberTransactionTemplate(formTx);
+  billSeriesEditId = "";
   txModal.close();
   saveData();
   renderTransactionTemplates();
@@ -8370,7 +8373,7 @@ window.openTransaction = (id=null, defaults={})=>{
     occurrenceDate
   };
 
-  modalTitle.textContent = tx ? "Edit transaction" : "Add transaction";
+  modalTitle.textContent = billSeriesEditId && baseTx?.id === billSeriesEditId ? "Edit bill series" : (tx ? "Edit transaction" : "Add transaction");
   txId.value = tx?.id || "";
   txTitle.value = tx?.title || defaults.title || "";
   txAmount.value = tx?.amount || defaults.amount || "";
@@ -9977,6 +9980,82 @@ function restoreArchivedBill(txId){
   renderBills();
 }
 
+
+function billLinkedTransactions(baseTx){
+  if(!baseTx) return [];
+  const today = todayISO();
+  const horizon = baseTx.recurrenceUntil && baseTx.recurrenceUntil > today
+    ? baseTx.recurrenceUntil
+    : toISO(addMonths(parseDate(today), 12));
+  const linked = expandedTransactions(horizon).filter(tx => {
+    const sourceId = tx.originalId || tx.recurringSourceId || tx.recurrenceSourceId || tx.id;
+    return sourceId === baseTx.id || tx.id === baseTx.id;
+  });
+  const extraSaved = data.transactions.filter(tx =>
+    tx.id !== baseTx.id &&
+    (tx.recurringSourceId === baseTx.id || tx.recurrenceSourceId === baseTx.id || tx.originalId === baseTx.id)
+  );
+  const byKey = new Map();
+  [...linked, ...extraSaved].forEach(tx => {
+    const key = [tx.originalId || tx.recurringSourceId || tx.id, tx.originalDate || tx.date, tx.date, tx.title, Number(tx.amount || 0).toFixed(2), tx.status].join("|");
+    if(!byKey.has(key)) byKey.set(key, tx);
+  });
+  return [...byKey.values()].sort((a,b)=>String(b.date || "").localeCompare(String(a.date || "")));
+}
+
+function billTransactionRowHTML(tx){
+  const account = accountById(tx.accountId);
+  const cat = categoryById(tx.categoryId);
+  const editId = tx.originalId || tx.recurringSourceId || tx.id;
+  const originalDate = tx.originalDate || tx.date;
+  const generated = !!tx.generated || editId !== tx.id;
+  const sign = (tx.type === "income" || tx.type === "paycheck") ? "+" : "-";
+  return `<button type="button" class="bill-detail-row" onclick="document.getElementById('billDetailModal').close();openTransaction('${editId}',{generated:${generated},occurrenceOriginalDate:'${originalDate}',occurrenceDate:'${tx.date}'})">
+    <span class="bill-detail-row-main"><b>${escapeAttr(tx.title || "Untitled")}</b><small>${tx.date} • ${account?.name || billAccountLabel(tx) || "Unknown account"} • ${cat?.emoji || ""} ${cat?.name || "Unassigned"}</small></span>
+    <span class="bill-detail-row-side"><strong>${sign}${money(tx.amount)}</strong><small class="status-pill ${tx.status === "cleared" ? "cleared" : "planned"}">${tx.status === "cleared" ? "✓ Cleared" : "○ Planned"}</small></span>
+  </button>`;
+}
+
+function openBillSeriesEditor(txId){
+  const tx = data.transactions.find(t=>t.id === txId);
+  if(!tx || !isRecurring(tx)) return;
+  const info = billOccurrenceInfo(tx);
+  billSeriesEditId = tx.id;
+  document.getElementById("billDetailModal")?.close();
+  openTransaction(tx.id, {
+    generated:true,
+    occurrenceOriginalDate:info.originalDate || tx.date,
+    occurrenceDate:info.date || tx.date
+  });
+}
+
+function openBillDetails(txId){
+  const tx = data.transactions.find(t=>t.id === txId);
+  if(!tx) return;
+  const modal = document.getElementById("billDetailModal");
+  const title = document.getElementById("billDetailTitle");
+  const sub = document.getElementById("billDetailSub");
+  const summary = document.getElementById("billDetailSummary");
+  const list = document.getElementById("billDetailTransactions");
+  const editBtn = document.getElementById("editBillSeriesBtn");
+  const rows = billLinkedTransactions(tx);
+  const cleared = rows.filter(row=>row.status === "cleared");
+  const planned = rows.filter(row=>row.status !== "cleared");
+  const info = billOccurrenceInfo(tx);
+  title.textContent = `${categoryById(tx.categoryId).emoji} ${tx.title}`;
+  sub.textContent = `${recurrenceDescription(tx)} • ${tx.billArchived ? "Archived" : (info.status === "ended" ? "Ended" : `Next ${info.date}`)}`;
+  summary.innerHTML = `<div class="bill-detail-stat"><span>Cleared history</span><strong>${cleared.length}</strong></div><div class="bill-detail-stat"><span>Upcoming / planned</span><strong>${planned.length}</strong></div><div class="bill-detail-stat"><span>Typical amount</span><strong>${money(tx.amount)}</strong></div>`;
+  list.innerHTML = rows.length
+    ? `<div class="bill-detail-list-head"><h4>Transactions associated with this bill</h4><span>${rows.length} shown</span></div><div class="bill-detail-list">${rows.map(billTransactionRowHTML).join("")}</div><p class="hint bill-detail-horizon">Includes saved history and generated occurrences through the next 12 months.</p>`
+    : `<div class="empty">No linked transactions were found for this bill.</div>`;
+  editBtn.textContent = tx.billArchived ? "Restore before editing" : "Edit series";
+  editBtn.disabled = !!tx.billArchived;
+  editBtn.onclick = ()=>openBillSeriesEditor(tx.id);
+  modal.showModal();
+}
+window.openBillDetails = openBillDetails;
+window.openBillSeriesEditor = openBillSeriesEditor;
+
 function billCardHTML(tx, archivedSection=false){
   const cat = categoryById(tx.categoryId);
   const account = billAccountLabel(tx);
@@ -9987,7 +10066,7 @@ function billCardHTML(tx, archivedSection=false){
   const nextLabel = archivedSection
     ? (tx.billArchivedAt ? `Archived: ${tx.billArchivedAt}` : `Ended: ${tx.nextDate}`)
     : `Next: ${tx.nextDate}`;
-  return `<div class="bill-card ${archivedSection ? "bill-card-archived" : ""}" data-tx="${tx.id}" data-original-date="${tx.billInfo?.originalDate || tx.nextDate}" data-occurrence-date="${tx.nextDate}" onclick="openTransaction('${tx.id}',{generated:true, occurrenceOriginalDate:'${tx.billInfo?.originalDate || tx.nextDate}', occurrenceDate:'${tx.nextDate}'})">
+  return `<div class="bill-card ${archivedSection ? "bill-card-archived" : ""}" data-tx="${tx.id}" data-original-date="${tx.billInfo?.originalDate || tx.nextDate}" data-occurrence-date="${tx.nextDate}" onclick="openBillDetails('${tx.id}')">
     <div>
       <div class="row-title">${cat.emoji} ${tx.title}</div>
       <div class="row-sub">${route}</div>
@@ -9998,7 +10077,8 @@ function billCardHTML(tx, archivedSection=false){
       <div class="row-sub">${recurrenceDescription(tx)}</div>
       <div class="row-sub">${nextLabel}</div>
     </div>
-    <div class="tx-chip-actions">${billStatusBadge(tx)}${action}<div class="amount bill-amount ${(tx.type==='income'||tx.type==='paycheck')?'good':'bad'}">${(tx.type==='income'||tx.type==='paycheck')?'+':'-'}${money(tx.amount)}</div></div>
+    <div class="bill-card-actions">${billStatusBadge(tx)}${action}</div>
+    <div class="amount bill-amount ${(tx.type==='income'||tx.type==='paycheck')?'good':'bad'}">${(tx.type==='income'||tx.type==='paycheck')?'+':'-'}${money(tx.amount)}</div>
   </div>`;
 }
 
@@ -11013,3 +11093,4 @@ renderMoneyNestHealthCenter=function(){
 };
 
 // v2-207: archived bills section with archive/restore workflow.
+// v2-208: reserve a dedicated Bills amount column so archive controls cannot squeeze totals.

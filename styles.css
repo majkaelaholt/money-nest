@@ -95,7 +95,7 @@ label{display:grid;gap:6px;font-weight:900;font-size:13px;color:var(--muted)}inp
 }
 .bill-card{
   display:grid;
-  grid-template-columns:minmax(260px,1.35fr) minmax(190px,.8fr) minmax(230px,.9fr) minmax(110px,.45fr);
+  grid-template-columns:minmax(240px,1.35fr) minmax(165px,.75fr) minmax(220px,.9fr) auto minmax(105px,auto);
   gap:16px;
   align-items:center;
 }
@@ -108,8 +108,18 @@ label{display:grid;gap:6px;font-weight:900;font-size:13px;color:var(--muted)}inp
 .bill-repeat{
   min-width:230px;
 }
+.bill-card-actions{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+  min-width:max-content;
+}
 .bill-amount{
+  min-width:105px;
   text-align:right;
+  white-space:nowrap;
+  justify-self:end;
 }
 @media(max-width:1000px){
   .bill-filters{grid-template-columns:1fr 1fr}
@@ -117,11 +127,14 @@ label{display:grid;gap:6px;font-weight:900;font-size:13px;color:var(--muted)}inp
     grid-template-columns:1fr 1fr;
   }
   .bill-repeat{min-width:0}
-  .bill-amount{text-align:left}
+  .bill-card-actions{justify-content:flex-start;flex-wrap:wrap;min-width:0}
+  .bill-amount{grid-column:2;text-align:right;justify-self:end}
 }
 @media(max-width:640px){
   .bill-filters{grid-template-columns:1fr}
   .bill-card{grid-template-columns:1fr}
+  .bill-card-actions{justify-content:flex-start}
+  .bill-amount{grid-column:auto;justify-self:start;text-align:left}
 }
 
 .status-toggle{
@@ -4128,9 +4141,9 @@ button:disabled{
   font-weight:850 !important;
 }
 .budget-review-check input{width:auto;accent-color:var(--accent)}
-.spending-pie{display:block;overflow:visible;background:transparent;border-radius:0;border:0;box-shadow:0 10px 22px rgba(73,55,34,.08)}
-.spending-pie-slice{cursor:pointer;transition:transform .16s ease, filter .16s ease, opacity .16s ease;transform-origin:21px 21px;stroke:rgba(255,250,243,.82);stroke-width:.35}
-.spending-pie-slice:hover,.spending-pie-slice:focus{transform:scale(1.035);filter:brightness(1.05);outline:none;opacity:.95}
+.spending-pie{display:block;overflow:hidden;background:transparent;border-radius:50%;border:0;box-shadow:none;isolation:isolate}
+.spending-pie-slice{cursor:pointer;transition:filter .16s ease,opacity .16s ease;transform-origin:21px 21px;stroke:rgba(255,250,243,.92);stroke-width:.28;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.spending-pie-slice:hover,.spending-pie-slice:focus{transform:none;filter:brightness(1.06);outline:none;opacity:1}
 .spending-pie-hole{fill:rgba(255,250,243,.86);stroke:var(--line);stroke-width:.35;pointer-events:none}
 .spending-legend-row{width:100%;border:0;border-bottom:1px solid rgba(220,200,176,.55);background:transparent;text-align:left;color:var(--ink);font:inherit;cursor:pointer}
 .spending-legend-row:hover,.spending-legend-row:focus{background:rgba(156,122,84,.08);border-radius:12px;outline:none;padding-left:6px;padding-right:6px}
@@ -4560,7 +4573,7 @@ button.budget-review-row{border:1px solid rgba(220,200,176,.7)}
 .budget-review-grid-wide{grid-template-columns:1fr}
 .budget-review-grid-wide .spending-pie-wrap{grid-template-columns:minmax(230px,300px) minmax(0,1fr);gap:24px;align-items:center}
 .budget-review-grid-wide .spending-pie{max-width:300px;justify-self:center}
-.spending-pie-slice:hover,.spending-pie-slice:focus{transform:none;filter:brightness(1.08);opacity:1;stroke:rgba(91,66,39,.9);stroke-width:.6}
+.spending-pie-slice:hover,.spending-pie-slice:focus{transform:none;filter:brightness(1.08);opacity:1;stroke:rgba(255,250,243,.98);stroke-width:.42}
 @media(max-width:700px){
   .budget-trend-heading{display:grid;gap:4px}
   .budget-trend-heading .hint{text-align:left}
@@ -4619,4 +4632,56 @@ button.budget-review-row{border:1px solid rgba(220,200,176,.7)}
   .archived-bills-list{padding:0 8px 8px}
   .tx-chip-actions{flex-wrap:wrap}
   .bill-archive-action{min-height:36px}
+}
+
+
+/* v2-208 Bills row amount alignment */
+.bill-card-actions .status-toggle,.bill-card-actions .bill-archive-action{flex:0 0 auto}
+
+
+/* v2-209 bill history/detail workflow */
+.bill-detail-modal{width:min(920px,calc(100vw - 28px));max-width:none}
+.bill-detail-card{width:100%;max-height:min(88dvh,900px);overflow:hidden;display:flex;flex-direction:column}
+.bill-detail-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.bill-detail-stat{border:1px solid var(--line);border-radius:16px;padding:12px 14px;background:rgba(255,250,244,.78);display:grid;gap:3px}
+.bill-detail-stat span{font-size:12px;color:var(--muted);font-weight:700}
+.bill-detail-stat strong{font-size:20px}
+.bill-detail-transactions{min-height:0;overflow:auto;padding-right:3px}
+.bill-detail-list-head{display:flex;align-items:end;justify-content:space-between;gap:12px;margin:16px 0 8px}
+.bill-detail-list-head h4{margin:0}.bill-detail-list-head span{font-size:12px;color:var(--muted)}
+.bill-detail-list{display:grid;gap:8px}
+.bill-detail-row{width:100%;border:1px solid var(--line);border-radius:16px;background:var(--panel);padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:14px;text-align:left;color:inherit;cursor:pointer}
+.bill-detail-row:hover{border-color:var(--accent);transform:translateY(-1px)}
+.bill-detail-row-main,.bill-detail-row-side{display:flex;flex-direction:column;gap:4px}.bill-detail-row-main{min-width:0}.bill-detail-row-main small{color:var(--muted);white-space:normal}.bill-detail-row-side{align-items:flex-end;flex:0 0 auto}.bill-detail-row-side strong{font-size:17px}
+.bill-detail-horizon{margin:10px 2px 0}
+@media(max-width:640px){
+ .bill-detail-modal{width:100vw;height:100dvh;max-height:none;border-radius:0;margin:0}
+ .bill-detail-card{height:100dvh;max-height:none;border-radius:0;padding:16px}
+ .bill-detail-summary{grid-template-columns:1fr 1fr}.bill-detail-stat:last-child{grid-column:1/-1}
+ .bill-detail-row{align-items:flex-start}.bill-detail-row-side strong{font-size:16px}
+ .bill-detail-card .modal-actions{position:sticky;bottom:0;background:var(--panel);padding-top:10px}
+}
+
+
+/* v2-210 chart edge cleanup + archived bill action alignment */
+.spending-pie-slices{clip-path:url(#spendingPieClip)}
+.bill-card{width:100%;box-sizing:border-box;grid-template-columns:minmax(210px,1.35fr) minmax(145px,.72fr) minmax(190px,.9fr) minmax(172px,max-content) minmax(120px,max-content);gap:12px}
+.bill-card-actions{width:100%;min-width:0;justify-content:flex-end;flex-wrap:nowrap}
+.bill-card .bill-amount{width:100%;min-width:120px;max-width:none;padding-right:2px;box-sizing:border-box}
+.archived-bills-list .bill-card{width:100%}
+@media(max-width:1180px){
+  .bill-card{grid-template-columns:minmax(220px,1.25fr) minmax(150px,.7fr) minmax(190px,.9fr) minmax(120px,max-content)}
+  .bill-card-actions{grid-column:4;justify-content:flex-end;flex-wrap:wrap}
+  .bill-card .bill-amount{grid-column:4;justify-self:end;text-align:right}
+}
+@media(max-width:760px){
+  .bill-card{grid-template-columns:1fr auto}
+  .bill-card>div:nth-child(2),.bill-repeat{grid-column:1 / -1}
+  .bill-card-actions{grid-column:1;justify-content:flex-start;flex-wrap:wrap}
+  .bill-card .bill-amount{grid-column:2;grid-row:1;min-width:0;width:auto;align-self:start}
+}
+@media(max-width:520px){
+  .bill-card{grid-template-columns:1fr}
+  .bill-card>div:nth-child(2),.bill-repeat,.bill-card-actions,.bill-card .bill-amount{grid-column:1}
+  .bill-card .bill-amount{grid-row:auto;justify-self:start;text-align:left}
 }

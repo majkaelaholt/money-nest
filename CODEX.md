@@ -6,7 +6,7 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-207`
+Latest known version: `money-nest-v2-210`
 
 Before editing, always inspect `README.md` and confirm the current version in the repository. If `README.md` shows a different version, continue from the repo version and mention the mismatch in your summary.
 
@@ -142,7 +142,7 @@ Example README note:
 ### v2-200
 - Banking is excluded from budgeting. Savings transfers net contributions by direction.
 
-- Current version: money-nest-v2-207. Includes budget presets/groups, comparisons, calculation inspector, global search, mobile quick review, recurring cleanup, smart matching, and data-health scanning.
+- Current version: money-nest-v2-210. Includes budget presets/groups, comparisons, calculation inspector, global search, mobile quick review, recurring cleanup, smart matching, and data-health scanning.
 
 
 ### v2-205
@@ -153,7 +153,20 @@ Example README note:
 - Smart Cleanup duplicate detection is stricter and now provides Review 1, Review 2, Dismiss, and Restore dismissed actions.
 
 
+### v2-208
+
+- Bills cards reserve separate columns for status/archive controls and transaction amounts so totals remain aligned and visible.
+
 ### v2-207
 - Bills page now separates active rules from a collapsed Ended / Archived section.
 - `billArchived`, `billArchivedAt`, and `billArchivedPreviousRecurrenceUntil` are optional backward-compatible transaction fields and are included in transaction CSV import/export.
 - Archive preserves cleared history, suppresses future generation, and removes non-cleared/future linked occurrence rows; Restore re-enables the stored recurrence rule.
+
+
+### v2-210
+- Removed pie shadow/edge bleed and aligned archived bill action/amount columns.
+
+### v2-209
+- Bills cards now open a bill detail/history view instead of directly opening one transaction.
+- Bill details show linked cleared history plus upcoming/generated occurrences, with each row available for individual editing.
+- Added Edit series inside bill details; it starts at the next occurrence and updates only that occurrence and future uncleared occurrences while preserving cleared history.

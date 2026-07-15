@@ -2,7 +2,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-207`
+Current version: `money-nest-v2-210`
 
 ## Important Notes
 
@@ -148,6 +148,11 @@ Use CSV for reviewing or batch-editing data.
 * [ ]
 
 ## Version Notes
+
+### v2-210
+- Removed the pie chart drop shadow and clipped all slices to the outer circle so hover/focus borders cannot overlap neighboring slices or extend outside the chart.
+- Tightened slice separators for cleaner rendering at desktop and mobile sizes.
+- Strengthened Bills card grid sizing for both active and Ended / Archived cards so Archive, Restore, and Reactivate buttons cannot push amounts off-screen.
 
 ### v2-204
 
@@ -704,9 +709,24 @@ Use CSV for reviewing or batch-editing data.
 - Added Dismiss and Restore dismissed controls for duplicate cleanup findings. Dismissals are stored locally and do not modify transaction data.
 
 
+### v2-208
+
+- Fixed Bills row alignment after adding Archive/Restore actions.
+- Status and archive controls now have their own action column, while amounts keep a dedicated right-aligned column and no longer get pushed off-screen.
+- Preserved responsive two-column and mobile card layouts.
+
 ### v2-207
 - Added a collapsed **Ended / Archived bills** section on the Bills page.
 - Added **Archive** for active recurring bills. Archiving removes future and non-cleared linked occurrences while preserving cleared history and the recurring rule.
 - Added **Restore** for archived bills and **Reactivate** for naturally ended recurring rules.
 - Archived recurring templates no longer contribute planned/future occurrences to calendars, forecasts, balances, or budget review.
 - Transaction CSV import/export now preserves archive metadata. Older JSON and CSV backups remain compatible.
+
+
+### v2-210
+- Pie rendering cleanup and archived Bills action/amount alignment.
+
+### v2-209
+- Bills cards now open a bill detail/history view instead of directly opening one transaction.
+- Bill details show linked cleared history plus upcoming/generated occurrences, with each row available for individual editing.
+- Added Edit series inside bill details; it starts at the next occurrence and updates only that occurrence and future uncleared occurrences while preserving cleared history.

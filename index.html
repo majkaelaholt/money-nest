@@ -721,6 +721,24 @@
     </div>
   </dialog>
 
+  <dialog id="billDetailModal" class="bill-detail-modal">
+    <div class="modal-card bill-detail-card">
+      <div class="panel-head">
+        <div>
+          <h3 id="billDetailTitle">Bill details</h3>
+          <p class="hint" id="billDetailSub"></p>
+        </div>
+        <button type="button" class="icon-btn" onclick="document.getElementById('billDetailModal').close()">×</button>
+      </div>
+      <div id="billDetailSummary" class="bill-detail-summary"></div>
+      <div id="billDetailTransactions" class="bill-detail-transactions"></div>
+      <div class="modal-actions">
+        <button type="button" class="ghost" onclick="document.getElementById('billDetailModal').close()">Close</button>
+        <button type="button" class="primary" id="editBillSeriesBtn">Edit series</button>
+      </div>
+    </div>
+  </dialog>
+
   <div id="txContextMenu" class="context-menu">
     <button id="ctxToggleCleared">✓ Mark cleared/planned</button>
     <button id="ctxUseCardInstead">💳 Use card instead</button>
