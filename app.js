@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-232";
+const APP_VERSION = "2-233";
 const CURRENT_SCHEMA_VERSION = 223;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -10464,7 +10464,7 @@ function restoreArchivedBill(txId){
 }
 
 
-function billLinkedTransactions(baseTx){
+function billLinkedTransactions(baseTx, expandedRows=null){
   if(!baseTx) return [];
   const canonical = canonicalRecurringSeries(baseTx) || baseTx;
   const lineageIds = recurringSeriesLineageIds(canonical);
@@ -10472,7 +10472,8 @@ function billLinkedTransactions(baseTx){
   const horizon = canonical.recurrenceUntil && canonical.recurrenceUntil > today
     ? canonical.recurrenceUntil
     : toISO(addMonths(parseDate(today), 12));
-  const linked = expandedTransactions(horizon).filter(tx => {
+  const sourceRows = Array.isArray(expandedRows) ? expandedRows : expandedTransactions(horizon);
+  const linked = sourceRows.filter(tx => {
     const sourceId = tx.originalId || tx.recurringSourceId || tx.recurrenceSourceId || tx.id;
     return lineageIds.has(sourceId) || lineageIds.has(tx.id);
   });
@@ -10485,6 +10486,15 @@ function billLinkedTransactions(baseTx){
     if(!byKey.has(key)) byKey.set(key, tx);
   });
   return [...byKey.values()].sort((a,b)=>String(a.date || "").localeCompare(String(b.date || "")));
+}
+
+function billDisplayedNextDate(baseTx, fallbackDate="", expandedRows=null){
+  if(!baseTx) return fallbackDate || "";
+  const today = todayISO();
+  const nextLinked = billLinkedTransactions(baseTx, expandedRows).find(row =>
+    row.status !== "cleared" && String(row.date || "") >= today
+  );
+  return nextLinked?.date || fallbackDate || billOccurrenceInfo(baseTx).date || baseTx.date || "";
 }
 
 function billTransactionRowHTML(tx){
@@ -10584,6 +10594,7 @@ function renderBills(){
   try{
     renderBillFilters();
 
+    const sharedExpandedBillRows = expandedTransactions(toISO(addMonths(parseDate(todayISO()), 12)));
     let recurring = data.transactions
       .filter(tx => {
         try{ return isRecurring(tx); } catch(err){ return false; }
@@ -10594,7 +10605,10 @@ function renderBills(){
       })
       .map(tx => {
         const info = billOccurrenceInfo(tx);
-        return {...tx, nextDate: info.date, billInfo: info};
+        const nextDate = (!tx.billArchived && info.status !== "ended")
+          ? billDisplayedNextDate(tx, info.date, sharedExpandedBillRows)
+          : info.date;
+        return {...tx, nextDate, billInfo:{...info, date:nextDate}};
       })
       .filter(tx => tx.nextDate);
 
@@ -11818,3 +11832,5 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 // v2-231: Bill series edits now replace the active rule in place, preserve cleared history, repair old split fragments, and prevent loose payment matches from skipping multiple occurrences.
 
 // v2-232: Planned loose matches remain the current upcoming bill; only cleared matches advance the displayed Next date.
+
+// v2-233: Bills page cards use the earliest actual linked planned occurrence for their Next date, matching bill details.
