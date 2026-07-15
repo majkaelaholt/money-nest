@@ -32,7 +32,6 @@
         <button class="nav-btn" data-view="accounts" aria-label="Accounts"><span class="nav-emoji" aria-hidden="true">💳</span><span class="nav-text">Accounts</span></button>
         <button class="nav-btn" data-view="budgets" aria-label="Budgets"><span class="nav-emoji" aria-hidden="true">📊</span><span class="nav-text">Budgets</span></button>
         <button class="nav-btn" data-view="bills" aria-label="Bills"><span class="nav-emoji" aria-hidden="true">🧾</span><span class="nav-text">Bills</span></button>
-        <button class="nav-btn" data-view="debts" aria-label="Debts"><span class="nav-emoji" aria-hidden="true">💸</span><span class="nav-text">Debts</span></button>
         <button class="nav-btn" data-view="settings" aria-label="Settings"><span class="nav-emoji" aria-hidden="true">⚙️</span><span class="nav-text">Settings</span></button>
       </nav>
 
@@ -110,10 +109,24 @@
       <section id="accounts" class="view">
         <div class="panel">
           <div class="panel-head">
-            <h3>Cash accounts</h3>
+            <div>
+              <h3>Cash accounts</h3>
+              <p class="hint">Checking, shared cash, and savings accounts.</p>
+            </div>
             <button class="primary small" id="addAccountBtn">+ Account</button>
           </div>
           <div id="accountList" class="account-list"></div>
+        </div>
+
+        <div class="panel accounts-debts-panel">
+          <div class="panel-head">
+            <div>
+              <h3>Credit cards, loans & other debts</h3>
+              <p class="hint">Debt accounts live here too, so all financial accounts are together.</p>
+            </div>
+            <button class="primary small" id="addDebtBtn">+ Debt</button>
+          </div>
+          <div id="debtGroups" class="debt-groups"></div>
         </div>
       </section>
 
@@ -197,16 +210,6 @@
           </div>
 
           <div id="billsList" class="bill-list"></div>
-        </div>
-      </section>
-
-      <section id="debts" class="view">
-        <div class="panel">
-          <div class="panel-head">
-            <h3>Debts</h3>
-            <button class="primary small" id="addDebtBtn">+ Debt</button>
-          </div>
-          <div id="debtGroups" class="debt-groups"></div>
         </div>
       </section>
 

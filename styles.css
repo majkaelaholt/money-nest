@@ -4685,3 +4685,13 @@ button.budget-review-row{border:1px solid rgba(220,200,176,.7)}
   .bill-card>div:nth-child(2),.bill-repeat,.bill-card-actions,.bill-card .bill-amount{grid-column:1}
   .bill-card .bill-amount{grid-row:auto;justify-self:start;text-align:left}
 }
+
+/* v2-211 combinable Budget Review quick filters */
+.budget-preset-divider{width:1px;align-self:stretch;min-height:34px;background:var(--line);margin:0 2px}
+@media(max-width:640px){.budget-preset-divider{flex-basis:100%;width:100%;height:1px;min-height:1px;margin:2px 0}.budget-review-controls{align-items:end}}
+
+
+/* v2-212 combined Accounts page */
+#accounts.view.active{display:grid;gap:18px}
+#accounts .accounts-debts-panel{margin-top:0}
+@media(max-width:640px){#accounts.view.active{gap:12px}}

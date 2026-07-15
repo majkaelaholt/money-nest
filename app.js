@@ -2813,7 +2813,7 @@ if(!Array.isArray(billFilters.categories)) billFilters.categories = [billFilters
 let transactionFilterDefaults = {...defaultUiPrefs.transactionFilterDefaults, ...(uiPrefs.transactionFilterDefaults || {})};
 let transactionFilters = {...defaultUiPrefs.transactionFilters, ...(uiPrefs.transactionFilters || {})};
 let budgetReviewMonth = todayISO().slice(0,7);
-let budgetReviewAccount = "all";
+let budgetReviewAccountIds = [];
 let budgetReviewIncludeRecurringBills = true;
 let budgetReviewMode = "all";
 
@@ -4457,6 +4457,8 @@ function renderRecentPlaces(){
 
 function setView(view){
   try{
+    // v2-212: Debts is now part of Accounts. Keep old internal links/back targets working.
+    if(view === "debts") view = "accounts";
     currentView = view;
     document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active", v.id===view));
     document.body.classList.remove("money-nest-view-dashboard", "money-nest-view-calendar", "money-nest-view-accounts", "money-nest-view-bills", "money-nest-view-debts", "money-nest-view-settings", "money-nest-view-accountDetail", "money-nest-view-debtDetail");
@@ -4555,7 +4557,6 @@ function render(){
   if(currentView==="accountDetail") renderAccountDetail();
   if(currentView==="budgets") renderBudgets();
   if(currentView==="bills") renderBills();
-  if(currentView==="debts") renderDebts();
   if(currentView==="debtDetail") renderDebtDetail();
   if(currentView==="settings") renderSettings();
 }
@@ -4838,7 +4839,7 @@ function renderDashboard(){
                 <div class="debt-status-pill ${good ? "good" : "warn"}">${planned ? (paidEarly ? "Paid early" : plannedEarly ? "Planned early" : "Planned") : debtPaymentStatusLabel(d.paymentStatus)}</div>
               </div>`;
             }).join("") : `<div class="empty">No debt due dates in the next 30 days.</div>`}
-            ${dueSoonExtra ? `<div class="action-row-v2 clickable" onclick="setView('debts')"><div class="action-left"><span class="action-symbol">➕</span><div><div class="row-title">${dueSoonExtra} more due soon</div><div class="row-sub">Open Debts to review the rest.</div></div></div></div>` : ""}
+            ${dueSoonExtra ? `<div class="action-row-v2 clickable" onclick="setView('accounts')"><div class="action-left"><span class="action-symbol">➕</span><div><div class="row-title">${dueSoonExtra} more due soon</div><div class="row-sub">Open Accounts to review the rest.</div></div></div></div>` : ""}
           </div>
         </section>
 
@@ -5286,6 +5287,7 @@ function renderAccounts(){
       </div>
     </div>`).join("");
   setupReorder(".account-card[data-id]", "account");
+  renderDebts();
 }
 
 window.openAccountDetail = (id, backTarget="accounts")=>{
@@ -5899,9 +5901,14 @@ function isBudgetReviewIncome(tx){
   if(!tx || tx.status !== "cleared") return false;
   return (tx.type === "income" || tx.type === "paycheck") && Number(tx.amount || 0) > 0;
 }
-function txMatchesBudgetAccount(tx, accountId){
-  if(!accountId || accountId === "all") return true;
-  return tx.accountId === accountId;
+function normalizedBudgetReviewAccountIds(accountIds=budgetReviewAccountIds){
+  if(Array.isArray(accountIds)) return [...new Set(accountIds.filter(Boolean))];
+  if(!accountIds || accountIds === "all") return [];
+  return [accountIds];
+}
+function txMatchesBudgetAccount(tx, accountIds=budgetReviewAccountIds){
+  const ids = normalizedBudgetReviewAccountIds(accountIds);
+  return !ids.length || ids.includes(tx.accountId);
 }
 function budgetScopeAccountIds(budget){
   if(!budget) return [];
@@ -5913,10 +5920,11 @@ function txMatchesBudgetScope(tx, budget){
   if(!budget || budget.accountScope === "all" || (!budget.accountScope && !budget.accountId)) return true;
   return budgetScopeAccountIds(budget).includes(tx.accountId);
 }
-function budgetMatchesReviewAccount(budget, accountId){
-  if(!accountId || accountId === "all") return true;
+function budgetMatchesReviewAccount(budget, accountIds=budgetReviewAccountIds){
+  const ids = normalizedBudgetReviewAccountIds(accountIds);
+  if(!ids.length) return true;
   if(!budget || budget.accountScope === "all" || (!budget.accountScope && !budget.accountId)) return true;
-  return budgetScopeAccountIds(budget).includes(accountId);
+  return budgetScopeAccountIds(budget).some(id=>ids.includes(id));
 }
 function budgetScopeLabel(budget){
   if(!budget || budget.accountScope === "all" || (!budget.accountScope && !budget.accountId)) return "🌐 All accounts";
@@ -5929,9 +5937,11 @@ function budgetScopeLabel(budget){
   if(!accounts.length) return "👥 Selected accounts";
   return `👥 ${accounts.map(a=>a.name).join(" + ")}`;
 }
-function budgetReviewAccountLabel(accountId=budgetReviewAccount){
-  if(!accountId || accountId === "all") return "All accounts";
-  return accountById(accountId)?.name || "Selected account";
+function budgetReviewAccountLabel(accountIds=budgetReviewAccountIds){
+  const ids = normalizedBudgetReviewAccountIds(accountIds);
+  if(!ids.length) return "All accounts";
+  const names = ids.map(id=>accountById(id)?.name).filter(Boolean);
+  return names.length ? names.join(" + ") : "Selected accounts";
 }
 function piePoint(cx, cy, r, pct){
   const angle = ((pct * 3.6) - 90) * Math.PI / 180;
@@ -5991,12 +6001,13 @@ function budgetReviewPieData(stats){
     note:`Categories $${minStandaloneAmount}+ or 3%+ of spending show separately; tiny categories roll into Other.`
   };
 }
-function budgetActualSpent(budget, monthRange){
+function budgetActualSpent(budget, monthRange, reviewAccountIds=null){
   return expandedTransactions(monthRange.end)
     .filter(tx => tx.date >= monthRange.start && tx.date <= monthRange.end)
     .filter(tx => budgetIncludesTransaction(tx, budgetReviewIncludeRecurringBills))
     .filter(tx => txMatchesBudgetCategories(tx, budget))
     .filter(tx => txMatchesBudgetScope(tx, budget))
+    .filter(tx => reviewAccountIds === null || txMatchesBudgetAccount(tx, reviewAccountIds))
     .reduce((sum, tx)=>sum + budgetTransactionAmount(tx), 0);
 }
 
@@ -6015,12 +6026,12 @@ function budgetAverageMonthlySpent(budget, months=6){
     activeMonths: active.length
   };
 }
-function budgetReviewStats(monthValue=budgetReviewMonth, accountId=budgetReviewAccount){
+function budgetReviewStats(monthValue=budgetReviewMonth, accountIds=budgetReviewAccountIds){
   const range = budgetMonthRange(monthValue);
   const monthTx = expandedTransactions(range.end).filter(tx => tx.date >= range.start && tx.date <= range.end);
-  const expenses = monthTx.filter(tx => budgetIncludesTransaction(tx, budgetReviewIncludeRecurringBills)).filter(tx => txMatchesBudgetAccount(tx, accountId));
-  const income = monthTx.filter(isBudgetReviewIncome).filter(tx => txMatchesBudgetAccount(tx, accountId));
-  const budgets = (data.budgets || []).filter(b => budgetCategoryIds(b).length).filter(b => budgetMatchesReviewAccount(b, accountId));
+  const expenses = monthTx.filter(tx => budgetIncludesTransaction(tx, budgetReviewIncludeRecurringBills)).filter(tx => txMatchesBudgetAccount(tx, accountIds));
+  const income = monthTx.filter(isBudgetReviewIncome).filter(tx => txMatchesBudgetAccount(tx, accountIds));
+  const budgets = (data.budgets || []).filter(b => budgetCategoryIds(b).length).filter(b => budgetMatchesReviewAccount(b, accountIds));
 
   const byCategory = new Map();
   expenses.forEach(tx=>{
@@ -6034,7 +6045,7 @@ function budgetReviewStats(monthValue=budgetReviewMonth, accountId=budgetReviewA
   }).sort((a,b)=>b.amount-a.amount);
 
   const budgetRows = budgets.map(b=>{
-    const spent = budgetActualSpent(b, range);
+    const spent = budgetActualSpent(b, range, accountIds);
     const amount = Number(b.amount || 0);
     return {
       budget:b,
@@ -6062,7 +6073,7 @@ function budgetReviewStats(monthValue=budgetReviewMonth, accountId=budgetReviewA
 
   return {range, monthTx, expenses, income, budgets, categories, budgetRows, totalSpent, totalIncome, totalBudgeted, unbudgetedSpent, overBudgetCount};
 }
-function budgetTrendMonths(count=6, accountId=budgetReviewAccount){
+function budgetTrendMonths(count=6, accountIds=budgetReviewAccountIds){
   const selectedStart = parseDate(`${budgetReviewMonth}-01`);
   return Array.from({length:count}, (_,i)=>{
     const d = addMonths(selectedStart, i-(count-1));
@@ -6070,7 +6081,7 @@ function budgetTrendMonths(count=6, accountId=budgetReviewAccount){
     const spent = expandedTransactions(range.end)
       .filter(tx => tx.date >= range.start && tx.date <= range.end)
       .filter(tx => budgetIncludesTransaction(tx, budgetReviewIncludeRecurringBills))
-      .filter(tx => txMatchesBudgetAccount(tx, accountId))
+      .filter(tx => txMatchesBudgetAccount(tx, accountIds))
       .reduce((s,tx)=>s+budgetTransactionAmount(tx),0);
     return {month:range.month, label:parseDate(range.start).toLocaleString(undefined,{month:"short"}), spent};
   });
@@ -6079,17 +6090,7 @@ function setBudgetReviewMonth(value){
   budgetReviewMonth = /^\d{4}-\d{2}$/.test(value || "") ? value : todayISO().slice(0,7);
   renderBudgets();
 }
-function setBudgetReviewAccount(value){
-  budgetReviewAccount = value || "all";
-  renderBudgets();
-}
-function setBudgetReviewIncludeRecurringBills(value){
-  budgetReviewIncludeRecurringBills = !!value;
-  renderBudgets();
-}
 window.setBudgetReviewMonth = setBudgetReviewMonth;
-window.setBudgetReviewAccount = setBudgetReviewAccount;
-window.setBudgetReviewIncludeRecurringBills = setBudgetReviewIncludeRecurringBills;
 
 function setBudgetReviewMode(mode){
   budgetReviewMode = ["all","extra","bills"].includes(mode) ? mode : "all";
@@ -6097,25 +6098,37 @@ function setBudgetReviewMode(mode){
   renderBudgets();
 }
 window.setBudgetReviewMode=setBudgetReviewMode;
+function toggleBudgetReviewAccount(name){
+  const match=orderedAccounts().find(a=>String(a.name||"").toLowerCase().includes(name));
+  if(!match) return;
+  const selected=new Set(budgetReviewAccountIds);
+  if(selected.has(match.id)) selected.delete(match.id); else selected.add(match.id);
+  budgetReviewAccountIds=[...selected];
+  renderBudgets();
+}
+window.toggleBudgetReviewAccount=toggleBudgetReviewAccount;
 function applyBudgetPreset(name){
-  const accounts=orderedAccounts();
-  if(name==="all"){ budgetReviewAccount="all"; setBudgetReviewMode("all"); return; }
-  if(name==="extra"){ budgetReviewAccount="all"; setBudgetReviewMode("extra"); return; }
-  if(name==="bills"){ budgetReviewAccount="all"; setBudgetReviewMode("bills"); return; }
-  const match=accounts.find(a=>String(a.name||"").toLowerCase().includes(name));
-  budgetReviewAccount=match?.id || "all"; budgetReviewMode="all"; budgetReviewIncludeRecurringBills=true; renderBudgets();
+  if(["all","extra","bills"].includes(name)){ setBudgetReviewMode(name); return; }
+  toggleBudgetReviewAccount(name);
 }
 window.applyBudgetPreset=applyBudgetPreset;
+function budgetAccountPresetActive(name){
+  const match=orderedAccounts().find(a=>String(a.name||"").toLowerCase().includes(name));
+  return !!match && budgetReviewAccountIds.includes(match.id);
+}
 function renderBudgetPresetBar(){
  const el=document.getElementById("budgetPresetBar"); if(!el)return;
- el.innerHTML=`<div class="budget-preset-heading"><div><b>Quick views</b><small>Jump between the reviews you use most.</small></div></div><div class="budget-preset-buttons">
- <button class="${budgetReviewMode==='all'&&budgetReviewAccount==='all'?'active':''}" onclick="applyBudgetPreset('all')">All spending</button>
- <button class="${budgetReviewMode==='extra'?'active':''}" onclick="applyBudgetPreset('extra')">Extra spending only</button>
- <button class="${budgetReviewMode==='bills'?'active':''}" onclick="applyBudgetPreset('bills')">Bills only</button>
- <button class="${budgetReviewAccount!=='all'&&budgetReviewAccountLabel().toLowerCase().includes('mak')?'active':''}" onclick="applyBudgetPreset('mak')">Mak only</button><button class="${budgetReviewAccount!=='all'&&budgetReviewAccountLabel().toLowerCase().includes('ty')?'active':''}" onclick="applyBudgetPreset('ty')">Ty only</button><button class="${budgetReviewAccount!=='all'&&budgetReviewAccountLabel().toLowerCase().includes('joint')?'active':''}" onclick="applyBudgetPreset('joint')">Joint only</button></div>`;
+ el.innerHTML=`<div class="budget-preset-heading"><div><b>Quick views</b><small>Choose one spending view, then combine any account buttons.</small></div></div><div class="budget-preset-buttons">
+ <button class="${budgetReviewMode==='all'?'active':''}" onclick="applyBudgetPreset('all')">All spending</button>
+ <button class="${budgetReviewMode==='extra'?'active':''}" onclick="applyBudgetPreset('extra')">Extra spending</button>
+ <button class="${budgetReviewMode==='bills'?'active':''}" onclick="applyBudgetPreset('bills')">Bills</button>
+ <span class="budget-preset-divider" aria-hidden="true"></span>
+ <button class="${budgetAccountPresetActive('mak')?'active':''}" onclick="applyBudgetPreset('mak')">Mak</button>
+ <button class="${budgetAccountPresetActive('ty')?'active':''}" onclick="applyBudgetPreset('ty')">Ty</button>
+ <button class="${budgetAccountPresetActive('joint')?'active':''}" onclick="applyBudgetPreset('joint')">Joint</button></div>`;
 }
 function budgetMonthComparison(){
- const current=budgetReviewStats(); const prevMonth=toISO(addMonths(parseDate(`${budgetReviewMonth}-01`),-1)).slice(0,7); const previous=budgetReviewStats(prevMonth,budgetReviewAccount);
+ const current=budgetReviewStats(); const prevMonth=toISO(addMonths(parseDate(`${budgetReviewMonth}-01`),-1)).slice(0,7); const previous=budgetReviewStats(prevMonth,budgetReviewAccountIds);
  const delta=current.totalSpent-previous.totalSpent; const pct=previous.totalSpent?Math.round(delta/previous.totalSpent*100):null;
  const currentMap=new Map(current.categories.map(c=>[c.categoryId,c.amount])); const previousMap=new Map(previous.categories.map(c=>[c.categoryId,c.amount]));
  const changes=[...new Set([...currentMap.keys(),...previousMap.keys()])].map(id=>({id,delta:(currentMap.get(id)||0)-(previousMap.get(id)||0)})).sort((a,b)=>Math.abs(b.delta)-Math.abs(a.delta));
@@ -6124,7 +6137,7 @@ function budgetMonthComparison(){
 function explainBudgetTotals(){
  const stats=budgetReviewStats(); const comp=budgetMonthComparison(); const modal=document.getElementById('budgetDetailModal'); const content=document.getElementById('budgetDetailContent');
  document.getElementById('budgetDetailTitle').textContent='🧮 Why these totals?'; document.getElementById('budgetDetailSub').textContent=`${stats.range.label} • ${budgetReviewAccountLabel()}`;
- content.innerHTML=`<section class="budget-insight-card"><h4>Spending includes</h4><p>Cleared cash-account expenses and categorized cash transfers, excluding Banking. Savings transfers are netted by direction.</p><h4>Current filters</h4><p><b>View:</b> ${budgetReviewMode==='extra'?'Extra spending only':budgetReviewMode==='bills'?'Recurring bills only':'All spending'}<br><b>Recurring bills:</b> ${budgetReviewIncludeRecurringBills?'included':'excluded'}<br><b>Account:</b> ${budgetReviewAccountLabel()}</p><h4>Counted activity</h4><p>${stats.expenses.length} transactions total ${money(stats.totalSpent)}. Income is displayed separately and does not reduce spending totals.</p></section>`;
+ content.innerHTML=`<section class="budget-insight-card"><h4>Spending includes</h4><p>Cleared cash-account expenses and categorized cash transfers, excluding Banking. Savings transfers are netted by direction.</p><h4>Current filters</h4><p><b>View:</b> ${budgetReviewMode==='extra'?'Extra spending only':budgetReviewMode==='bills'?'Recurring bills only':'All spending'}<br><b>Account:</b> ${budgetReviewAccountLabel()}</p><h4>Counted activity</h4><p>${stats.expenses.length} transactions total ${money(stats.totalSpent)}. Income is displayed separately and does not reduce spending totals.</p></section>`;
  if(!modal.open)modal.showModal();
 }
 window.explainBudgetTotals=explainBudgetTotals;
@@ -6135,7 +6148,7 @@ function renderBudgetReview(){
   renderBudgetPresetBar();
   const stats = budgetReviewStats();
   const monthCompare = budgetMonthComparison();
-  const trend = budgetTrendMonths(6, budgetReviewAccount);
+  const trend = budgetTrendMonths(6, budgetReviewAccountIds);
   const maxTrend = Math.max(1, ...trend.map(t=>t.spent));
   const monthOptions = [];
   const selectedStart = parseDate(`${budgetReviewMonth}-01`);
@@ -6145,9 +6158,6 @@ function renderBudgetReview(){
     const label = parseDate(`${value}-01`).toLocaleString(undefined,{month:"short", year:"numeric"});
     monthOptions.push(`<option value="${value}" ${value===budgetReviewMonth?"selected":""}>${label}</option>`);
   }
-  const accountOptions = [`<option value="all" ${budgetReviewAccount==="all"?"selected":""}>All accounts</option>`]
-    .concat(orderedAccounts().map(a=>`<option value="${a.id}" ${budgetReviewAccount===a.id?"selected":""}>${a.emoji || "💵"} ${a.name}</option>`));
-
   const budgetMood = stats.overBudgetCount
     ? `${stats.overBudgetCount} over budget`
     : (stats.budgetRows.length ? "all tracked budgets okay" : "no budgets set yet");
@@ -6208,8 +6218,6 @@ function renderBudgetReview(){
   el.innerHTML = `
     <div class="budget-review-controls">
       <label>Month<select onchange="setBudgetReviewMonth(this.value)">${monthOptions.join("")}</select></label>
-      <label>Account<select onchange="setBudgetReviewAccount(this.value)">${accountOptions.join("")}</select></label>
-      <label class="budget-review-check"><input type="checkbox" ${budgetReviewIncludeRecurringBills ? "checked" : ""} ${budgetReviewMode==="bills"?"disabled":""} onchange="setBudgetReviewIncludeRecurringBills(this.checked)"> Include recurring bills</label>
       <button type="button" class="ghost small" onclick="explainBudgetTotals()">ⓘ Why these totals?</button>
     </div>
     <div class="budget-review-summary">
@@ -6295,7 +6303,7 @@ function renderBudgetBreakdown(items, emptyText){
     <div class="budget-detail-meter"><span style="width:${Math.max(4,Math.round(Math.abs(item.amount)/max*100))}%"></span></div>
   </div>`).join("")}</div>`;
 }
-function openBudgetDetailView({categoryId, categoryIds=null, budget=null, accountId=budgetReviewAccount}){
+function openBudgetDetailView({categoryId, categoryIds=null, budget=null, accountId=budgetReviewAccountIds}){
   const modal = document.getElementById("budgetDetailModal");
   const content = document.getElementById("budgetDetailContent");
   const selectedCategoryIds = budget ? budgetCategoryIds(budget) : (Array.isArray(categoryIds) ? categoryIds : [categoryId]).filter(Boolean);
@@ -6349,7 +6357,7 @@ window.openBudgetDetail = (budgetId)=>{
   const budget = (data.budgets || []).find(b=>b.id===budgetId);
   if(budget) openBudgetDetailView({categoryIds:budgetCategoryIds(budget), budget});
 };
-window.openCategoryBudgetDetail = (categoryId)=>openBudgetDetailView({categoryId, accountId:budgetReviewAccount});
+window.openCategoryBudgetDetail = (categoryId)=>openBudgetDetailView({categoryId, accountId:budgetReviewAccountIds});
 
 
 function debtUtilization(d){
@@ -7116,7 +7124,7 @@ window.openLoanBalanceAdjustment = openLoanBalanceAdjustment;
 
 function renderDebtDetail(){
   const d = debtById(selectedDebtId);
-  if(!d){ setView("debts"); return; }
+  if(!d){ setView("accounts"); return; }
   const txs = visibleTransactionsForDebt(d.id, toISO(addMonths(new Date(),3))).sort((a,b)=>b.date.localeCompare(a.date));
   const currentBal = debtAmountLeftNow(d);
   const util = debtUtilization(d);
@@ -7124,7 +7132,7 @@ function renderDebtDetail(){
   document.getElementById("debtDetailContent").innerHTML = `
     <div class="detail-head">
       <div>
-        <button class="ghost small" onclick="setView('debts')">← Back to debts</button>
+        <button class="ghost small" onclick="setView('accounts')">← Back to accounts</button>
         <h3 style="margin-top:12px"><span class="visual-dot" style="background:${d.color || "#8c6f4d"}"></span>${d.emoji || "💳"} ${d.company} • ${d.name}</h3>
         <p class="hint">${d.type} • ${d.owner} • ${debtFrozenText(d)}${d.apr ? ` • ${d.apr}% APR` : ""}</p>
       </div>
@@ -8546,7 +8554,7 @@ window.addBudgetFromReview = (categoryId)=>{
     chooseOtherBudgetCategory();
     return;
   }
-  simpleBudget(null, {categoryId, accountId:budgetReviewAccount});
+  simpleBudget(null, {categoryId, accountId:budgetReviewAccountIds.length===1 ? budgetReviewAccountIds[0] : "all"});
 };
 window.chooseOtherBudgetCategory = ()=>{
   const stats = budgetReviewStats();
@@ -10987,6 +10995,7 @@ if(document.readyState === "loading"){
 }
 
 
+// v2-211: combinable Budget Review quick filters replace separate account/recurring controls.
 // v2-205: search modal polish, selected budget presets, and recurring bill deduping.
 function openGlobalSearch(){ const m=document.getElementById('globalSearchModal'); if(!m)return; if(!m.open)m.showModal(); const i=document.getElementById('globalSearchInput'); i.value=''; renderGlobalSearch(''); setTimeout(()=>i.focus(),30); }
 window.openGlobalSearch=openGlobalSearch;
@@ -11094,3 +11103,6 @@ renderMoneyNestHealthCenter=function(){
 
 // v2-207: archived bills section with archive/restore workflow.
 // v2-208: reserve a dedicated Bills amount column so archive controls cannot squeeze totals.
+
+
+// v2-212: Combined Cash Accounts and Debts into one Accounts page while preserving all existing data models and detail views.

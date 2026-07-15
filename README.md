@@ -2,7 +2,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-210`
+Current version: `money-nest-v2-212`
 
 ## Important Notes
 
@@ -148,6 +148,19 @@ Use CSV for reviewing or batch-editing data.
 * [ ]
 
 ## Version Notes
+
+
+### v2-212
+- Combined the former Accounts and Debts pages into one **Accounts** page.
+- Cash accounts appear first, with credit cards, loans, BNPL, medical debts, and other debt accounts directly below.
+- Removed the separate Debts navigation item to reduce page clutter.
+- Preserved all account/debt data, detail views, editing, reordering, payoff tools, imports, exports, and old internal Debts links (which now redirect to Accounts).
+
+### v2-211
+- Made Budget Review Quick Views combinable across spending type and accounts.
+- **All spending**, **Extra spending**, and **Bills** act as the spending-mode choices, while **Mak**, **Ty**, and **Joint** can be toggled independently or combined.
+- Removed the separate Budget Review Account dropdown and Include recurring bills checkbox. With no account buttons selected, the review uses all accounts; selecting one or more account buttons limits the review to those accounts.
+- Budget summaries, charts, trends, comparisons, performance rows, calculation explanations, and category drill-downs now respect combined account selections.
 
 ### v2-210
 - Removed the pie chart drop shadow and clipped all slices to the outer circle so hover/focus borders cannot overlap neighboring slices or extend outside the chart.

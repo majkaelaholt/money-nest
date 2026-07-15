@@ -6,7 +6,7 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-210`
+Latest known version: `money-nest-v2-212`
 
 Before editing, always inspect `README.md` and confirm the current version in the repository. If `README.md` shows a different version, continue from the repo version and mention the mismatch in your summary.
 
@@ -142,7 +142,7 @@ Example README note:
 ### v2-200
 - Banking is excluded from budgeting. Savings transfers net contributions by direction.
 
-- Current version: money-nest-v2-210. Includes budget presets/groups, comparisons, calculation inspector, global search, mobile quick review, recurring cleanup, smart matching, and data-health scanning.
+- Current version: money-nest-v2-212. Includes combinable Budget Review spending/account filters, budget presets/groups, comparisons, calculation inspector, global search, mobile quick review, recurring cleanup, smart matching, and data-health scanning.
 
 
 ### v2-205
@@ -162,6 +162,17 @@ Example README note:
 - `billArchived`, `billArchivedAt`, and `billArchivedPreviousRecurrenceUntil` are optional backward-compatible transaction fields and are included in transaction CSV import/export.
 - Archive preserves cleared history, suppresses future generation, and removes non-cleared/future linked occurrence rows; Restore re-enables the stored recurrence rule.
 
+
+
+### v2-212
+- Accounts and Debts are now combined into one Accounts page. Cash accounts render first and the unchanged debt grouping/tools render below.
+- The standalone Debts navigation item and view were removed. Legacy `setView("debts")` calls redirect to Accounts for compatibility.
+- Debt detail pages return to Accounts. No saved data fields or import/export formats changed.
+
+### v2-211
+- Budget Review Quick Views now use two combinable dimensions: one spending mode (`all`, `extra`, or `bills`) plus zero or more cash-account buttons (`Mak`, `Ty`, `Joint`).
+- An empty account selection means all accounts. Multiple selected account IDs are stored in runtime state and applied consistently to review totals, income, charts, trends, comparisons, budget performance, and category drill-downs.
+- The older Account dropdown and Include recurring bills checkbox were removed from the Budget Review UI; recurring inclusion is derived from the selected spending mode.
 
 ### v2-210
 - Removed pie shadow/edge bleed and aligned archived bill action/amount columns.
