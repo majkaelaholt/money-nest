@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-231";
+const APP_VERSION = "2-232";
 const CURRENT_SCHEMA_VERSION = 223;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -10145,9 +10145,11 @@ function billOccurrenceInfo(tx){
           if(looseMatch?.id) usedLooseMatchIds.add(looseMatch.id);
           const matchedDate = looseMatch?.date || "";
           const displayDate = matchedDate || occurrence.date;
-          const matchedHandled = !!looseMatch;
           const cleared = occurrence.status === "cleared" || looseMatch?.status === "cleared";
-          const handled = cleared || matchedHandled;
+          // A saved planned occurrence is still the next upcoming bill. Only a
+          // cleared match should mark the recurring date as handled and advance
+          // the header/card to the following occurrence.
+          const handled = cleared;
           const info = {
             date: displayDate,
             originalDate: originalISO,
@@ -10527,8 +10529,10 @@ function openBillDetails(txId){
   const cleared = rows.filter(row=>row.status === "cleared");
   const planned = rows.filter(row=>row.status !== "cleared");
   const info = billOccurrenceInfo(tx);
+  const nextLinked = planned.find(row=>String(row.date || "") >= todayISO()) || null;
+  const displayedNextDate = nextLinked?.date || info.date;
   title.textContent = `${categoryById(tx.categoryId).emoji} ${tx.title}`;
-  sub.textContent = `${recurrenceDescription(tx)} • ${tx.billArchived ? "Archived" : (info.status === "ended" ? "Ended" : `Next ${info.date}`)}`;
+  sub.textContent = `${recurrenceDescription(tx)} • ${tx.billArchived ? "Archived" : (info.status === "ended" ? "Ended" : `Next ${displayedNextDate}`)}`;
   summary.innerHTML = `<div class="bill-detail-stat"><span>Cleared history</span><strong>${cleared.length}</strong></div><div class="bill-detail-stat"><span>Upcoming / planned</span><strong>${planned.length}</strong></div><div class="bill-detail-stat"><span>Typical amount</span><strong>${money(tx.amount)}</strong></div>`;
   list.innerHTML = rows.length
     ? `<div class="bill-detail-list-head"><h4>Transactions associated with this bill</h4><span>${rows.length} shown</span></div><div class="bill-detail-list">${rows.map(billTransactionRowHTML).join("")}</div><p class="hint bill-detail-horizon">Includes saved history and generated occurrences through the next 12 months.</p>`
@@ -11812,3 +11816,5 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 })();
 
 // v2-231: Bill series edits now replace the active rule in place, preserve cleared history, repair old split fragments, and prevent loose payment matches from skipping multiple occurrences.
+
+// v2-232: Planned loose matches remain the current upcoming bill; only cleared matches advance the displayed Next date.

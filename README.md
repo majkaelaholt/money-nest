@@ -2,7 +2,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-231`
+Current version: `money-nest-v2-232`
 
 ## Important Notes
 
@@ -855,3 +855,9 @@ Use CSV for reviewing or batch-editing data.
 - Fixed loose bill-payment matching so one cleared payment cannot satisfy multiple recurring dates; handled occurrences are skipped and the next truly unpaid date is shown.
 - Added a direct **Delete series** action in bill details; deleting a series removes the recurring rule and all uncleared occurrences while preserving cleared history.
 - Transaction CSV import/export now preserves recurring-source linkage fields used by repaired bill history. Older CSV and JSON backups remain compatible.
+
+
+### v2-232
+- Fixed recurring bill **Next** dates so a saved planned occurrence remains the current upcoming bill instead of being treated as already handled.
+- Only cleared matching transactions advance a recurring series to its following date.
+- Bill cards and bill-series detail headers now stay aligned with the first planned transaction shown in the associated transaction list.
