@@ -2,7 +2,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-223`
+Current version: `money-nest-v2-225`
 
 ## Important Notes
 
@@ -810,3 +810,15 @@ Use CSV for reviewing or batch-editing data.
 - Added app version, schema version, and last local save status in Settings.
 - Added an automatic warning when substantially older saved data is normalized to the current schema.
 - Added editable per-palette labels for each category color role.
+
+### v2-224
+- Made major cards, rows, forms, calendar cells, and sidebar surfaces follow the selected app palette instead of retaining hard-coded beige backgrounds.
+- Reworked the palette editor into wider, roomier cards so role labels, editable names, and color controls no longer feel cramped.
+
+
+### v2-225
+- Simplified cash-account details into one transaction timeline controlled by the same Status, Category, Type, Date range, and Sort filters used on debt accounts.
+- Removed Bank View / Forecast View mode tabs.
+- Replaced the three large cash balance cards with one compact summary row.
+- Added a shared Filters / Hide filters control to cash and debt transaction ledgers.
+- Tightened cash and debt account context headers for a more consistent layout.

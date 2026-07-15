@@ -6,7 +6,7 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-223`
+Latest known version: `money-nest-v2-225`
 
 Before editing, always inspect `README.md` and confirm the current version in the repository. If `README.md` shows a different version, continue from the repo version and mention the mismatch in your summary.
 
@@ -142,7 +142,7 @@ Example README note:
 ### v2-200
 - Banking is excluded from budgeting. Savings transfers net contributions by direction.
 
-- Current version: money-nest-v2-223. Includes combinable Budget Review spending/account filters, budget presets/groups, comparisons, calculation inspector, global search, mobile quick review, recurring cleanup, smart matching, and data-health scanning.
+- Current version: money-nest-v2-225. Includes combinable Budget Review spending/account filters, budget presets/groups, comparisons, calculation inspector, global search, mobile quick review, recurring cleanup, smart matching, and data-health scanning.
 
 
 ### v2-205
@@ -235,3 +235,12 @@ Example README note:
 - Added app version, schema version, and last local save status in Settings.
 - Added an automatic warning when substantially older saved data is normalized to the current schema.
 - Added editable per-palette labels for each category color role.
+
+### v2-224
+- Made major cards, rows, forms, calendar cells, and sidebar surfaces follow the selected app palette instead of retaining hard-coded beige backgrounds.
+- Reworked the palette editor into wider, roomier cards so role labels, editable names, and color controls no longer feel cramped.
+
+
+### v2-225
+- Unified cash and debt account transaction-filter UI. Cash accounts now use one timeline with Status filtering rather than separate Bank/Forecast views.
+- Account balances use a compact summary row and ledger filters are collapsed until requested.

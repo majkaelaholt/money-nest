@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-223";
+const APP_VERSION = "2-225";
 const CURRENT_SCHEMA_VERSION = 223;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -2742,6 +2742,7 @@ let currentView = "dashboard";
 let selectedAccountId = null;
 let selectedDebtId = null;
 let accountDetailSortInitialized = false;
+let ledgerFiltersOpen = false;
 
 const defaultUiPrefs = {
   calendarFilter: "all",
@@ -2954,7 +2955,7 @@ function renderAppearanceSettings(){
   el.innerHTML=`<div class="palette-choice-grid">${choices.map(x=>{const preview=paletteForId(x.id);return `<button type="button" class="palette-choice ${a.paletteId===x.id?'active':''}" onclick="selectMoneyNestPalette('${x.id}')"><span class="palette-swatches">${CATEGORY_PALETTE_ROLES.map(r=>`<i style="background:${preview?.roles?.[r]||'#ddd'}"></i>`).join('')}</span><b>${x.name}</b>${a.paletteOverrides?.[x.id]?'<small>Adjusted</small>':''}</button>`}).join('')}</div>
   <p class="hint">Each preset uses a broader family of coordinated colors, while category roles preserve the difference between bills, essentials, flexible spending, and accents.</p>
   <div class="palette-editor-head"><div><b>Adjust ${selectedName}</b><small>Changes are saved with this preset and included in JSON/cloud backups.</small></div></div>
-  <div class="custom-palette-grid">${CATEGORY_PALETTE_ROLES.map(r=>`<label><span>${paletteRoleLabel(r)}</span><input type="text" class="palette-role-name" data-palette-label="${r}" value="${escapeAttr(a.paletteRoleLabels?.[a.paletteId]?.[r]||DEFAULT_PALETTE_ROLE_LABELS[r]||r)}" aria-label="Label for ${r}"><input type="color" data-palette-role="${r}" value="${p.roles?.[r]||'#8c6f4d'}"></label>`).join('')}<label>App accent<input type="color" data-palette-app="accent" value="${p.app?.accent||'#8c6f4d'}"></label><label>Secondary accent<input type="color" data-palette-app="accent2" value="${p.app?.accent2||'#b7835a'}"></label><label>App background<input type="color" data-palette-app="bg" value="${p.app?.bg||'#f5efe6'}"></label><label>Main panels<input type="color" data-palette-app="panel" value="${p.app?.panel||'#fffaf3'}"></label><label>Soft panels<input type="color" data-palette-app="panel2" value="${p.app?.panel2||'#f1e3d0'}"></label><label>Borders<input type="color" data-palette-app="line" value="${p.app?.line||'#dfd0bd'}"></label><label>Main text<input type="color" data-palette-app="ink" value="${p.app?.ink||'#2e2a24'}"></label><label>Muted text<input type="color" data-palette-app="muted" value="${p.app?.muted||'#766b5d'}"></label></div>
+  <div class="custom-palette-grid">${CATEGORY_PALETTE_ROLES.map(r=>`<label class="palette-role-editor"><span class="palette-slot-title">${paletteRoleLabel(r)}</span><input type="text" class="palette-role-name" data-palette-label="${r}" value="${escapeAttr(a.paletteRoleLabels?.[a.paletteId]?.[r]||DEFAULT_PALETTE_ROLE_LABELS[r]||r)}" aria-label="Label for ${r}"><input type="color" data-palette-role="${r}" value="${p.roles?.[r]||'#8c6f4d'}" aria-label="Color for ${r}"></label>`).join('')}<label class="palette-app-editor"><span>App accent</span><input type="color" data-palette-app="accent" value="${p.app?.accent||'#8c6f4d'}"></label><label class="palette-app-editor"><span>Secondary accent</span><input type="color" data-palette-app="accent2" value="${p.app?.accent2||'#b7835a'}"></label><label class="palette-app-editor"><span>App background</span><input type="color" data-palette-app="bg" value="${p.app?.bg||'#f5efe6'}"></label><label class="palette-app-editor"><span>Main panels</span><input type="color" data-palette-app="panel" value="${p.app?.panel||'#fffaf3'}"></label><label class="palette-app-editor"><span>Soft panels</span><input type="color" data-palette-app="panel2" value="${p.app?.panel2||'#f1e3d0'}"></label><label class="palette-app-editor"><span>Borders</span><input type="color" data-palette-app="line" value="${p.app?.line||'#dfd0bd'}"></label><label class="palette-app-editor"><span>Main text</span><input type="color" data-palette-app="ink" value="${p.app?.ink||'#2e2a24'}"></label><label class="palette-app-editor"><span>Muted text</span><input type="color" data-palette-app="muted" value="${p.app?.muted||'#766b5d'}"></label></div>
   <div class="inline-actions"><button type="button" class="primary small" onclick="saveActiveMoneyNestPalette()">Save palette changes</button><button type="button" class="ghost small" onclick="resetActiveMoneyNestPalette()">Reset this palette</button></div>`;
 }
 window.selectMoneyNestPalette=id=>{data.settings.appearance.paletteId=id;applyMoneyNestPalette();saveData();renderAppearanceSettings();};
@@ -5622,27 +5623,11 @@ function renderAccountBalanceCards(accountId){
   const projected90 = accountProjectedBalance(accountId, toISO(addDays(parseDate(todayISO()), 90)));
   const expectedIn90 = pendingReimbursementsToAccount(accountId, toISO(addDays(parseDate(todayISO()), 90)));
 
-  return `<div class="account-balance-strip">
-    <div class="mini-balance-card">
-      <div class="label">Cleared balance</div>
-      <div class="amount">${money(cleared)}</div>
-      <div class="row-sub">bank balance / cleared only</div>
-    </div>
-    <div class="mini-balance-card">
-      <div class="label">Projected 30 days</div>
-      <div class="amount">${money(projected30)}</div>
-      <div class="row-sub">after planned + cleared</div>
-    </div>
-    <div class="mini-balance-card">
-      <div class="label">Projected 90 days</div>
-      <div class="amount">${money(projected90)}</div>
-      <div class="row-sub">longer forecast</div>
-    </div>
-    ${expectedIn90 ? `<div class="mini-balance-card">
-      <div class="label">Planned IOUs in</div>
-      <div class="amount good">${money(expectedIn90)}</div>
-      <div class="row-sub">included in projected balance</div>
-    </div>` : ""}
+  return `<div class="account-summary-row">
+    <div><span>Current</span><strong>${money(cleared)}</strong></div>
+    <div><span>30-day projected</span><strong class="${projected30 < 0 ? "bad" : ""}">${money(projected30)}</strong></div>
+    <div><span>90-day projected</span><strong class="${projected90 < 0 ? "bad" : ""}">${money(projected90)}</strong></div>
+    ${expectedIn90 ? `<div><span>Planned IOUs in</span><strong class="good">${money(expectedIn90)}</strong></div>` : ""}
   </div>`;
 }
 
@@ -5650,37 +5635,24 @@ function renderAccountDetail(){
   const a = accountById(selectedAccountId);
   if(!a){ setView("accounts"); return; }
 
-  let txs = [];
-  let rangeInfo = {start:"1900-01-01", end:todayISO(), label:""};
-  let balances = {};
-
-  if(accountDetailMode === "bank"){
-    transactionFilters.status = "cleared";
-    transactionFilters.sort = "date-desc";
-    if(transactionFilters.dateRange === "upcoming-90") transactionFilters.dateRange = "all";
-    saveUiPrefs();
-    txs = visibleTransactionsForAccount(a.id, todayISO())
-      .filter(tx => tx.status === "cleared" && tx.date <= todayISO());
-    balances = accountBankBalanceMap(a.id, todayISO());
-  } else {
-    if(transactionFilters.status === "cleared") transactionFilters.status = "all";
-    transactionFilters.sort = "date-asc";
-    accountForecastRange = cleanAccountForecastRange(accountForecastRange);
-    saveUiPrefs();
-    rangeInfo = forecastRangeDates(accountForecastRange);
-    txs = forecastWindowTransactions(a.id, rangeInfo.end)
-      .filter(tx => forecastTxInRange(tx, rangeInfo));
-    balances = accountRunningBalanceMap(a.id, rangeInfo.end, forecastVisibleStart(txs, rangeInfo));
-  }
-
+  const throughISO = toISO(addMonths(parseDate(todayISO()), 12));
+  const txs = visibleTransactionsForAccount(a.id, throughISO);
   const filtered = filteredLedgerTransactions(txs);
+  const balances = transactionFilters.status === "cleared"
+    ? accountBankBalanceMap(a.id, todayISO())
+    : accountRunningBalanceMap(a.id, throughISO, "1900-01-01");
+  const metric = billsMetricForAccount(a);
 
   document.getElementById("accountDetailContent").innerHTML = `
-    <div class="detail-head">
-      <div>
+    <div class="detail-head compact-detail-head">
+      <div class="compact-account-context">
         <button class="ghost small" onclick="setView(accountBackTarget)">← Back</button>
-        <h3 style="margin-top:12px"><span class="visual-dot" style="background:${a.color || "#8c6f4d"}"></span>${a.emoji || "💵"} ${a.name}</h3>
-        <p class="hint">${a.owner}${isSavingsAccount(a) ? ` • Savings / not for spending${savingsGoalAmount(a) ? ` • Goal ${money(savingsGoalAmount(a))} • Left ${money(savingsGoalRemaining(a))}` : ""}` : ` • ${billsMetricForAccount(a).label}: ${money(billsMetricForAccount(a).amount)} (${billsMetricForAccount(a).sub}) • Safe ${money(safeToSpend(a).amount)}`}</p>
+        <div>
+          <h3><span class="visual-dot" style="background:${a.color || "#8c6f4d"}"></span>${a.emoji || "💵"} ${a.name}</h3>
+          <p class="hint">${a.owner}${isSavingsAccount(a)
+            ? ` • Savings${savingsGoalAmount(a) ? ` • ${money(savingsGoalRemaining(a))} left to goal` : ""}`
+            : ` • ${metric.label} ${money(metric.amount)} • Safe ${money(safeToSpend(a).amount)}`}</p>
+        </div>
       </div>
       <div class="detail-actions">
         <button class="primary" onclick="openTransaction(null,{accountId:'${a.id}'})">+ Transaction</button>
@@ -5692,19 +5664,13 @@ function renderAccountDetail(){
 
     ${renderAccountBalanceCards(a.id)}
 
-    <div class="account-mode-tabs">
-      <button class="${accountDetailMode==="bank" ? "active" : ""}" onclick="accountDetailMode='bank'; saveUiPrefs(); renderAccountDetail()">Bank View</button>
-      <button class="${accountDetailMode==="forecast" ? "active" : ""}" onclick="accountDetailMode='forecast'; saveUiPrefs(); renderAccountDetail()">Forecast View</button>
-      ${accountDetailMode==="forecast" ? renderForecastRangeControl(a.id) : ""}
-    </div>
-
-    <section class="panel">
-      <div class="panel-head">
-        <h3>${accountDetailMode==="bank" ? "Bank / cleared transactions" : "Forecast / planned transactions"}</h3>
-        <span class="hint">${filtered.length} shown of ${txs.length} • ${accountDetailMode==="bank" ? "newest first, cleared only" : `${rangeInfo.label}, projected balance`}</span>
+    <section class="panel ledger-panel">
+      <div class="panel-head ledger-panel-head">
+        <div><h3>Transactions</h3><span class="hint">${filtered.length} shown of ${txs.length}</span></div>
+        <button type="button" class="ghost small" onclick="toggleLedgerFilters()">${ledgerFiltersOpen ? "Hide filters" : "Filters"}</button>
       </div>
-      ${renderTransactionFilters({hideSort:true, accountMode:accountDetailMode})}
-      ${renderLedger(filtered, {accountId:a.id, runningBalances:balances, mode:accountDetailMode})}
+      ${ledgerFiltersOpen ? renderTransactionFilters() : ""}
+      ${renderLedger(filtered, {accountId:a.id, runningBalances:balances, mode:"timeline"})}
     </section>`;
   attachTransactionContextMenus();
 }
@@ -5750,10 +5716,7 @@ function filteredLedgerTransactions(txs){
     const searchMatch = !searchTerm || `${tx.title || ""} ${tx.notes || ""} ${categoryById(tx.categoryId).name || ""}`.toLowerCase().includes(searchTerm);
 
     let dateMatch = true;
-    const accountScoped = currentView === "accountDetail";
-    if(accountScoped){
-      dateMatch = true;
-    } else if(transactionFilters.dateRange === "upcoming-90"){
+    if(transactionFilters.dateRange === "upcoming-90"){
       const end = toISO(addDays(parseDate(today), 90));
       dateMatch = tx.date >= today && tx.date <= end;
     } else if(transactionFilters.dateRange === "past-90"){
@@ -5805,19 +5768,24 @@ function resetTransactionFiltersToDefaults(){
 }
 window.resetTransactionFiltersToDefaults = resetTransactionFiltersToDefaults;
 
+function toggleLedgerFilters(){
+  ledgerFiltersOpen = !ledgerFiltersOpen;
+  render();
+}
+window.toggleLedgerFilters = toggleLedgerFilters;
+
 function renderTransactionFilters(options={}){
   const hideSort = !!options.hideSort;
-  const accountMode = options.accountMode || "";
   return `<div class="transaction-filters">
     <label>Search
       <input value="${transactionFilters.search || ""}" placeholder="Search transactions" oninput="setTransactionFilter('search', this.value)">
-    </label>    ${accountMode === "bank" ? "" : `<label>Status
+    </label><label>Status
       <select onchange="setTransactionFilter('status', this.value)">
         <option value="all" ${transactionFilters.status==="all"?"selected":""}>All statuses</option>
         <option value="planned" ${transactionFilters.status==="planned"?"selected":""}>Planned</option>
         <option value="cleared" ${transactionFilters.status==="cleared"?"selected":""}>Cleared</option>
       </select>
-    </label>`}
+    </label>
     <label>Category
       <select onchange="setTransactionFilter('category', this.value)">
         <option value="all" ${transactionFilters.category==="all"?"selected":""}>All categories</option>
@@ -7270,11 +7238,13 @@ function renderDebtDetail(){
   const util = debtUtilization(d);
 
   document.getElementById("debtDetailContent").innerHTML = `
-    <div class="detail-head">
-      <div>
-        <button class="ghost small" onclick="setView('accounts')">← Back to accounts</button>
-        <h3 style="margin-top:12px"><span class="visual-dot" style="background:${d.color || "#8c6f4d"}"></span>${d.emoji || "💳"} ${d.company} • ${d.name}</h3>
-        <p class="hint">${d.type} • ${d.owner} • ${debtFrozenText(d)}${d.apr ? ` • ${d.apr}% APR` : ""}</p>
+    <div class="detail-head compact-detail-head">
+      <div class="compact-account-context">
+        <button class="ghost small" onclick="setView('accounts')">← Back</button>
+        <div>
+          <h3><span class="visual-dot" style="background:${d.color || "#8c6f4d"}"></span>${d.emoji || "💳"} ${d.company} • ${d.name}</h3>
+          <p class="hint">${d.type} • ${d.owner} • ${debtFrozenText(d)}${d.apr ? ` • ${d.apr}% APR` : ""}</p>
+        </div>
       </div>
       <div class="detail-actions">
         <button class="primary" onclick="openTransaction(null,{debtAccountId:'${d.id}', type:'expense'})">+ Card/Klarna spend</button>
@@ -7291,9 +7261,12 @@ function renderDebtDetail(){
       ${d.notes ? `<div class="notes debt-notes"><b>Notes:</b> ${d.notes}</div>` : ""}
     </section>
 
-    <section class="panel">
-      <div class="panel-head"><h3>Transactions</h3><span class="hint">${filteredLedgerTransactions(txs).length} shown of ${txs.length}</span></div>
-      ${renderTransactionFilters()}
+    <section class="panel ledger-panel">
+      <div class="panel-head ledger-panel-head">
+        <div><h3>Transactions</h3><span class="hint">${filteredLedgerTransactions(txs).length} shown of ${txs.length}</span></div>
+        <button type="button" class="ghost small" onclick="toggleLedgerFilters()">${ledgerFiltersOpen ? "Hide filters" : "Filters"}</button>
+      </div>
+      ${ledgerFiltersOpen ? renderTransactionFilters() : ""}
       ${renderLedger(filteredLedgerTransactions(txs))}
     </section>`;
   attachTransactionContextMenus();
