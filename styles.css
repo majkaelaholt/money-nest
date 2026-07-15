@@ -4815,3 +4815,77 @@ button.budget-review-row{border:1px solid rgba(220,200,176,.7)}
 .bulk-category-option input{width:auto;margin:0}
 .bulk-category-option small{color:var(--muted);font-size:11px;text-align:right}
 @media(max-width:620px){.bulk-category-option{grid-template-columns:auto auto minmax(0,1fr)}.bulk-category-option small{grid-column:3;text-align:left}}
+
+
+/* v2-220: simplify Calendar header and restore the original comfortable density */
+.calendar-inline-title{
+  min-width:210px;
+  margin-right:auto;
+  padding:0 8px 0 2px;
+}
+.calendar-inline-title .eyebrow{
+  margin:0 0 1px;
+  font-size:10px;
+}
+.calendar-inline-title h2{
+  margin:0;
+  font-size:24px;
+  line-height:1.05;
+}
+body.money-nest-view-calendar .topbar{
+  min-height:0;
+  padding:0 0 6px !important;
+  justify-content:flex-end;
+}
+body.money-nest-view-calendar .topbar > div:first-child{
+  display:none;
+}
+body.money-nest-view-calendar #calendar.view.active{
+  height:calc(100vh - 58px) !important;
+}
+#calendar.view.active .calendar-toolbar-local{
+  justify-content:flex-end;
+  padding:7px 10px !important;
+  margin-bottom:6px !important;
+}
+#calendarGrid.calendar{
+  grid-template-rows:auto repeat(6,minmax(92px,1fr));
+}
+#calendarGrid .day{
+  padding:5px !important;
+}
+#calendarGrid .tx-chip{
+  min-height:18px !important;
+  padding:3px 4px !important;
+  font-size:9.5px !important;
+}
+#calendarGrid .chip-meta{
+  display:none !important;
+}
+@media(max-width:980px){
+  body.money-nest-view-calendar .topbar{
+    display:flex !important;
+    justify-content:flex-end !important;
+  }
+  body.money-nest-view-calendar #calendar.view.active{
+    height:auto !important;
+  }
+  .calendar-inline-title{
+    flex:1 1 100%;
+    min-width:0;
+  }
+}
+@media(max-width:720px){
+  .calendar-inline-title h2{font-size:20px}
+  #calendar.view.active .calendar-toolbar-local{
+    display:grid !important;
+    grid-template-columns:auto 1fr auto auto;
+    gap:6px;
+  }
+  .calendar-inline-title{grid-column:1 / -1}
+}
+
+/* v2-221 editable preset palette controls */
+.palette-editor-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:16px 0 6px}
+.palette-editor-head div{display:grid;gap:3px}
+.palette-editor-head small,.palette-choice small{color:var(--muted);font-size:.78rem}

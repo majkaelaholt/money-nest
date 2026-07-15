@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <title>Money Nest</title>
-  <link rel="stylesheet" href="styles.css?v=2-219"/>
+  <link rel="stylesheet" href="styles.css?v=2-221"/>
 
   <link rel="icon" href="favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
@@ -96,6 +96,10 @@
       <section id="calendar" class="view">
         
         <div class="calendar-toolbar panel calendar-toolbar-local">
+          <div class="calendar-inline-title">
+            <p class="eyebrow">Welcome back, Mak</p>
+            <h2>Calendar</h2>
+          </div>
           <button id="prevMonth" class="ghost">‹</button>
           <h3 id="monthLabel"></h3>
           <button id="nextMonth" class="ghost">›</button>
@@ -108,9 +112,6 @@
               <button type="button" class="check-dropdown-btn" id="calendarCategoryHighlightBtn">All categories</button>
               <div class="check-dropdown-menu" id="calendarCategoryHighlightMenu"></div>
             </div>
-          </label>
-          <label class="inline-label">Density
-            <select id="calendarDensity"><option value="compact">Compact</option><option value="comfortable">Comfortable</option><option value="detailed">Detailed</option></select>
           </label>
         </div>
 
@@ -793,7 +794,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=2-219"></script>
+  <script src="app.js?v=2-221"></script>
   <dialog id="globalSearchModal" class="global-search-modal">
     <div class="global-search-shell">
       <div class="modal-head"><div><h3>🔎 Search Money Nest</h3><p class="hint">Transactions, merchants, categories, accounts, amounts, and dates.</p></div><button class="icon-btn" onclick="document.getElementById('globalSearchModal').close()">×</button></div>

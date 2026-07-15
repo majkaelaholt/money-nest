@@ -2,7 +2,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-219`
+Current version: `money-nest-v2-221`
 
 ## Important Notes
 
@@ -148,6 +148,21 @@ Use CSV for reviewing or batch-editing data.
 * [ ]
 
 ## Version Notes
+
+### v2-221
+
+- Expanded preset palettes into broader coordinated color families so category roles are more visibly distinct (for example pink + purple, blue + teal + indigo, and red + orange + gold).
+- Added a new Red, Orange & Gold preset.
+- Made every preset palette editable, including category role colors and app background/panel/accent/text colors.
+- Added per-preset saved overrides and a Reset this palette action. Palette adjustments are stored in app settings and preserved by JSON/cloud backups.
+- Existing category palette roles, custom category overrides, legacy colors, and CSV compatibility remain unchanged.
+
+### v2-220
+
+- Removed Calendar density controls and restored the original comfortable calendar spacing.
+- Moved the Calendar title into the calendar control bar to reclaim vertical space.
+- Kept Calendar account and category filters intact.
+
 
 ### v2-219
 

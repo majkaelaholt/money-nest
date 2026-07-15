@@ -2815,7 +2815,7 @@ let billFilters = {...defaultUiPrefs.billFilters, ...(uiPrefs.billFilters || {})
 if(!Array.isArray(billFilters.categories)) billFilters.categories = [billFilters.category || "all"];
 let transactionFilterDefaults = {...defaultUiPrefs.transactionFilterDefaults, ...(uiPrefs.transactionFilterDefaults || {})};
 let transactionFilters = {...defaultUiPrefs.transactionFilters, ...(uiPrefs.transactionFilters || {})};
-let calendarDensity = uiPrefs.calendarDensity || "comfortable";
+let calendarDensity = "comfortable";
 let budgetReviewMonth = todayISO().slice(0,7);
 let budgetReviewAccountIds = [];
 let budgetReviewIncludeRecurringBills = true;
@@ -2856,12 +2856,13 @@ function standardCategories(){
 
 // v2-216: app-wide color palettes with stable category roles and optional overrides.
 const MONEY_NEST_PALETTES = {
-  legacy:{name:"Original", app:{bg:"#f5efe6",panel:"#fffaf3",panel2:"#f1e3d0",ink:"#2e2a24",muted:"#766b5d",line:"#dfd0bd",accent:"#8c6f4d",accent2:"#b7835a"}, roles:{}},
-  rose:{name:"Rose", app:{bg:"#fff1f5",panel:"#fff9fb",panel2:"#f9dbe5",ink:"#3b2530",muted:"#80616e",line:"#edc7d4",accent:"#a84f73",accent2:"#d17b9d"},roles:{light1:"#f9dce6",light2:"#f3c6d5",medium1:"#e69ab4",medium2:"#d8799c",dark1:"#b84e78",dark2:"#8e355d",accent1:"#c86f93",accent2:"#6f2949"}},
-  blue:{name:"Blue", app:{bg:"#eef5fb",panel:"#f8fbff",panel2:"#dceaf6",ink:"#223342",muted:"#617487",line:"#c6d9e8",accent:"#477aa3",accent2:"#74a5c9"},roles:{light1:"#dcecf8",light2:"#c4def1",medium1:"#91bfdf",medium2:"#6fa5cc",dark1:"#477fa9",dark2:"#315f82",accent1:"#5b96c1",accent2:"#244b69"}},
-  green:{name:"Green", app:{bg:"#f0f6ef",panel:"#fbfdf9",panel2:"#dfeadd",ink:"#283629",muted:"#667667",line:"#cadbc8",accent:"#5f805f",accent2:"#86a884"},roles:{light1:"#e1eddc",light2:"#cce1c6",medium1:"#9fc497",medium2:"#7dac78",dark1:"#5d8b5c",dark2:"#416b43",accent1:"#72a16f",accent2:"#315436"}},
-  purple:{name:"Purple", app:{bg:"#f6f1fa",panel:"#fcf9ff",panel2:"#e9dcf2",ink:"#35283d",muted:"#78677f",line:"#ddc9e8",accent:"#78558d",accent2:"#a17bb7"},roles:{light1:"#eadcf2",light2:"#dcc5e9",medium1:"#bd9bd0",medium2:"#a27bbb",dark1:"#80558f",dark2:"#603c70",accent1:"#9469a7",accent2:"#4c305a"}},
-  neutral:{name:"Warm neutral",app:{bg:"#f5efe6",panel:"#fffaf3",panel2:"#eee0cf",ink:"#2e2a24",muted:"#766b5d",line:"#dfd0bd",accent:"#806548",accent2:"#ad835e"},roles:{light1:"#eee1d2",light2:"#dfccb8",medium1:"#c8aa89",medium2:"#ad8967",dark1:"#866447",dark2:"#624830",accent1:"#9b7655",accent2:"#4f3927"}}
+  legacy:{name:"Original", app:{bg:"#f5efe6",panel:"#fffaf3",panel2:"#f1e3d0",ink:"#2e2a24",muted:"#766b5d",line:"#dfd0bd",accent:"#8c6f4d",accent2:"#b7835a"},roles:{light1:"#f4d9b8",light2:"#d9e6b8",medium1:"#91b8b3",medium2:"#8fa7cf",dark1:"#c97755",dark2:"#805c8f",accent1:"#d5ad3f",accent2:"#6b8d59"}},
+  rose:{name:"Pink & purple", app:{bg:"#fff1f7",panel:"#fff9fc",panel2:"#f5dceb",ink:"#3b2534",muted:"#806174",line:"#edc7db",accent:"#a84f7e",accent2:"#8660ad"},roles:{light1:"#f9dce8",light2:"#ead9f7",medium1:"#efa7c5",medium2:"#c6a0e8",dark1:"#d45f91",dark2:"#8252a8",accent1:"#f08aae",accent2:"#68408f"}},
+  red:{name:"Red, orange & gold", app:{bg:"#fff3ee",panel:"#fffaf7",panel2:"#f9dfd3",ink:"#412820",muted:"#82665b",line:"#eccbbd",accent:"#b84d3f",accent2:"#d47a2f"},roles:{light1:"#f8ddd2",light2:"#f7e7b8",medium1:"#f4a37f",medium2:"#e9b64f",dark1:"#d75b48",dark2:"#a83d32",accent1:"#ee7f38",accent2:"#bd7b20"}},
+  blue:{name:"Blue, teal & indigo", app:{bg:"#eef6fb",panel:"#f8fcff",panel2:"#dcecf4",ink:"#223442",muted:"#607687",line:"#c5dce8",accent:"#397ca3",accent2:"#4474b8"},roles:{light1:"#d9edf8",light2:"#d4f0ed",medium1:"#83c5d8",medium2:"#7da9e6",dark1:"#347fa5",dark2:"#465aa8",accent1:"#45a7a2",accent2:"#2e4f86"}},
+  green:{name:"Green, teal & yellow", app:{bg:"#f1f7ef",panel:"#fbfdf9",panel2:"#e1edd8",ink:"#29382a",muted:"#667766",line:"#cadcc5",accent:"#5d8659",accent2:"#4f9a85"},roles:{light1:"#e3efd6",light2:"#f1edbd",medium1:"#a8cf8d",medium2:"#83c9b2",dark1:"#5d9458",dark2:"#397767",accent1:"#c5b843",accent2:"#2f6047"}},
+  purple:{name:"Purple, blue & berry", app:{bg:"#f6f1fb",panel:"#fcf9ff",panel2:"#e9ddf3",ink:"#35283e",muted:"#78677f",line:"#ddcae9",accent:"#76558f",accent2:"#795ea8"},roles:{light1:"#eadcf3",light2:"#dce4fa",medium1:"#c49bd8",medium2:"#8fa9e3",dark1:"#82549a",dark2:"#554d9d",accent1:"#c3619b",accent2:"#49356d"}},
+  neutral:{name:"Warm earth tones",app:{bg:"#f5efe6",panel:"#fffaf3",panel2:"#eee0cf",ink:"#2e2a24",muted:"#766b5d",line:"#dfd0bd",accent:"#806548",accent2:"#a46f4c"},roles:{light1:"#eee1d2",light2:"#e3e1bd",medium1:"#c8aa89",medium2:"#a7ad82",dark1:"#a86848",dark2:"#624830",accent1:"#b58b45",accent2:"#6f7650"}}
 };
 const CATEGORY_PALETTE_ROLES=["light1","light2","medium1","medium2","dark1","dark2","accent1","accent2"];
 function defaultCategoryPaletteRole(category={}){
@@ -2885,6 +2886,7 @@ function normalizePaletteSettings(d){
   if(!MONEY_NEST_PALETTES[a.paletteId] && a.paletteId!=="custom") a.paletteId="legacy";
   a.customPalette ||= JSON.parse(JSON.stringify(MONEY_NEST_PALETTES.rose));
   a.customPalette.name="Custom";
+  a.paletteOverrides ||= {};
   (d.categories||[]).forEach(c=>{
     c.legacyColor ||= c.color || "#8c6f4d";
     c.paletteRole ||= defaultCategoryPaletteRole(c);
@@ -2892,15 +2894,23 @@ function normalizePaletteSettings(d){
     c.customColor ||= c.customColorOverride ? (c.color||c.legacyColor) : "";
   });
 }
+function paletteForId(id){
+  const a=data?.settings?.appearance||{};
+  if(id==="custom") return a.customPalette || JSON.parse(JSON.stringify(MONEY_NEST_PALETTES.rose));
+  const base=MONEY_NEST_PALETTES[id]||MONEY_NEST_PALETTES.legacy;
+  const override=a.paletteOverrides?.[id];
+  if(!override) return base;
+  return {name:base.name, app:{...base.app,...(override.app||{})}, roles:{...base.roles,...(override.roles||{})}};
+}
 function activePalette(){
   const a=data?.settings?.appearance||{};
-  return a.paletteId==="custom" ? a.customPalette : (MONEY_NEST_PALETTES[a.paletteId]||MONEY_NEST_PALETTES.legacy);
+  return paletteForId(a.paletteId||"legacy");
 }
 function effectiveCategoryColor(c){
   if(!c) return "#8c6f4d";
   if(c.customColorOverride && c.customColor) return c.customColor;
   const a=data?.settings?.appearance||{};
-  if((a.paletteId||"legacy")==="legacy") return c.legacyColor||c.color||"#8c6f4d";
+  if((a.paletteId||"legacy")==="legacy" && !a.paletteOverrides?.legacy) return c.legacyColor||c.color||"#8c6f4d";
   return activePalette()?.roles?.[c.paletteRole] || c.legacyColor || c.color || "#8c6f4d";
 }
 function syncPaletteCategoryColors(){(data.categories||[]).forEach(c=>{c.color=effectiveCategoryColor(c);});}
@@ -2917,17 +2927,30 @@ function renderAppearanceSettings(){
   const el=document.getElementById("appearancePalettePanel"); if(!el)return;
   normalizePaletteSettings(data); const a=data.settings.appearance, p=activePalette();
   const choices=[...Object.entries(MONEY_NEST_PALETTES).map(([id,x])=>({id,name:x.name})),{id:"custom",name:"Custom"}];
-  el.innerHTML=`<div class="palette-choice-grid">${choices.map(x=>`<button type="button" class="palette-choice ${a.paletteId===x.id?'active':''}" onclick="selectMoneyNestPalette('${x.id}')"><span class="palette-swatches">${CATEGORY_PALETTE_ROLES.slice(0,5).map(r=>`<i style="background:${(x.id==='custom'?a.customPalette:MONEY_NEST_PALETTES[x.id])?.roles?.[r]||'#ddd'}"></i>`).join('')}</span><b>${x.name}</b></button>`).join('')}</div>
-  <p class="hint">Category roles stay the same when palettes change, so bills can remain light while flexible spending remains dark.</p>
-  ${a.paletteId==='custom'?`<div class="custom-palette-grid">${CATEGORY_PALETTE_ROLES.map(r=>`<label>${paletteRoleLabel(r)}<input type="color" data-custom-role="${r}" value="${p.roles?.[r]||'#8c6f4d'}"></label>`).join('')}<label>App accent<input type="color" data-custom-app="accent" value="${p.app?.accent||'#8c6f4d'}"></label><label>Secondary accent<input type="color" data-custom-app="accent2" value="${p.app?.accent2||'#b7835a'}"></label><label>App background<input type="color" data-custom-app="bg" value="${p.app?.bg||'#f5efe6'}"></label><label>Main panels<input type="color" data-custom-app="panel" value="${p.app?.panel||'#fffaf3'}"></label><label>Soft panels<input type="color" data-custom-app="panel2" value="${p.app?.panel2||'#f1e3d0'}"></label><label>Borders<input type="color" data-custom-app="line" value="${p.app?.line||'#dfd0bd'}"></label><label>Main text<input type="color" data-custom-app="ink" value="${p.app?.ink||'#2e2a24'}"></label><label>Muted text<input type="color" data-custom-app="muted" value="${p.app?.muted||'#766b5d'}"></label></div><button type="button" class="primary small" onclick="saveCustomMoneyNestPalette()">Save custom palette</button>`:''}`;
+  const selectedName=a.paletteId==="custom"?"Custom":(MONEY_NEST_PALETTES[a.paletteId]?.name||"Original");
+  el.innerHTML=`<div class="palette-choice-grid">${choices.map(x=>{const preview=paletteForId(x.id);return `<button type="button" class="palette-choice ${a.paletteId===x.id?'active':''}" onclick="selectMoneyNestPalette('${x.id}')"><span class="palette-swatches">${CATEGORY_PALETTE_ROLES.map(r=>`<i style="background:${preview?.roles?.[r]||'#ddd'}"></i>`).join('')}</span><b>${x.name}</b>${a.paletteOverrides?.[x.id]?'<small>Adjusted</small>':''}</button>`}).join('')}</div>
+  <p class="hint">Each preset uses a broader family of coordinated colors, while category roles preserve the difference between bills, essentials, flexible spending, and accents.</p>
+  <div class="palette-editor-head"><div><b>Adjust ${selectedName}</b><small>Changes are saved with this preset and included in JSON/cloud backups.</small></div></div>
+  <div class="custom-palette-grid">${CATEGORY_PALETTE_ROLES.map(r=>`<label>${paletteRoleLabel(r)}<input type="color" data-palette-role="${r}" value="${p.roles?.[r]||'#8c6f4d'}"></label>`).join('')}<label>App accent<input type="color" data-palette-app="accent" value="${p.app?.accent||'#8c6f4d'}"></label><label>Secondary accent<input type="color" data-palette-app="accent2" value="${p.app?.accent2||'#b7835a'}"></label><label>App background<input type="color" data-palette-app="bg" value="${p.app?.bg||'#f5efe6'}"></label><label>Main panels<input type="color" data-palette-app="panel" value="${p.app?.panel||'#fffaf3'}"></label><label>Soft panels<input type="color" data-palette-app="panel2" value="${p.app?.panel2||'#f1e3d0'}"></label><label>Borders<input type="color" data-palette-app="line" value="${p.app?.line||'#dfd0bd'}"></label><label>Main text<input type="color" data-palette-app="ink" value="${p.app?.ink||'#2e2a24'}"></label><label>Muted text<input type="color" data-palette-app="muted" value="${p.app?.muted||'#766b5d'}"></label></div>
+  <div class="inline-actions"><button type="button" class="primary small" onclick="saveActiveMoneyNestPalette()">Save palette changes</button><button type="button" class="ghost small" onclick="resetActiveMoneyNestPalette()">Reset this palette</button></div>`;
 }
 window.selectMoneyNestPalette=id=>{data.settings.appearance.paletteId=id;applyMoneyNestPalette();saveData();renderAppearanceSettings();};
-window.saveCustomMoneyNestPalette=()=>{
-  const a=data.settings.appearance;a.customPalette ||= JSON.parse(JSON.stringify(MONEY_NEST_PALETTES.rose));a.customPalette.name="Custom";
-  document.querySelectorAll('[data-custom-role]').forEach(i=>a.customPalette.roles[i.dataset.customRole]=i.value);
-  document.querySelectorAll('[data-custom-app]').forEach(i=>a.customPalette.app[i.dataset.customApp]=i.value);
-  a.paletteId="custom";applyMoneyNestPalette();saveData();renderAppearanceSettings();
+window.saveActiveMoneyNestPalette=()=>{
+  const a=data.settings.appearance; normalizePaletteSettings(data);
+  const edited={name:a.paletteId==="custom"?"Custom":(MONEY_NEST_PALETTES[a.paletteId]?.name||"Adjusted"),roles:{},app:{}};
+  document.querySelectorAll('[data-palette-role]').forEach(i=>edited.roles[i.dataset.paletteRole]=i.value);
+  document.querySelectorAll('[data-palette-app]').forEach(i=>edited.app[i.dataset.paletteApp]=i.value);
+  if(a.paletteId==="custom") a.customPalette=edited;
+  else a.paletteOverrides[a.paletteId]=edited;
+  applyMoneyNestPalette();saveData();renderAppearanceSettings();
 };
+window.resetActiveMoneyNestPalette=()=>{
+  const a=data.settings.appearance; normalizePaletteSettings(data);
+  if(a.paletteId==="custom") a.customPalette=JSON.parse(JSON.stringify(MONEY_NEST_PALETTES.rose));
+  else delete a.paletteOverrides[a.paletteId];
+  applyMoneyNestPalette();saveData();renderAppearanceSettings();
+};
+window.saveCustomMoneyNestPalette=window.saveActiveMoneyNestPalette;
 
 // v2-219: load saved data only after palette constants exist, preventing startup TDZ errors.
 data = loadData();
@@ -5130,7 +5153,7 @@ function renderCalendar(){
   let html = heads;
   calendarDays.forEach(day => {
     const mobileCalendar = window.matchMedia && window.matchMedia("(max-width: 700px)").matches;
-    const densityLimit = calendarDensity === "compact" ? 2 : calendarDensity === "detailed" ? 6 : 3;
+    const densityLimit = 3;
     const visibleTx = mobileCalendar ? day.dayTx : day.dayTx.slice(0,densityLimit);
     const hiddenCount = mobileCalendar ? 0 : Math.max(0, day.dayTx.length - visibleTx.length);
     const isCurrentMonth = day.date.getMonth() === monthStart.getMonth();
@@ -11371,7 +11394,7 @@ function applyCalendarDensity(){
   const sel=document.getElementById('calendarDensity');if(sel)sel.value=calendarDensity;
 }
 const _renderCalendar214=renderCalendar;renderCalendar=function(){_renderCalendar214();applyCalendarDensity();};
-document.getElementById('calendarDensity')?.addEventListener('change',e=>{calendarDensity=e.target.value;saveUiPrefs();applyCalendarDensity();});
+
 
 function backupHealthData(){
   const meta=loadLocalMeta(), cloud=loadCloudConfig();
@@ -11395,3 +11418,6 @@ renderNeedsReview();
 // v2-216: palette rendering hook.
 const _render216=render; render=function(){applyMoneyNestPalette();_render216();};
 applyMoneyNestPalette();
+
+// v2-220: Calendar density control removed; calendar uses the original comfortable layout.
+// v2-221: Preset palettes use broader coordinated color families and every preset can be adjusted/reset.
