@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-230";
+const APP_VERSION = "2-231";
 const CURRENT_SCHEMA_VERSION = 223;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -294,6 +294,7 @@ window.cloudLoadNow = async()=>{
     if(!ok) return;
     suppressChangeHistory = true;
     data = normalizeData(row.data);
+    repairSplitRecurringSeriesData();
     saveImportedBackupData(data);
     suppressChangeHistory = false;
     saveCloudConfig({lastCloudLoad: new Date().toISOString()});
@@ -3214,7 +3215,11 @@ function normalizeData(raw){
     loanBalanceAdjustment: tx.loanBalanceAdjustment === undefined || tx.loanBalanceAdjustment === "" ? "" : Number(tx.loanBalanceAdjustment),
     dateOverrides: tx.dateOverrides || {},
     occurrenceOverrides: tx.occurrenceOverrides || {},
-    linkedTransactionIds: Array.isArray(tx.linkedTransactionIds) ? [...new Set(tx.linkedTransactionIds.filter(Boolean).map(String))] : []
+    linkedTransactionIds: Array.isArray(tx.linkedTransactionIds) ? [...new Set(tx.linkedTransactionIds.filter(Boolean).map(String))] : [],
+    recurringSourceId: tx.recurringSourceId || "",
+    recurrenceSourceId: tx.recurrenceSourceId || "",
+    originalDate: tx.originalDate || "",
+    wasRecurringOccurrence: !!tx.wasRecurringOccurrence
   }));
 
   return d;
@@ -8003,6 +8008,255 @@ function transactionSeriesSignature(tx){
     Number(tx.amount || 0).toFixed(2)
   ].join("|");
 }
+
+function recurringSeriesCoreKey(tx){
+  return [
+    String(tx?.title || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim(),
+    String(tx?.accountId || ""),
+    String(tx?.debtAccountId || ""),
+    String(tx?.transferToAccountId || ""),
+    String(tx?.linkedDebtId || ""),
+    String(tx?.categoryId || ""),
+    String(tx?.type || "")
+  ].join("|");
+}
+function dayBeforeISO(dateISO){
+  try{ return toISO(addDays(parseDate(dateISO), -1)); }
+  catch(err){ return ""; }
+}
+function recurringSeriesLikelySame(previousTx, nextTx){
+  const sameTitle = String(previousTx?.title || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim() === String(nextTx?.title || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const sameType = String(previousTx?.type || "") === String(nextTx?.type || "");
+  const sameSource = String(previousTx?.accountId || "") === String(nextTx?.accountId || "");
+  const sameCashDestination = String(previousTx?.transferToAccountId || "") === String(nextTx?.transferToAccountId || "");
+  const sameDebtTarget = String(previousTx?.linkedDebtId || "") === String(nextTx?.linkedDebtId || "");
+  const sameDebtAccount = String(previousTx?.debtAccountId || "") === String(nextTx?.debtAccountId || "");
+  const sameCategory = String(previousTx?.categoryId || "") === String(nextTx?.categoryId || "");
+  const sameRoute = sameSource && sameCashDestination && sameDebtTarget && sameDebtAccount;
+  return sameType && ((sameTitle && sameSource) || (sameRoute && (sameTitle || sameCategory)));
+}
+function recurringSeriesIsSplitPredecessor(previousTx, nextTx){
+  if(!previousTx || !nextTx || previousTx.id === nextTx.id) return false;
+  if(!isRecurring(previousTx) || !isRecurring(nextTx)) return false;
+  if(!recurringSeriesLikelySame(previousTx, nextTx)) return false;
+  return !!previousTx.recurrenceUntil && previousTx.recurrenceUntil === dayBeforeISO(nextTx.date);
+}
+function recurringSeriesLineageIds(baseTx){
+  const ids = new Set(baseTx?.id ? [baseTx.id] : []);
+  if(!baseTx) return ids;
+  const recurringRows = (data.transactions || []).filter(isRecurring);
+  let changed = true;
+  while(changed){
+    changed = false;
+    recurringRows.forEach(candidate=>{
+      if(ids.has(candidate.id)) return;
+      const touches = recurringRows.some(member => ids.has(member.id) && (
+        recurringSeriesIsSplitPredecessor(candidate, member) ||
+        recurringSeriesIsSplitPredecessor(member, candidate)
+      ));
+      if(touches){ ids.add(candidate.id); changed = true; }
+    });
+  }
+  return ids;
+}
+function canonicalRecurringSeries(baseTx){
+  if(!baseTx) return null;
+  const ids = recurringSeriesLineageIds(baseTx);
+  const rows = (data.transactions || []).filter(tx=>ids.has(tx.id) && isRecurring(tx));
+  if(!rows.length) return baseTx;
+  const today = todayISO();
+  return rows.sort((a,b)=>{
+    const aActive = !a.recurrenceUntil || a.recurrenceUntil >= today ? 1 : 0;
+    const bActive = !b.recurrenceUntil || b.recurrenceUntil >= today ? 1 : 0;
+    if(aActive !== bActive) return bActive - aActive;
+    return String(b.date || "").localeCompare(String(a.date || ""));
+  })[0];
+}
+function recurringLinkedSourceId(tx){
+  return tx?.recurringSourceId || tx?.recurrenceSourceId || tx?.originalId || "";
+}
+function materializeClearedSeriesHistory(template, targetSeriesId=""){
+  if(!template || !isRecurring(template)) return 0;
+  const horizon = template.recurrenceUntil && template.recurrenceUntil > todayISO()
+    ? template.recurrenceUntil
+    : toISO(addMonths(parseDate(todayISO()), 24));
+  const occurrences = expandedTransactions(horizon).filter(row=>{
+    const generatedFromTemplate = row.id === template.id || row.originalId === template.id;
+    return generatedFromTemplate && row.status === "cleared";
+  });
+  let added = 0;
+  occurrences.forEach(row=>{
+    const originalDate = row.originalDate || row.date;
+    const exists = (data.transactions || []).some(saved =>
+      saved.id !== template.id &&
+      !isRecurring(saved) &&
+      saved.status === "cleared" &&
+      (saved.originalDate || saved.date) === originalDate &&
+      saved.date === row.date &&
+      [targetSeriesId, template.id].includes(recurringLinkedSourceId(saved)) &&
+      String(saved.title || "") === String(row.title || "") &&
+      Math.abs(Number(saved.amount || 0) - Number(row.amount || 0)) < 0.001
+    );
+    if(exists) return;
+    data.transactions.push({
+      ...row,
+      id: uid(),
+      recurrence: {type:"none", interval:1, weekendHandling:"none"},
+      repeat:false,
+      generated:false,
+      originalId:"",
+      originalDate,
+      overrideFrom: row.overrideFrom || "",
+      recurringSourceId: targetSeriesId || "",
+      recurrenceSourceId: targetSeriesId || "",
+      wasRecurringOccurrence:true,
+      dateOverrides:{},
+      occurrenceOverrides:{},
+      billArchived:false,
+      billArchivedAt:"",
+      billArchivedPreviousRecurrenceUntil:""
+    });
+    added++;
+  });
+  return added;
+}
+function consolidateRecurringFragments(keeperTx, lineageIds){
+  if(!keeperTx) return {removedSeries:0, removedPlanned:0, materialized:0};
+  const ids = lineageIds instanceof Set ? lineageIds : recurringSeriesLineageIds(keeperTx);
+  let materialized = 0;
+  (data.transactions || []).filter(tx=>ids.has(tx.id) && tx.id !== keeperTx.id && isRecurring(tx)).forEach(fragment=>{
+    materialized += materializeClearedSeriesHistory(fragment, keeperTx.id);
+    keeperTx.linkedTransactionIds = [...new Set([...(keeperTx.linkedTransactionIds || []), ...(fragment.linkedTransactionIds || [])])];
+  });
+  let removedSeries = 0;
+  let removedPlanned = 0;
+  data.transactions = (data.transactions || []).filter(row=>{
+    if(ids.has(row.id) && row.id !== keeperTx.id && isRecurring(row)){
+      removedSeries++;
+      return false;
+    }
+    const sourceId = recurringLinkedSourceId(row);
+    if(sourceId && ids.has(sourceId) && sourceId !== keeperTx.id){
+      if(row.status === "cleared"){
+        row.recurringSourceId = keeperTx.id;
+        row.recurrenceSourceId = keeperTx.id;
+        row.originalId = "";
+        row.wasRecurringOccurrence = true;
+        return true;
+      }
+      removedPlanned++;
+      return false;
+    }
+    return true;
+  });
+  return {removedSeries, removedPlanned, materialized};
+}
+function replaceBillSeriesInPlace(baseTx, formTx, editMeta={}){
+  if(!baseTx) return;
+  const canonical = canonicalRecurringSeries(baseTx) || baseTx;
+  const lineageIds = recurringSeriesLineageIds(canonical);
+  consolidateRecurringFragments(canonical, lineageIds);
+  materializeClearedSeriesHistory(canonical, canonical.id);
+
+  let removedPlanned = 0;
+  data.transactions = (data.transactions || []).filter(row=>{
+    if(row.id === canonical.id) return true;
+    if(recurringLinkedSourceId(row) !== canonical.id) return true;
+    if(row.status === "cleared") return true;
+    removedPlanned++;
+    return false;
+  });
+
+  const existingLinked = [...(canonical.linkedTransactionIds || [])];
+  const displayedOccurrenceDate = editMeta.occurrenceDate || "";
+  const dateWasEdited = !!formTx.date && !!displayedOccurrenceDate && formTx.date !== displayedOccurrenceDate;
+  const startDate = dateWasEdited
+    ? formTx.date
+    : (editMeta.originalDate || formTx.date || displayedOccurrenceDate || canonical.date);
+  Object.assign(canonical, {
+    ...formTx,
+    id: canonical.id,
+    date: startDate,
+    recurrence: formTx.recurrence || canonical.recurrence || {type:"none", interval:1, weekendHandling:"none"},
+    repeat:false,
+    recurrenceUntil:"",
+    billArchived:false,
+    billArchivedAt:"",
+    billArchivedPreviousRecurrenceUntil:"",
+    dateOverrides:{},
+    occurrenceOverrides:{},
+    originalId:"",
+    originalDate:"",
+    recurringSourceId:"",
+    recurrenceSourceId:"",
+    wasRecurringOccurrence:false,
+    linkedTransactionIds:[...new Set([...existingLinked, ...(formTx.linkedTransactionIds || [])])]
+  });
+  return {removedPlanned};
+}
+function deleteBillSeriesKeepClearedHistory(baseTx){
+  if(!baseTx) return {removedSeries:0, removedPlanned:0, materialized:0};
+  const canonical = canonicalRecurringSeries(baseTx) || baseTx;
+  const ids = recurringSeriesLineageIds(canonical);
+  let materialized = 0;
+  (data.transactions || []).filter(tx=>ids.has(tx.id) && isRecurring(tx)).forEach(template=>{
+    materialized += materializeClearedSeriesHistory(template, "");
+  });
+  let removedSeries = 0;
+  let removedPlanned = 0;
+  data.transactions = (data.transactions || []).filter(row=>{
+    if(ids.has(row.id) && isRecurring(row)){
+      removedSeries++;
+      return false;
+    }
+    const sourceId = recurringLinkedSourceId(row);
+    if(sourceId && ids.has(sourceId)){
+      if(row.status === "cleared"){
+        row.recurringSourceId = "";
+        row.recurrenceSourceId = "";
+        row.originalId = "";
+        row.wasRecurringOccurrence = true;
+        return true;
+      }
+      removedPlanned++;
+      return false;
+    }
+    return true;
+  });
+  return {removedSeries, removedPlanned, materialized};
+}
+function repairSplitRecurringSeriesData(){
+  let merged = 0;
+  let removedPlanned = 0;
+  let materialized = 0;
+  let found = true;
+  while(found){
+    found = false;
+    const recurringRows = (data.transactions || []).filter(isRecurring);
+    outer:
+    for(const previousTx of recurringRows){
+      for(const nextTx of recurringRows){
+        if(!recurringSeriesIsSplitPredecessor(previousTx, nextTx)) continue;
+        const result = consolidateRecurringFragments(nextTx, new Set([previousTx.id, nextTx.id]));
+        merged += result.removedSeries;
+        removedPlanned += result.removedPlanned;
+        materialized += result.materialized;
+        found = true;
+        break outer;
+      }
+    }
+  }
+  return {merged, removedPlanned, materialized};
+}
+window.repairRecurringSeriesData = ()=>{
+  const result = repairSplitRecurringSeriesData();
+  if(!result.merged && !result.removedPlanned && !result.materialized){
+    alert("No split recurring series were found.");
+    return;
+  }
+  saveData();
+  alert(`Recurring series repaired. Combined ${result.merged} old split series, removed ${result.removedPlanned} stale planned rows, and preserved ${result.materialized} cleared history row${result.materialized === 1 ? "" : "s"}.`);
+};
 function deleteRecurringSeriesAndOrphans(baseTx){
   if(!baseTx) return;
   const sig = transactionSeriesSignature(baseTx);
@@ -8449,7 +8703,8 @@ document.getElementById("transactionForm").onsubmit = async (e)=>{
   if(existing && isRecurringEdit && scope === "one"){
     saveRecurringOccurrenceOverride(existing, formTx, txEditMeta.originalDate || existing.date, txEditMeta.occurrenceDate || existing.date);
   } else if(existing && isRecurringEdit && scope === "future"){
-    updateSeriesFromDate(existing, formTx, txEditMeta.originalDate || existing.date);
+    if(editingBillSeries) replaceBillSeriesInPlace(existing, formTx, txEditMeta);
+    else updateSeriesFromDate(existing, formTx, txEditMeta.originalDate || existing.date);
   } else if(existing){
     Object.assign(existing, {...formTx, dateOverrides: existing.dateOverrides || {}});
   } else {
@@ -8469,15 +8724,22 @@ document.getElementById("deleteTxBtn").onclick = async ()=>{
   const tx = data.transactions.find(t=>t.id===id);
   if(!tx) return;
 
-  let scope = "all";
-  if(isRecurring(tx)){
-    scope = await askRecurringScope("delete");
-    if(!scope) return;
-  } else if(!confirm("Delete this transaction?")){
-    return;
+  const deletingBillSeries = !!billSeriesEditId && tx.id === billSeriesEditId;
+  if(deletingBillSeries){
+    if(!confirm(`Delete the entire ${tx.title} recurring series? Cleared history will stay as normal transactions, while the repeating rule and every uncleared occurrence will be removed.`)) return;
+    deleteBillSeriesKeepClearedHistory(tx);
+  } else {
+    let scope = "all";
+    if(isRecurring(tx)){
+      scope = await askRecurringScope("delete");
+      if(!scope) return;
+    } else if(!confirm("Delete this transaction?")){
+      return;
+    }
+    deleteTransactionWithScope(id, scope, txEditMeta);
   }
 
-  deleteTransactionWithScope(id, scope, txEditMeta);
+  billSeriesEditId = "";
   txModal.close();
   saveData();
 };
@@ -9812,13 +10074,14 @@ function billRouteMatches(template, other){
   if((linkedDebtStrong || cashTransferStrong || debtAccountStrong) && (amountClose || sameCategory || titleMatch)) return true;
   return false;
 }
-function findLooseBillPaymentMatch(template, originalISO, occurrenceISO){
+function findLooseBillPaymentMatch(template, originalISO, occurrenceISO, excludedIds=new Set()){
   try{
     const anchor = parseDate(originalISO || occurrenceISO || template.date || todayISO());
     const start = toISO(addDays(anchor, -21));
     const end = toISO(addDays(anchor, 45));
     const candidates = data.transactions
       .filter(other => other && other.id !== template.id && other.originalId !== template.id)
+      .filter(other => !excludedIds.has(other.id))
       .filter(other => !isRecurring(other))
       .filter(other => other.date >= start && other.date <= end)
       .filter(other => billRouteMatches(template, other));
@@ -9851,6 +10114,7 @@ function billOccurrenceInfo(tx){
     let firstFuture = null;
     let firstPastDue = null;
     let latestHandled = null;
+    const usedLooseMatchIds = new Set();
 
     while(cursor <= horizon){
       if(recurrenceOccursOn(tx, cursor, start)){
@@ -9875,7 +10139,10 @@ function billOccurrenceInfo(tx){
         }, originalISO, moved);
 
         if(occurrence){
-          const looseMatch = findLooseBillPaymentMatch(tx, originalISO, occurrence.date);
+          const looseMatch = occurrence.status === "cleared"
+            ? null
+            : findLooseBillPaymentMatch(tx, originalISO, occurrence.date, usedLooseMatchIds);
+          if(looseMatch?.id) usedLooseMatchIds.add(looseMatch.id);
           const matchedDate = looseMatch?.date || "";
           const displayDate = matchedDate || occurrence.date;
           const matchedHandled = !!looseMatch;
@@ -9890,11 +10157,13 @@ function billOccurrenceInfo(tx){
           };
 
           if(displayDate >= todayISOValue){
-            firstFuture = info;
-            break;
-          }
-
-          if(handled){
+            if(handled){
+              latestHandled = {...info, status: cleared ? "cleared" : "planned"};
+            } else {
+              firstFuture = info;
+              break;
+            }
+          } else if(handled){
             latestHandled = {...info, status: cleared ? "cleared" : "planned"};
           } else if(displayDate >= lookbackISO && !firstPastDue){
             firstPastDue = {...info, status:"due"};
@@ -10195,17 +10464,18 @@ function restoreArchivedBill(txId){
 
 function billLinkedTransactions(baseTx){
   if(!baseTx) return [];
+  const canonical = canonicalRecurringSeries(baseTx) || baseTx;
+  const lineageIds = recurringSeriesLineageIds(canonical);
   const today = todayISO();
-  const horizon = baseTx.recurrenceUntil && baseTx.recurrenceUntil > today
-    ? baseTx.recurrenceUntil
+  const horizon = canonical.recurrenceUntil && canonical.recurrenceUntil > today
+    ? canonical.recurrenceUntil
     : toISO(addMonths(parseDate(today), 12));
   const linked = expandedTransactions(horizon).filter(tx => {
     const sourceId = tx.originalId || tx.recurringSourceId || tx.recurrenceSourceId || tx.id;
-    return sourceId === baseTx.id || tx.id === baseTx.id;
+    return lineageIds.has(sourceId) || lineageIds.has(tx.id);
   });
   const extraSaved = data.transactions.filter(tx =>
-    tx.id !== baseTx.id &&
-    (tx.recurringSourceId === baseTx.id || tx.recurrenceSourceId === baseTx.id || tx.originalId === baseTx.id)
+    !lineageIds.has(tx.id) && lineageIds.has(recurringLinkedSourceId(tx))
   );
   const byKey = new Map();
   [...linked, ...extraSaved].forEach(tx => {
@@ -10229,7 +10499,8 @@ function billTransactionRowHTML(tx){
 }
 
 function openBillSeriesEditor(txId){
-  const tx = data.transactions.find(t=>t.id === txId);
+  const selected = data.transactions.find(t=>t.id === txId);
+  const tx = canonicalRecurringSeries(selected) || selected;
   if(!tx || !isRecurring(tx)) return;
   const info = billOccurrenceInfo(tx);
   billSeriesEditId = tx.id;
@@ -10242,7 +10513,8 @@ function openBillSeriesEditor(txId){
 }
 
 function openBillDetails(txId){
-  const tx = data.transactions.find(t=>t.id === txId);
+  const selected = data.transactions.find(t=>t.id === txId);
+  const tx = canonicalRecurringSeries(selected) || selected;
   if(!tx) return;
   const modal = document.getElementById("billDetailModal");
   const title = document.getElementById("billDetailTitle");
@@ -10250,6 +10522,7 @@ function openBillDetails(txId){
   const summary = document.getElementById("billDetailSummary");
   const list = document.getElementById("billDetailTransactions");
   const editBtn = document.getElementById("editBillSeriesBtn");
+  const deleteBtn = document.getElementById("deleteBillSeriesBtn");
   const rows = billLinkedTransactions(tx);
   const cleared = rows.filter(row=>row.status === "cleared");
   const planned = rows.filter(row=>row.status !== "cleared");
@@ -10263,6 +10536,14 @@ function openBillDetails(txId){
   editBtn.textContent = tx.billArchived ? "Restore before editing" : "Edit series";
   editBtn.disabled = !!tx.billArchived;
   editBtn.onclick = ()=>openBillSeriesEditor(tx.id);
+  if(deleteBtn){
+    deleteBtn.onclick = ()=>{
+      if(!confirm(`Delete the entire ${tx.title} recurring series? Cleared history will stay as normal transactions, while the repeating rule and every uncleared occurrence will be removed.`)) return;
+      deleteBillSeriesKeepClearedHistory(tx);
+      modal.close();
+      saveData();
+    };
+  }
   modal.showModal();
 }
 window.openBillDetails = openBillDetails;
@@ -10303,6 +10584,7 @@ function renderBills(){
       .filter(tx => {
         try{ return isRecurring(tx); } catch(err){ return false; }
       })
+      .filter(tx => !(data.transactions || []).some(nextTx => recurringSeriesIsSplitPredecessor(tx, nextTx)))
       .filter(tx => {
         try{ return billMatchesFilters(tx); } catch(err){ return false; }
       })
@@ -10802,7 +11084,7 @@ function exportEditableCSVs(){
     "pendingReimbursement","reimbursementToAccountId",
     "loanPrincipalAmount","loanInterestAmount","loanFeeAmount","loanBalanceAdjustment",
     "autoPaycheck","autoMakPaycheck","paycheckHoursOverride","autoPaycheckInfoJSON",
-    "repeatType","repeatInterval","repeatWeekday","repeatOrdinal","weekendHandling","recurrenceUntil","billArchived","billArchivedAt","billArchivedPreviousRecurrenceUntil","dateOverridesJSON","occurrenceOverridesJSON","linkedTransactionIdsJSON","notes"
+    "repeatType","repeatInterval","repeatWeekday","repeatOrdinal","weekendHandling","recurrenceUntil","billArchived","billArchivedAt","billArchivedPreviousRecurrenceUntil","recurringSourceId","recurrenceSourceId","originalDate","wasRecurringOccurrence","dateOverridesJSON","occurrenceOverridesJSON","linkedTransactionIdsJSON","notes"
   ];
   const txRows = data.transactions.map(tx=>({
     id:tx.id, date:tx.date, title:tx.title, amount:tx.amount, type:tx.type, status:tx.status,
@@ -10818,6 +11100,10 @@ function exportEditableCSVs(){
     billArchived: !!tx.billArchived,
     billArchivedAt: tx.billArchivedAt || "",
     billArchivedPreviousRecurrenceUntil: tx.billArchivedPreviousRecurrenceUntil || "",
+    recurringSourceId: tx.recurringSourceId || "",
+    recurrenceSourceId: tx.recurrenceSourceId || "",
+    originalDate: tx.originalDate || "",
+    wasRecurringOccurrence: !!tx.wasRecurringOccurrence,
     dateOverridesJSON: JSON.stringify(tx.dateOverrides || {}),
     occurrenceOverridesJSON: JSON.stringify(tx.occurrenceOverrides || {}),
     linkedTransactionIdsJSON: JSON.stringify(tx.linkedTransactionIds || []),
@@ -11044,6 +11330,10 @@ function importEditedCSV(file){
         tx.billArchived = row.billArchived === undefined ? !!tx.billArchived : String(row.billArchived).toLowerCase() === "true";
         tx.billArchivedAt = row.billArchivedAt === undefined ? (tx.billArchivedAt || "") : (row.billArchivedAt || "");
         tx.billArchivedPreviousRecurrenceUntil = row.billArchivedPreviousRecurrenceUntil === undefined ? (tx.billArchivedPreviousRecurrenceUntil || "") : (row.billArchivedPreviousRecurrenceUntil || "");
+        tx.recurringSourceId = row.recurringSourceId === undefined ? (tx.recurringSourceId || "") : (row.recurringSourceId || "");
+        tx.recurrenceSourceId = row.recurrenceSourceId === undefined ? (tx.recurrenceSourceId || "") : (row.recurrenceSourceId || "");
+        tx.originalDate = row.originalDate === undefined ? (tx.originalDate || "") : (row.originalDate || "");
+        tx.wasRecurringOccurrence = row.wasRecurringOccurrence === undefined ? !!tx.wasRecurringOccurrence : String(row.wasRecurringOccurrence).toLowerCase() === "true";
         if(row.dateOverridesJSON){
           try{ tx.dateOverrides = JSON.parse(row.dateOverridesJSON); } catch(err){ console.warn("Bad dateOverridesJSON", err); }
         }
@@ -11164,6 +11454,7 @@ function importBackupJSON(file){
       const normalized = normalizeData(candidate);
       suppressChangeHistory = true;
       data = normalized;
+      repairSplitRecurringSeriesData();
       saveImportedBackupData(data);
       touchLocalMoneyNestData();
       suppressChangeHistory = false;
@@ -11489,7 +11780,7 @@ window.openTransactionDetail=openTransactionDetail;
 window.openTransaction=(id=null,defaults={})=>openTransactionEditor(id,defaults);
 // Bill series editing is an explicit edit action, so bypass the review screen.
 const _openBillSeriesEditor223=openBillSeriesEditor; openBillSeriesEditor=function(txId){
-  const tx=data.transactions.find(t=>t.id===txId); if(!tx||!isRecurring(tx))return;
+  const selected=data.transactions.find(t=>t.id===txId); const tx=canonicalRecurringSeries(selected)||selected; if(!tx||!isRecurring(tx))return;
   const info=billOccurrenceInfo(tx); billSeriesEditId=tx.id; document.getElementById('billDetailModal')?.close();
   openTransactionEditor(tx.id,{generated:true,occurrenceOriginalDate:info.originalDate||tx.date,occurrenceDate:info.date||tx.date});
 };
@@ -11505,3 +11796,19 @@ setTimeout(showOlderSchemaWarning,0);
 // v2-229: Data & Backup is the first grouped Settings card below the Settings Map.
 
 // v2-230: Bill-series transaction details sort chronologically with the soonest date first.
+const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
+(function autoRepairKnownSplitRecurringSeries(){
+  try{
+    if(localStorage.getItem(RECURRING_REPAIR_231_KEY)) return;
+    const result = repairSplitRecurringSeriesData();
+    localStorage.setItem(RECURRING_REPAIR_231_KEY, JSON.stringify({...result, at:new Date().toISOString()}));
+    if(result.merged || result.removedPlanned || result.materialized){
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      saveLocalMeta({lastRecurringSeriesRepair:new Date().toISOString(), recurringSeriesRepairResult:result});
+    }
+  } catch(err){
+    console.warn("Could not auto-repair older split recurring series", err);
+  }
+})();
+
+// v2-231: Bill series edits now replace the active rule in place, preserve cleared history, repair old split fragments, and prevent loose payment matches from skipping multiple occurrences.
