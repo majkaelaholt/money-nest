@@ -2,7 +2,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-221`
+Current version: `money-nest-v2-223`
 
 ## Important Notes
 
@@ -148,6 +148,12 @@ Use CSV for reviewing or batch-editing data.
 * [ ]
 
 ## Version Notes
+
+
+### v2-223
+- Moved the desktop Search button into the Recent Places card beside the quick transaction controls; the compact topbar Search button remains available on mobile.
+- Removed the separate Original palette option.
+- Custom now starts from the original Money Nest colors and remains fully editable. Existing Original selections migrate to Custom without losing category role assignments.
 
 ### v2-221
 
@@ -795,3 +801,12 @@ Use CSV for reviewing or batch-editing data.
 - Added stable category palette roles so bills/essentials can stay light and flexible spending can stay dark across palette changes.
 - Added optional per-category custom color overrides and preserved legacy colors for backward compatibility.
 - Added palette role/custom color fields to category CSV import/export.
+
+## v2-223
+- Consolidated the sidebar into a Quick Actions card with Search, recent places, and Add Transaction.
+- Grouped Settings into Appearance, Data & Backup, Automation, and App Preferences.
+- Added recurring-management guidance and shortcuts to Bills.
+- Added a unified transaction detail screen before editing from calendar, search, bills, accounts, and review findings.
+- Added app version, schema version, and last local save status in Settings.
+- Added an automatic warning when substantially older saved data is normalized to the current schema.
+- Added editable per-palette labels for each category color role.

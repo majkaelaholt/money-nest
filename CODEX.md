@@ -6,7 +6,7 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-221`
+Latest known version: `money-nest-v2-223`
 
 Before editing, always inspect `README.md` and confirm the current version in the repository. If `README.md` shows a different version, continue from the repo version and mention the mismatch in your summary.
 
@@ -142,7 +142,7 @@ Example README note:
 ### v2-200
 - Banking is excluded from budgeting. Savings transfers net contributions by direction.
 
-- Current version: money-nest-v2-221. Includes combinable Budget Review spending/account filters, budget presets/groups, comparisons, calculation inspector, global search, mobile quick review, recurring cleanup, smart matching, and data-health scanning.
+- Current version: money-nest-v2-223. Includes combinable Budget Review spending/account filters, budget presets/groups, comparisons, calculation inspector, global search, mobile quick review, recurring cleanup, smart matching, and data-health scanning.
 
 
 ### v2-205
@@ -164,6 +164,11 @@ Example README note:
 
 
 
+
+
+### v2-223
+- Desktop Search moved into the Recent Places card; mobile keeps the compact topbar search control.
+- Original palette was merged into Custom. Legacy `paletteId: "legacy"` data migrates to editable Custom using the original colors.
 
 ### v2-221
 
@@ -221,3 +226,12 @@ Example README note:
 - Added stable category palette roles so bills/essentials can stay light and flexible spending can stay dark across palette changes.
 - Added optional per-category custom color overrides and preserved legacy colors for backward compatibility.
 - Added palette role/custom color fields to category CSV import/export.
+
+## v2-223
+- Consolidated the sidebar into a Quick Actions card with Search, recent places, and Add Transaction.
+- Grouped Settings into Appearance, Data & Backup, Automation, and App Preferences.
+- Added recurring-management guidance and shortcuts to Bills.
+- Added a unified transaction detail screen before editing from calendar, search, bills, accounts, and review findings.
+- Added app version, schema version, and last local save status in Settings.
+- Added an automatic warning when substantially older saved data is normalized to the current schema.
+- Added editable per-palette labels for each category color role.

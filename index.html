@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <title>Money Nest</title>
-  <link rel="stylesheet" href="styles.css?v=2-221"/>
+  <link rel="stylesheet" href="styles.css?v=2-223"/>
 
   <link rel="icon" href="favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
@@ -37,10 +37,11 @@
 
       <div class="side-card recent-card">
         <div class="side-card-head">
-          <p class="eyebrow">Recent places</p>
+          <div><p class="eyebrow">Quick actions</p><small class="quick-actions-sub">Search, revisit, or add</small></div>
           <button type="button" class="tiny-link" id="clearRecentBtn">Clear</button>
         </div>
         <div id="recentPlacesList" class="recent-list"></div>
+        <button type="button" class="ghost full sidebar-search-btn" onclick="openGlobalSearch()">🔎 Search transactions</button>
         <button id="quickAddBtn" class="primary full">+ Transaction</button>
       </div>
     </aside>
@@ -51,7 +52,7 @@
           <p class="eyebrow">Welcome back, Mak</p>
           <h2 id="viewTitle">Dashboard</h2>
         </div>
-        <button type="button" class="ghost global-search-btn" onclick="openGlobalSearch()">🔎 Search</button>
+        <button type="button" class="ghost global-search-btn mobile-search-btn" onclick="openGlobalSearch()">🔎 Search</button>
       </header>
 
       <section id="dashboard" class="view active">
@@ -179,6 +180,10 @@
             </div>
             <button class="primary small" id="addBillBtn">+ Recurring</button>
           </div>
+          <div class="recurring-management-strip">
+            <div><b>Recurring management</b><span>Open a bill to review its history, edit the series, archive it, or reactivate it later.</span></div>
+            <div class="inline-actions"><button type="button" class="ghost small" onclick="document.querySelector('.archived-bills-section')?.setAttribute('open','')">Show archived</button><button type="button" class="ghost small" onclick="setBillFilterPreset('active')">Active only</button></div>
+          </div>
           <div class="bill-filters">
             <label>Account / owner
               <select id="billAccountFilter"></select>
@@ -236,9 +241,9 @@
             <div>
               <p class="eyebrow">Settings map</p>
               <h3>⚙️ Money Nest controls</h3>
-              <p class="hint">Cloud sync and backups first, then editing/customization tools. Recent Changes is local browser undo history, so cloud save dates can be newer than this list.</p>
+              <p class="hint">Four grouped areas keep appearance, data safety, automation, and app preferences easier to scan.</p>
             </div>
-          <div id="backupHealthIndicator" class="backup-health-indicator"></div>
+          <div><div id="appVersionSaveIndicator" class="version-save-indicator"></div><div id="backupHealthIndicator" class="backup-health-indicator"></div></div>
           </section>
 
           <details class="panel settings-collapsible settings-sync-card">
@@ -784,6 +789,14 @@
     </div>
   </dialog>
 
+  <dialog id="transactionDetailModal" class="transaction-detail-modal">
+    <div class="modal-card transaction-detail-card">
+      <div class="panel-head"><div><p class="eyebrow">Transaction</p><h3 id="transactionDetailTitle">Transaction details</h3><p class="hint" id="transactionDetailSub"></p></div><button type="button" class="icon-btn" onclick="document.getElementById('transactionDetailModal').close()">×</button></div>
+      <div id="transactionDetailBody"></div>
+      <div class="modal-actions"><button type="button" class="ghost" onclick="document.getElementById('transactionDetailModal').close()">Close</button><button type="button" class="ghost" id="transactionDetailDuplicateBtn">Duplicate</button><button type="button" class="primary" id="transactionDetailEditBtn">Edit transaction</button></div>
+    </div>
+  </dialog>
+
   <div id="txContextMenu" class="context-menu">
     <button id="ctxToggleCleared">✓ Mark cleared/planned</button>
     <button id="ctxUseCardInstead">💳 Use card instead</button>
@@ -794,7 +807,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=2-221"></script>
+  <script src="app.js?v=2-223"></script>
   <dialog id="globalSearchModal" class="global-search-modal">
     <div class="global-search-shell">
       <div class="modal-head"><div><h3>🔎 Search Money Nest</h3><p class="hint">Transactions, merchants, categories, accounts, amounts, and dates.</p></div><button class="icon-btn" onclick="document.getElementById('globalSearchModal').close()">×</button></div>

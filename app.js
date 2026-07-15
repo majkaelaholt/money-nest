@@ -1,4 +1,6 @@
 const STORAGE_KEY = "moneyNest.v2.113";
+const APP_VERSION = "2-223";
+const CURRENT_SCHEMA_VERSION = 223;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
 // v2.167: Supabase cloud sync helpers. This stores the full Money Nest JSON as one
@@ -2879,12 +2881,27 @@ function defaultCategoryPaletteRole(category={}){
   return CATEGORY_PALETTE_ROLES[idx];
 }
 function normalizePaletteSettings(d){
+  d.settings ||= {}; d.settings.appearance ||= {}; d.settings.appearance.paletteRoleLabels ||= {};
+
   d.settings ||= {};
   d.settings.appearance ||= {};
   const a=d.settings.appearance;
-  a.paletteId = a.paletteId || "legacy";
-  if(!MONEY_NEST_PALETTES[a.paletteId] && a.paletteId!=="custom") a.paletteId="legacy";
-  a.customPalette ||= JSON.parse(JSON.stringify(MONEY_NEST_PALETTES.rose));
+  const originalCustomDefault = JSON.parse(JSON.stringify(MONEY_NEST_PALETTES.legacy));
+  originalCustomDefault.name = "Custom";
+  // v2-222: Original is now the editable Custom preset. Existing Original selections migrate safely.
+  if(!a.paletteId || a.paletteId === "legacy"){
+    a.paletteId = "custom";
+    a.customPalette = originalCustomDefault;
+  }else if(!MONEY_NEST_PALETTES[a.paletteId] && a.paletteId!=="custom"){
+    a.paletteId="custom";
+    a.customPalette ||= originalCustomDefault;
+  }
+  // Older builds pre-filled an unused Custom preset with Rose. Replace that hidden default,
+  // while preserving a Custom palette the user is actively using or has edited.
+  if(!a.customPalette || (a.paletteId!=="custom" && !a.customPaletteOriginalV222)){
+    a.customPalette = originalCustomDefault;
+  }
+  a.customPaletteOriginalV222 = true;
   a.customPalette.name="Custom";
   a.paletteOverrides ||= {};
   (d.categories||[]).forEach(c=>{
@@ -2896,7 +2913,7 @@ function normalizePaletteSettings(d){
 }
 function paletteForId(id){
   const a=data?.settings?.appearance||{};
-  if(id==="custom") return a.customPalette || JSON.parse(JSON.stringify(MONEY_NEST_PALETTES.rose));
+  if(id==="custom") return a.customPalette || {...JSON.parse(JSON.stringify(MONEY_NEST_PALETTES.legacy)),name:"Custom"};
   const base=MONEY_NEST_PALETTES[id]||MONEY_NEST_PALETTES.legacy;
   const override=a.paletteOverrides?.[id];
   if(!override) return base;
@@ -2904,7 +2921,7 @@ function paletteForId(id){
 }
 function activePalette(){
   const a=data?.settings?.appearance||{};
-  return paletteForId(a.paletteId||"legacy");
+  return paletteForId(a.paletteId||"custom");
 }
 function effectiveCategoryColor(c){
   if(!c) return "#8c6f4d";
@@ -2922,16 +2939,22 @@ function applyMoneyNestPalette(){
   Object.entries(vars).forEach(([k,v])=>v&&root.style.setProperty(k,v));
   document.body.style.background=`linear-gradient(135deg, ${app.panel}, ${app.bg})`;
 }
-function paletteRoleLabel(role){return ({light1:"Light 1 • bills",light2:"Light 2 • essentials",medium1:"Medium 1",medium2:"Medium 2",dark1:"Dark 1 • spending",dark2:"Dark 2",accent1:"Accent 1",accent2:"Accent 2"})[role]||role;}
+const DEFAULT_PALETTE_ROLE_LABELS={light1:"Bills",light2:"Essentials",medium1:"Everyday 1",medium2:"Everyday 2",dark1:"Flexible spending",dark2:"Flexible 2",accent1:"Accent 1",accent2:"Accent 2"};
+function paletteRoleLabel(role,paletteId=data?.settings?.appearance?.paletteId){
+  const labels=data?.settings?.appearance?.paletteRoleLabels?.[paletteId]||{};
+  const name=labels[role]||DEFAULT_PALETTE_ROLE_LABELS[role]||role;
+  const slot=({light1:"Light 1",light2:"Light 2",medium1:"Medium 1",medium2:"Medium 2",dark1:"Dark 1",dark2:"Dark 2",accent1:"Accent 1",accent2:"Accent 2"})[role]||role;
+  return `${slot} • ${name}`;
+}
 function renderAppearanceSettings(){
   const el=document.getElementById("appearancePalettePanel"); if(!el)return;
   normalizePaletteSettings(data); const a=data.settings.appearance, p=activePalette();
-  const choices=[...Object.entries(MONEY_NEST_PALETTES).map(([id,x])=>({id,name:x.name})),{id:"custom",name:"Custom"}];
-  const selectedName=a.paletteId==="custom"?"Custom":(MONEY_NEST_PALETTES[a.paletteId]?.name||"Original");
+  const choices=[{id:"custom",name:"Custom"},...Object.entries(MONEY_NEST_PALETTES).filter(([id])=>id!=="legacy").map(([id,x])=>({id,name:x.name}))];
+  const selectedName=a.paletteId==="custom"?"Custom":(MONEY_NEST_PALETTES[a.paletteId]?.name||"Custom");
   el.innerHTML=`<div class="palette-choice-grid">${choices.map(x=>{const preview=paletteForId(x.id);return `<button type="button" class="palette-choice ${a.paletteId===x.id?'active':''}" onclick="selectMoneyNestPalette('${x.id}')"><span class="palette-swatches">${CATEGORY_PALETTE_ROLES.map(r=>`<i style="background:${preview?.roles?.[r]||'#ddd'}"></i>`).join('')}</span><b>${x.name}</b>${a.paletteOverrides?.[x.id]?'<small>Adjusted</small>':''}</button>`}).join('')}</div>
   <p class="hint">Each preset uses a broader family of coordinated colors, while category roles preserve the difference between bills, essentials, flexible spending, and accents.</p>
   <div class="palette-editor-head"><div><b>Adjust ${selectedName}</b><small>Changes are saved with this preset and included in JSON/cloud backups.</small></div></div>
-  <div class="custom-palette-grid">${CATEGORY_PALETTE_ROLES.map(r=>`<label>${paletteRoleLabel(r)}<input type="color" data-palette-role="${r}" value="${p.roles?.[r]||'#8c6f4d'}"></label>`).join('')}<label>App accent<input type="color" data-palette-app="accent" value="${p.app?.accent||'#8c6f4d'}"></label><label>Secondary accent<input type="color" data-palette-app="accent2" value="${p.app?.accent2||'#b7835a'}"></label><label>App background<input type="color" data-palette-app="bg" value="${p.app?.bg||'#f5efe6'}"></label><label>Main panels<input type="color" data-palette-app="panel" value="${p.app?.panel||'#fffaf3'}"></label><label>Soft panels<input type="color" data-palette-app="panel2" value="${p.app?.panel2||'#f1e3d0'}"></label><label>Borders<input type="color" data-palette-app="line" value="${p.app?.line||'#dfd0bd'}"></label><label>Main text<input type="color" data-palette-app="ink" value="${p.app?.ink||'#2e2a24'}"></label><label>Muted text<input type="color" data-palette-app="muted" value="${p.app?.muted||'#766b5d'}"></label></div>
+  <div class="custom-palette-grid">${CATEGORY_PALETTE_ROLES.map(r=>`<label><span>${paletteRoleLabel(r)}</span><input type="text" class="palette-role-name" data-palette-label="${r}" value="${escapeAttr(a.paletteRoleLabels?.[a.paletteId]?.[r]||DEFAULT_PALETTE_ROLE_LABELS[r]||r)}" aria-label="Label for ${r}"><input type="color" data-palette-role="${r}" value="${p.roles?.[r]||'#8c6f4d'}"></label>`).join('')}<label>App accent<input type="color" data-palette-app="accent" value="${p.app?.accent||'#8c6f4d'}"></label><label>Secondary accent<input type="color" data-palette-app="accent2" value="${p.app?.accent2||'#b7835a'}"></label><label>App background<input type="color" data-palette-app="bg" value="${p.app?.bg||'#f5efe6'}"></label><label>Main panels<input type="color" data-palette-app="panel" value="${p.app?.panel||'#fffaf3'}"></label><label>Soft panels<input type="color" data-palette-app="panel2" value="${p.app?.panel2||'#f1e3d0'}"></label><label>Borders<input type="color" data-palette-app="line" value="${p.app?.line||'#dfd0bd'}"></label><label>Main text<input type="color" data-palette-app="ink" value="${p.app?.ink||'#2e2a24'}"></label><label>Muted text<input type="color" data-palette-app="muted" value="${p.app?.muted||'#766b5d'}"></label></div>
   <div class="inline-actions"><button type="button" class="primary small" onclick="saveActiveMoneyNestPalette()">Save palette changes</button><button type="button" class="ghost small" onclick="resetActiveMoneyNestPalette()">Reset this palette</button></div>`;
 }
 window.selectMoneyNestPalette=id=>{data.settings.appearance.paletteId=id;applyMoneyNestPalette();saveData();renderAppearanceSettings();};
@@ -2940,13 +2963,14 @@ window.saveActiveMoneyNestPalette=()=>{
   const edited={name:a.paletteId==="custom"?"Custom":(MONEY_NEST_PALETTES[a.paletteId]?.name||"Adjusted"),roles:{},app:{}};
   document.querySelectorAll('[data-palette-role]').forEach(i=>edited.roles[i.dataset.paletteRole]=i.value);
   document.querySelectorAll('[data-palette-app]').forEach(i=>edited.app[i.dataset.paletteApp]=i.value);
+  a.paletteRoleLabels ||= {}; a.paletteRoleLabels[a.paletteId] = {}; document.querySelectorAll('[data-palette-label]').forEach(i=>a.paletteRoleLabels[a.paletteId][i.dataset.paletteLabel]=i.value.trim()||DEFAULT_PALETTE_ROLE_LABELS[i.dataset.paletteLabel]);
   if(a.paletteId==="custom") a.customPalette=edited;
   else a.paletteOverrides[a.paletteId]=edited;
   applyMoneyNestPalette();saveData();renderAppearanceSettings();
 };
 window.resetActiveMoneyNestPalette=()=>{
   const a=data.settings.appearance; normalizePaletteSettings(data);
-  if(a.paletteId==="custom") a.customPalette=JSON.parse(JSON.stringify(MONEY_NEST_PALETTES.rose));
+  if(a.paletteId==="custom") a.customPalette={...JSON.parse(JSON.stringify(MONEY_NEST_PALETTES.legacy)),name:"Custom"};
   else delete a.paletteOverrides[a.paletteId];
   applyMoneyNestPalette();saveData();renderAppearanceSettings();
 };
@@ -3015,7 +3039,11 @@ function defaultLoanForecastHistoryForDebt(debt){
 }
 
 function normalizeData(raw){
-  const d = raw || JSON.parse(JSON.stringify(sampleData));
+  const incoming = raw || JSON.parse(JSON.stringify(sampleData));
+  const inferredSchema = Number(incoming.schemaVersion || (incoming.settings?.appearance ? 215 : incoming.settings ? 175 : 100));
+  if(inferredSchema < 200) saveLocalMeta({olderSchemaWarning:{from:inferredSchema,to:CURRENT_SCHEMA_VERSION,at:new Date().toISOString()}});
+  const d = incoming;
+  d.schemaVersion = CURRENT_SCHEMA_VERSION;
   if(!Array.isArray(d.categories)) d.categories = JSON.parse(JSON.stringify(sampleData.categories));
 
   // v1 stored categories as plain strings. v2 stores full category objects.
@@ -3508,6 +3536,7 @@ function recordChangeSnapshot(beforeRaw, afterRaw){
   saveChangeHistory(history);
 }
 function saveData(){
+  data.schemaVersion = CURRENT_SCHEMA_VERSION;
   const beforeRaw = localStorage.getItem(STORAGE_KEY);
   const afterRaw = JSON.stringify(data);
   recordChangeSnapshot(beforeRaw, afterRaw);
@@ -11420,4 +11449,81 @@ const _render216=render; render=function(){applyMoneyNestPalette();_render216();
 applyMoneyNestPalette();
 
 // v2-220: Calendar density control removed; calendar uses the original comfortable layout.
-// v2-221: Preset palettes use broader coordinated color families and every preset can be adjusted/reset.
+// v2-222: Search moved to the sidebar card; Original migrated into editable Custom and removed as a separate choice.
+
+
+// v2-223 recurring management shortcut.
+window.setBillFilterPreset=function(mode){
+  if(mode==='active'){ billFilters.account='all'; billFilters.type='all'; billFilters.recurrence='all'; billFilters.categories=[]; saveUiPrefs(); renderBills(); }
+};
+
+
+function renderVersionSaveIndicator(){
+  const el=document.getElementById('appVersionSaveIndicator'); if(!el)return;
+  const meta=loadLocalMeta(); const warning=meta.olderSchemaWarning;
+  el.innerHTML=`<article><b>Money Nest v${APP_VERSION}</b><span>Data schema ${CURRENT_SCHEMA_VERSION}</span></article><article><b>${fmtCloudTime(meta.lastLocalChange)}</b><span>Last local data save</span></article>${warning?`<article class="schema-warning"><b>Older data upgraded</b><span>Schema ${warning.from} → ${warning.to}. Keep a fresh JSON backup.</span></article>`:''}`;
+}
+function organizeSettingsIntoFourSections(){
+  const stack=document.querySelector('#settings .settings-stack'); if(!stack || stack.dataset.grouped223==='1')return;
+  stack.dataset.grouped223='1';
+  const overview=stack.querySelector('.settings-overview');
+  const cards=[...stack.children].filter(el=>el!==overview && el.matches('details.panel'));
+  const defs=[
+    ['appearance','🎨','Appearance','Palettes, categories, colors, and labels'],
+    ['data','📦','Data & Backup','Cloud sync, backups, reports, and undo history'],
+    ['automation','⚙️','Automation','Templates, paychecks, and repeating workflows'],
+    ['preferences','🎛️','App Preferences','Defaults, reference notes, and behavior']
+  ];
+  const groups={};
+  defs.forEach(([id,emoji,title,sub])=>{const d=document.createElement('details');d.className='panel settings-collapsible settings-master-group';d.innerHTML=`<summary><span class="settings-summary-main"><span class="settings-emoji">${emoji}</span><span><b>${title}</b><small>${sub}</small></span></span><span class="summary-pill">open</span></summary><div class="settings-collapse-body settings-master-body" data-settings-master="${id}"></div>`;stack.appendChild(d);groups[id]=d.querySelector('.settings-master-body');});
+  cards.forEach(card=>{
+    const t=(card.querySelector('summary b')?.textContent||'').toLowerCase();
+    let g='preferences';
+    if(/appearance|categor/.test(t))g='appearance';
+    else if(/cloud|backup|recent changes/.test(t))g='data';
+    else if(/template|paycheck/.test(t))g='automation';
+    groups[g].appendChild(card);
+  });
+  [...stack.children].filter(el=>el.classList?.contains('settings-group-label')).forEach(el=>el.remove());
+}
+const _renderSettings223=renderSettings; renderSettings=function(){_renderSettings223();renderVersionSaveIndicator();organizeSettingsIntoFourSections();};
+
+
+// v2-223 unified transaction detail: every existing transaction opens one review screen first.
+const openTransactionEditor = window.openTransaction;
+let transactionDetailContext=null;
+function transactionDetailResolved(id,defaults={}){
+  const base=data.transactions.find(t=>String(t.id)===String(id)); if(!base)return null;
+  const originalDate=defaults.occurrenceOriginalDate||defaults.originalDate||base.date;
+  const date=defaults.occurrenceDate||defaults.date||base.date;
+  const tx=isRecurring(base)?transactionForOccurrenceForm(base,originalDate,date):base;
+  return {base,tx,defaults:{...defaults,occurrenceOriginalDate:originalDate,occurrenceDate:date}};
+}
+function openTransactionDetail(id,defaults={}){
+  const ctx=transactionDetailResolved(id,defaults); if(!ctx)return openTransactionEditor(id,defaults);
+  transactionDetailContext=ctx;
+  const {base,tx}=ctx, account=accountById(tx.accountId), category=categoryById(tx.categoryId), debt=debtById(tx.debtAccountId||tx.linkedDebtId);
+  const linked=(base.linkedTransactionIds||[]).map(x=>data.transactions.find(t=>String(t.id)===String(x))).filter(Boolean);
+  document.getElementById('transactionDetailTitle').textContent=tx.title||'Untitled transaction';
+  document.getElementById('transactionDetailSub').textContent=`${tx.date||''} • ${tx.status==='cleared'?'Cleared':'Planned'}`;
+  document.getElementById('transactionDetailBody').innerHTML=`<div class="transaction-detail-summary"><article><span>Amount</span><b>${money(tx.amount||0)}</b></article><article><span>Account</span><b>${account?.emoji||'💵'} ${escapeAttr(account?.name||'Unknown account')}</b></article><article><span>Category</span><b>${category?.emoji||''} ${escapeAttr(category?.name||'Unassigned')}</b></article><article><span>Type</span><b>${escapeAttr(tx.type||'expense')}</b></article></div>${debt?`<div class="transaction-detail-section"><b>Related account/debt</b><p>${escapeAttr(debt.name||debt.company||'Debt')}</p></div>`:''}${isRecurring(base)?`<div class="transaction-detail-section"><b>Recurring source</b><p>${escapeAttr(recurrenceDescription(base))}</p></div>`:''}${tx.notes?`<div class="transaction-detail-section"><b>Notes</b><p>${escapeAttr(tx.notes)}</p></div>`:''}<div class="transaction-detail-section"><b>Linked transactions</b>${linked.length?linked.map(l=>`<button type="button" class="linked-detail-row" onclick="openTransactionDetail('${l.id}')"><span>${escapeAttr(l.title||'Untitled')}<small>${l.date} • ${transactionAccountText(l)}</small></span><strong>${money(l.amount||0)}</strong></button>`).join(''):'<p class="hint">No linked transactions.</p>'}</div>`;
+  document.getElementById('transactionDetailEditBtn').onclick=()=>{document.getElementById('transactionDetailModal').close();openTransactionEditor(base.id,ctx.defaults);};
+  document.getElementById('transactionDetailDuplicateBtn').onclick=()=>{document.getElementById('transactionDetailModal').close();duplicateTransaction(base.id);};
+  document.getElementById('transactionDetailModal').showModal();
+}
+window.openTransactionDetail=openTransactionDetail;
+window.openTransaction=(id=null,defaults={})=> id ? openTransactionDetail(id,defaults) : openTransactionEditor(id,defaults);
+// Bill series editing is an explicit edit action, so bypass the review screen.
+const _openBillSeriesEditor223=openBillSeriesEditor; openBillSeriesEditor=function(txId){
+  const tx=data.transactions.find(t=>t.id===txId); if(!tx||!isRecurring(tx))return;
+  const info=billOccurrenceInfo(tx); billSeriesEditId=tx.id; document.getElementById('billDetailModal')?.close();
+  openTransactionEditor(tx.id,{generated:true,occurrenceOriginalDate:info.originalDate||tx.date,occurrenceDate:info.date||tx.date});
+};
+
+
+function showOlderSchemaWarning(){
+  const w=loadLocalMeta().olderSchemaWarning; if(!w || sessionStorage.getItem('moneyNest.schemaWarned'))return;
+  sessionStorage.setItem('moneyNest.schemaWarned','1');
+  const bar=document.createElement('div');bar.className='schema-upgrade-banner';bar.innerHTML=`<span><b>Money Nest upgraded older saved data.</b> Schema ${w.from} → ${w.to}. Make a fresh JSON backup when convenient.</span><button type="button" class="icon-btn">×</button>`;bar.querySelector('button').onclick=()=>bar.remove();document.body.prepend(bar);
+}
+setTimeout(showOlderSchemaWarning,0);

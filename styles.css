@@ -4889,3 +4889,16 @@ body.money-nest-view-calendar #calendar.view.active{
 .palette-editor-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:16px 0 6px}
 .palette-editor-head div{display:grid;gap:3px}
 .palette-editor-head small,.palette-choice small{color:var(--muted);font-size:.78rem}
+
+/* v2-222: Search lives with Recent Places on desktop; mobile keeps the compact topbar icon. */
+.sidebar-search-btn{margin-top:10px;margin-bottom:8px}
+.mobile-search-btn{display:none}
+@media(max-width:700px){
+  .sidebar-search-btn{display:none !important}
+  .mobile-search-btn{display:inline-flex !important}
+}
+
+
+/* v2-223 consolidation */
+.quick-actions-sub{display:block;color:var(--muted);font-size:.75rem;margin-top:-2px}.recent-card .side-card-head>div{min-width:0}.recurring-management-strip{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:12px 14px;margin-bottom:12px;border:1px solid var(--line);border-radius:16px;background:var(--panel-2)}.recurring-management-strip span{display:block;color:var(--muted);font-size:.82rem;margin-top:3px}.version-save-indicator{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:10px}.version-save-indicator article{padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:var(--panel)}.version-save-indicator b,.version-save-indicator span{display:block}.version-save-indicator span{color:var(--muted);font-size:.78rem}.version-save-indicator .schema-warning{grid-column:1/-1;background:var(--panel-2)}.settings-master-group>.settings-collapse-body{padding-top:10px}.settings-master-body{display:grid;gap:12px}.settings-master-body>details.panel{box-shadow:none;margin:0;background:var(--panel)}.palette-role-name{margin-bottom:6px!important}.transaction-detail-modal{width:min(760px,calc(100vw - 24px))}.transaction-detail-card{max-height:min(88vh,860px);overflow:auto}.transaction-detail-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.transaction-detail-summary article,.transaction-detail-section{border:1px solid var(--line);border-radius:16px;padding:12px;background:var(--panel)}.transaction-detail-summary span{display:block;color:var(--muted);font-size:.75rem;text-transform:uppercase;font-weight:800}.transaction-detail-section{margin-top:10px}.transaction-detail-section p{margin:6px 0 0}.linked-detail-row{width:100%;display:flex;justify-content:space-between;gap:10px;text-align:left;padding:10px 0;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--ink)}.linked-detail-row small{display:block;color:var(--muted)}.schema-upgrade-banner{position:fixed;z-index:100000;top:10px;left:50%;transform:translateX(-50%);width:min(760px,calc(100vw - 24px));display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border:1px solid var(--line);border-radius:16px;background:var(--panel);box-shadow:0 12px 30px rgba(0,0,0,.16)}
+@media(max-width:760px){.recurring-management-strip{align-items:flex-start;flex-direction:column}.transaction-detail-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.version-save-indicator{grid-template-columns:1fr}.version-save-indicator .schema-warning{grid-column:auto}}
