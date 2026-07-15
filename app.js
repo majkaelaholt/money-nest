@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-229";
+const APP_VERSION = "2-230";
 const CURRENT_SCHEMA_VERSION = 223;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -10212,7 +10212,7 @@ function billLinkedTransactions(baseTx){
     const key = [tx.originalId || tx.recurringSourceId || tx.id, tx.originalDate || tx.date, tx.date, tx.title, Number(tx.amount || 0).toFixed(2), tx.status].join("|");
     if(!byKey.has(key)) byKey.set(key, tx);
   });
-  return [...byKey.values()].sort((a,b)=>String(b.date || "").localeCompare(String(a.date || "")));
+  return [...byKey.values()].sort((a,b)=>String(a.date || "").localeCompare(String(b.date || "")));
 }
 
 function billTransactionRowHTML(tx){
@@ -11503,3 +11503,5 @@ function showOlderSchemaWarning(){
 setTimeout(showOlderSchemaWarning,0);
 
 // v2-229: Data & Backup is the first grouped Settings card below the Settings Map.
+
+// v2-230: Bill-series transaction details sort chronologically with the soonest date first.

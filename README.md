@@ -2,7 +2,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-229`
+Current version: `money-nest-v2-230`
 
 ## Important Notes
 
@@ -842,3 +842,7 @@ Use CSV for reviewing or batch-editing data.
 ### v2-229
 - Reordered the four grouped Settings sections so **Data & Backup** is the first card directly below the Settings Map.
 - The Settings Map remains at the top, and all section contents and saved data behavior are unchanged.
+
+
+### v2-230
+- Bill-series details now sort associated transactions by date with the soonest occurrence first.
