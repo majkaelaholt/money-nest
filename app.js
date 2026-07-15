@@ -6110,7 +6110,7 @@ function renderBudgetPresetBar(){
  <button class="${budgetReviewMode==='all'&&budgetReviewAccount==='all'?'active':''}" onclick="applyBudgetPreset('all')">All spending</button>
  <button class="${budgetReviewMode==='extra'?'active':''}" onclick="applyBudgetPreset('extra')">Extra spending only</button>
  <button class="${budgetReviewMode==='bills'?'active':''}" onclick="applyBudgetPreset('bills')">Bills only</button>
- <button onclick="applyBudgetPreset('mak')">Mak only</button><button onclick="applyBudgetPreset('ty')">Ty only</button><button onclick="applyBudgetPreset('joint')">Joint only</button></div>`;
+ <button class="${budgetReviewAccount!=='all'&&budgetReviewAccountLabel().toLowerCase().includes('mak')?'active':''}" onclick="applyBudgetPreset('mak')">Mak only</button><button class="${budgetReviewAccount!=='all'&&budgetReviewAccountLabel().toLowerCase().includes('ty')?'active':''}" onclick="applyBudgetPreset('ty')">Ty only</button><button class="${budgetReviewAccount!=='all'&&budgetReviewAccountLabel().toLowerCase().includes('joint')?'active':''}" onclick="applyBudgetPreset('joint')">Joint only</button></div>`;
 }
 function budgetMonthComparison(){
  const current=budgetReviewStats(); const prevMonth=toISO(addMonths(parseDate(`${budgetReviewMonth}-01`),-1)).slice(0,7); const previous=budgetReviewStats(prevMonth,budgetReviewAccount);
@@ -9890,6 +9890,32 @@ function renderBillFilters(){
   if(sortSelect) sortSelect.value = billFilters.sort || "date";
 }
 
+function dedupeRecurringBillRows(rows){
+  const grouped = new Map();
+  const score = tx => {
+    const status = tx.billInfo?.status || "planned";
+    const activeScore = status === "ended" ? 0 : 1000;
+    const futureScore = String(tx.nextDate || "") >= todayISO() ? 500 : 0;
+    const plannedScore = status === "planned" ? 100 : status === "due" ? 50 : 0;
+    const createdScore = Number(String(tx.date || "").replaceAll("-", "")) || 0;
+    return activeScore + futureScore + plannedScore + createdScore / 100000000;
+  };
+  rows.forEach(tx => {
+    const key = [
+      billLooseTitle(tx.title),
+      String(tx.accountId || ""),
+      String(tx.transferToAccountId || ""),
+      String(tx.linkedDebtId || ""),
+      String(tx.debtAccountId || ""),
+      String(tx.type || ""),
+      Number(tx.amount || 0).toFixed(2)
+    ].join("|");
+    const current = grouped.get(key);
+    if(!current || score(tx) > score(current)) grouped.set(key, tx);
+  });
+  return [...grouped.values()];
+}
+
 function renderBills(){
   const list = document.getElementById("billsList");
   try{
@@ -9907,6 +9933,11 @@ function renderBills(){
         return {...tx, nextDate: info.date, billInfo: info};
       })
       .filter(tx => tx.nextDate);
+
+    // Old recurring rules can remain after a replacement series is created.
+    // Collapse obvious duplicates and prefer the active/future rule instead of
+    // showing an obsolete ended card beside the current planned series.
+    recurring = dedupeRecurringBillRows(recurring);
 
     recurring.sort((a,b)=>{
       if((billFilters.sort || "date") === "amount-desc") return Number(b.amount || 0) - Number(a.amount || 0);
@@ -10794,7 +10825,7 @@ if(document.readyState === "loading"){
 }
 
 
-// v2-204: global search, recurring cleanup, smart linking, and data health.
+// v2-205: search modal polish, selected budget presets, and recurring bill deduping.
 function openGlobalSearch(){ const m=document.getElementById('globalSearchModal'); if(!m)return; if(!m.open)m.showModal(); const i=document.getElementById('globalSearchInput'); i.value=''; renderGlobalSearch(''); setTimeout(()=>i.focus(),30); }
 window.openGlobalSearch=openGlobalSearch;
 function renderGlobalSearch(query=''){
@@ -10828,3 +10859,73 @@ function renderMoneyNestHealthCenter(){
   el.innerHTML=out;
 }
 const _renderSettings204=renderSettings; renderSettings=function(){_renderSettings204();renderMoneyNestHealthCenter();};
+
+// v2-206: actionable, dismissible duplicate cleanup findings.
+const HEALTH_DISMISSALS_KEY = 'moneyNestHealthDismissalsV1';
+function getHealthDismissals(){
+  try{ return new Set(JSON.parse(localStorage.getItem(HEALTH_DISMISSALS_KEY) || '[]')); }
+  catch(err){ return new Set(); }
+}
+function saveHealthDismissals(set){
+  try{ localStorage.setItem(HEALTH_DISMISSALS_KEY, JSON.stringify([...set])); }catch(err){}
+}
+function duplicatePairKey(a,b){
+  return [String(a?.id||''),String(b?.id||'')].sort().join('::');
+}
+function dismissHealthFinding(key){
+  const set=getHealthDismissals(); set.add(String(key)); saveHealthDismissals(set); renderMoneyNestHealthCenter();
+}
+window.dismissHealthFinding=dismissHealthFinding;
+function clearHealthDismissals(){
+  try{ localStorage.removeItem(HEALTH_DISMISSALS_KEY); }catch(err){}
+  renderMoneyNestHealthCenter();
+}
+window.clearHealthDismissals=clearHealthDismissals;
+
+findLikelyDuplicateTransactions=function(){
+  const groups=new Map(), out=[], dismissed=getHealthDismissals();
+  data.transactions.filter(t=>t && !isRecurring(t) && !t.deleted).forEach(t=>{
+    const key=[
+      t.date,
+      String(t.title||'').trim().toLowerCase(),
+      Number(t.amount||0).toFixed(2),
+      t.accountId||'',
+      t.categoryId||'',
+      t.type||'',
+      t.status||'',
+      t.transferToAccountId||t.transferTo||'',
+      t.debtId||t.debtAccountId||''
+    ].join('|');
+    const arr=groups.get(key)||[]; arr.push(t); groups.set(key,arr);
+  });
+  groups.forEach(arr=>{
+    if(arr.length<2)return;
+    for(let i=0;i<arr.length;i++) for(let j=i+1;j<arr.length;j++){
+      const a=arr[i], b=arr[j];
+      if(!a.id || !b.id || a.id===b.id) continue;
+      const pairKey=duplicatePairKey(a,b);
+      if(!dismissed.has(pairKey)) out.push([a,b,pairKey]);
+    }
+  });
+  return out;
+};
+
+renderMoneyNestHealthCenter=function(){
+  const el=document.getElementById('moneyNestHealthCenter'); if(!el)return;
+  const s=healthScan(); const total=s.issues.length+s.likely.length+s.stale.length+s.duplicates.length;
+  const badge=document.getElementById('healthIssueCount'); if(badge)badge.textContent=total?`${total} found`:'healthy';
+  let out=`<div class="health-summary-grid"><article><b>${s.issues.length}</b><span>Broken references</span></article><article><b>${s.likely.length}</b><span>Possible unlinked bills</span></article><article><b>${s.duplicates.length}</b><span>Possible duplicates</span></article><article><b>${s.stale.length}</b><span>Stale recurring rules</span></article></div>`;
+  if(s.likely.length) out += `<h4>Smart recurring matches</h4>` + s.likely.slice(0,12).map(x=>`<div class="health-row"><span><b>${escapeAttr(x.tx.title)}</b><small>${x.tx.date} looks like ${escapeAttr(x.match.title)}</small></span><button class="ghost small" onclick="linkLikelyRecurring('${x.tx.id}','${x.match.id}')">Link</button></div>`).join('');
+  if(s.issues.length) out += `<h4>Data health</h4>` + s.issues.slice(0,12).map(x=>`<div class="health-row"><span>${escapeAttr(x.label)}</span></div>`).join('');
+  if(s.duplicates.length){
+    out += `<div class="health-section-heading"><h4>Possible duplicates</h4><button class="ghost small" onclick="clearHealthDismissals()">Restore dismissed</button></div>`;
+    out += s.duplicates.slice(0,10).map(([a,b,key])=>{
+      const accountA=accountById(a.accountId)?.name||'Unknown account';
+      const accountB=accountById(b.accountId)?.name||'Unknown account';
+      return `<div class="health-row health-duplicate-row"><span><b>${escapeAttr(a.title||'Untitled')}</b><small>Two saved records match: ${a.date} • ${money(a.amount)}</small><small>1. ${escapeAttr(accountA)} • ${escapeAttr(a.categoryId?categoryById(a.categoryId)?.name||'Unassigned':'Unassigned')}</small><small>2. ${escapeAttr(accountB)} • ${escapeAttr(b.categoryId?categoryById(b.categoryId)?.name||'Unassigned':'Unassigned')}</small></span><div class="health-actions"><button class="ghost small" onclick="openTransaction('${a.id}')">Review 1</button><button class="ghost small" onclick="openTransaction('${b.id}')">Review 2</button><button class="ghost small" onclick="dismissHealthFinding('${key}')">Dismiss</button></div></div>`;
+    }).join('');
+  }
+  if(s.stale.length) out += `<h4>Recurring rules to review</h4>` + s.stale.slice(0,10).map(x=>`<div class="health-row"><span><b>${escapeAttr(x.title)}</b><small>No matched activity in roughly 120 days</small></span><button class="ghost small" onclick="openTransaction('${x.id}')">Review</button></div>`).join('');
+  if(!total) out += '<div class="empty-state">No obvious data-health problems found.</div>';
+  el.innerHTML=out;
+};

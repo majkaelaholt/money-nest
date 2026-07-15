@@ -2,7 +2,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-204`
+Current version: `money-nest-v2-206`
 
 ## Important Notes
 
@@ -690,3 +690,15 @@ Use CSV for reviewing or batch-editing data.
 - Added a compact mobile “Today at a glance” dashboard section.
 - Added global transaction search across title, merchant, category, account, date, amount, type, and status.
 - Recent Changes continues to show detailed before/after collection summaries with per-item undo.
+
+
+### v2-205
+- Polished the global search dialog layout and close button placement.
+- Added selected-state styling for Mak, Ty, and Joint budget quick views.
+- Deduplicated obsolete recurring bill series on the Bills page, preferring the active/future series over an ended replacement.
+
+
+### v2-206
+- Tightened Smart Cleanup duplicate matching to compare category, type, status, transfer routing, and debt routing in addition to date/title/amount/account.
+- Possible duplicate findings now show both matching saved records with separate Review buttons.
+- Added Dismiss and Restore dismissed controls for duplicate cleanup findings. Dismissals are stored locally and do not modify transaction data.

@@ -4577,3 +4577,27 @@ button.budget-review-row{border:1px solid rgba(220,200,176,.7)}
 /* v2-204 insights, search, presets, mobile review */
 .topbar{gap:12px}.global-search-btn{margin-left:auto}.budget-preset-bar{margin-bottom:12px}.budget-preset-heading small{display:block;color:var(--muted);margin-top:2px}.budget-preset-buttons{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.budget-preset-buttons button{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:8px 12px;font-weight:700}.budget-preset-buttons button.active{background:var(--accent-soft);border-color:var(--accent)}.budget-month-compare{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.mobile-quick-review-panel{display:none}.mobile-quick-review{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.mobile-quick-review button{background:var(--panel-2);border:1px solid var(--line);border-radius:16px;padding:12px;text-align:left;display:grid;gap:3px}.mobile-quick-review span,.mobile-quick-review small{color:var(--muted)}.global-search-modal{width:min(760px,calc(100vw - 24px));max-height:85vh;border:0;border-radius:24px;padding:0}.global-search-shell{padding:18px}.global-search-input{width:100%;font-size:16px;margin:12px 0}.global-search-results{display:grid;gap:8px;max-height:60vh;overflow:auto}.global-search-row{display:flex;justify-content:space-between;gap:12px;text-align:left;border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:12px}.global-search-row span{display:grid}.global-search-row small{color:var(--muted);margin-top:3px}.health-summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:16px}.health-summary-grid article{border:1px solid var(--line);background:var(--panel-2);border-radius:14px;padding:12px;display:grid}.health-summary-grid b{font-size:1.35rem}.health-summary-grid span{color:var(--muted);font-size:.82rem}.health-row{display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid var(--line);padding:10px 2px}.health-row span{display:grid}.health-row small{color:var(--muted)}
 @media(max-width:700px){.global-search-btn{font-size:0;padding:10px}.global-search-btn::first-letter{font-size:18px}.mobile-quick-review-panel{display:block}.mobile-quick-review{grid-template-columns:1fr}.budget-month-compare{grid-template-columns:1fr}.health-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.global-search-modal{width:100vw;height:100dvh;max-height:none;border-radius:0}.global-search-shell{padding:16px;padding-top:max(16px,env(safe-area-inset-top))}.global-search-results{max-height:calc(100dvh - 140px)}}
+
+
+/* v2-205 search modal, quick-view selection, and dialog polish */
+.global-search-modal{
+  background:var(--panel);
+  border:1px solid var(--line);
+  box-shadow:0 28px 80px rgba(46,42,36,.28);
+  overflow:hidden;
+}
+.global-search-shell{background:var(--panel);display:grid;gap:12px}
+.global-search-modal .modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.global-search-modal .modal-head h3{margin:0}
+.global-search-modal .modal-head .hint{margin:3px 0 0}
+.global-search-modal .modal-head .icon-btn{flex:0 0 auto;margin-left:auto}
+.global-search-input{margin:0}
+.budget-preset-buttons button.active{background:var(--accent-soft);border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+@media(max-width:700px){
+  .global-search-modal{width:calc(100vw - 16px);height:auto;max-height:calc(100dvh - 16px);border-radius:22px}
+  .global-search-shell{padding:16px}
+  .global-search-results{max-height:calc(100dvh - 190px)}
+}
+
+/* v2-206 cleanup actions */
+.health-section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:18px}.health-section-heading h4{margin:0}.health-duplicate-row{align-items:flex-start}.health-duplicate-row span{display:flex;flex-direction:column;gap:3px}.health-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px}@media(max-width:700px){.health-duplicate-row{flex-direction:column}.health-actions{width:100%;justify-content:flex-start}.health-actions .small{flex:1 1 auto}}
