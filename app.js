@@ -6160,18 +6160,22 @@ function renderBudgetReview(){
       <article class="mini-card"><span>🎯 Budget status</span><b>${budgetMood}</b><small>${money(stats.totalBudgeted)} budgeted</small></article>
       <article class="mini-card"><span>🕵️ Unbudgeted</span><b>${money(stats.unbudgetedSpent)}</b><small>spending without a budget</small></article>
     </div>
-    <div class="budget-review-grid">
+    <section class="budget-insight-card budget-trend-card">
+      <div class="budget-trend-heading">
+        <div>
+          <div class="section-kicker">Monthly pattern</div>
+          <h4>Last 6 months spending</h4>
+        </div>
+        <p class="hint">Uses the same outflow rules as the review summary.</p>
+      </div>
+      <div class="budget-trend-chart">${trendBars}</div>
+    </section>
+    <div class="budget-review-grid budget-review-grid-wide">
       <section class="budget-insight-card spending-pie-card">
         <div class="section-kicker">Where money went</div>
         <h4>Spending by category</h4>
         ${spendingPie}
         <p class="hint">Pie chart uses cleared cash-account spending and categorized transfers. Turn off recurring bills to focus on extra spending beyond your normal repeating expenses. ${pieGroup.note} Tap a slice/category to review the transactions included in that category.</p>
-      </section>
-      <section class="budget-insight-card">
-        <div class="section-kicker">Monthly pattern</div>
-        <h4>Last 6 months spending</h4>
-        <div class="budget-trend-chart">${trendBars}</div>
-        <p class="hint">Uses the same outflow rules as the review summary.</p>
       </section>
     </div>
     <section class="budget-insight-card budget-performance-card">

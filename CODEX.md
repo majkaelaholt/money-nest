@@ -6,7 +6,7 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-202`
+Latest known version: `money-nest-v2-203`
 
 Before editing, always inspect `README.md` and confirm the current version in the repository. If `README.md` shows a different version, continue from the repo version and mention the mismatch in your summary.
 
@@ -123,6 +123,11 @@ Example README note:
 ```
 
 
+
+### v2-203
+
+* Budget Review uses a compact full-width six-month trend card above a larger category pie chart.
+* Pie slices do not scale on hover/focus, preventing SVG paint-order overlap between neighboring slices.
 
 ### v2-202
 
