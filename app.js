@@ -3701,7 +3701,9 @@ function expandedTransactions(untilISO){
   data.transactions.forEach(tx => {
     const baseDate = occurrenceDateFor(tx, parseDate(tx.date));
     const baseOccurrence = applyOccurrenceOverride(tx, tx.date, baseDate);
-    if(baseOccurrence) out.push(baseOccurrence);
+    // Archived bills preserve cleared history but stop contributing planned/future
+    // occurrences to calendars, forecasts, balances, and bill review totals.
+    if(baseOccurrence && (!tx.billArchived || baseOccurrence.status === "cleared")) out.push(baseOccurrence);
 
     const r = tx.recurrence || (tx.repeat ? { type:"monthly", interval:1 } : { type:"none" });
     if(!r || r.type === "none") return;
@@ -3765,7 +3767,7 @@ function expandedTransactions(untilISO){
           status: "planned",
           generated:true
         }, originalISO, occurrenceISO);
-        if(generatedOccurrence) out.push(generatedOccurrence);
+        if(generatedOccurrence && (!tx.billArchived || generatedOccurrence.status === "cleared")) out.push(generatedOccurrence);
       }
 
       cursor = addDays(cursor, 1);
@@ -9916,6 +9918,90 @@ function dedupeRecurringBillRows(rows){
   return [...grouped.values()];
 }
 
+
+function archiveRecurringBill(txId){
+  const tx = data.transactions.find(t=>t.id === txId);
+  if(!tx || !isRecurring(tx)) return;
+  if(!confirm(`Archive ${tx.title}? Future and non-cleared occurrences will be removed, while cleared history and the recurring rule stay available.`)) return;
+
+  const today = todayISO();
+  tx.billArchived = true;
+  tx.billArchivedAt = today;
+  tx.billArchivedPreviousRecurrenceUntil = tx.recurrenceUntil || "";
+  tx.recurrenceUntil = toISO(addDays(parseDate(today), -1));
+
+  // Remove saved one-off/replacement rows tied to this series when they are
+  // future or not cleared. Cleared history remains untouched.
+  data.transactions = data.transactions.filter(row=>{
+    if(row.id === tx.id) return true;
+    const sourceId = row.recurringSourceId || row.originalId || row.recurrenceSourceId || "";
+    if(sourceId !== tx.id) return true;
+    return row.status === "cleared" && String(row.date || "") < today;
+  });
+
+  // Remove non-cleared and future occurrence overrides. Restoring the rule will
+  // regenerate its schedule from the recurring template.
+  if(tx.occurrenceOverrides && typeof tx.occurrenceOverrides === "object"){
+    Object.keys(tx.occurrenceOverrides).forEach(originalDate=>{
+      const override = tx.occurrenceOverrides[originalDate] || {};
+      const effectiveDate = override.date || originalDate;
+      if(override.status !== "cleared" || effectiveDate >= today) delete tx.occurrenceOverrides[originalDate];
+    });
+  }
+  if(tx.dateOverrides && typeof tx.dateOverrides === "object"){
+    Object.keys(tx.dateOverrides).forEach(originalDate=>{
+      const movedDate = tx.dateOverrides[originalDate];
+      if(originalDate >= today || (movedDate && movedDate !== RECURRENCE_SKIP_DATE && movedDate >= today)) delete tx.dateOverrides[originalDate];
+    });
+  }
+
+  saveData();
+  renderBills();
+}
+
+function restoreArchivedBill(txId){
+  const tx = data.transactions.find(t=>t.id === txId);
+  if(!tx || !isRecurring(tx)) return;
+  const label = tx.billArchived ? "Restore" : "Reactivate";
+  if(!confirm(`${label} ${tx.title} as an active recurring bill?`)) return;
+
+  if(tx.billArchived){
+    tx.recurrenceUntil = tx.billArchivedPreviousRecurrenceUntil || "";
+  } else {
+    tx.recurrenceUntil = "";
+  }
+  tx.billArchived = false;
+  tx.billArchivedAt = "";
+  tx.billArchivedPreviousRecurrenceUntil = "";
+  saveData();
+  renderBills();
+}
+
+function billCardHTML(tx, archivedSection=false){
+  const cat = categoryById(tx.categoryId);
+  const account = billAccountLabel(tx);
+  const route = tx.type === "transfer" ? transactionTransferLabel(tx) : `${account}${tx.linkedDebtId ? ` → ${debtById(tx.linkedDebtId)?.name || "debt"}` : ""}`;
+  const action = archivedSection
+    ? `<button type="button" class="ghost small bill-archive-action" onclick="event.stopPropagation();restoreArchivedBill('${tx.id}')">${tx.billArchived ? "Restore" : "Reactivate"}</button>`
+    : `<button type="button" class="ghost small bill-archive-action" onclick="event.stopPropagation();archiveRecurringBill('${tx.id}')">Archive</button>`;
+  const nextLabel = archivedSection
+    ? (tx.billArchivedAt ? `Archived: ${tx.billArchivedAt}` : `Ended: ${tx.nextDate}`)
+    : `Next: ${tx.nextDate}`;
+  return `<div class="bill-card ${archivedSection ? "bill-card-archived" : ""}" data-tx="${tx.id}" data-original-date="${tx.billInfo?.originalDate || tx.nextDate}" data-occurrence-date="${tx.nextDate}" onclick="openTransaction('${tx.id}',{generated:true, occurrenceOriginalDate:'${tx.billInfo?.originalDate || tx.nextDate}', occurrenceDate:'${tx.nextDate}'})">
+    <div>
+      <div class="row-title">${cat.emoji} ${tx.title}</div>
+      <div class="row-sub">${route}</div>
+    </div>
+    <div><span class="cat-preview" style="background:${hexToSoft(cat.color)}">${cat.emoji} ${cat.name}</span></div>
+    <div class="bill-repeat">
+      <div class="label">Repeats</div>
+      <div class="row-sub">${recurrenceDescription(tx)}</div>
+      <div class="row-sub">${nextLabel}</div>
+    </div>
+    <div class="tx-chip-actions">${billStatusBadge(tx)}${action}<div class="amount bill-amount ${(tx.type==='income'||tx.type==='paycheck')?'good':'bad'}">${(tx.type==='income'||tx.type==='paycheck')?'+':'-'}${money(tx.amount)}</div></div>
+  </div>`;
+}
+
 function renderBills(){
   const list = document.getElementById("billsList");
   try{
@@ -9934,12 +10020,9 @@ function renderBills(){
       })
       .filter(tx => tx.nextDate);
 
-    // Old recurring rules can remain after a replacement series is created.
-    // Collapse obvious duplicates and prefer the active/future rule instead of
-    // showing an obsolete ended card beside the current planned series.
     recurring = dedupeRecurringBillRows(recurring);
 
-    recurring.sort((a,b)=>{
+    const sortBills = rows => rows.sort((a,b)=>{
       if((billFilters.sort || "date") === "amount-desc") return Number(b.amount || 0) - Number(a.amount || 0);
       if((billFilters.sort || "date") === "amount-asc") return Number(a.amount || 0) - Number(b.amount || 0);
       if((billFilters.sort || "date") === "category") return categoryById(a.categoryId).name.localeCompare(categoryById(b.categoryId).name);
@@ -9947,30 +10030,23 @@ function renderBills(){
       return String(a.nextDate || "").localeCompare(String(b.nextDate || ""));
     });
 
+    const archived = sortBills(recurring.filter(tx => tx.billArchived || billOccurrenceStatus(tx) === "ended"));
+    const active = sortBills(recurring.filter(tx => !tx.billArchived && billOccurrenceStatus(tx) !== "ended"));
+
     if(!list) return;
-    if(!recurring.length){
+    if(!active.length && !archived.length){
       list.innerHTML = `<div class="empty">No recurring transactions match those filters.</div>`;
       return;
     }
 
-    list.innerHTML = recurring.map(tx => {
-      const cat = categoryById(tx.categoryId);
-      const account = billAccountLabel(tx);
-      const route = tx.type === "transfer" ? transactionTransferLabel(tx) : `${account}${tx.linkedDebtId ? ` → ${debtById(tx.linkedDebtId)?.name || "debt"}` : ""}`;
-      return `<div class="bill-card" data-tx="${tx.id}" data-original-date="${tx.billInfo?.originalDate || tx.nextDate}" data-occurrence-date="${tx.nextDate}" onclick="openTransaction('${tx.id}',{generated:true, occurrenceOriginalDate:'${tx.billInfo?.originalDate || tx.nextDate}', occurrenceDate:'${tx.nextDate}'})">
-        <div>
-          <div class="row-title">${cat.emoji} ${tx.title}</div>
-          <div class="row-sub">${route}</div>
-        </div>
-        <div><span class="cat-preview" style="background:${hexToSoft(cat.color)}">${cat.emoji} ${cat.name}</span></div>
-        <div class="bill-repeat">
-          <div class="label">Repeats</div>
-          <div class="row-sub">${recurrenceDescription(tx)}</div>
-          <div class="row-sub">Next: ${tx.nextDate}</div>
-        </div>
-        <div class="tx-chip-actions">${billStatusBadge(tx)}<div class="amount bill-amount ${(tx.type==='income'||tx.type==='paycheck')?'good':'bad'}">${(tx.type==='income'||tx.type==='paycheck')?'+':'-'}${money(tx.amount)}</div></div>
-      </div>`;
-    }).join("");
+    const activeHTML = active.length
+      ? `<div class="bill-active-list">${active.map(tx=>billCardHTML(tx,false)).join("")}</div>`
+      : `<div class="empty compact">No active recurring bills match these filters.</div>`;
+    const archivedHTML = archived.length
+      ? `<details class="archived-bills-section"><summary><span>Ended / Archived bills</span><span class="pill">${archived.length}</span></summary><div class="archived-bills-list">${archived.map(tx=>billCardHTML(tx,true)).join("")}</div></details>`
+      : "";
+
+    list.innerHTML = activeHTML + archivedHTML;
     attachTransactionContextMenus();
   } catch(err){
     console.error("Bills page crashed while rendering:", err);
@@ -10434,7 +10510,7 @@ function exportEditableCSVs(){
     "pendingReimbursement","reimbursementToAccountId",
     "loanPrincipalAmount","loanInterestAmount","loanFeeAmount","loanBalanceAdjustment",
     "autoPaycheck","autoMakPaycheck","paycheckHoursOverride","autoPaycheckInfoJSON",
-    "repeatType","repeatInterval","repeatWeekday","repeatOrdinal","weekendHandling","recurrenceUntil","dateOverridesJSON","occurrenceOverridesJSON","notes"
+    "repeatType","repeatInterval","repeatWeekday","repeatOrdinal","weekendHandling","recurrenceUntil","billArchived","billArchivedAt","billArchivedPreviousRecurrenceUntil","dateOverridesJSON","occurrenceOverridesJSON","notes"
   ];
   const txRows = data.transactions.map(tx=>({
     id:tx.id, date:tx.date, title:tx.title, amount:tx.amount, type:tx.type, status:tx.status,
@@ -10447,6 +10523,9 @@ function exportEditableCSVs(){
     repeatWeekday:tx.recurrence?.weekday ?? "", repeatOrdinal:tx.recurrence?.ordinal ?? "",
     weekendHandling:tx.recurrence?.weekendHandling || "none",
     recurrenceUntil: tx.recurrenceUntil || "",
+    billArchived: !!tx.billArchived,
+    billArchivedAt: tx.billArchivedAt || "",
+    billArchivedPreviousRecurrenceUntil: tx.billArchivedPreviousRecurrenceUntil || "",
     dateOverridesJSON: JSON.stringify(tx.dateOverrides || {}),
     occurrenceOverridesJSON: JSON.stringify(tx.occurrenceOverrides || {}),
     notes:tx.notes || ""
@@ -10665,6 +10744,9 @@ function importEditedCSV(file){
           weekendHandling: row.weekendHandling || tx.recurrence?.weekendHandling || "none"
         };
         tx.recurrenceUntil = row.recurrenceUntil === undefined ? (tx.recurrenceUntil || "") : (row.recurrenceUntil || "");
+        tx.billArchived = row.billArchived === undefined ? !!tx.billArchived : String(row.billArchived).toLowerCase() === "true";
+        tx.billArchivedAt = row.billArchivedAt === undefined ? (tx.billArchivedAt || "") : (row.billArchivedAt || "");
+        tx.billArchivedPreviousRecurrenceUntil = row.billArchivedPreviousRecurrenceUntil === undefined ? (tx.billArchivedPreviousRecurrenceUntil || "") : (row.billArchivedPreviousRecurrenceUntil || "");
         if(row.dateOverridesJSON){
           try{ tx.dateOverrides = JSON.parse(row.dateOverridesJSON); } catch(err){ console.warn("Bad dateOverridesJSON", err); }
         }
@@ -10929,3 +11011,5 @@ renderMoneyNestHealthCenter=function(){
   if(!total) out += '<div class="empty-state">No obvious data-health problems found.</div>';
   el.innerHTML=out;
 };
+
+// v2-207: archived bills section with archive/restore workflow.

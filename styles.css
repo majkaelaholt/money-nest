@@ -4601,3 +4601,22 @@ button.budget-review-row{border:1px solid rgba(220,200,176,.7)}
 
 /* v2-206 cleanup actions */
 .health-section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:18px}.health-section-heading h4{margin:0}.health-duplicate-row{align-items:flex-start}.health-duplicate-row span{display:flex;flex-direction:column;gap:3px}.health-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px}@media(max-width:700px){.health-duplicate-row{flex-direction:column}.health-actions{width:100%;justify-content:flex-start}.health-actions .small{flex:1 1 auto}}
+
+/* v2-207 archived recurring bills */
+.bill-list{display:grid;gap:14px}
+.bill-active-list,.archived-bills-list{display:grid;gap:12px}
+.archived-bills-section{border:1px solid var(--line);border-radius:20px;background:rgba(255,250,244,.7);overflow:hidden}
+.archived-bills-section>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 18px;font-weight:800;cursor:pointer;list-style:none}
+.archived-bills-section>summary::-webkit-details-marker{display:none}
+.archived-bills-section>summary:after{content:'▾';font-size:12px;transition:transform .2s ease}
+.archived-bills-section[open]>summary:after{transform:rotate(180deg)}
+.archived-bills-list{padding:0 12px 12px}
+.bill-card-archived{opacity:.86;background:#f5efe7}
+.bill-archive-action{white-space:nowrap}
+.empty.compact{padding:16px}
+@media(max-width:640px){
+  .archived-bills-section>summary{padding:13px 14px}
+  .archived-bills-list{padding:0 8px 8px}
+  .tx-chip-actions{flex-wrap:wrap}
+  .bill-archive-action{min-height:36px}
+}

@@ -2,7 +2,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-206`
+Current version: `money-nest-v2-207`
 
 ## Important Notes
 
@@ -702,3 +702,11 @@ Use CSV for reviewing or batch-editing data.
 - Tightened Smart Cleanup duplicate matching to compare category, type, status, transfer routing, and debt routing in addition to date/title/amount/account.
 - Possible duplicate findings now show both matching saved records with separate Review buttons.
 - Added Dismiss and Restore dismissed controls for duplicate cleanup findings. Dismissals are stored locally and do not modify transaction data.
+
+
+### v2-207
+- Added a collapsed **Ended / Archived bills** section on the Bills page.
+- Added **Archive** for active recurring bills. Archiving removes future and non-cleared linked occurrences while preserving cleared history and the recurring rule.
+- Added **Restore** for archived bills and **Reactivate** for naturally ended recurring rules.
+- Archived recurring templates no longer contribute planned/future occurrences to calendars, forecasts, balances, or budget review.
+- Transaction CSV import/export now preserves archive metadata. Older JSON and CSV backups remain compatible.
