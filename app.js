@@ -9565,7 +9565,6 @@ window.simpleDebt = (id=null)=>{
 
 if(document.getElementById("addCategoryBtn")) addCategoryBtn.onclick = () => simpleCategory();
 const bulkEditCategoriesBtnEl = document.getElementById("bulkEditCategoriesBtn");
-if(bulkEditCategoriesBtnEl) bulkEditCategoriesBtnEl.onclick = () => bulkEditCategoryColors();
 const addTemplateBtnEl = document.getElementById("addTemplateBtn");
 if(addTemplateBtnEl) addTemplateBtnEl.onclick = () => simpleTemplate();
 const undoLastChangeBtnEl = document.getElementById("undoLastChangeBtn");
@@ -9640,6 +9639,7 @@ window.bulkEditCategoryColors = ()=>{
   deleteSimpleBtn.style.display = "none";
   simpleModal.showModal();
 };
+if(bulkEditCategoriesBtnEl) bulkEditCategoriesBtnEl.onclick = window.bulkEditCategoryColors;
 
 window.simpleCategory = (id=null)=>{
   const c = id ? categoryById(id) : null;

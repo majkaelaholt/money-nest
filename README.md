@@ -2,7 +2,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-217`
+Current version: `money-nest-v2-218`
 
 ## Important Notes
 
@@ -149,7 +149,7 @@ Use CSV for reviewing or batch-editing data.
 
 ## Version Notes
 
-### v2-217
+### v2-218
 
 - Added bulk category color editing in Settings → Categories.
 - Multiple categories can be selected and assigned one palette role together, given one shared custom color override, or have their custom overrides removed.
