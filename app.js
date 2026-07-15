@@ -6016,7 +6016,7 @@ function renderBudgetReview(){
     pieCursor += item.amount;
     const end = pieTotal ? (pieCursor / pieTotal) * 100 : 0;
     const title = spendingPieTooltip(item, pieTotal);
-    const click = item.categoryId === "other" ? `chooseOtherBudgetCategory()` : `addBudgetFromReview('${escapeAttr(item.categoryId)}')`;
+    const click = item.categoryId === "other" ? `chooseOtherBudgetCategory()` : `openCategoryBudgetDetail('${escapeAttr(item.categoryId)}')`;
     if(end - start >= 99.9){
       return `<circle cx="21" cy="21" r="20" fill="${escapeAttr(item.cat.color)}" class="spending-pie-slice" tabindex="0" role="button" onclick="${click}"><title>${escapeAttr(title)}</title></circle>`;
     }
@@ -6030,13 +6030,13 @@ function renderBudgetReview(){
           const budgetNote = item.categoryId === "other" && item.children?.length
             ? `${money(item.amount)} across ${item.children.length} smaller categories`
             : (item.budgetAmount ? `${money(item.amount)} of ${money(item.budgetAmount)}` : `${money(item.amount)} spent`);
-          const click = item.categoryId === "other" ? `chooseOtherBudgetCategory()` : `addBudgetFromReview('${escapeAttr(item.categoryId)}')`;
+          const click = item.categoryId === "other" ? `chooseOtherBudgetCategory()` : `openCategoryBudgetDetail('${escapeAttr(item.categoryId)}')`;
           const title = spendingPieTooltip(item, pieTotal);
           return `<button type="button" class="spending-legend-row" title="${escapeAttr(title)}" onclick="${click}">
             <span class="legend-dot" style="background:${item.cat.color}"></span>
             <span class="legend-name">${item.cat.emoji} ${item.cat.name}</span>
             <b>${pct}%</b>
-            <small>${budgetNote} • tap to budget</small>
+            <small>${budgetNote} • tap to review</small>
           </button>`;
         }).join("")}
       </div>
@@ -6078,7 +6078,7 @@ function renderBudgetReview(){
         <div class="section-kicker">Where money went</div>
         <h4>Spending by category</h4>
         ${spendingPie}
-        <p class="hint">Pie chart uses cleared spending plus card-paid category spending. Transfer/payment outflows are included when the checkbox is on. ${pieGroup.note} Tap a slice/category to add a budget.</p>
+        <p class="hint">Pie chart uses cleared spending plus card-paid category spending. Transfer/payment outflows are included when the checkbox is on. ${pieGroup.note} Tap a slice/category to review the transactions included in that category.</p>
       </section>
       <section class="budget-insight-card">
         <div class="section-kicker">Monthly pattern</div>
@@ -6142,17 +6142,21 @@ function renderBudgetBreakdown(items, emptyText){
     <div class="budget-detail-meter"><span style="width:${Math.max(4,Math.round(item.amount/max*100))}%"></span></div>
   </div>`).join("")}</div>`;
 }
-window.openBudgetDetail = (budgetId)=>{
-  const budget = (data.budgets || []).find(b=>b.id===budgetId);
+function openBudgetDetailView({categoryId, budget=null, accountId=budgetReviewAccount}){
   const modal = document.getElementById("budgetDetailModal");
   const content = document.getElementById("budgetDetailContent");
-  if(!budget || !modal || !content) return;
+  if(!categoryId || !modal || !content) return;
   const range = budgetMonthRange(budgetReviewMonth);
-  const cat = categoryById(budget.categoryId);
-  const txs = budgetDetailTransactions(budget, range);
+  const cat = categoryById(categoryId);
+  const txs = expandedTransactions(range.end)
+    .filter(tx=>tx.date >= range.start && tx.date <= range.end)
+    .filter(tx=>isBudgetReviewOutflow(tx, budget ? true : budgetReviewIncludeTransfers))
+    .filter(tx=>tx.categoryId === categoryId)
+    .filter(tx=>budget ? txMatchesBudgetScope(tx, budget) : txMatchesBudgetAccount(tx, accountId))
+    .sort((a,b)=>String(b.date).localeCompare(String(a.date)) || String(a.title || "").localeCompare(String(b.title || "")));
   const total = txs.reduce((sum,tx)=>sum+Number(tx.amount || 0),0);
-  const amount = Number(budget.amount || 0);
-  const remaining = amount-total;
+  const amount = budget ? Number(budget.amount || 0) : null;
+  const remaining = amount === null ? null : amount-total;
   const accounts = budgetBreakdown(txs, tx=>tx.accountId || "unknown", id=>{
     const a=accountById(id); return a ? `${a.emoji || "💵"} ${a.name}` : "Unknown account";
   });
@@ -6161,19 +6165,19 @@ window.openBudgetDetail = (budgetId)=>{
   });
   const topAccount = accounts[0]?.label || "No spending yet";
   const topMerchant = merchants[0]?.label || "No spending yet";
-  document.getElementById("budgetDetailTitle").textContent = `${cat.emoji || "📊"} ${cat.name} budget`;
-  document.getElementById("budgetDetailSub").textContent = `${range.label} • ${budgetScopeLabel(budget)}`;
+  document.getElementById("budgetDetailTitle").textContent = `${cat.emoji || "📊"} ${cat.name}${budget ? " budget" : " spending"}`;
+  document.getElementById("budgetDetailSub").textContent = `${range.label} • ${budget ? budgetScopeLabel(budget) : budgetReviewAccountLabel(accountId)}`;
   content.innerHTML = `
-    <div class="budget-detail-summary">
+    <div class="budget-detail-summary ${budget ? "" : "category-only"}">
       <article class="mini-card"><span>Total spent</span><b>${money(total)}</b><small>${txs.length} included transaction${txs.length===1?"":"s"}</small></article>
-      <article class="mini-card"><span>Budget amount</span><b>${money(amount)}</b><small>Monthly target</small></article>
-      <article class="mini-card"><span>${remaining < -0.005 ? "Over budget" : "Remaining"}</span><b class="${remaining < -0.005 ? "bad" : "good"}">${money(Math.abs(remaining))}</b><small>${amount ? Math.round(total/amount*100) : 0}% used</small></article>
+      ${budget ? `<article class="mini-card"><span>Budget amount</span><b>${money(amount)}</b><small>Monthly target</small></article>
+      <article class="mini-card"><span>${remaining < -0.005 ? "Over budget" : "Remaining"}</span><b class="${remaining < -0.005 ? "bad" : "good"}">${money(Math.abs(remaining))}</b><small>${amount ? Math.round(total/amount*100) : 0}% used</small></article>` : ""}
       <article class="mini-card"><span>Top account</span><b>${escapeAttr(topAccount)}</b><small>${accounts[0] ? money(accounts[0].amount) : "—"}</small></article>
       <article class="mini-card"><span>Top place</span><b>${escapeAttr(topMerchant)}</b><small>${merchants[0] ? money(merchants[0].amount) : "—"}</small></article>
     </div>
     <div class="budget-detail-grid">
-      <section class="budget-insight-card"><div class="section-kicker">By place</div><h4>Merchant/place breakdown</h4>${renderBudgetBreakdown(merchants,"No merchant spending in this budget yet.")}</section>
-      <section class="budget-insight-card"><div class="section-kicker">By account</div><h4>Account breakdown</h4>${renderBudgetBreakdown(accounts,"No account spending in this budget yet.")}</section>
+      <section class="budget-insight-card"><div class="section-kicker">By place</div><h4>Merchant/place breakdown</h4>${renderBudgetBreakdown(merchants,"No merchant spending in this category yet.")}</section>
+      <section class="budget-insight-card"><div class="section-kicker">By account</div><h4>Account breakdown</h4>${renderBudgetBreakdown(accounts,"No account spending in this category yet.")}</section>
     </div>
     <section class="budget-insight-card budget-detail-transactions">
       <div class="section-kicker">Included activity</div><h4>Transactions in this total</h4>
@@ -6185,8 +6189,13 @@ window.openBudgetDetail = (budgetId)=>{
         </article>`;
       }).join("")}</div>` : `<div class="empty-state">No included transactions for ${range.label}.</div>`}
     </section>`;
-  modal.showModal();
+  if(!modal.open) modal.showModal();
+}
+window.openBudgetDetail = (budgetId)=>{
+  const budget = (data.budgets || []).find(b=>b.id===budgetId);
+  if(budget) openBudgetDetailView({categoryId:budget.categoryId, budget});
 };
+window.openCategoryBudgetDetail = (categoryId)=>openBudgetDetailView({categoryId, accountId:budgetReviewAccount});
 
 
 function debtUtilization(d){
@@ -8249,7 +8258,7 @@ closeSimple.onclick = ()=>simpleModal.close();
 cancelSimple.onclick = ()=>simpleModal.close();
 simpleForm.onsubmit = e => {
   e.preventDefault();
-  if(simpleSubmit) simpleSubmit();
+  if(simpleSubmit && simpleSubmit() === false) return;
   simpleModal.close();
   saveData();
   renderSelectors();
@@ -8321,44 +8330,35 @@ addBudgetBtn.onclick = () => simpleBudget();
 addBillBtn.onclick = () => openTransaction(null, { recurrence:{type:"monthly", interval:1} });
 window.simpleBudget = (id=null, preset={})=>{
   const b = id ? data.budgets.find(x=>x.id===id) : null;
-  const initialScope = b?.accountScope || (b?.accountId ? "single" : (preset.accountId === "all" ? "all" : "single"));
-  const initialIds = b ? budgetScopeAccountIds(b) : (preset.accountId && preset.accountId !== "all" ? [preset.accountId] : []);
+  const allAccountIds = orderedAccounts().map(a=>a.id);
+  let initialIds = b ? budgetScopeAccountIds(b) : (preset.accountId && preset.accountId !== "all" ? [preset.accountId] : allAccountIds);
+  if(b?.accountScope === "all" || (!b && preset.accountId === "all")) initialIds = allAccountIds;
   simpleTitle.textContent = b ? "Edit budget" : "Add budget";
   simpleFields.innerHTML = `
-    <label>Account scope<select id="sBudgetScope" onchange="updateBudgetScopeFields()">
-      <option value="single">One account</option>
-      <option value="all">All accounts</option>
-      <option value="selected">Selected accounts</option>
-    </select></label>
-    <div id="sBudgetSingleWrap"><label>Account<select id="sAccount">${orderedAccounts().map(a=>`<option value="${a.id}">${a.emoji || "💵"} ${a.name}</option>`).join("")}</select></label></div>
-    <div id="sBudgetSelectedWrap" class="budget-account-picker" hidden>
+    <div class="budget-account-picker">
       <span class="field-label">Include accounts</span>
       ${orderedAccounts().map(a=>`<label class="budget-account-check"><input type="checkbox" name="sBudgetAccountIds" value="${a.id}"> <span>${a.emoji || "💵"} ${a.name}</span></label>`).join("")}
-      <p class="hint">Choose at least one account. Spending from other accounts will be excluded.</p>
+      <p class="hint">Select one, several, or every account. Spending from unchecked accounts will be excluded.</p>
     </div>
     <label>Category<select id="sCat">${sortedCategories().map(c=>`<option value="${c.id}">${c.emoji} ${c.name}</option>`).join("")}</select></label>
     <label>Monthly amount<input id="sAmount" type="number" step="0.01" value="${b?.amount ?? ""}" required></label>`;
   setTimeout(()=>{
-    sBudgetScope.value = initialScope;
-    if(initialIds[0] && accountById(initialIds[0])) sAccount.value = initialIds[0];
     document.querySelectorAll('input[name="sBudgetAccountIds"]').forEach(input=>{ input.checked = initialIds.includes(input.value); });
     if(b) sCat.value=b.categoryId;
     else if(preset.categoryId && categoryById(preset.categoryId)) sCat.value = preset.categoryId;
-    updateBudgetScopeFields();
   },0);
   simpleSubmit = ()=>{
-    const scope = sBudgetScope.value;
-    let accountIds = scope === "selected" ? [...document.querySelectorAll('input[name="sBudgetAccountIds"]:checked')].map(input=>input.value) : [];
-    if(scope === "selected" && !accountIds.length){
-      const fallback = orderedAccounts()[0]?.id || "";
-      if(fallback) accountIds = [fallback];
-      alert("No accounts were selected, so the first account was used. Edit the budget to choose a different combination.");
+    let accountIds = [...document.querySelectorAll('input[name="sBudgetAccountIds"]:checked')].map(input=>input.value);
+    if(!accountIds.length){
+      alert("Choose at least one account for this budget.");
+      return false;
     }
-    const accountId = scope === "single" ? sAccount.value : (scope === "selected" ? accountIds[0] : "");
+    const scope = accountIds.length === allAccountIds.length ? "all" : (accountIds.length === 1 ? "single" : "selected");
+    const accountId = scope === "all" ? "" : accountIds[0];
     const target = b || {id:uid()};
     target.accountScope = scope;
     target.accountId = accountId;
-    target.accountIds = scope === "single" ? [accountId] : accountIds;
+    target.accountIds = scope === "all" ? [] : accountIds;
     target.categoryId = sCat.value;
     target.amount = Number(sAmount.value);
     target.period = target.period || "monthly";
@@ -8369,14 +8369,6 @@ window.simpleBudget = (id=null, preset={})=>{
   deleteSimpleBtn.style.display = b ? "inline-block" : "none";
   simpleModal.showModal();
 };
-window.updateBudgetScopeFields = ()=>{
-  const scope = document.getElementById("sBudgetScope")?.value || "single";
-  const single = document.getElementById("sBudgetSingleWrap");
-  const selected = document.getElementById("sBudgetSelectedWrap");
-  if(single) single.hidden = scope !== "single";
-  if(selected) selected.hidden = scope !== "selected";
-};
-
 window.addBudgetFromReview = (categoryId)=>{
   if(!categoryId || categoryId === "other"){
     chooseOtherBudgetCategory();
