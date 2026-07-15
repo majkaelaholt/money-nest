@@ -6,7 +6,7 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-233`
+Latest known version: `money-nest-v2-235`
 
 Before editing, always inspect `README.md` and confirm the current version in the repository. If `README.md` shows a different version, continue from the repo version and mention the mismatch in your summary.
 
@@ -142,7 +142,7 @@ Example README note:
 ### v2-200
 - Banking is excluded from budgeting. Savings transfers net contributions by direction.
 
-- Current version: money-nest-v2-233. Includes in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
+- Current version: money-nest-v2-235. Includes in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
 
 
 ### v2-205
@@ -282,3 +282,13 @@ Example README note:
 ### v2-233
 - Bills page cards resolve their displayed `nextDate` through `billDisplayedNextDate()`, which selects the earliest non-cleared linked occurrence on or after today.
 - The same resolved date is used for card text, Bills sorting, card occurrence metadata, and status context.
+
+
+### v2-234
+- Budgets now support an optional custom `emoji` field.
+- `budgetCategoryLabel()` uses the saved budget emoji first, then falls back to the category or multi-category default icon.
+- Budget CSV import/export includes an optional `emoji` column; old CSV and JSON data remain valid.
+
+
+### v2-235
+- Budget target and performance lists now sort alphabetically by displayed budget title.

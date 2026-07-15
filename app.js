@@ -1,6 +1,6 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-233";
-const CURRENT_SCHEMA_VERSION = 223;
+const APP_VERSION = "2-235";
+const CURRENT_SCHEMA_VERSION = 224;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
 // v2.167: Supabase cloud sync helpers. This stores the full Money Nest JSON as one
@@ -3098,6 +3098,7 @@ function normalizeData(raw){
 
   d.budgets = (d.budgets || []).map(b => {
     if(!b.categoryId && b.category) b.categoryId = localFindCategoryId(b.category);
+    b.emoji = typeof b.emoji === "string" ? b.emoji.trim() : "";
     b.categoryIds = Array.isArray(b.categoryIds) ? [...new Set(b.categoryIds.filter(Boolean))] : [];
     if(!b.categoryIds.length && b.categoryId) b.categoryIds = [b.categoryId];
     b.categoryIds = b.categoryIds.filter(id => id && !isBudgetExcludedCategory(id));
@@ -5989,9 +5990,15 @@ function txMatchesBudgetCategories(tx, budget){
 function budgetCategoryLabel(budget){
   const cats = budgetCategoryIds(budget).map(categoryById).filter(Boolean);
   const customName = String(budget?.name || "").trim();
-  if(!cats.length) return {text:"Unassigned", emoji:"🏷️", color:"#8c6f4d", cats:[]};
-  if(cats.length === 1) return {text:customName || cats[0].name, emoji:cats[0].emoji || "🏷️", color:cats[0].color || "#8c6f4d", cats};
-  return {text:customName || cats.map(c=>c.name).join(" + "), emoji:"🧺", color:cats[0].color || "#8c6f4d", cats};
+  const customEmoji = String(budget?.emoji || "").trim();
+  if(!cats.length) return {text:"Unassigned", emoji:customEmoji || "🏷️", color:"#8c6f4d", cats:[]};
+  if(cats.length === 1) return {text:customName || cats[0].name, emoji:customEmoji || cats[0].emoji || "🏷️", color:cats[0].color || "#8c6f4d", cats};
+  return {text:customName || cats.map(c=>c.name).join(" + "), emoji:customEmoji || "🧺", color:cats[0].color || "#8c6f4d", cats};
+}
+function compareBudgetsByTitle(a,b){
+  const aTitle = String(budgetCategoryLabel(a)?.text || "").trim();
+  const bTitle = String(budgetCategoryLabel(b)?.text || "").trim();
+  return aTitle.localeCompare(bTitle, undefined, {sensitivity:"base", numeric:true});
 }
 function budgetTransactionAmount(tx){
   const amount = Number(tx?.amount || 0);
@@ -6169,11 +6176,7 @@ function budgetReviewStats(monthValue=budgetReviewMonth, accountIds=budgetReview
       left: amount - spent,
       pct: amount ? Math.round((spent / amount) * 100) : 0
     };
-  }).sort((a,b)=>{
-    const overA = a.left < 0 ? 0 : 1;
-    const overB = b.left < 0 ? 0 : 1;
-    return overA-overB || b.spent-a.spent;
-  });
+  }).sort((a,b)=>compareBudgetsByTitle(a.budget,b.budget));
 
   const totalSpent = expenses.reduce((s,tx)=>s+budgetTransactionAmount(tx),0);
   const totalIncome = income.reduce((s,tx)=>s+Number(tx.amount || 0),0);
@@ -6371,7 +6374,7 @@ function renderBudgetReview(){
 function renderBudgets(){
   renderBudgetReview();
   const monthRange = budgetMonthRange(budgetReviewMonth);
-  document.getElementById("budgetList").innerHTML = (data.budgets || []).filter(b=>budgetCategoryIds(b).length).map(b=>{
+  document.getElementById("budgetList").innerHTML = (data.budgets || []).filter(b=>budgetCategoryIds(b).length).sort(compareBudgetsByTitle).map(b=>{
     const spent = budgetActualSpent(b, monthRange);
     const avg = budgetAverageMonthlySpent(b, 6);
     const cat = budgetCategoryLabel(b);
@@ -8882,7 +8885,10 @@ window.simpleBudget = (id=null, preset={})=>{
   if(b?.accountScope === "all" || (!b && preset.accountId === "all")) initialIds = allAccountIds;
   simpleTitle.textContent = b ? "Edit budget" : "Add budget";
   simpleFields.innerHTML = `
-    <label>Budget/group name <input id="sBudgetName" value="${escapeAttr(b?.name || "")}" placeholder="Optional — e.g. Necessary bills"></label>
+    <div class="form-grid two">
+      <label>Budget/group name <input id="sBudgetName" value="${escapeAttr(b?.name || "")}" placeholder="Optional — e.g. Necessary bills"></label>
+      <label>Budget emoji <input id="sBudgetEmoji" value="${escapeAttr(b?.emoji || "")}" maxlength="12" placeholder="Optional — e.g. 🏠"></label>
+    </div>
     <div class="budget-account-picker">
       <span class="field-label">Include accounts</span>
       ${orderedAccounts().map(a=>`<label class="budget-account-check"><input type="checkbox" name="sBudgetAccountIds" value="${a.id}"> <span>${a.emoji || "💵"} ${a.name}</span></label>`).join("")}
@@ -8914,6 +8920,7 @@ window.simpleBudget = (id=null, preset={})=>{
     }
     const target = b || {id:uid()};
     target.name = document.getElementById("sBudgetName")?.value.trim() || "";
+    target.emoji = document.getElementById("sBudgetEmoji")?.value.trim() || "";
     target.accountScope = scope;
     target.accountId = accountId;
     target.accountIds = scope === "all" ? [] : accountIds;
@@ -11090,9 +11097,9 @@ function exportEditableCSVs(){
     frozenLocked:!!d.frozenLocked, notes:d.notes || ""
   }));
 
-  const budgetHeaders = ["id","name","accountScope","accountId","accountIdsJSON","categoryId","categoryIdsJSON","amount","period","notes"];
+  const budgetHeaders = ["id","name","emoji","accountScope","accountId","accountIdsJSON","categoryId","categoryIdsJSON","amount","period","notes"];
   const budgetRows = (data.budgets || []).map(b=>({
-    id:b.id, name:b.name || "", accountScope:b.accountScope || (b.accountId ? "single" : "all"), accountId:b.accountId || "",
+    id:b.id, name:b.name || "", emoji:b.emoji || "", accountScope:b.accountScope || (b.accountId ? "single" : "all"), accountId:b.accountId || "",
     accountIdsJSON:JSON.stringify(budgetScopeAccountIds(b)), categoryId:budgetCategoryIds(b)[0] || b.categoryId || "", categoryIdsJSON:JSON.stringify(budgetCategoryIds(b)), amount:b.amount ?? "",
     period:b.period || "monthly", notes:b.notes || ""
   }));
@@ -11196,7 +11203,7 @@ function importEditedCSV(file){
         if(!categoryIds.length && row.categoryId) categoryIds = [row.categoryId];
         categoryIds = [...new Set(categoryIds.filter(id=>id && !isBudgetExcludedCategory(id)))];
         return {
-          id: row.id || uid(), name: row.name || "", accountScope, accountId: accountScope === "all" ? "" : (accountId || accountIds[0] || ""), accountIds,
+          id: row.id || uid(), name: row.name || "", emoji: row.emoji || "", accountScope, accountId: accountScope === "all" ? "" : (accountId || accountIds[0] || ""), accountIds,
           categoryId: categoryIds[0] || row.categoryId || "", categoryIds, amount: Number(row.amount || 0), period: row.period || "monthly", notes: row.notes || ""
         };
       });
@@ -11834,3 +11841,6 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 // v2-232: Planned loose matches remain the current upcoming bill; only cleared matches advance the displayed Next date.
 
 // v2-233: Bills page cards use the earliest actual linked planned occurrence for their Next date, matching bill details.
+
+// v2-234: Budgets support an optional custom emoji, preserved in JSON and budget CSV import/export.
+// v2-235: Monthly Budget Targets and Budget Performance are sorted alphabetically by displayed budget title.

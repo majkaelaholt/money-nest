@@ -2,7 +2,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-233`
+Current version: `money-nest-v2-235`
 
 ## Important Notes
 
@@ -866,3 +866,15 @@ Use CSV for reviewing or batch-editing data.
 ### v2-233
 - Fixed Bills page recurring-series cards so **Next** uses the earliest actual linked planned occurrence, matching the bill detail list and header.
 - Bills sorting and card occurrence metadata now use that same displayed date.
+
+
+### v2-234
+- Added an optional editable emoji/icon field to Add/Edit Budget.
+- Custom budget emojis appear in Monthly Budget Targets, Budget Performance, and budget transaction detail headings.
+- Existing budgets safely fall back to their category emoji (or the multi-category basket icon) when no custom emoji is saved.
+- Added the optional `emoji` column to budget CSV export/import while preserving older CSV compatibility.
+
+
+### v2-235
+- Sorts Monthly Budget Targets alphabetically by displayed budget title.
+- Sorts How You Did vs Budget alphabetically by the same displayed title.
