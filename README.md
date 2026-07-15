@@ -2,7 +2,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-203`
+Current version: `money-nest-v2-204`
 
 ## Important Notes
 
@@ -149,7 +149,7 @@ Use CSV for reviewing or batch-editing data.
 
 ## Version Notes
 
-### v2-203
+### v2-204
 
 * Moved the Last 6 months spending chart into a compact full-width section above the category chart.
 * Expanded the Spending by category card so the pie chart has more room on desktop.
@@ -679,3 +679,14 @@ Use CSV for reviewing or batch-editing data.
 - Extended budget CSV export/import with `accountScope` and `accountIdsJSON` while keeping legacy `accountId` compatibility.
 - Added an iPhone-friendly bottom-sheet-style budget detail layout with compact transaction cards.
 
+
+## v2-204
+- Added Budget Review quick presets for all spending, extra spending, bills-only, and personal/joint account views.
+- Added named budget groups for multi-category budgets.
+- Added month-over-month spending comparisons and biggest category movement.
+- Added a “Why these totals?” inspector for budget calculations and active filters.
+- Added Smart Cleanup & Data Health tools for broken references, likely duplicates, stale recurring rules, and unlinked recurring bill suggestions.
+- Added one-click linking for transactions that appear to belong to a recurring bill.
+- Added a compact mobile “Today at a glance” dashboard section.
+- Added global transaction search across title, merchant, category, account, date, amount, type, and status.
+- Recent Changes continues to show detailed before/after collection summaries with per-item undo.

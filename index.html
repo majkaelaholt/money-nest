@@ -52,11 +52,15 @@
           <p class="eyebrow">Welcome back, Mak</p>
           <h2 id="viewTitle">Dashboard</h2>
         </div>
-
+        <button type="button" class="ghost global-search-btn" onclick="openGlobalSearch()">🔎 Search</button>
       </header>
 
       <section id="dashboard" class="view active">
         <div class="grid cards-4" id="summaryCards"></div>
+        <section class="panel mobile-quick-review-panel">
+          <div class="panel-head"><div><h3>Today at a glance</h3><span class="hint">the numbers most useful on your phone</span></div></div>
+          <div id="mobileQuickReview" class="mobile-quick-review"></div>
+        </section>
         <div class="split">
           <section class="panel">
             <div class="panel-head">
@@ -125,7 +129,7 @@
               <p class="hint">See how the month went, what went over budget, and where the money actually went.</p>
             </div>
           </div>
-          <div id="budgetReview" class="budget-review"></div>
+          <div id="budgetPresetBar" class="budget-preset-bar"></div><div id="budgetReview" class="budget-review"></div>
         </div>
 
         <div class="panel">
@@ -235,6 +239,11 @@
               <p class="hint">Use Supabase to save/load your Money Nest data across browsers/devices. Keep JSON backups too. Recent Changes/undo history stays local to this browser so it does not bloat cloud data.</p>
               <div id="cloudSyncPanel" class="cloud-sync-panel"></div>
             </div>
+          </details>
+
+          <details class="panel settings-collapsible settings-intelligence-card" open>
+            <summary><span class="settings-summary-main"><span class="settings-emoji">🧠</span><span><b>Smart cleanup & data health</b><small>Recurring links, duplicates, broken references, and suggestions</small></span></span><span class="summary-pill" id="healthIssueCount">scan</span></summary>
+            <div class="settings-collapse-body"><div id="moneyNestHealthCenter"></div></div>
           </details>
 
           <details class="panel settings-collapsible settings-tools-panel settings-backup-card">
@@ -723,5 +732,12 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="app.js"></script>
+  <dialog id="globalSearchModal" class="global-search-modal">
+    <div class="global-search-shell">
+      <div class="modal-head"><div><h3>🔎 Search Money Nest</h3><p class="hint">Transactions, merchants, categories, accounts, amounts, and dates.</p></div><button class="icon-btn" onclick="document.getElementById('globalSearchModal').close()">×</button></div>
+      <input id="globalSearchInput" class="global-search-input" placeholder="Try Walmart, Groceries, $45, or 2026-07…" oninput="renderGlobalSearch(this.value)">
+      <div id="globalSearchResults" class="global-search-results"></div>
+    </div>
+  </dialog>
 </body>
 </html>

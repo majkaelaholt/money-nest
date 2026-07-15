@@ -2815,6 +2815,7 @@ let transactionFilters = {...defaultUiPrefs.transactionFilters, ...(uiPrefs.tran
 let budgetReviewMonth = todayISO().slice(0,7);
 let budgetReviewAccount = "all";
 let budgetReviewIncludeRecurringBills = true;
+let budgetReviewMode = "all";
 
 
 function standardCategories(){
@@ -4750,6 +4751,15 @@ function renderDashboard(){
         <p class="sub">past due + next 7 days</p>
       </article>`;
 
+    const quick=document.getElementById("mobileQuickReview");
+    if(quick){
+      const cash=orderedAccounts().filter(a=>!isSavingsAccount(a));
+      const lowest=cash.map(a=>({a,s:safeToSpend(a)})).sort((x,y)=>x.s.amount-y.s.amount)[0];
+      const next=expandedTransactions(toISO(addDays(parseDate(todayISO()),14))).filter(t=>t.date>=todayISO()&&t.status!=="cleared"&&isBudgetReviewOutflow({...t,status:"cleared"})).sort((a,b)=>a.date.localeCompare(b.date))[0];
+      const bs=budgetReviewStats(todayISO().slice(0,7),"all");
+      quick.innerHTML=`<button onclick="showView('accounts')"><span>Safe to spend</span><b>${lowest?money(lowest.s.amount):'—'}</b><small>${lowest?.a.name||'No cash account'}</small></button><button onclick="showView('bills')"><span>Next bill</span><b>${next?money(next.amount):'—'}</b><small>${next?`${next.title} • ${next.date}`:'Nothing upcoming'}</small></button><button onclick="showView('budgets')"><span>Month spending</span><b>${money(bs.totalSpent)}</b><small>${bs.overBudgetCount} budget(s) over</small></button>`;
+    }
+
     document.getElementById("safeSpendList").innerHTML = orderedAccounts().filter(a=>!isSavingsAccount(a)).map(a=>{
       const safe = safeToSpend(a);
       const metric = billsMetricForAccount(a);
@@ -5844,7 +5854,10 @@ function transactionBelongsToRecurringBill(tx){
 }
 function budgetIncludesTransaction(tx, includeRecurringBills=budgetReviewIncludeRecurringBills){
   if(!isBudgetReviewOutflow(tx)) return false;
-  if(!includeRecurringBills && transactionBelongsToRecurringBill(tx)) return false;
+  const recurring = transactionBelongsToRecurringBill(tx);
+  if(budgetReviewMode === "extra" && recurring) return false;
+  if(budgetReviewMode === "bills" && !recurring) return false;
+  if(!includeRecurringBills && recurring) return false;
   return true;
 }
 function budgetCategoryIds(budget){
@@ -5859,9 +5872,10 @@ function txMatchesBudgetCategories(tx, budget){
 }
 function budgetCategoryLabel(budget){
   const cats = budgetCategoryIds(budget).map(categoryById).filter(Boolean);
+  const customName = String(budget?.name || "").trim();
   if(!cats.length) return {text:"Unassigned", emoji:"🏷️", color:"#8c6f4d", cats:[]};
-  if(cats.length === 1) return {text:cats[0].name, emoji:cats[0].emoji || "🏷️", color:cats[0].color || "#8c6f4d", cats};
-  return {text:cats.map(c=>c.name).join(" + "), emoji:"🧺", color:cats[0].color || "#8c6f4d", cats};
+  if(cats.length === 1) return {text:customName || cats[0].name, emoji:cats[0].emoji || "🏷️", color:cats[0].color || "#8c6f4d", cats};
+  return {text:customName || cats.map(c=>c.name).join(" + "), emoji:"🧺", color:cats[0].color || "#8c6f4d", cats};
 }
 function budgetTransactionAmount(tx){
   const amount = Number(tx?.amount || 0);
@@ -6074,10 +6088,51 @@ function setBudgetReviewIncludeRecurringBills(value){
 window.setBudgetReviewMonth = setBudgetReviewMonth;
 window.setBudgetReviewAccount = setBudgetReviewAccount;
 window.setBudgetReviewIncludeRecurringBills = setBudgetReviewIncludeRecurringBills;
+
+function setBudgetReviewMode(mode){
+  budgetReviewMode = ["all","extra","bills"].includes(mode) ? mode : "all";
+  budgetReviewIncludeRecurringBills = budgetReviewMode !== "extra";
+  renderBudgets();
+}
+window.setBudgetReviewMode=setBudgetReviewMode;
+function applyBudgetPreset(name){
+  const accounts=orderedAccounts();
+  if(name==="all"){ budgetReviewAccount="all"; setBudgetReviewMode("all"); return; }
+  if(name==="extra"){ budgetReviewAccount="all"; setBudgetReviewMode("extra"); return; }
+  if(name==="bills"){ budgetReviewAccount="all"; setBudgetReviewMode("bills"); return; }
+  const match=accounts.find(a=>String(a.name||"").toLowerCase().includes(name));
+  budgetReviewAccount=match?.id || "all"; budgetReviewMode="all"; budgetReviewIncludeRecurringBills=true; renderBudgets();
+}
+window.applyBudgetPreset=applyBudgetPreset;
+function renderBudgetPresetBar(){
+ const el=document.getElementById("budgetPresetBar"); if(!el)return;
+ el.innerHTML=`<div class="budget-preset-heading"><div><b>Quick views</b><small>Jump between the reviews you use most.</small></div></div><div class="budget-preset-buttons">
+ <button class="${budgetReviewMode==='all'&&budgetReviewAccount==='all'?'active':''}" onclick="applyBudgetPreset('all')">All spending</button>
+ <button class="${budgetReviewMode==='extra'?'active':''}" onclick="applyBudgetPreset('extra')">Extra spending only</button>
+ <button class="${budgetReviewMode==='bills'?'active':''}" onclick="applyBudgetPreset('bills')">Bills only</button>
+ <button onclick="applyBudgetPreset('mak')">Mak only</button><button onclick="applyBudgetPreset('ty')">Ty only</button><button onclick="applyBudgetPreset('joint')">Joint only</button></div>`;
+}
+function budgetMonthComparison(){
+ const current=budgetReviewStats(); const prevMonth=toISO(addMonths(parseDate(`${budgetReviewMonth}-01`),-1)).slice(0,7); const previous=budgetReviewStats(prevMonth,budgetReviewAccount);
+ const delta=current.totalSpent-previous.totalSpent; const pct=previous.totalSpent?Math.round(delta/previous.totalSpent*100):null;
+ const currentMap=new Map(current.categories.map(c=>[c.categoryId,c.amount])); const previousMap=new Map(previous.categories.map(c=>[c.categoryId,c.amount]));
+ const changes=[...new Set([...currentMap.keys(),...previousMap.keys()])].map(id=>({id,delta:(currentMap.get(id)||0)-(previousMap.get(id)||0)})).sort((a,b)=>Math.abs(b.delta)-Math.abs(a.delta));
+ return {previous,delta,pct,biggest:changes[0]};
+}
+function explainBudgetTotals(){
+ const stats=budgetReviewStats(); const comp=budgetMonthComparison(); const modal=document.getElementById('budgetDetailModal'); const content=document.getElementById('budgetDetailContent');
+ document.getElementById('budgetDetailTitle').textContent='🧮 Why these totals?'; document.getElementById('budgetDetailSub').textContent=`${stats.range.label} • ${budgetReviewAccountLabel()}`;
+ content.innerHTML=`<section class="budget-insight-card"><h4>Spending includes</h4><p>Cleared cash-account expenses and categorized cash transfers, excluding Banking. Savings transfers are netted by direction.</p><h4>Current filters</h4><p><b>View:</b> ${budgetReviewMode==='extra'?'Extra spending only':budgetReviewMode==='bills'?'Recurring bills only':'All spending'}<br><b>Recurring bills:</b> ${budgetReviewIncludeRecurringBills?'included':'excluded'}<br><b>Account:</b> ${budgetReviewAccountLabel()}</p><h4>Counted activity</h4><p>${stats.expenses.length} transactions total ${money(stats.totalSpent)}. Income is displayed separately and does not reduce spending totals.</p></section>`;
+ if(!modal.open)modal.showModal();
+}
+window.explainBudgetTotals=explainBudgetTotals;
+
 function renderBudgetReview(){
   const el = document.getElementById("budgetReview");
   if(!el) return;
+  renderBudgetPresetBar();
   const stats = budgetReviewStats();
+  const monthCompare = budgetMonthComparison();
   const trend = budgetTrendMonths(6, budgetReviewAccount);
   const maxTrend = Math.max(1, ...trend.map(t=>t.spent));
   const monthOptions = [];
@@ -6152,7 +6207,8 @@ function renderBudgetReview(){
     <div class="budget-review-controls">
       <label>Month<select onchange="setBudgetReviewMonth(this.value)">${monthOptions.join("")}</select></label>
       <label>Account<select onchange="setBudgetReviewAccount(this.value)">${accountOptions.join("")}</select></label>
-      <label class="budget-review-check"><input type="checkbox" ${budgetReviewIncludeRecurringBills ? "checked" : ""} onchange="setBudgetReviewIncludeRecurringBills(this.checked)"> Include recurring bills</label>
+      <label class="budget-review-check"><input type="checkbox" ${budgetReviewIncludeRecurringBills ? "checked" : ""} ${budgetReviewMode==="bills"?"disabled":""} onchange="setBudgetReviewIncludeRecurringBills(this.checked)"> Include recurring bills</label>
+      <button type="button" class="ghost small" onclick="explainBudgetTotals()">ⓘ Why these totals?</button>
     </div>
     <div class="budget-review-summary">
       <article class="mini-card"><span>💸 Spending</span><b>${money(stats.totalSpent)}</b><small>cleared expenses</small></article>
@@ -6160,6 +6216,10 @@ function renderBudgetReview(){
       <article class="mini-card"><span>🎯 Budget status</span><b>${budgetMood}</b><small>${money(stats.totalBudgeted)} budgeted</small></article>
       <article class="mini-card"><span>🕵️ Unbudgeted</span><b>${money(stats.unbudgetedSpent)}</b><small>spending without a budget</small></article>
     </div>
+    <section class="budget-month-compare">
+      <article class="mini-card"><span>Vs. last month</span><b class="${monthCompare.delta>0?'bad':'good'}">${monthCompare.delta>0?'+':''}${money(monthCompare.delta)}</b><small>${monthCompare.pct===null?'No prior-month baseline':`${monthCompare.pct>0?'+':''}${monthCompare.pct}% change`}</small></article>
+      <article class="mini-card"><span>Biggest category change</span><b>${monthCompare.biggest ? `${categoryById(monthCompare.biggest.id)?.emoji || '🏷️'} ${categoryById(monthCompare.biggest.id)?.name || 'Unknown category'}` : '—'}</b><small>${monthCompare.biggest ? `${monthCompare.biggest.delta>0?'+':''}${money(monthCompare.biggest.delta)}` : 'No comparison data'}</small></article>
+    </section>
     <section class="budget-insight-card budget-trend-card">
       <div class="budget-trend-heading">
         <div>
@@ -8429,6 +8489,7 @@ window.simpleBudget = (id=null, preset={})=>{
   if(b?.accountScope === "all" || (!b && preset.accountId === "all")) initialIds = allAccountIds;
   simpleTitle.textContent = b ? "Edit budget" : "Add budget";
   simpleFields.innerHTML = `
+    <label>Budget/group name <input id="sBudgetName" value="${escapeAttr(b?.name || "")}" placeholder="Optional — e.g. Necessary bills"></label>
     <div class="budget-account-picker">
       <span class="field-label">Include accounts</span>
       ${orderedAccounts().map(a=>`<label class="budget-account-check"><input type="checkbox" name="sBudgetAccountIds" value="${a.id}"> <span>${a.emoji || "💵"} ${a.name}</span></label>`).join("")}
@@ -8459,6 +8520,7 @@ window.simpleBudget = (id=null, preset={})=>{
       return false;
     }
     const target = b || {id:uid()};
+    target.name = document.getElementById("sBudgetName")?.value.trim() || "";
     target.accountScope = scope;
     target.accountId = accountId;
     target.accountIds = scope === "all" ? [] : accountIds;
@@ -10329,9 +10391,9 @@ function exportEditableCSVs(){
     frozenLocked:!!d.frozenLocked, notes:d.notes || ""
   }));
 
-  const budgetHeaders = ["id","accountScope","accountId","accountIdsJSON","categoryId","categoryIdsJSON","amount","period","notes"];
+  const budgetHeaders = ["id","name","accountScope","accountId","accountIdsJSON","categoryId","categoryIdsJSON","amount","period","notes"];
   const budgetRows = (data.budgets || []).map(b=>({
-    id:b.id, accountScope:b.accountScope || (b.accountId ? "single" : "all"), accountId:b.accountId || "",
+    id:b.id, name:b.name || "", accountScope:b.accountScope || (b.accountId ? "single" : "all"), accountId:b.accountId || "",
     accountIdsJSON:JSON.stringify(budgetScopeAccountIds(b)), categoryId:budgetCategoryIds(b)[0] || b.categoryId || "", categoryIdsJSON:JSON.stringify(budgetCategoryIds(b)), amount:b.amount ?? "",
     period:b.period || "monthly", notes:b.notes || ""
   }));
@@ -10423,7 +10485,7 @@ function importEditedCSV(file){
         if(!categoryIds.length && row.categoryId) categoryIds = [row.categoryId];
         categoryIds = [...new Set(categoryIds.filter(id=>id && !isBudgetExcludedCategory(id)))];
         return {
-          id: row.id || uid(), accountScope, accountId: accountScope === "all" ? "" : (accountId || accountIds[0] || ""), accountIds,
+          id: row.id || uid(), name: row.name || "", accountScope, accountId: accountScope === "all" ? "" : (accountId || accountIds[0] || ""), accountIds,
           categoryId: categoryIds[0] || row.categoryId || "", categoryIds, amount: Number(row.amount || 0), period: row.period || "monthly", notes: row.notes || ""
         };
       });
@@ -10730,3 +10792,39 @@ if(document.readyState === "loading"){
 } else {
   bootMoneyNest();
 }
+
+
+// v2-204: global search, recurring cleanup, smart linking, and data health.
+function openGlobalSearch(){ const m=document.getElementById('globalSearchModal'); if(!m)return; if(!m.open)m.showModal(); const i=document.getElementById('globalSearchInput'); i.value=''; renderGlobalSearch(''); setTimeout(()=>i.focus(),30); }
+window.openGlobalSearch=openGlobalSearch;
+function renderGlobalSearch(query=''){
+ const el=document.getElementById('globalSearchResults'); if(!el)return; const q=String(query).trim().toLowerCase();
+ if(!q){el.innerHTML='<div class="empty-state">Start typing to search all saved transactions.</div>';return;}
+ const rows=expandedTransactions(toISO(addMonths(new Date(),24))).filter(tx=>{const a=accountById(tx.accountId),c=categoryById(tx.categoryId);return [tx.title,tx.notes,tx.date,tx.amount,a?.name,c?.name,tx.status,tx.type].some(v=>String(v??'').toLowerCase().includes(q));}).slice(0,80);
+ el.innerHTML=rows.length?rows.map(tx=>{const a=accountById(tx.accountId),c=categoryById(tx.categoryId);return `<button class="global-search-row" onclick="document.getElementById('globalSearchModal').close();openTransaction('${tx.originalId||tx.id}',{generated:${!!tx.generated},occurrenceOriginalDate:'${tx.originalDate||tx.date}',occurrenceDate:'${tx.date}'})"><span><b>${escapeAttr(tx.title||'Untitled')}</b><small>${tx.date} • ${a?.name||'Unknown account'} • ${c?.name||'Unassigned'} • ${tx.status}</small></span><strong>${money(tx.amount)}</strong></button>`}).join(''):'<div class="empty-state">No matches.</div>';
+}
+window.renderGlobalSearch=renderGlobalSearch;
+function healthScan(){
+ const issues=[]; const txIds=new Set();
+ data.transactions.forEach(tx=>{if(txIds.has(tx.id))issues.push({kind:'duplicate',label:`Duplicate transaction ID: ${tx.title||tx.id}`});txIds.add(tx.id);if(tx.accountId&&!accountById(tx.accountId)&&!debtById(tx.accountId))issues.push({kind:'account',label:`${tx.title||'Transaction'} references a missing account`});if(tx.categoryId&&!categoryById(tx.categoryId))issues.push({kind:'category',label:`${tx.title||'Transaction'} references a missing category`});});
+ const recurring=data.transactions.filter(isRecurring); const likely=[];
+ data.transactions.filter(t=>!isRecurring(t)&&!t.recurringSourceId&&!t.originalId&&!t.wasRecurringOccurrence&&t.status==='cleared').forEach(tx=>{const match=recurring.find(r=>String(r.title||'').trim().toLowerCase()===String(tx.title||'').trim().toLowerCase()&&r.categoryId===tx.categoryId&&r.accountId===tx.accountId&&Math.abs(Number(r.amount||0)-Number(tx.amount||0))<0.01);if(match)likely.push({tx,match});});
+ const stale=recurring.filter(r=>{const latest=expandedTransactions(todayISO()).filter(t=>(t.originalId||t.id)===r.id&&t.date<=todayISO()).sort((a,b)=>b.date.localeCompare(a.date))[0];return latest&&((parseDate(todayISO())-parseDate(latest.date))/86400000)>120;});
+ return {issues,likely,stale,duplicates:findLikelyDuplicateTransactions()};
+}
+function findLikelyDuplicateTransactions(){const map=new Map(),out=[];data.transactions.filter(t=>!isRecurring(t)).forEach(t=>{const key=[t.date,String(t.title||'').trim().toLowerCase(),Number(t.amount||0).toFixed(2),t.accountId].join('|');if(map.has(key))out.push([map.get(key),t]);else map.set(key,t)});return out;}
+function linkLikelyRecurring(txId,sourceId){const tx=data.transactions.find(t=>t.id===txId),src=data.transactions.find(t=>t.id===sourceId);if(!tx||!src)return;tx.recurringSourceId=src.id;tx.originalId=src.id;tx.wasRecurringOccurrence=true;tx.originalDate=tx.originalDate||tx.date;saveData();alert('Linked to the recurring bill.');}
+window.linkLikelyRecurring=linkLikelyRecurring;
+function renderMoneyNestHealthCenter(){
+  const el=document.getElementById('moneyNestHealthCenter'); if(!el)return;
+  const s=healthScan(); const total=s.issues.length+s.likely.length+s.stale.length+s.duplicates.length;
+  const badge=document.getElementById('healthIssueCount'); if(badge)badge.textContent=total?`${total} found`:'healthy';
+  let out=`<div class="health-summary-grid"><article><b>${s.issues.length}</b><span>Broken references</span></article><article><b>${s.likely.length}</b><span>Possible unlinked bills</span></article><article><b>${s.duplicates.length}</b><span>Possible duplicates</span></article><article><b>${s.stale.length}</b><span>Stale recurring rules</span></article></div>`;
+  if(s.likely.length) out += `<h4>Smart recurring matches</h4>` + s.likely.slice(0,12).map(x=>`<div class="health-row"><span><b>${escapeAttr(x.tx.title)}</b><small>${x.tx.date} looks like ${escapeAttr(x.match.title)}</small></span><button class="ghost small" onclick="linkLikelyRecurring('${x.tx.id}','${x.match.id}')">Link</button></div>`).join('');
+  if(s.issues.length) out += `<h4>Data health</h4>` + s.issues.slice(0,12).map(x=>`<div class="health-row"><span>${escapeAttr(x.label)}</span></div>`).join('');
+  if(s.duplicates.length) out += `<h4>Possible duplicates</h4>` + s.duplicates.slice(0,10).map(([a,b])=>`<div class="health-row"><span><b>${escapeAttr(a.title)}</b><small>${a.date} • ${money(a.amount)} • review before deleting</small></span></div>`).join('');
+  if(s.stale.length) out += `<h4>Recurring rules to review</h4>` + s.stale.slice(0,10).map(x=>`<div class="health-row"><span><b>${escapeAttr(x.title)}</b><small>No matched activity in roughly 120 days</small></span><button class="ghost small" onclick="openTransaction('${x.id}')">Review</button></div>`).join('');
+  if(!total) out += '<div class="empty-state">No obvious data-health problems found.</div>';
+  el.innerHTML=out;
+}
+const _renderSettings204=renderSettings; renderSettings=function(){_renderSettings204();renderMoneyNestHealthCenter();};
