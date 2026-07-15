@@ -6,7 +6,7 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-236`
+Latest known version: `money-nest-v2-237`
 
 Before editing, always inspect `README.md` and confirm the current version in the repository. If `README.md` shows a different version, continue from the repo version and mention the mismatch in your summary.
 
@@ -142,7 +142,7 @@ Example README note:
 ### v2-200
 - Banking is excluded from budgeting. Savings transfers net contributions by direction.
 
-- Current version: money-nest-v2-236. Includes in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
+- Current version: money-nest-v2-237. Includes in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
 
 
 ### v2-205
@@ -297,3 +297,11 @@ Example README note:
 ### v2-236
 - `billSeriesEditOccurrence()` resolves the first non-cleared linked occurrence in chronological order and supplies its effective/original dates to the series editor.
 - `openBillSeriesEditor()` and its direct-editor override now use that helper, ensuring `replaceBillSeriesInPlace()` starts regeneration from the earliest uncleared occurrence and leaves cleared history unchanged.
+
+
+### v2-237
+- Recurring template IDs are the primary series identity. `dedupeRecurringBillRows()` no longer collapses independent rows based on matching title/content.
+- `recurringScheduleSignature()` distinguishes monthly day, yearly month/day, weekly weekday, nth-weekday position, every-N-days anchor, interval, and weekend handling.
+- Legacy split-lineage inference requires both compatible content/routing and the same schedule signature.
+- `deleteRecurringSeriesAndOrphans()` deletes only the canonical lineage and rows explicitly linked to it.
+- Loose payment matching excludes rows linked to another recurring lineage.

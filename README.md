@@ -2,7 +2,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-236`
+Current version: `money-nest-v2-237`
 
 ## Important Notes
 
@@ -884,3 +884,11 @@ Use CSV for reviewing or batch-editing data.
 - Fixed **Edit series** so the editor loads the earliest uncleared occurrence shown in the bill history, rather than a later calculated recurrence date.
 - Series changes now start at that earliest uncleared date and regenerate every later planned occurrence while preserving all cleared history.
 - If no uncleared linked occurrence exists, the editor safely falls back to the next calculated recurrence date.
+
+
+### v2-237
+- Recurring series are now identified by their unique template/lineage ID rather than by title, route, or amount.
+- Bills with the same title can coexist as separate schedules, including monthly rules on different dates such as the 7th and 22nd.
+- Legacy split-series matching now also requires a matching recurrence schedule, preventing unrelated same-title rules from being merged or hidden.
+- Deleting a recurring series now removes only that exact series and its linked occurrences; similarly named recurring rules remain untouched.
+- Loose bill-payment matching will not borrow a transaction already linked to another recurring series.

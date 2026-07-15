@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-236";
+const APP_VERSION = "2-237";
 const CURRENT_SCHEMA_VERSION = 224;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -8012,6 +8012,23 @@ function transactionSeriesSignature(tx){
   ].join("|");
 }
 
+function recurringScheduleSignature(tx){
+  const r = tx?.recurrence || (tx?.repeat ? {type:"monthly", interval:1} : {type:"none", interval:1});
+  const type = String(r.type || "none");
+  const interval = Math.max(1, Number(r.interval || (type === "biweekly" ? 2 : 1)));
+  const weekend = String(r.weekendHandling || "none");
+  let anchor = String(tx?.date || "");
+  try{
+    const start = parseDate(tx?.date || todayISO());
+    if(type === "monthly") anchor = `day:${start.getDate()}`;
+    else if(type === "last-day-month") anchor = "last-day";
+    else if(type === "yearly") anchor = `month-day:${start.getMonth()+1}-${start.getDate()}`;
+    else if(type === "weekly" || type === "biweekly") anchor = `weekday:${Number(r.weekday ?? start.getDay())}`;
+    else if(type === "nth-weekday") anchor = `nth:${Number(r.ordinal || 1)}:${Number(r.weekday ?? start.getDay())}`;
+    else if(type === "every-x-days") anchor = `anchor:${String(tx?.date || "")}`;
+  } catch(err){}
+  return [type, interval, anchor, weekend].join("|");
+}
 function recurringSeriesCoreKey(tx){
   return [
     String(tx?.title || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim(),
@@ -8020,14 +8037,22 @@ function recurringSeriesCoreKey(tx){
     String(tx?.transferToAccountId || ""),
     String(tx?.linkedDebtId || ""),
     String(tx?.categoryId || ""),
-    String(tx?.type || "")
+    String(tx?.type || ""),
+    recurringScheduleSignature(tx)
   ].join("|");
+}
+function recurringSeriesExplicitlyLinked(a, b){
+  if(!a || !b) return false;
+  const aIds = new Set([a.id, a.originalId, a.recurringSourceId, a.recurrenceSourceId].filter(Boolean));
+  const bIds = new Set([b.id, b.originalId, b.recurringSourceId, b.recurrenceSourceId].filter(Boolean));
+  return [...aIds].some(id=>bIds.has(id));
 }
 function dayBeforeISO(dateISO){
   try{ return toISO(addDays(parseDate(dateISO), -1)); }
   catch(err){ return ""; }
 }
 function recurringSeriesLikelySame(previousTx, nextTx){
+  if(recurringSeriesExplicitlyLinked(previousTx, nextTx)) return true;
   const sameTitle = String(previousTx?.title || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim() === String(nextTx?.title || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
   const sameType = String(previousTx?.type || "") === String(nextTx?.type || "");
   const sameSource = String(previousTx?.accountId || "") === String(nextTx?.accountId || "");
@@ -8036,7 +8061,10 @@ function recurringSeriesLikelySame(previousTx, nextTx){
   const sameDebtAccount = String(previousTx?.debtAccountId || "") === String(nextTx?.debtAccountId || "");
   const sameCategory = String(previousTx?.categoryId || "") === String(nextTx?.categoryId || "");
   const sameRoute = sameSource && sameCashDestination && sameDebtTarget && sameDebtAccount;
-  return sameType && ((sameTitle && sameSource) || (sameRoute && (sameTitle || sameCategory)));
+  const sameSchedule = recurringScheduleSignature(previousTx) === recurringScheduleSignature(nextTx);
+  // A shared title/route is not a series identity. Only consider unlinked legacy
+  // fragments the same when their recurrence schedules also match.
+  return sameSchedule && sameType && ((sameTitle && sameSource) || (sameRoute && (sameTitle || sameCategory)));
 }
 function recurringSeriesIsSplitPredecessor(previousTx, nextTx){
   if(!previousTx || !nextTx || previousTx.id === nextTx.id) return false;
@@ -8262,18 +8290,12 @@ window.repairRecurringSeriesData = ()=>{
 };
 function deleteRecurringSeriesAndOrphans(baseTx){
   if(!baseTx) return;
-  const sig = transactionSeriesSignature(baseTx);
-  const baseId = baseTx.originalId || baseTx.id;
-
+  const canonical = canonicalRecurringSeries(baseTx) || baseTx;
+  const lineageIds = recurringSeriesLineageIds(canonical);
   data.transactions = data.transactions.filter(tx=>{
-    if(tx.id === baseId || tx.originalId === baseId) return false;
-
-    // Remove orphaned related entries only when they look like the same bill/series.
-    if(transactionSeriesSignature(tx) === sig){
-      const sameRepeat = isRecurring(tx) || tx.generated || /monthly|weekly|every|day|repeats/i.test(tx.notes || "");
-      if(sameRepeat) return false;
-    }
-
+    if(lineageIds.has(tx.id)) return false;
+    const sourceId = recurringLinkedSourceId(tx);
+    if(sourceId && lineageIds.has(sourceId)) return false;
     return true;
   });
 }
@@ -10086,10 +10108,15 @@ function findLooseBillPaymentMatch(template, originalISO, occurrenceISO, exclude
     const anchor = parseDate(originalISO || occurrenceISO || template.date || todayISO());
     const start = toISO(addDays(anchor, -21));
     const end = toISO(addDays(anchor, 45));
+    const templateLineage = recurringSeriesLineageIds(template);
     const candidates = data.transactions
       .filter(other => other && other.id !== template.id && other.originalId !== template.id)
       .filter(other => !excludedIds.has(other.id))
       .filter(other => !isRecurring(other))
+      .filter(other => {
+        const sourceId = recurringLinkedSourceId(other);
+        return !sourceId || templateLineage.has(sourceId);
+      })
       .filter(other => other.date >= start && other.date <= end)
       .filter(other => billRouteMatches(template, other));
 
@@ -10387,26 +10414,14 @@ function renderBillFilters(){
 
 function dedupeRecurringBillRows(rows){
   const grouped = new Map();
-  const score = tx => {
-    const status = tx.billInfo?.status || "planned";
-    const activeScore = status === "ended" ? 0 : 1000;
-    const futureScore = String(tx.nextDate || "") >= todayISO() ? 500 : 0;
-    const plannedScore = status === "planned" ? 100 : status === "due" ? 50 : 0;
-    const createdScore = Number(String(tx.date || "").replaceAll("-", "")) || 0;
-    return activeScore + futureScore + plannedScore + createdScore / 100000000;
-  };
   rows.forEach(tx => {
-    const key = [
-      billLooseTitle(tx.title),
-      String(tx.accountId || ""),
-      String(tx.transferToAccountId || ""),
-      String(tx.linkedDebtId || ""),
-      String(tx.debtAccountId || ""),
-      String(tx.type || ""),
-      Number(tx.amount || 0).toFixed(2)
-    ].join("|");
-    const current = grouped.get(key);
-    if(!current || score(tx) > score(current)) grouped.set(key, tx);
+    // A recurring template's ID is its identity. Titles, routes, amounts, and
+    // schedules are display/content fields and may intentionally match another
+    // independent series. Only collapse rows that resolve to the same explicit
+    // canonical lineage; never hide a separate template because its name matches.
+    const canonical = canonicalRecurringSeries(tx) || tx;
+    const key = String(canonical.id || tx.id || "");
+    if(!grouped.has(key)) grouped.set(key, canonical);
   });
   return [...grouped.values()];
 }
@@ -11865,4 +11880,5 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 
 // v2-234: Budgets support an optional custom emoji, preserved in JSON and budget CSV import/export.
 // v2-235: Monthly Budget Targets and Budget Performance are sorted alphabetically by displayed budget title.
+// v2-237: Recurring series identity now includes its schedule, so same-title bills on different dates/rules remain separate and safe to edit/delete.
 // v2-236: Bill series editing starts from the earliest uncleared linked occurrence, preserving cleared history and updating that occurrence forward.
