@@ -6,7 +6,7 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-214`
+Latest known version: `money-nest-v2-217`
 
 Before editing, always inspect `README.md` and confirm the current version in the repository. If `README.md` shows a different version, continue from the repo version and mention the mismatch in your summary.
 
@@ -142,7 +142,7 @@ Example README note:
 ### v2-200
 - Banking is excluded from budgeting. Savings transfers net contributions by direction.
 
-- Current version: money-nest-v2-214. Includes combinable Budget Review spending/account filters, budget presets/groups, comparisons, calculation inspector, global search, mobile quick review, recurring cleanup, smart matching, and data-health scanning.
+- Current version: money-nest-v2-217. Includes combinable Budget Review spending/account filters, budget presets/groups, comparisons, calculation inspector, global search, mobile quick review, recurring cleanup, smart matching, and data-health scanning.
 
 
 ### v2-205
@@ -164,6 +164,14 @@ Example README note:
 
 
 
+
+### v2-217
+
+- Added bulk category color editing for palette roles and custom color overrides.
+- Bulk category editing does not alter category IDs, names, emojis, or transaction assignments.
+
+### v2-216
+- Calendar density controls now visibly alter the calendar; Needs Review and Smart Cleanup/Data Health are unified in a collapsible Dashboard panel, and the standalone Review page was removed.
 
 ### v2-214
 
@@ -194,3 +202,10 @@ Example README note:
 - Bills cards now open a bill detail/history view instead of directly opening one transaction.
 - Bill details show linked cleared history plus upcoming/generated occurrences, with each row available for individual editing.
 - Added Edit series inside bill details; it starts at the next occurrence and updates only that occurrence and future uncleared occurrences while preserving cleared history.
+
+
+## v2-216
+- Added app-wide Original, Rose, Blue, Green, Purple, Warm Neutral, and Custom color palettes.
+- Added stable category palette roles so bills/essentials can stay light and flexible spending can stay dark across palette changes.
+- Added optional per-category custom color overrides and preserved legacy colors for backward compatibility.
+- Added palette role/custom color fields to category CSV import/export.

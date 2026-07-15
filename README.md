@@ -2,7 +2,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-214`
+Current version: `money-nest-v2-217`
 
 ## Important Notes
 
@@ -148,6 +148,18 @@ Use CSV for reviewing or batch-editing data.
 * [ ]
 
 ## Version Notes
+
+### v2-217
+
+- Added bulk category color editing in Settings → Categories.
+- Multiple categories can be selected and assigned one palette role together, given one shared custom color override, or have their custom overrides removed.
+- Bulk editing changes only category color settings; names, emojis, IDs, transactions, JSON backups, and CSV compatibility are unchanged.
+
+### v2-216
+- Fixed Calendar density controls so Compact, Comfortable, and Detailed visibly change day sizing, chip sizing, metadata, and the number of transactions shown before “+ more.”
+- Moved Needs Review onto the Dashboard and removed the standalone Review navigation/page.
+- Combined Smart Cleanup & Data Health with Needs Review into one Dashboard panel.
+- Removed the duplicate Smart Cleanup card from Settings.
 
 
 
@@ -759,3 +771,10 @@ Use CSV for reviewing or batch-editing data.
 - Bills cards now open a bill detail/history view instead of directly opening one transaction.
 - Bill details show linked cleared history plus upcoming/generated occurrences, with each row available for individual editing.
 - Added Edit series inside bill details; it starts at the next occurrence and updates only that occurrence and future uncleared occurrences while preserving cleared history.
+
+
+## v2-216
+- Added app-wide Original, Rose, Blue, Green, Purple, Warm Neutral, and Custom color palettes.
+- Added stable category palette roles so bills/essentials can stay light and flexible spending can stay dark across palette changes.
+- Added optional per-category custom color overrides and preserved legacy colors for backward compatibility.
+- Added palette role/custom color fields to category CSV import/export.

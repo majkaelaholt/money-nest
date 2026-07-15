@@ -4767,3 +4767,51 @@ button.budget-review-row{border:1px solid rgba(220,200,176,.7)}
 .link-modal-card{width:min(760px,calc(100vw - 28px));max-height:min(760px,calc(100vh - 28px))}.link-candidate-list{display:grid;gap:8px;overflow:auto;max-height:55vh;margin-top:12px}.link-candidate{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:10px}.link-candidate small{display:block;color:var(--muted)}
 .calendar.density-compact .day{min-height:94px;padding:5px}.calendar.density-compact .tx-chip{padding:2px 5px;font-size:10px}.calendar.density-compact .day-num{font-size:11px}.calendar.density-comfortable .day{min-height:124px}.calendar.density-detailed .day{min-height:164px;padding:10px}.calendar.density-detailed .tx-chip{padding:6px 8px}.calendar.density-detailed .tx-chip .chip-meta{display:block}
 @media(max-width:700px){.backup-health-indicator{grid-template-columns:1fr}.review-item{grid-template-columns:1fr}.review-actions{justify-content:flex-start}.calendar.density-compact .day,.calendar.density-comfortable .day,.calendar.density-detailed .day{min-height:auto}.link-modal-card{width:100vw;max-height:100vh;height:100vh;border-radius:0}.link-candidate-list{max-height:calc(100vh - 220px)}}
+
+/* v2-215: functional calendar density + dashboard review consolidation */
+#calendarGrid .chip-meta{display:none;font-size:8.5px;line-height:1.15;color:var(--muted);margin-top:2px;font-weight:700;white-space:normal}
+#calendarGrid.density-compact{grid-template-rows:auto repeat(6,minmax(64px,1fr))}
+#calendarGrid.density-compact .day{padding:3px!important}
+#calendarGrid.density-compact .day-top{font-size:9px!important;margin-bottom:1px!important}
+#calendarGrid.density-compact .tx-chip{min-height:15px!important;padding:2px 3px!important;font-size:8.5px!important;margin-top:1px!important}
+#calendarGrid.density-compact .tx-chip-amount{font-size:8px}
+#calendarGrid.density-comfortable{grid-template-rows:auto repeat(6,minmax(92px,1fr))}
+#calendarGrid.density-comfortable .day{padding:5px!important}
+#calendarGrid.density-comfortable .tx-chip{min-height:18px!important;padding:3px 4px!important;font-size:9.5px!important}
+#calendarGrid.density-detailed{grid-template-rows:auto repeat(6,minmax(132px,auto));overflow:auto}
+#calendarGrid.density-detailed .day{min-height:132px!important;padding:8px!important;overflow:visible}
+#calendarGrid.density-detailed .day-top{font-size:12px!important;margin-bottom:5px!important}
+#calendarGrid.density-detailed .tx-chip{min-height:30px!important;padding:5px 7px!important;font-size:10.5px!important;margin-top:4px!important;align-items:start}
+#calendarGrid.density-detailed .chip-meta{display:block}
+.dashboard-review-panel{margin-top:14px}
+.dashboard-review-panel>summary{cursor:pointer}
+.dashboard-review-panel .review-summary{margin-top:2px}
+@media(max-width:700px){
+  #calendarGrid.density-compact .day,#calendarGrid.density-comfortable .day,#calendarGrid.density-detailed .day{min-height:auto!important;padding:8px!important}
+  #calendarGrid.density-compact .tx-chip{padding:3px 5px!important;font-size:9.5px!important}
+  #calendarGrid.density-detailed .chip-meta{display:block}
+}
+
+
+/* v2-216 customizable app/category palettes */
+.palette-choice-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:12px}
+.palette-choice{display:grid;gap:8px;text-align:left;border:1px solid var(--line);background:var(--panel);border-radius:16px;padding:12px;color:var(--ink)}
+.palette-choice.active{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset}
+.palette-swatches{display:flex;height:24px;overflow:hidden;border-radius:999px;border:1px solid var(--line)}
+.palette-swatches i{flex:1;display:block}
+.custom-palette-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:14px 0}
+.custom-palette-grid label{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--line);border-radius:14px;padding:10px;background:var(--panel-2)}
+.custom-palette-grid input[type=color]{width:52px;height:34px;padding:2px;border-radius:10px}
+.category-row .cat-preview{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.category-row .cat-preview small{width:100%;padding-left:19px;color:var(--muted);font-size:11px}
+.cat-dot{width:12px;height:12px;border-radius:50%;border:1px solid rgba(0,0,0,.12);display:inline-block}
+.checkbox-row{display:flex!important;align-items:center;gap:8px}.checkbox-row input{width:auto}
+
+
+/* v2-217 bulk category color editing */
+.bulk-category-actions{margin:10px 0;align-items:center;flex-wrap:wrap}
+.bulk-category-list{display:grid;gap:8px;max-height:min(42vh,430px);overflow:auto;padding:2px;margin:8px 0 14px}
+.bulk-category-option{display:grid!important;grid-template-columns:auto auto minmax(0,1fr) auto;align-items:center;gap:8px;border:1px solid var(--line);border-radius:13px;padding:9px 10px;background:var(--panel-2);cursor:pointer}
+.bulk-category-option input{width:auto;margin:0}
+.bulk-category-option small{color:var(--muted);font-size:11px;text-align:right}
+@media(max-width:620px){.bulk-category-option{grid-template-columns:auto auto minmax(0,1fr)}.bulk-category-option small{grid-column:3;text-align:left}}

@@ -317,7 +317,7 @@ function maybeQueueCloudAutoSave(){
 
 // v2.80: compatibility shim for browsers that do not expose element IDs as global variables.
 (function bindDomIdGlobals(){
-  const ids = ['accountDetail', 'accountDetailContent', 'accountList', 'accounts', 'addAccountBtn', 'addBillBtn', 'addBudgetBtn', 'addCategoryBtn', 'addDayTransactionBtn', 'addDebtBtn', 'autoPaycheckHint', 'autoPaycheckLabel', 'backupBtn', 'financialPictureBtn', 'extendedFinancialPictureBtn', 'billAccountFilter', 'billCategoryFilter', 'billRecurrenceFilter', 'billSort', 'billTypeFilter', 'bills', 'billsList', 'budgetList', 'budgetReview', 'budgets', 'calendar', 'calendarAccountFilter', 'calendarCategoryHighlight', 'calendarCategoryHighlightDropdown', 'calendarCategoryHighlightBtn', 'calendarCategoryHighlightMenu', 'calendarGrid', 'cancelDayModal', 'cancelSimple', 'cancelTxBtn', 'categoryList', 'clearRecentBtn', 'closeDayModal', 'closeModal', 'closeSimple', 'csvExportBtn', 'csvImportInput', 'ctxDelete', 'ctxDuplicate', 'ctxEdit', 'ctxCreateCardPayment', 'ctxMarkReimbursed', 'ctxToggleCleared', 'ctxUseCardInstead', 'dashboard', 'dayModal', 'dayModalSub', 'dayModalTitle', 'dayModalTransactions', 'debtDetail', 'debtDetailContent', 'debtGroups', 'debtSnapshot', 'debts', 'deleteSimpleBtn', 'deleteTxBtn', 'duplicateTxBtn', 'importInput', 'modalTitle', 'monthLabel', 'nextMonth', 'prevMonth', 'quickAddBtn', 'recentPlacesList', 'recentChangesList', 'undoLastChangeBtn', 'clearChangeHistoryBtn', 'recurrenceDetails', 'repeatIntervalUnitLabel', 'safeSpendList', 'saveTxBtn', 'settings', 'settingsClearAllBtn', 'settingsSampleResetBtn', 'simpleFields', 'simpleForm', 'simpleModal', 'simpleTitle', 'summaryCards', 'todayBtn', 'transactionForm', 'transactionModal', 'txAccount', 'txAmount', 'txAutoPaycheck', 'txCategory', 'txContextMenu', 'txDate', 'txDebt', 'txDebtAccount', 'txLoanBreakdownWrap', 'txLoanPrincipal', 'txLoanInterest', 'txLoanFees', 'txLoanBreakdownHint', 'txDeleteAll', 'txDeleteOne', 'txDeleteScopeWrap', 'txId', 'txNotes', 'txRepeatInterval', 'txRepeatIntervalUnit', 'txRepeatOrdinal', 'txRepeatRule', 'txRepeatWeekday', 'txSaveScopeHint', 'txSaveScopeWrap', 'txScopeFuture', 'txScopeOne', 'txStatus', 'txTitle', 'txTransferTo', 'txType', 'txWeekendHandling', 'upcomingList', 'viewTitle', 'settingsPaycheckCount', 'paycheckProfileList', 'makHourlyRate', 'makHoursPerWorkday', 'makDeductionPercent', 'makFixedDeduction', 'tyHourlyRate', 'tyDefaultHours', 'tyDeductionPercent', 'tyFixedDeduction', 'paycheckHoursWrap', 'txPaycheckHoursOverride', 'billCategoryDropdown', 'billCategoryDropdownBtn', 'billCategoryDropdownMenu'];
+  const ids = ['accountDetail', 'accountDetailContent', 'accountList', 'accounts', 'addAccountBtn', 'addBillBtn', 'addBudgetBtn', 'addCategoryBtn', 'addDayTransactionBtn', 'addDebtBtn', 'autoPaycheckHint', 'autoPaycheckLabel', 'backupBtn', 'financialPictureBtn', 'extendedFinancialPictureBtn', 'billAccountFilter', 'billCategoryFilter', 'billRecurrenceFilter', 'billSort', 'billTypeFilter', 'bills', 'billsList', 'budgetList', 'budgetReview', 'bulkEditCategoriesBtn', 'budgets', 'calendar', 'calendarAccountFilter', 'calendarCategoryHighlight', 'calendarCategoryHighlightDropdown', 'calendarCategoryHighlightBtn', 'calendarCategoryHighlightMenu', 'calendarGrid', 'cancelDayModal', 'cancelSimple', 'cancelTxBtn', 'categoryList', 'clearRecentBtn', 'closeDayModal', 'closeModal', 'closeSimple', 'csvExportBtn', 'csvImportInput', 'ctxDelete', 'ctxDuplicate', 'ctxEdit', 'ctxCreateCardPayment', 'ctxMarkReimbursed', 'ctxToggleCleared', 'ctxUseCardInstead', 'dashboard', 'dayModal', 'dayModalSub', 'dayModalTitle', 'dayModalTransactions', 'debtDetail', 'debtDetailContent', 'debtGroups', 'debtSnapshot', 'debts', 'deleteSimpleBtn', 'deleteTxBtn', 'duplicateTxBtn', 'importInput', 'modalTitle', 'monthLabel', 'nextMonth', 'prevMonth', 'quickAddBtn', 'recentPlacesList', 'recentChangesList', 'undoLastChangeBtn', 'clearChangeHistoryBtn', 'recurrenceDetails', 'repeatIntervalUnitLabel', 'safeSpendList', 'saveTxBtn', 'settings', 'settingsClearAllBtn', 'settingsSampleResetBtn', 'simpleFields', 'simpleForm', 'simpleModal', 'simpleTitle', 'summaryCards', 'todayBtn', 'transactionForm', 'transactionModal', 'txAccount', 'txAmount', 'txAutoPaycheck', 'txCategory', 'txContextMenu', 'txDate', 'txDebt', 'txDebtAccount', 'txLoanBreakdownWrap', 'txLoanPrincipal', 'txLoanInterest', 'txLoanFees', 'txLoanBreakdownHint', 'txDeleteAll', 'txDeleteOne', 'txDeleteScopeWrap', 'txId', 'txNotes', 'txRepeatInterval', 'txRepeatIntervalUnit', 'txRepeatOrdinal', 'txRepeatRule', 'txRepeatWeekday', 'txSaveScopeHint', 'txSaveScopeWrap', 'txScopeFuture', 'txScopeOne', 'txStatus', 'txTitle', 'txTransferTo', 'txType', 'txWeekendHandling', 'upcomingList', 'viewTitle', 'settingsPaycheckCount', 'paycheckProfileList', 'makHourlyRate', 'makHoursPerWorkday', 'makDeductionPercent', 'makFixedDeduction', 'tyHourlyRate', 'tyDefaultHours', 'tyDeductionPercent', 'tyFixedDeduction', 'paycheckHoursWrap', 'txPaycheckHoursOverride', 'billCategoryDropdown', 'billCategoryDropdownBtn', 'billCategoryDropdownMenu'];
   ids.forEach(id=>{
     if(!/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(id)) return;
     try{
@@ -2852,6 +2852,83 @@ function standardCategories(){
     {id:"utilities", name:"Utilities", emoji:"💡", color:"#4f77c8"}
   ];
 }
+
+
+// v2-216: app-wide color palettes with stable category roles and optional overrides.
+const MONEY_NEST_PALETTES = {
+  legacy:{name:"Original", app:{bg:"#f5efe6",panel:"#fffaf3",panel2:"#f1e3d0",ink:"#2e2a24",muted:"#766b5d",line:"#dfd0bd",accent:"#8c6f4d",accent2:"#b7835a"}, roles:{}},
+  rose:{name:"Rose", app:{bg:"#fff1f5",panel:"#fff9fb",panel2:"#f9dbe5",ink:"#3b2530",muted:"#80616e",line:"#edc7d4",accent:"#a84f73",accent2:"#d17b9d"},roles:{light1:"#f9dce6",light2:"#f3c6d5",medium1:"#e69ab4",medium2:"#d8799c",dark1:"#b84e78",dark2:"#8e355d",accent1:"#c86f93",accent2:"#6f2949"}},
+  blue:{name:"Blue", app:{bg:"#eef5fb",panel:"#f8fbff",panel2:"#dceaf6",ink:"#223342",muted:"#617487",line:"#c6d9e8",accent:"#477aa3",accent2:"#74a5c9"},roles:{light1:"#dcecf8",light2:"#c4def1",medium1:"#91bfdf",medium2:"#6fa5cc",dark1:"#477fa9",dark2:"#315f82",accent1:"#5b96c1",accent2:"#244b69"}},
+  green:{name:"Green", app:{bg:"#f0f6ef",panel:"#fbfdf9",panel2:"#dfeadd",ink:"#283629",muted:"#667667",line:"#cadbc8",accent:"#5f805f",accent2:"#86a884"},roles:{light1:"#e1eddc",light2:"#cce1c6",medium1:"#9fc497",medium2:"#7dac78",dark1:"#5d8b5c",dark2:"#416b43",accent1:"#72a16f",accent2:"#315436"}},
+  purple:{name:"Purple", app:{bg:"#f6f1fa",panel:"#fcf9ff",panel2:"#e9dcf2",ink:"#35283d",muted:"#78677f",line:"#ddc9e8",accent:"#78558d",accent2:"#a17bb7"},roles:{light1:"#eadcf2",light2:"#dcc5e9",medium1:"#bd9bd0",medium2:"#a27bbb",dark1:"#80558f",dark2:"#603c70",accent1:"#9469a7",accent2:"#4c305a"}},
+  neutral:{name:"Warm neutral",app:{bg:"#f5efe6",panel:"#fffaf3",panel2:"#eee0cf",ink:"#2e2a24",muted:"#766b5d",line:"#dfd0bd",accent:"#806548",accent2:"#ad835e"},roles:{light1:"#eee1d2",light2:"#dfccb8",medium1:"#c8aa89",medium2:"#ad8967",dark1:"#866447",dark2:"#624830",accent1:"#9b7655",accent2:"#4f3927"}}
+};
+const CATEGORY_PALETTE_ROLES=["light1","light2","medium1","medium2","dark1","dark2","accent1","accent2"];
+function defaultCategoryPaletteRole(category={}){
+  const id=String(category.id||"").toLowerCase();
+  const light1=["rent","utilities","phone","insurance","subscription","household","medical","loan-payment","credit-card-payment"];
+  const light2=["groceries","gas","car","savings","klarna"];
+  const dark1=["shopping","mak-spending","ty-spending","entertainment","food","gifts"];
+  if(light1.includes(id)) return "light1";
+  if(light2.includes(id)) return "light2";
+  if(dark1.includes(id)) return "dark1";
+  if(["income","paycheck"].includes(id)) return "accent1";
+  if(["banking","transfer","unassigned"].includes(id)) return "medium1";
+  const idx=Math.abs([...id].reduce((n,ch)=>n+ch.charCodeAt(0),0))%CATEGORY_PALETTE_ROLES.length;
+  return CATEGORY_PALETTE_ROLES[idx];
+}
+function normalizePaletteSettings(d){
+  d.settings ||= {};
+  d.settings.appearance ||= {};
+  const a=d.settings.appearance;
+  a.paletteId = a.paletteId || "legacy";
+  if(!MONEY_NEST_PALETTES[a.paletteId] && a.paletteId!=="custom") a.paletteId="legacy";
+  a.customPalette ||= JSON.parse(JSON.stringify(MONEY_NEST_PALETTES.rose));
+  a.customPalette.name="Custom";
+  (d.categories||[]).forEach(c=>{
+    c.legacyColor ||= c.color || "#8c6f4d";
+    c.paletteRole ||= defaultCategoryPaletteRole(c);
+    c.customColorOverride = c.customColorOverride === true || String(c.customColorOverride).toLowerCase()==="true";
+    c.customColor ||= c.customColorOverride ? (c.color||c.legacyColor) : "";
+  });
+}
+function activePalette(){
+  const a=data?.settings?.appearance||{};
+  return a.paletteId==="custom" ? a.customPalette : (MONEY_NEST_PALETTES[a.paletteId]||MONEY_NEST_PALETTES.legacy);
+}
+function effectiveCategoryColor(c){
+  if(!c) return "#8c6f4d";
+  if(c.customColorOverride && c.customColor) return c.customColor;
+  const a=data?.settings?.appearance||{};
+  if((a.paletteId||"legacy")==="legacy") return c.legacyColor||c.color||"#8c6f4d";
+  return activePalette()?.roles?.[c.paletteRole] || c.legacyColor || c.color || "#8c6f4d";
+}
+function syncPaletteCategoryColors(){(data.categories||[]).forEach(c=>{c.color=effectiveCategoryColor(c);});}
+function applyMoneyNestPalette(){
+  if(!data) return;
+  normalizePaletteSettings(data); syncPaletteCategoryColors();
+  const p=activePalette()||MONEY_NEST_PALETTES.legacy, app=p.app||MONEY_NEST_PALETTES.legacy.app, root=document.documentElement;
+  const vars={"--bg":app.bg,"--panel":app.panel,"--panel-2":app.panel2,"--ink":app.ink,"--muted":app.muted,"--line":app.line,"--accent":app.accent,"--accent-2":app.accent2,"--accent-soft":app.panel2};
+  Object.entries(vars).forEach(([k,v])=>v&&root.style.setProperty(k,v));
+  document.body.style.background=`linear-gradient(135deg, ${app.panel}, ${app.bg})`;
+}
+function paletteRoleLabel(role){return ({light1:"Light 1 • bills",light2:"Light 2 • essentials",medium1:"Medium 1",medium2:"Medium 2",dark1:"Dark 1 • spending",dark2:"Dark 2",accent1:"Accent 1",accent2:"Accent 2"})[role]||role;}
+function renderAppearanceSettings(){
+  const el=document.getElementById("appearancePalettePanel"); if(!el)return;
+  normalizePaletteSettings(data); const a=data.settings.appearance, p=activePalette();
+  const choices=[...Object.entries(MONEY_NEST_PALETTES).map(([id,x])=>({id,name:x.name})),{id:"custom",name:"Custom"}];
+  el.innerHTML=`<div class="palette-choice-grid">${choices.map(x=>`<button type="button" class="palette-choice ${a.paletteId===x.id?'active':''}" onclick="selectMoneyNestPalette('${x.id}')"><span class="palette-swatches">${CATEGORY_PALETTE_ROLES.slice(0,5).map(r=>`<i style="background:${(x.id==='custom'?a.customPalette:MONEY_NEST_PALETTES[x.id])?.roles?.[r]||'#ddd'}"></i>`).join('')}</span><b>${x.name}</b></button>`).join('')}</div>
+  <p class="hint">Category roles stay the same when palettes change, so bills can remain light while flexible spending remains dark.</p>
+  ${a.paletteId==='custom'?`<div class="custom-palette-grid">${CATEGORY_PALETTE_ROLES.map(r=>`<label>${paletteRoleLabel(r)}<input type="color" data-custom-role="${r}" value="${p.roles?.[r]||'#8c6f4d'}"></label>`).join('')}<label>App accent<input type="color" data-custom-app="accent" value="${p.app?.accent||'#8c6f4d'}"></label><label>Secondary accent<input type="color" data-custom-app="accent2" value="${p.app?.accent2||'#b7835a'}"></label><label>App background<input type="color" data-custom-app="bg" value="${p.app?.bg||'#f5efe6'}"></label><label>Main panels<input type="color" data-custom-app="panel" value="${p.app?.panel||'#fffaf3'}"></label><label>Soft panels<input type="color" data-custom-app="panel2" value="${p.app?.panel2||'#f1e3d0'}"></label><label>Borders<input type="color" data-custom-app="line" value="${p.app?.line||'#dfd0bd'}"></label><label>Main text<input type="color" data-custom-app="ink" value="${p.app?.ink||'#2e2a24'}"></label><label>Muted text<input type="color" data-custom-app="muted" value="${p.app?.muted||'#766b5d'}"></label></div><button type="button" class="primary small" onclick="saveCustomMoneyNestPalette()">Save custom palette</button>`:''}`;
+}
+window.selectMoneyNestPalette=id=>{data.settings.appearance.paletteId=id;applyMoneyNestPalette();saveData();renderAppearanceSettings();};
+window.saveCustomMoneyNestPalette=()=>{
+  const a=data.settings.appearance;a.customPalette ||= JSON.parse(JSON.stringify(MONEY_NEST_PALETTES.rose));a.customPalette.name="Custom";
+  document.querySelectorAll('[data-custom-role]').forEach(i=>a.customPalette.roles[i.dataset.customRole]=i.value);
+  document.querySelectorAll('[data-custom-app]').forEach(i=>a.customPalette.app[i.dataset.customApp]=i.value);
+  a.paletteId="custom";applyMoneyNestPalette();saveData();renderAppearanceSettings();
+};
+
 function normalizeCategoryId(id){
   return id || "unassigned";
 }
@@ -2997,6 +3074,7 @@ function normalizeData(raw){
   d.categories = [...byCategoryId.values()].sort((a,b)=>String(a.name || "").localeCompare(String(b.name || "")));
 
   d.settings ||= {buffer:50};
+  normalizePaletteSettings(d);
   d.settings.transactionTemplates ||= [];
   d.settings.paycheckProfiles ||= {};
   d.settings.paycheckProfiles.Mak ||= {
@@ -4466,7 +4544,7 @@ function setView(view){
     if(view === "debts") view = "accounts";
     currentView = view;
     document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active", v.id===view));
-    document.body.classList.remove("money-nest-view-dashboard", "money-nest-view-calendar", "money-nest-view-accounts", "money-nest-view-bills", "money-nest-view-debts", "money-nest-view-settings", "money-nest-view-accountDetail", "money-nest-view-debtDetail", "money-nest-view-review");
+    document.body.classList.remove("money-nest-view-dashboard", "money-nest-view-calendar", "money-nest-view-accounts", "money-nest-view-bills", "money-nest-view-debts", "money-nest-view-settings", "money-nest-view-accountDetail", "money-nest-view-debtDetail");
     document.body.classList.add(`money-nest-view-${view}`);
     document.querySelectorAll(".nav-btn").forEach(b=>b.classList.toggle("active", b.dataset.view===view));
     const titles = {accountDetail: accountById(selectedAccountId)?.name || "Account", debtDetail: debtById(selectedDebtId)?.name || "Debt"};
@@ -4564,7 +4642,6 @@ function render(){
   if(currentView==="bills") renderBills();
   if(currentView==="debtDetail") renderDebtDetail();
   if(currentView==="settings") renderSettings();
-  if(currentView==="review") renderNeedsReview();
 }
 
 
@@ -5015,7 +5092,7 @@ function renderCalendar(){
     const isPositive = calendarEntryIsPositive(tx);
     const chipStatus = tx.status === "cleared" ? "cleared" : "planned";
     return `<div class="tx-chip ${extraClass} ${chipStatus} ${highlighted ? "" : "muted-category"}" draggable="true" style="${style}" data-tx="${tx.originalId || tx.id}" data-generated="${!!tx.generated}" data-original-date="${tx.originalDate || tx.date}" data-occurrence-date="${tx.date}" data-calendar-side="${tx.calendarSide || ""}" data-calendar-account="${tx.calendarAccountId || ""}">
-      <span class="tx-name">${highlighted ? cat.emoji : "◦"} ${calendarEntryLabel(tx)}</span>
+      <span class="tx-name">${highlighted ? cat.emoji : "◦"} ${calendarEntryLabel(tx)}<small class="chip-meta">${accountById(tx.calendarAccountId || tx.accountId)?.name || "Unknown account"} • ${tx.status === "cleared" ? "Cleared" : "Planned"}</small></span>
       <span class="tx-chip-amount">${isPositive?'+':'-'}${money(tx.amount)}</span>
     </div>`;
   };
@@ -5050,7 +5127,8 @@ function renderCalendar(){
   let html = heads;
   calendarDays.forEach(day => {
     const mobileCalendar = window.matchMedia && window.matchMedia("(max-width: 700px)").matches;
-    const visibleTx = mobileCalendar ? day.dayTx : day.dayTx.slice(0,3);
+    const densityLimit = calendarDensity === "compact" ? 2 : calendarDensity === "detailed" ? 6 : 3;
+    const visibleTx = mobileCalendar ? day.dayTx : day.dayTx.slice(0,densityLimit);
     const hiddenCount = mobileCalendar ? 0 : Math.max(0, day.dayTx.length - visibleTx.length);
     const isCurrentMonth = day.date.getMonth() === monthStart.getMonth();
     const isLowestBalance = isCurrentMonth && lowestMonthBalance !== null && Number(day.projectedTotal || 0) === lowestMonthBalance;
@@ -7715,11 +7793,13 @@ window.resetDropdownDefaults = ()=>{
 };
 
 function renderSettings(){
+  applyMoneyNestPalette();
+  renderAppearanceSettings();
   const categoryList = document.getElementById("categoryList");
   if(categoryList){
     categoryList.innerHTML = sortedCategories().map(c=>`
       <div class="category-row">
-        <span class="cat-preview" style="background:${hexToSoft(c.color)}">${c.emoji} ${c.name}</span>
+        <span class="cat-preview" style="background:${hexToSoft(effectiveCategoryColor(c))}"><i class="cat-dot" style="background:${effectiveCategoryColor(c)}"></i>${c.emoji} ${c.name}<small>${c.customColorOverride?"Custom color":paletteRoleLabel(c.paletteRole)}</small></span>
         <button class="ghost small" onclick="simpleCategory('${c.id}')">Edit</button>
       </div>`).join("");
   }
@@ -9484,26 +9564,103 @@ window.simpleDebt = (id=null)=>{
 };
 
 if(document.getElementById("addCategoryBtn")) addCategoryBtn.onclick = () => simpleCategory();
+const bulkEditCategoriesBtnEl = document.getElementById("bulkEditCategoriesBtn");
+if(bulkEditCategoriesBtnEl) bulkEditCategoriesBtnEl.onclick = () => bulkEditCategoryColors();
 const addTemplateBtnEl = document.getElementById("addTemplateBtn");
 if(addTemplateBtnEl) addTemplateBtnEl.onclick = () => simpleTemplate();
 const undoLastChangeBtnEl = document.getElementById("undoLastChangeBtn");
 if(undoLastChangeBtnEl) undoLastChangeBtnEl.onclick = undoLastChange;
 const clearChangeHistoryBtnEl = document.getElementById("clearChangeHistoryBtn");
 if(clearChangeHistoryBtnEl) clearChangeHistoryBtnEl.onclick = clearChangeHistory;
+window.bulkEditCategoryColors = ()=>{
+  const cats = sortedCategories();
+  simpleTitle.textContent = "Bulk edit category colors";
+  simpleFields.innerHTML = `
+    <p class="hint">Select categories, then apply one palette role or one custom color to all of them. Names, emojis, and transaction assignments will not change.</p>
+    <div class="inline-actions bulk-category-actions">
+      <button type="button" class="ghost small" id="bulkCategorySelectAll">Select all</button>
+      <button type="button" class="ghost small" id="bulkCategorySelectNone">Clear selection</button>
+      <span class="summary-pill" id="bulkCategorySelectedCount">0 selected</span>
+    </div>
+    <div class="bulk-category-list">
+      ${cats.map(c=>`<label class="bulk-category-option"><input type="checkbox" data-bulk-category-id="${escapeAttr(c.id)}"><span class="cat-dot" style="background:${effectiveCategoryColor(c)}"></span><span>${c.emoji||""} ${c.name}</span><small>${c.customColorOverride?"Custom color":paletteRoleLabel(c.paletteRole)}</small></label>`).join("")}
+    </div>
+    <label>Apply
+      <select id="bulkCategoryColorAction">
+        <option value="role">Palette role</option>
+        <option value="custom">Custom color override</option>
+        <option value="clear">Remove custom overrides</option>
+      </select>
+    </label>
+    <label id="bulkCategoryRoleWrap">Palette role
+      <select id="bulkCategoryPaletteRole">${CATEGORY_PALETTE_ROLES.map(r=>`<option value="${r}">${paletteRoleLabel(r)}</option>`).join("")}</select>
+    </label>
+    <label id="bulkCategoryColorWrap" style="display:none">Custom color
+      <input id="bulkCategoryCustomColor" type="color" value="#d56b9a">
+    </label>`;
+
+  const checks = [...simpleFields.querySelectorAll("[data-bulk-category-id]")];
+  const countEl = document.getElementById("bulkCategorySelectedCount");
+  const updateCount = ()=>{ if(countEl) countEl.textContent = `${checks.filter(x=>x.checked).length} selected`; };
+  checks.forEach(x=>x.addEventListener("change", updateCount));
+  document.getElementById("bulkCategorySelectAll")?.addEventListener("click",()=>{checks.forEach(x=>x.checked=true);updateCount();});
+  document.getElementById("bulkCategorySelectNone")?.addEventListener("click",()=>{checks.forEach(x=>x.checked=false);updateCount();});
+  document.getElementById("bulkCategoryColorAction")?.addEventListener("change",e=>{
+    const action=e.target.value;
+    const roleWrap=document.getElementById("bulkCategoryRoleWrap");
+    const colorWrap=document.getElementById("bulkCategoryColorWrap");
+    if(roleWrap) roleWrap.style.display=action==="role"?"":"none";
+    if(colorWrap) colorWrap.style.display=action==="custom"?"":"none";
+  });
+
+  simpleSubmit = ()=>{
+    const ids = checks.filter(x=>x.checked).map(x=>x.dataset.bulkCategoryId);
+    if(!ids.length){ alert("Select at least one category."); return false; }
+    const action = document.getElementById("bulkCategoryColorAction")?.value || "role";
+    const role = document.getElementById("bulkCategoryPaletteRole")?.value || "medium1";
+    const customColor = document.getElementById("bulkCategoryCustomColor")?.value || "#d56b9a";
+    data.categories.filter(c=>ids.includes(c.id)).forEach(c=>{
+      c.legacyColor ||= c.color || effectiveCategoryColor(c);
+      if(action === "role"){
+        c.paletteRole = role;
+        c.customColorOverride = false;
+        c.customColor = "";
+      } else if(action === "custom"){
+        c.customColorOverride = true;
+        c.customColor = customColor;
+      } else {
+        c.customColorOverride = false;
+        c.customColor = "";
+      }
+      c.color = effectiveCategoryColor(c);
+    });
+    normalizeCategories();
+  };
+  simpleDelete = null;
+  deleteSimpleBtn.style.display = "none";
+  simpleModal.showModal();
+};
+
 window.simpleCategory = (id=null)=>{
   const c = id ? categoryById(id) : null;
   simpleTitle.textContent = id ? "Edit category" : "Add category";
   simpleFields.innerHTML = `
     <label>Name<input id="sName" value="${id ? c.name : ""}" required></label>
     <label>Emoji<input id="sEmoji" value="${id ? c.emoji : ""}" placeholder="🍔"></label>
-    <label>Color<input id="sColor" type="color" value="${id ? c.color : "#8c6f4d"}"></label>`;
+    <label>Palette role<select id="sPaletteRole">${CATEGORY_PALETTE_ROLES.map(r=>`<option value="${r}" ${(id?c.paletteRole:defaultCategoryPaletteRole({id:slug(c?.name||"")}))===r?"selected":""}>${paletteRoleLabel(r)}</option>`).join("")}</select></label>
+    <label class="checkbox-row"><input id="sCustomColorOverride" type="checkbox" ${id&&c.customColorOverride?"checked":""}> Keep a custom color instead of following the palette</label>
+    <label>Custom color<input id="sColor" type="color" value="${id ? (c.customColor||c.color) : "#8c6f4d"}"></label>`;
   simpleSubmit = ()=>{
     const nameEl = document.getElementById("sName");
     const emojiEl = document.getElementById("sEmoji");
     const colorEl = document.getElementById("sColor");
+    const roleEl = document.getElementById("sPaletteRole");
+    const overrideEl = document.getElementById("sCustomColorOverride");
     const nextName = (nameEl?.value || "").trim();
     const nextEmoji = emojiEl?.value || "";
     const nextColor = colorEl?.value || "#8c6f4d";
+    const nextRole = roleEl?.value || "medium1";
+    const nextOverride = !!overrideEl?.checked;
 
     if(!nextName) return;
 
@@ -9511,16 +9668,25 @@ window.simpleCategory = (id=null)=>{
       const target = data.categories.find(x=>x.id===id) || c;
       target.name = nextName;
       target.emoji = nextEmoji;
-      target.color = nextColor;
+      target.paletteRole = nextRole;
+      target.customColorOverride = nextOverride;
+      target.customColor = nextOverride ? nextColor : "";
+      target.legacyColor ||= target.color || nextColor;
+      target.color = effectiveCategoryColor(target);
     } else {
       const nextId = slug(nextName);
       const existing = data.categories.find(x=>x.id===nextId);
       if(existing){
         existing.name = nextName;
         existing.emoji = nextEmoji;
-        existing.color = nextColor;
+        existing.paletteRole = nextRole;
+        existing.customColorOverride = nextOverride;
+        existing.customColor = nextOverride ? nextColor : "";
+        existing.legacyColor ||= existing.color || nextColor;
+        existing.color = effectiveCategoryColor(existing);
       } else {
-        data.categories.push({id:nextId, name:nextName, emoji:nextEmoji, color:nextColor});
+        const created={id:nextId,name:nextName,emoji:nextEmoji,color:nextColor,legacyColor:nextColor,paletteRole:nextRole,customColorOverride:nextOverride,customColor:nextOverride?nextColor:""};
+        created.color=effectiveCategoryColor(created); data.categories.push(created);
       }
     }
 
@@ -10573,8 +10739,8 @@ function exportExtendedFinancialPicture(){
 function exportEditableCSVs(){
   const dateStamp = todayISO();
 
-  const categoryHeaders = ["id","name","emoji","color"];
-  const categoryRows = data.categories.map(c=>({id:c.id, name:c.name, emoji:c.emoji || "", color:c.color || ""}));
+  const categoryHeaders = ["id","name","emoji","color","paletteRole","customColorOverride","customColor","legacyColor"];
+  const categoryRows = data.categories.map(c=>({id:c.id,name:c.name,emoji:c.emoji||"",color:effectiveCategoryColor(c),paletteRole:c.paletteRole||"",customColorOverride:!!c.customColorOverride,customColor:c.customColor||"",legacyColor:c.legacyColor||c.color||""}));
 
   const accountHeaders = ["id","order","name","emoji","color","owner","startingBalance","goalName","goalAmount","paycheckAccount"];
   const accountRows = orderedAccounts().map(a=>({
@@ -10667,12 +10833,16 @@ function importEditedCSV(file){
       rows.forEach(row=>{
         let c = data.categories.find(x=>x.id === row.id);
         if(!c){
-          c = {id: row.id || slug(row.name), name: row.name || "New Category", emoji: row.emoji || "", color: row.color || "#8c6f4d"};
+          c = {id:row.id||slug(row.name),name:row.name||"New Category",emoji:row.emoji||"",color:row.color||"#8c6f4d",legacyColor:row.legacyColor||row.color||"#8c6f4d",paletteRole:row.paletteRole||defaultCategoryPaletteRole({id:row.id||slug(row.name)}),customColorOverride:String(row.customColorOverride).toLowerCase()==="true",customColor:row.customColor||""};
           data.categories.push(c);
         } else {
           c.name = row.name || c.name;
           c.emoji = row.emoji || c.emoji;
-          c.color = row.color || c.color;
+          c.legacyColor = row.legacyColor || c.legacyColor || row.color || c.color;
+          c.paletteRole = row.paletteRole || c.paletteRole || defaultCategoryPaletteRole(c);
+          c.customColorOverride = row.customColorOverride === undefined ? !!c.customColorOverride : String(row.customColorOverride).toLowerCase()==="true";
+          c.customColor = row.customColor === undefined ? (c.customColor||"") : (row.customColor||"");
+          c.color = c.customColorOverride ? (c.customColor||row.color||c.color) : effectiveCategoryColor(c);
         }
       });
       saveData();
@@ -11186,6 +11356,7 @@ window.renderNeedsReview=function(){
   const list=document.getElementById('needsReviewList'),summary=document.getElementById('needsReviewSummary');
   const items=collectNeedsReview(); const groups={past:0,account:0,category:0,bill:0,duplicate:0,stale:0};items.forEach(x=>groups[x.kind]=(groups[x.kind]||0)+1);
   const badge=document.getElementById('reviewNavBadge');if(badge){badge.textContent=items.length;badge.hidden=!items.length;}
+  const dashboardCount=document.getElementById('dashboardReviewCount');if(dashboardCount)dashboardCount.textContent=items.length?`${items.length} found`:'clear';
   if(summary)summary.innerHTML=`<article><b>${items.length}</b><span>Total findings</span></article><article><b>${groups.past||0}</b><span>Past planned</span></article><article><b>${(groups.account||0)+(groups.category||0)}</b><span>Broken references</span></article><article><b>${(groups.bill||0)+(groups.duplicate||0)+(groups.stale||0)}</b><span>Cleanup suggestions</span></article>`;
   if(list)list.innerHTML=items.length?items.map(x=>`<div class="review-item"><span><b>${escapeAttr(x.title)}</b><small>${escapeAttr(x.sub)}</small></span><div class="review-actions"><button class="ghost small" onclick="${x.action}">Review</button>${x.secondary?`<button class="ghost small" onclick="${x.secondary}">${x.secondaryLabel}</button>`:''}<button class="ghost small" onclick="dismissReviewItem('${escapeAttr(x.key)}')">Dismiss</button></div></div>`).join(''):`<div class="empty-state">Nothing needs review right now. 🎉 <button class="ghost small" onclick="restoreReviewDismissals()">Restore dismissed</button></div>`;
 };
@@ -11215,3 +11386,9 @@ const _renderSettings214=renderSettings;renderSettings=function(){_renderSetting
 // Ensure old backups get normalized and links become reciprocal without changing totals.
 reconcileTransactionLinks();
 renderNeedsReview();
+
+// v2-215: Calendar density now changes visible transaction count and sizing; Needs Review and Smart Cleanup are unified on Dashboard.
+
+// v2-216: palette rendering hook.
+const _render216=render; render=function(){applyMoneyNestPalette();_render216();};
+applyMoneyNestPalette();

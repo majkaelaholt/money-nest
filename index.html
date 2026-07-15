@@ -27,12 +27,11 @@
       </div>
 
       <nav class="nav">
-        <button class="nav-btn active" data-view="dashboard" aria-label="Dashboard"><span class="nav-emoji" aria-hidden="true">🏠</span><span class="nav-text">Dashboard</span></button>
+        <button class="nav-btn active" data-view="dashboard" aria-label="Dashboard"><span class="nav-emoji" aria-hidden="true">🏠</span><span class="nav-text">Dashboard</span><span id="reviewNavBadge" class="nav-count" hidden>0</span></button>
         <button class="nav-btn" data-view="calendar" aria-label="Calendar"><span class="nav-emoji" aria-hidden="true">🗓️</span><span class="nav-text">Calendar</span></button>
         <button class="nav-btn" data-view="accounts" aria-label="Accounts"><span class="nav-emoji" aria-hidden="true">💳</span><span class="nav-text">Accounts</span></button>
         <button class="nav-btn" data-view="budgets" aria-label="Budgets"><span class="nav-emoji" aria-hidden="true">📊</span><span class="nav-text">Budgets</span></button>
         <button class="nav-btn" data-view="bills" aria-label="Bills"><span class="nav-emoji" aria-hidden="true">🧾</span><span class="nav-text">Bills</span></button>
-        <button class="nav-btn" data-view="review" aria-label="Needs Review"><span class="nav-emoji" aria-hidden="true">📥</span><span class="nav-text">Review</span><span id="reviewNavBadge" class="nav-count" hidden>0</span></button>
         <button class="nav-btn" data-view="settings" aria-label="Settings"><span class="nav-emoji" aria-hidden="true">⚙️</span><span class="nav-text">Settings</span></button>
       </nav>
 
@@ -61,6 +60,14 @@
           <div class="panel-head"><div><h3>Today at a glance</h3><span class="hint">the numbers most useful on your phone</span></div></div>
           <div id="mobileQuickReview" class="mobile-quick-review"></div>
         </section>
+        <details class="panel dashboard-review-panel settings-collapsible">
+          <summary><span class="settings-summary-main"><span class="settings-emoji">📥</span><span><b>Needs review & data health</b><small>Past planned items, recurring matches, duplicates, and broken references</small></span></span><span class="summary-pill" id="dashboardReviewCount">scan</span></summary>
+          <div class="settings-collapse-body">
+            <div class="panel-head compact-head"><p class="hint">Smart Cleanup is combined here so there is one place to review possible issues.</p><div class="inline-actions"><button class="ghost small" type="button" onclick="renderNeedsReview()">Refresh</button><button class="ghost small" type="button" onclick="restoreReviewDismissals()">Restore dismissed</button></div></div>
+            <div id="needsReviewSummary" class="review-summary"></div>
+            <div id="needsReviewList" class="review-list"></div>
+          </div>
+        </details>
         <div class="split">
           <section class="panel">
             <div class="panel-head">
@@ -222,14 +229,6 @@
       </section>
 
 
-      <section id="review" class="view">
-        <div class="panel review-inbox-panel">
-          <div class="panel-head"><div><h3>Needs Review</h3><p class="hint">One inbox for transactions and data that may need your attention.</p></div><button class="ghost small" type="button" onclick="renderNeedsReview()">Refresh</button></div>
-          <div id="needsReviewSummary" class="review-summary"></div>
-          <div id="needsReviewList" class="review-list"></div>
-        </div>
-      </section>
-
       <section id="settings" class="view">
         <div class="settings-stack settings-stack-v175">
           <section class="settings-overview panel">
@@ -256,11 +255,6 @@
               <p class="hint">Use Supabase to save/load your Money Nest data across browsers/devices. Keep JSON backups too. Recent Changes/undo history stays local to this browser so it does not bloat cloud data.</p>
               <div id="cloudSyncPanel" class="cloud-sync-panel"></div>
             </div>
-          </details>
-
-          <details class="panel settings-collapsible settings-intelligence-card">
-            <summary><span class="settings-summary-main"><span class="settings-emoji">🧠</span><span><b>Smart cleanup & data health</b><small>Recurring links, duplicates, broken references, and suggestions</small></span></span><span class="summary-pill" id="healthIssueCount">scan</span></summary>
-            <div class="settings-collapse-body"><div id="moneyNestHealthCenter"></div></div>
           </details>
 
           <details class="panel settings-collapsible settings-tools-panel settings-backup-card">
@@ -323,6 +317,19 @@
           <details class="panel settings-collapsible">
             <summary>
               <span class="settings-summary-main">
+                <span class="settings-emoji">🎨</span>
+                <span><b>Appearance & color palette</b><small>Change the app theme while keeping category groups visually separated</small></span>
+              </span>
+              <span class="summary-pill">Palette</span>
+            </summary>
+            <div class="settings-collapse-body">
+              <div id="appearancePalettePanel"></div>
+            </div>
+          </details>
+
+          <details class="panel settings-collapsible">
+            <summary>
+              <span class="settings-summary-main">
                 <span class="settings-emoji">🏷️</span>
                 <span>
                   <b>Categories</b>
@@ -334,7 +341,7 @@
             <div class="settings-collapse-body">
               <div class="panel-head compact-head">
                 <p class="hint">Edit transaction category names, emojis, and colors.</p>
-                <button class="primary small" id="addCategoryBtn">+ Category</button>
+                <div class="inline-actions"><button class="ghost small" id="bulkEditCategoriesBtn">Bulk edit colors</button><button class="primary small" id="addCategoryBtn">+ Category</button></div>
               </div>
               <div id="categoryList" class="category-list"></div>
             </div>
