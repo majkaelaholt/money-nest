@@ -2,7 +2,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-195`
+Current version: `money-nest-v2-196`
 
 ## Important Notes
 
@@ -623,3 +623,16 @@ Use CSV for reviewing or batch-editing data.
 
 * Improved BNPL and Medical balance labels/normalization.
 * BNPL purchases now save starting balance separately from current balance.
+
+
+## Version history
+
+### v2-196
+- Added budget drill-downs from Budget Performance and Monthly Budget Targets.
+- Budget details show included transactions, date, merchant/title, account, category, amount, and status.
+- Added merchant/place and account spending breakdowns with top-place and top-account summary cards.
+- Added budget account scopes: one account, all accounts, or selected multiple accounts.
+- Preserved old budgets as single-account budgets during data normalization.
+- Extended budget CSV export/import with `accountScope` and `accountIdsJSON` while keeping legacy `accountId` compatibility.
+- Added an iPhone-friendly bottom-sheet-style budget detail layout with compact transaction cards.
+

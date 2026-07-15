@@ -2960,6 +2960,22 @@ function normalizeData(raw){
 
   d.budgets = (d.budgets || []).map(b => {
     if(!b.categoryId && b.category) b.categoryId = localFindCategoryId(b.category);
+    const legacyAccountId = b.accountId || "";
+    const requestedScope = ["single","all","selected"].includes(b.accountScope) ? b.accountScope : (legacyAccountId ? "single" : "all");
+    b.accountScope = requestedScope;
+    b.accountIds = Array.isArray(b.accountIds) ? [...new Set(b.accountIds.filter(Boolean))] : [];
+    if(requestedScope === "single"){
+      b.accountId = legacyAccountId || b.accountIds[0] || "";
+      b.accountIds = b.accountId ? [b.accountId] : [];
+      if(!b.accountId) b.accountScope = "all";
+    } else if(requestedScope === "selected"){
+      if(!b.accountIds.length && legacyAccountId) b.accountIds = [legacyAccountId];
+      b.accountId = b.accountIds[0] || ""; // legacy fallback for older app versions
+      if(!b.accountIds.length) b.accountScope = "all";
+    } else {
+      b.accountId = "";
+      b.accountIds = [];
+    }
     return b;
   });
 
@@ -5785,6 +5801,32 @@ function txMatchesBudgetAccount(tx, accountId){
   if(!accountId || accountId === "all") return true;
   return tx.accountId === accountId;
 }
+function budgetScopeAccountIds(budget){
+  if(!budget) return [];
+  if(budget.accountScope === "all") return [];
+  if(budget.accountScope === "selected") return [...new Set((budget.accountIds || []).filter(Boolean))];
+  return budget.accountId ? [budget.accountId] : [];
+}
+function txMatchesBudgetScope(tx, budget){
+  if(!budget || budget.accountScope === "all" || (!budget.accountScope && !budget.accountId)) return true;
+  return budgetScopeAccountIds(budget).includes(tx.accountId);
+}
+function budgetMatchesReviewAccount(budget, accountId){
+  if(!accountId || accountId === "all") return true;
+  if(!budget || budget.accountScope === "all" || (!budget.accountScope && !budget.accountId)) return true;
+  return budgetScopeAccountIds(budget).includes(accountId);
+}
+function budgetScopeLabel(budget){
+  if(!budget || budget.accountScope === "all" || (!budget.accountScope && !budget.accountId)) return "🌐 All accounts";
+  const ids = budgetScopeAccountIds(budget);
+  const accounts = ids.map(accountById).filter(Boolean);
+  if((budget.accountScope || "single") === "single"){
+    const a = accounts[0];
+    return a ? `${a.emoji || "💵"} ${a.name}` : "💵 Unknown account";
+  }
+  if(!accounts.length) return "👥 Selected accounts";
+  return `👥 ${accounts.map(a=>a.name).join(" + ")}`;
+}
 function budgetReviewAccountLabel(accountId=budgetReviewAccount){
   if(!accountId || accountId === "all") return "All accounts";
   return accountById(accountId)?.name || "Selected account";
@@ -5852,7 +5894,7 @@ function budgetActualSpent(budget, monthRange){
     .filter(tx => tx.date >= monthRange.start && tx.date <= monthRange.end)
     .filter(tx => isBudgetReviewOutflow(tx, true))
     .filter(tx => tx.categoryId === budget.categoryId)
-    .filter(tx => !budget.accountId || txMatchesBudgetAccount(tx, budget.accountId))
+    .filter(tx => txMatchesBudgetScope(tx, budget))
     .reduce((sum, tx)=>sum + Number(tx.amount || 0), 0);
 }
 
@@ -5876,7 +5918,7 @@ function budgetReviewStats(monthValue=budgetReviewMonth, accountId=budgetReviewA
   const monthTx = expandedTransactions(range.end).filter(tx => tx.date >= range.start && tx.date <= range.end);
   const expenses = monthTx.filter(tx => isBudgetReviewOutflow(tx, budgetReviewIncludeTransfers)).filter(tx => txMatchesBudgetAccount(tx, accountId));
   const income = monthTx.filter(isBudgetReviewIncome).filter(tx => txMatchesBudgetAccount(tx, accountId));
-  const budgets = (data.budgets || []).filter(b => accountId === "all" || !b.accountId || b.accountId === accountId);
+  const budgets = (data.budgets || []).filter(b => budgetMatchesReviewAccount(b, accountId));
 
   const byCategory = new Map();
   expenses.forEach(tx=>{
@@ -5895,6 +5937,7 @@ function budgetReviewStats(monthValue=budgetReviewMonth, accountId=budgetReviewA
     return {
       budget:b,
       account:accountById(b.accountId),
+      scopeLabel:budgetScopeLabel(b),
       cat:categoryById(b.categoryId),
       spent,
       amount,
@@ -6002,15 +6045,15 @@ function renderBudgetReview(){
   const budgetRows = stats.budgetRows.map(r=>{
     const pct = Math.min(140, Math.max(0, r.pct));
     const status = r.left < -0.005 ? `Over by ${money(Math.abs(r.left))}` : `${money(r.left)} left`;
-    return `<div class="budget-review-row ${r.left < -0.005 ? "over" : ""}">
+    return `<button type="button" class="budget-review-row budget-drill-row ${r.left < -0.005 ? "over" : ""}" onclick="openBudgetDetail('${r.budget.id}')">
       <div class="budget-review-main budget-target-main">
         <div class="budget-category-title"><span class="cat-preview" style="background:${hexToSoft(r.cat.color)}">${r.cat.emoji} ${r.cat.name}</span></div>
-        <div class="budget-account-sub">${r.account?.emoji || "💵"} ${r.account?.name || "All accounts"}</div>
+        <div class="budget-account-sub">${escapeAttr(r.scopeLabel)}</div>
         <div class="row-sub">${money(r.spent)} spent of ${money(r.amount)} • ${r.pct}% used</div>
         <div class="progress"><span style="width:${Math.min(100,pct)}%"></span></div>
       </div>
       <div class="amount ${r.left < -0.005 ? "bad" : "good"}">${status}</div>
-    </div>`;
+    </button>`;
   }).join("") || `<div class="empty-state">Add budgets below to compare targets against real spending.</div>`;
 
   const trendBars = trend.map(t=>`<div class="trend-bar-item" title="${t.label}: ${money(t.spent)}">
@@ -6057,22 +6100,93 @@ function renderBudgets(){
   document.getElementById("budgetList").innerHTML = (data.budgets || []).map(b=>{
     const spent = budgetActualSpent(b, monthRange);
     const avg = budgetAverageMonthlySpent(b, 6);
-    const acc = accountById(b.accountId), cat = categoryById(b.categoryId);
+    const cat = categoryById(b.categoryId);
     const avgLabel = avg.activeMonths ? `${money(avg.average)} avg/month over ${avg.activeMonths} active month${avg.activeMonths === 1 ? "" : "s"}` : "No spending history yet";
-    return `<div class="row budget-target-row budget-set-row">
+    return `<div class="row budget-target-row budget-set-row budget-drill-row" role="button" tabindex="0" onclick="openBudgetDetail('${b.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openBudgetDetail('${b.id}');}">
       <div class="budget-target-main" style="flex:1">
         <div class="budget-category-title"><span class="cat-preview" style="background:${hexToSoft(cat.color)}">${cat.emoji} ${cat.name}</span></div>
-        <div class="budget-account-sub">${acc?.emoji || "💵"} ${acc?.name || "Unknown account"}</div>
+        <div class="budget-account-sub">${escapeAttr(budgetScopeLabel(b))}</div>
         <div class="budget-set-meta">
           <span><b>${money(b.amount)}</b> monthly budget</span>
           <span>${avgLabel}</span>
           <span>${money(spent)} spent in ${monthRange.label}</span>
         </div>
       </div>
-      <button class="ghost small" onclick="simpleBudget('${b.id}')">Edit</button>
+      <button class="ghost small" onclick="event.stopPropagation();simpleBudget('${b.id}')">Edit</button>
     </div>`;
   }).join("") || `<div class="empty-state">No budgets yet. Add one to start tracking monthly targets.</div>`;
 }
+
+
+function budgetDetailTransactions(budget, monthRange=budgetMonthRange(budgetReviewMonth)){
+  return expandedTransactions(monthRange.end)
+    .filter(tx=>tx.date >= monthRange.start && tx.date <= monthRange.end)
+    .filter(tx=>isBudgetReviewOutflow(tx, true))
+    .filter(tx=>tx.categoryId === budget.categoryId)
+    .filter(tx=>txMatchesBudgetScope(tx, budget))
+    .sort((a,b)=>String(b.date).localeCompare(String(a.date)) || String(a.title || "").localeCompare(String(b.title || "")));
+}
+function budgetBreakdown(items, keyFn, labelFn){
+  const totals = new Map();
+  items.forEach(tx=>{
+    const key = keyFn(tx) || "unknown";
+    totals.set(key, (totals.get(key) || 0) + Number(tx.amount || 0));
+  });
+  return [...totals.entries()].map(([key, amount])=>({key, label:labelFn(key), amount})).sort((a,b)=>b.amount-a.amount);
+}
+function renderBudgetBreakdown(items, emptyText){
+  if(!items.length) return `<div class="empty-state">${emptyText}</div>`;
+  const max = Math.max(1, ...items.map(x=>x.amount));
+  return `<div class="budget-detail-breakdown">${items.map((item,index)=>`<div class="budget-detail-breakdown-row">
+    <div><b>${index+1}. ${escapeAttr(item.label)}</b><span>${money(item.amount)}</span></div>
+    <div class="budget-detail-meter"><span style="width:${Math.max(4,Math.round(item.amount/max*100))}%"></span></div>
+  </div>`).join("")}</div>`;
+}
+window.openBudgetDetail = (budgetId)=>{
+  const budget = (data.budgets || []).find(b=>b.id===budgetId);
+  const modal = document.getElementById("budgetDetailModal");
+  const content = document.getElementById("budgetDetailContent");
+  if(!budget || !modal || !content) return;
+  const range = budgetMonthRange(budgetReviewMonth);
+  const cat = categoryById(budget.categoryId);
+  const txs = budgetDetailTransactions(budget, range);
+  const total = txs.reduce((sum,tx)=>sum+Number(tx.amount || 0),0);
+  const amount = Number(budget.amount || 0);
+  const remaining = amount-total;
+  const accounts = budgetBreakdown(txs, tx=>tx.accountId || "unknown", id=>{
+    const a=accountById(id); return a ? `${a.emoji || "💵"} ${a.name}` : "Unknown account";
+  });
+  const merchants = budgetBreakdown(txs, tx=>String(tx.title || "Untitled").trim().toLowerCase(), key=>{
+    const match=txs.find(tx=>String(tx.title || "Untitled").trim().toLowerCase()===key); return match?.title || "Untitled";
+  });
+  const topAccount = accounts[0]?.label || "No spending yet";
+  const topMerchant = merchants[0]?.label || "No spending yet";
+  document.getElementById("budgetDetailTitle").textContent = `${cat.emoji || "📊"} ${cat.name} budget`;
+  document.getElementById("budgetDetailSub").textContent = `${range.label} • ${budgetScopeLabel(budget)}`;
+  content.innerHTML = `
+    <div class="budget-detail-summary">
+      <article class="mini-card"><span>Total spent</span><b>${money(total)}</b><small>${txs.length} included transaction${txs.length===1?"":"s"}</small></article>
+      <article class="mini-card"><span>Budget amount</span><b>${money(amount)}</b><small>Monthly target</small></article>
+      <article class="mini-card"><span>${remaining < -0.005 ? "Over budget" : "Remaining"}</span><b class="${remaining < -0.005 ? "bad" : "good"}">${money(Math.abs(remaining))}</b><small>${amount ? Math.round(total/amount*100) : 0}% used</small></article>
+      <article class="mini-card"><span>Top account</span><b>${escapeAttr(topAccount)}</b><small>${accounts[0] ? money(accounts[0].amount) : "—"}</small></article>
+      <article class="mini-card"><span>Top place</span><b>${escapeAttr(topMerchant)}</b><small>${merchants[0] ? money(merchants[0].amount) : "—"}</small></article>
+    </div>
+    <div class="budget-detail-grid">
+      <section class="budget-insight-card"><div class="section-kicker">By place</div><h4>Merchant/place breakdown</h4>${renderBudgetBreakdown(merchants,"No merchant spending in this budget yet.")}</section>
+      <section class="budget-insight-card"><div class="section-kicker">By account</div><h4>Account breakdown</h4>${renderBudgetBreakdown(accounts,"No account spending in this budget yet.")}</section>
+    </div>
+    <section class="budget-insight-card budget-detail-transactions">
+      <div class="section-kicker">Included activity</div><h4>Transactions in this total</h4>
+      ${txs.length ? `<div class="budget-detail-tx-list">${txs.map(tx=>{
+        const a=accountById(tx.accountId), c=categoryById(tx.categoryId);
+        return `<article class="budget-detail-tx-card">
+          <div class="budget-detail-tx-top"><div><b>${escapeAttr(tx.title || "Untitled")}</b><span>${parseDate(tx.date).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})}</span></div><strong>${money(tx.amount)}</strong></div>
+          <div class="budget-detail-tx-meta"><span>${a?.emoji || "💵"} ${escapeAttr(a?.name || "Unknown account")}</span><span>${c?.emoji || "🏷️"} ${escapeAttr(c?.name || "Unassigned")}</span><span class="status-pill ${tx.status || "planned"}">${tx.status === "cleared" ? "✓ Cleared" : "○ Planned"}</span></div>
+        </article>`;
+      }).join("")}</div>` : `<div class="empty-state">No included transactions for ${range.label}.</div>`}
+    </section>`;
+  modal.showModal();
+};
 
 
 function debtUtilization(d){
@@ -8207,16 +8321,60 @@ addBudgetBtn.onclick = () => simpleBudget();
 addBillBtn.onclick = () => openTransaction(null, { recurrence:{type:"monthly", interval:1} });
 window.simpleBudget = (id=null, preset={})=>{
   const b = id ? data.budgets.find(x=>x.id===id) : null;
+  const initialScope = b?.accountScope || (b?.accountId ? "single" : (preset.accountId === "all" ? "all" : "single"));
+  const initialIds = b ? budgetScopeAccountIds(b) : (preset.accountId && preset.accountId !== "all" ? [preset.accountId] : []);
   simpleTitle.textContent = b ? "Edit budget" : "Add budget";
   simpleFields.innerHTML = `
-    <label>Account<select id="sAccount">${data.accounts.map(a=>`<option value="${a.id}">${a.name}</option>`).join("")}</select></label>
+    <label>Account scope<select id="sBudgetScope" onchange="updateBudgetScopeFields()">
+      <option value="single">One account</option>
+      <option value="all">All accounts</option>
+      <option value="selected">Selected accounts</option>
+    </select></label>
+    <div id="sBudgetSingleWrap"><label>Account<select id="sAccount">${orderedAccounts().map(a=>`<option value="${a.id}">${a.emoji || "💵"} ${a.name}</option>`).join("")}</select></label></div>
+    <div id="sBudgetSelectedWrap" class="budget-account-picker" hidden>
+      <span class="field-label">Include accounts</span>
+      ${orderedAccounts().map(a=>`<label class="budget-account-check"><input type="checkbox" name="sBudgetAccountIds" value="${a.id}"> <span>${a.emoji || "💵"} ${a.name}</span></label>`).join("")}
+      <p class="hint">Choose at least one account. Spending from other accounts will be excluded.</p>
+    </div>
     <label>Category<select id="sCat">${sortedCategories().map(c=>`<option value="${c.id}">${c.emoji} ${c.name}</option>`).join("")}</select></label>
     <label>Monthly amount<input id="sAmount" type="number" step="0.01" value="${b?.amount ?? ""}" required></label>`;
-  setTimeout(()=>{ if(b){ sAccount.value=b.accountId; sCat.value=b.categoryId; } else { if(preset.accountId && preset.accountId !== "all" && accountById(preset.accountId)) sAccount.value = preset.accountId; if(preset.categoryId && categoryById(preset.categoryId)) sCat.value = preset.categoryId; } },0);
-  simpleSubmit = ()=>{ if(b){ b.accountId=sAccount.value; b.categoryId=sCat.value; b.amount=Number(sAmount.value); } else data.budgets.push({id:uid(), accountId:sAccount.value, categoryId:sCat.value, amount:Number(sAmount.value)}); };
+  setTimeout(()=>{
+    sBudgetScope.value = initialScope;
+    if(initialIds[0] && accountById(initialIds[0])) sAccount.value = initialIds[0];
+    document.querySelectorAll('input[name="sBudgetAccountIds"]').forEach(input=>{ input.checked = initialIds.includes(input.value); });
+    if(b) sCat.value=b.categoryId;
+    else if(preset.categoryId && categoryById(preset.categoryId)) sCat.value = preset.categoryId;
+    updateBudgetScopeFields();
+  },0);
+  simpleSubmit = ()=>{
+    const scope = sBudgetScope.value;
+    let accountIds = scope === "selected" ? [...document.querySelectorAll('input[name="sBudgetAccountIds"]:checked')].map(input=>input.value) : [];
+    if(scope === "selected" && !accountIds.length){
+      const fallback = orderedAccounts()[0]?.id || "";
+      if(fallback) accountIds = [fallback];
+      alert("No accounts were selected, so the first account was used. Edit the budget to choose a different combination.");
+    }
+    const accountId = scope === "single" ? sAccount.value : (scope === "selected" ? accountIds[0] : "");
+    const target = b || {id:uid()};
+    target.accountScope = scope;
+    target.accountId = accountId;
+    target.accountIds = scope === "single" ? [accountId] : accountIds;
+    target.categoryId = sCat.value;
+    target.amount = Number(sAmount.value);
+    target.period = target.period || "monthly";
+    target.notes = target.notes || "";
+    if(!b) data.budgets.push(target);
+  };
   simpleDelete = b ? ()=>{ if(confirm("Delete this budget?")) data.budgets = data.budgets.filter(x=>x.id!==b.id); } : null;
   deleteSimpleBtn.style.display = b ? "inline-block" : "none";
   simpleModal.showModal();
+};
+window.updateBudgetScopeFields = ()=>{
+  const scope = document.getElementById("sBudgetScope")?.value || "single";
+  const single = document.getElementById("sBudgetSingleWrap");
+  const selected = document.getElementById("sBudgetSelectedWrap");
+  if(single) single.hidden = scope !== "single";
+  if(selected) selected.hidden = scope !== "selected";
 };
 
 window.addBudgetFromReview = (categoryId)=>{
@@ -10074,9 +10232,10 @@ function exportEditableCSVs(){
     frozenLocked:!!d.frozenLocked, notes:d.notes || ""
   }));
 
-  const budgetHeaders = ["id","accountId","categoryId","amount","period","notes"];
+  const budgetHeaders = ["id","accountScope","accountId","accountIdsJSON","categoryId","amount","period","notes"];
   const budgetRows = (data.budgets || []).map(b=>({
-    id:b.id, accountId:b.accountId || "", categoryId:b.categoryId || "", amount:b.amount ?? "",
+    id:b.id, accountScope:b.accountScope || (b.accountId ? "single" : "all"), accountId:b.accountId || "",
+    accountIdsJSON:JSON.stringify(budgetScopeAccountIds(b)), categoryId:b.categoryId || "", amount:b.amount ?? "",
     period:b.period || "monthly", notes:b.notes || ""
   }));
 
@@ -10154,14 +10313,19 @@ function importEditedCSV(file){
     }
 
     if(headers.includes("accountId") && headers.includes("categoryId") && headers.includes("period") && !headers.includes("title")){
-      data.budgets = rows.map(row=>({
-        id: row.id || uid(),
-        accountId: row.accountId || "",
-        categoryId: row.categoryId || "",
-        amount: Number(row.amount || 0),
-        period: row.period || "monthly",
-        notes: row.notes || ""
-      }));
+      data.budgets = rows.map(row=>{
+        let accountIds = [];
+        try{ accountIds = JSON.parse(row.accountIdsJSON || "[]"); }catch(e){ accountIds = String(row.accountIds || "").split(/[|;]/).map(v=>v.trim()).filter(Boolean); }
+        const accountId = row.accountId || accountIds[0] || "";
+        let accountScope = ["single","all","selected"].includes(row.accountScope) ? row.accountScope : (accountId ? "single" : "all");
+        if(accountScope === "single") accountIds = accountId ? [accountId] : [];
+        if(accountScope === "all") accountIds = [];
+        if(accountScope === "selected" && !accountIds.length && accountId) accountIds = [accountId];
+        return {
+          id: row.id || uid(), accountScope, accountId: accountScope === "all" ? "" : (accountId || accountIds[0] || ""), accountIds,
+          categoryId: row.categoryId || "", amount: Number(row.amount || 0), period: row.period || "monthly", notes: row.notes || ""
+        };
+      });
       saveData();
       alert("Budgets CSV imported.");
       return;

@@ -131,8 +131,8 @@
         <div class="panel">
           <div class="panel-head">
             <div>
-              <h3>Monthly budgets by account</h3>
-              <p class="hint">These targets are used by the review above.</p>
+              <h3>Monthly budget targets</h3>
+              <p class="hint">Set budgets for one account, all accounts, or a custom group of accounts.</p>
             </div>
             <button class="primary small" id="addBudgetBtn">+ Budget</button>
           </div>
@@ -679,6 +679,21 @@
     </form>
   </dialog>
 
+
+
+  <dialog id="budgetDetailModal" class="budget-detail-modal">
+    <div class="modal-card budget-detail-card">
+      <div class="panel-head">
+        <div>
+          <h3 id="budgetDetailTitle">Budget details</h3>
+          <p class="hint" id="budgetDetailSub"></p>
+        </div>
+        <button type="button" class="icon-btn" onclick="document.getElementById('budgetDetailModal').close()">×</button>
+      </div>
+      <div id="budgetDetailContent" class="budget-detail-content"></div>
+      <div class="modal-actions"><button type="button" class="ghost" onclick="document.getElementById('budgetDetailModal').close()">Close</button></div>
+    </div>
+  </dialog>
 
   <dialog id="dayModal">
     <div class="modal-card">
