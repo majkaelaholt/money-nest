@@ -6,7 +6,7 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-197`
+Latest known version: `money-nest-v2-200`
 
 Before editing, always inspect `README.md` and confirm the current version in the repository. If `README.md` shows a different version, continue from the repo version and mention the mismatch in your summary.
 
@@ -121,3 +121,7 @@ Example README note:
 * Improved [behavior].
 * No JSON/CSV schema changes needed.
 ```
+
+
+### v2-200
+- Banking is excluded from budgeting. Savings transfers net contributions by direction.

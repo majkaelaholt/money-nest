@@ -2,7 +2,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-197`
+Current version: `money-nest-v2-200`
 
 ## Important Notes
 
@@ -148,6 +148,22 @@ Use CSV for reviewing or batch-editing data.
 * [ ]
 
 ## Version Notes
+
+
+### v2-200
+- Excluded the Banking category from all budget totals, charts, reviews, targets, and new-budget category choices. Banking remains available for normal transaction categorization.
+- Savings-category cash transfers now use net contribution math: transfers into a savings account increase Savings spending, while transfers out reduce it.
+- Budget detail totals, transaction amounts, merchant breakdowns, account breakdowns, and trend calculations now use the same signed budget amount logic.
+- Existing Banking budgets remain preserved in saved data/backups but are ignored by the budgeting interface.
+
+### v2-199
+
+* Fixed the grouped “smaller categories” item in Spending by Category so selecting a category opens its transaction review instead of the budget editor.
+* Updated the grouped-category prompt wording from budgeting to reviewing.
+
+### v2-198
+- Budget transaction reviews now exclude entries that are not tied to a current cash account, preventing credit-card/debt ledger activity from appearing as “Unknown account.”
+- Monthly Budget Targets rows now open the budget editor directly. Transaction drill-down remains available from Spending by Category and Budget Performance.
 
 ### v2-195
 

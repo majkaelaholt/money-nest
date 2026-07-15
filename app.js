@@ -5787,11 +5787,36 @@ function isBudgetReviewTransferOutflow(tx){
   if(isPendingReimbursementTx(tx)) return false;
   return Number(tx.amount || 0) > 0;
 }
+function isBudgetExcludedCategory(categoryId){
+  // Banking is only for cash-account movement and should never affect budgets.
+  return categoryId === "banking";
+}
 function isBudgetReviewOutflow(tx, includeTransfers=budgetReviewIncludeTransfers){
+  // Budgets are cash-account based. Debt/credit-card ledger entries may carry a
+  // debt id (or no current cash account id) in accountId, so never count those
+  // directly in budget totals or drill-downs.
+  if(!tx || !accountById(tx.accountId)) return false;
+  if(isBudgetExcludedCategory(tx.categoryId)) return false;
   if(isBudgetReviewExpense(tx)) return true;
   if(isCardBackedCategorySpend(tx)) return true;
   if(includeTransfers && isBudgetReviewTransferOutflow(tx)) return true;
   return false;
+}
+function budgetTransactionAmount(tx){
+  const amount = Number(tx?.amount || 0);
+  if(!amount || isBudgetExcludedCategory(tx?.categoryId)) return 0;
+
+  // Savings-category transfers are net contributions: money moved into a
+  // savings account counts positive, while money moved back out reduces the
+  // month's Savings spending. Transfers between two savings accounts net to 0.
+  if(tx.type === "transfer" && tx.categoryId === "savings"){
+    const fromSavings = isSavingsAccount(accountById(tx.accountId));
+    const toSavings = isSavingsAccount(accountById(tx.transferToAccountId));
+    if(toSavings && !fromSavings) return amount;
+    if(fromSavings && !toSavings) return -amount;
+    if(fromSavings && toSavings) return 0;
+  }
+  return amount;
 }
 function isBudgetReviewIncome(tx){
   if(!tx || tx.status !== "cleared") return false;
@@ -5895,7 +5920,7 @@ function budgetActualSpent(budget, monthRange){
     .filter(tx => isBudgetReviewOutflow(tx, true))
     .filter(tx => tx.categoryId === budget.categoryId)
     .filter(tx => txMatchesBudgetScope(tx, budget))
-    .reduce((sum, tx)=>sum + Number(tx.amount || 0), 0);
+    .reduce((sum, tx)=>sum + budgetTransactionAmount(tx), 0);
 }
 
 function budgetAverageMonthlySpent(budget, months=6){
@@ -5918,14 +5943,14 @@ function budgetReviewStats(monthValue=budgetReviewMonth, accountId=budgetReviewA
   const monthTx = expandedTransactions(range.end).filter(tx => tx.date >= range.start && tx.date <= range.end);
   const expenses = monthTx.filter(tx => isBudgetReviewOutflow(tx, budgetReviewIncludeTransfers)).filter(tx => txMatchesBudgetAccount(tx, accountId));
   const income = monthTx.filter(isBudgetReviewIncome).filter(tx => txMatchesBudgetAccount(tx, accountId));
-  const budgets = (data.budgets || []).filter(b => budgetMatchesReviewAccount(b, accountId));
+  const budgets = (data.budgets || []).filter(b => !isBudgetExcludedCategory(b.categoryId)).filter(b => budgetMatchesReviewAccount(b, accountId));
 
   const byCategory = new Map();
   expenses.forEach(tx=>{
     const key = tx.categoryId || "uncat";
-    byCategory.set(key, (byCategory.get(key) || 0) + Number(tx.amount || 0));
+    byCategory.set(key, (byCategory.get(key) || 0) + budgetTransactionAmount(tx));
   });
-  const categories = [...byCategory.entries()].map(([categoryId, amount])=>{
+  const categories = [...byCategory.entries()].filter(([, amount])=>amount > 0.005).map(([categoryId, amount])=>{
     const cat = categoryById(categoryId);
     const budgetAmount = budgets.filter(b=>b.categoryId === categoryId).reduce((s,b)=>s+Number(b.amount || 0),0);
     return {categoryId, cat, amount, budgetAmount, over:Math.max(0, amount-budgetAmount)};
@@ -5950,7 +5975,7 @@ function budgetReviewStats(monthValue=budgetReviewMonth, accountId=budgetReviewA
     return overA-overB || b.spent-a.spent;
   });
 
-  const totalSpent = expenses.reduce((s,tx)=>s+Number(tx.amount || 0),0);
+  const totalSpent = expenses.reduce((s,tx)=>s+budgetTransactionAmount(tx),0);
   const totalIncome = income.reduce((s,tx)=>s+Number(tx.amount || 0),0);
   const totalBudgeted = budgets.reduce((s,b)=>s+Number(b.amount || 0),0);
   const spentInBudgetedCategories = categories.filter(c=>c.budgetAmount > 0).reduce((s,c)=>s+c.amount,0);
@@ -5968,7 +5993,7 @@ function budgetTrendMonths(count=6, accountId=budgetReviewAccount){
       .filter(tx => tx.date >= range.start && tx.date <= range.end)
       .filter(tx => isBudgetReviewOutflow(tx, budgetReviewIncludeTransfers))
       .filter(tx => txMatchesBudgetAccount(tx, accountId))
-      .reduce((s,tx)=>s+Number(tx.amount || 0),0);
+      .reduce((s,tx)=>s+budgetTransactionAmount(tx),0);
     return {month:range.month, label:parseDate(range.start).toLocaleString(undefined,{month:"short"}), spent};
   });
 }
@@ -6097,12 +6122,12 @@ function renderBudgetReview(){
 function renderBudgets(){
   renderBudgetReview();
   const monthRange = budgetMonthRange(budgetReviewMonth);
-  document.getElementById("budgetList").innerHTML = (data.budgets || []).map(b=>{
+  document.getElementById("budgetList").innerHTML = (data.budgets || []).filter(b=>!isBudgetExcludedCategory(b.categoryId)).map(b=>{
     const spent = budgetActualSpent(b, monthRange);
     const avg = budgetAverageMonthlySpent(b, 6);
     const cat = categoryById(b.categoryId);
     const avgLabel = avg.activeMonths ? `${money(avg.average)} avg/month over ${avg.activeMonths} active month${avg.activeMonths === 1 ? "" : "s"}` : "No spending history yet";
-    return `<div class="row budget-target-row budget-set-row budget-drill-row" role="button" tabindex="0" onclick="openBudgetDetail('${b.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openBudgetDetail('${b.id}');}">
+    return `<div class="row budget-target-row budget-set-row" role="button" tabindex="0" onclick="simpleBudget('${b.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();simpleBudget('${b.id}');}">
       <div class="budget-target-main" style="flex:1">
         <div class="budget-category-title"><span class="cat-preview" style="background:${hexToSoft(cat.color)}">${cat.emoji} ${cat.name}</span></div>
         <div class="budget-account-sub">${escapeAttr(budgetScopeLabel(b))}</div>
@@ -6130,16 +6155,16 @@ function budgetBreakdown(items, keyFn, labelFn){
   const totals = new Map();
   items.forEach(tx=>{
     const key = keyFn(tx) || "unknown";
-    totals.set(key, (totals.get(key) || 0) + Number(tx.amount || 0));
+    totals.set(key, (totals.get(key) || 0) + budgetTransactionAmount(tx));
   });
   return [...totals.entries()].map(([key, amount])=>({key, label:labelFn(key), amount})).sort((a,b)=>b.amount-a.amount);
 }
 function renderBudgetBreakdown(items, emptyText){
   if(!items.length) return `<div class="empty-state">${emptyText}</div>`;
-  const max = Math.max(1, ...items.map(x=>x.amount));
+  const max = Math.max(1, ...items.map(x=>Math.abs(x.amount)));
   return `<div class="budget-detail-breakdown">${items.map((item,index)=>`<div class="budget-detail-breakdown-row">
     <div><b>${index+1}. ${escapeAttr(item.label)}</b><span>${money(item.amount)}</span></div>
-    <div class="budget-detail-meter"><span style="width:${Math.max(4,Math.round(item.amount/max*100))}%"></span></div>
+    <div class="budget-detail-meter"><span style="width:${Math.max(4,Math.round(Math.abs(item.amount)/max*100))}%"></span></div>
   </div>`).join("")}</div>`;
 }
 function openBudgetDetailView({categoryId, budget=null, accountId=budgetReviewAccount}){
@@ -6154,7 +6179,7 @@ function openBudgetDetailView({categoryId, budget=null, accountId=budgetReviewAc
     .filter(tx=>tx.categoryId === categoryId)
     .filter(tx=>budget ? txMatchesBudgetScope(tx, budget) : txMatchesBudgetAccount(tx, accountId))
     .sort((a,b)=>String(b.date).localeCompare(String(a.date)) || String(a.title || "").localeCompare(String(b.title || "")));
-  const total = txs.reduce((sum,tx)=>sum+Number(tx.amount || 0),0);
+  const total = txs.reduce((sum,tx)=>sum+budgetTransactionAmount(tx),0);
   const amount = budget ? Number(budget.amount || 0) : null;
   const remaining = amount === null ? null : amount-total;
   const accounts = budgetBreakdown(txs, tx=>tx.accountId || "unknown", id=>{
@@ -6184,7 +6209,7 @@ function openBudgetDetailView({categoryId, budget=null, accountId=budgetReviewAc
       ${txs.length ? `<div class="budget-detail-tx-list">${txs.map(tx=>{
         const a=accountById(tx.accountId), c=categoryById(tx.categoryId);
         return `<article class="budget-detail-tx-card">
-          <div class="budget-detail-tx-top"><div><b>${escapeAttr(tx.title || "Untitled")}</b><span>${parseDate(tx.date).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})}</span></div><strong>${money(tx.amount)}</strong></div>
+          <div class="budget-detail-tx-top"><div><b>${escapeAttr(tx.title || "Untitled")}</b><span>${parseDate(tx.date).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})}</span></div><strong>${money(budgetTransactionAmount(tx))}</strong></div>
           <div class="budget-detail-tx-meta"><span>${a?.emoji || "💵"} ${escapeAttr(a?.name || "Unknown account")}</span><span>${c?.emoji || "🏷️"} ${escapeAttr(c?.name || "Unassigned")}</span><span class="status-pill ${tx.status || "planned"}">${tx.status === "cleared" ? "✓ Cleared" : "○ Planned"}</span></div>
         </article>`;
       }).join("")}</div>` : `<div class="empty-state">No included transactions for ${range.label}.</div>`}
@@ -8340,7 +8365,7 @@ window.simpleBudget = (id=null, preset={})=>{
       ${orderedAccounts().map(a=>`<label class="budget-account-check"><input type="checkbox" name="sBudgetAccountIds" value="${a.id}"> <span>${a.emoji || "💵"} ${a.name}</span></label>`).join("")}
       <p class="hint">Select one, several, or every account. Spending from unchecked accounts will be excluded.</p>
     </div>
-    <label>Category<select id="sCat">${sortedCategories().map(c=>`<option value="${c.id}">${c.emoji} ${c.name}</option>`).join("")}</select></label>
+    <label>Category<select id="sCat">${sortedCategories().filter(c=>!isBudgetExcludedCategory(c.id)).map(c=>`<option value="${c.id}">${c.emoji} ${c.name}</option>`).join("")}</select></label>
     <label>Monthly amount<input id="sAmount" type="number" step="0.01" value="${b?.amount ?? ""}" required></label>`;
   setTimeout(()=>{
     document.querySelectorAll('input[name="sBudgetAccountIds"]').forEach(input=>{ input.checked = initialIds.includes(input.value); });
@@ -8355,6 +8380,10 @@ window.simpleBudget = (id=null, preset={})=>{
     }
     const scope = accountIds.length === allAccountIds.length ? "all" : (accountIds.length === 1 ? "single" : "selected");
     const accountId = scope === "all" ? "" : accountIds[0];
+    if(isBudgetExcludedCategory(sCat.value)){
+      alert("Banking transactions are account-to-account movement and cannot be budgeted.");
+      return false;
+    }
     const target = b || {id:uid()};
     target.accountScope = scope;
     target.accountId = accountId;
@@ -8370,6 +8399,7 @@ window.simpleBudget = (id=null, preset={})=>{
   simpleModal.showModal();
 };
 window.addBudgetFromReview = (categoryId)=>{
+  if(isBudgetExcludedCategory(categoryId)) return;
   if(!categoryId || categoryId === "other"){
     chooseOtherBudgetCategory();
     return;
@@ -8380,14 +8410,14 @@ window.chooseOtherBudgetCategory = ()=>{
   const stats = budgetReviewStats();
   const otherItems = budgetReviewPieData(stats).grouped;
   if(!otherItems.length){
-    alert("No smaller categories to budget right now.");
+    alert("No smaller categories to review right now.");
     return;
   }
   const list = otherItems.map((item, i)=>`${i+1}. ${item.cat.emoji} ${item.cat.name} — ${money(item.amount)}`).join("\n");
-  const answer = prompt(`Which smaller category do you want to budget?\n${list}\n\nType a number:`);
+  const answer = prompt(`Which smaller category do you want to review?\n${list}\n\nType a number:`);
   const index = Number(answer) - 1;
   if(Number.isFinite(index) && otherItems[index]){
-    simpleBudget(null, {categoryId:otherItems[index].categoryId, accountId:budgetReviewAccount});
+    openCategoryBudgetDetail(otherItems[index].categoryId);
   }
 };
 
