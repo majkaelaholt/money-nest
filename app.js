@@ -2750,7 +2750,8 @@ const defaultUiPrefs = {
   accountDetailMode: "bank",
   accountForecastRange: "next-90",
   accountForecastCustomStart: "",
-  accountForecastCustomEnd: ""
+  accountForecastCustomEnd: "",
+  calendarDensity: "comfortable"
 };
 const allowedAccountForecastRanges = new Set(["this-month", "next-paycheck", "next-30", "next-60", "next-90", "custom"]);
 function cleanAccountForecastRange(range){
@@ -2772,6 +2773,7 @@ function loadUiPrefs(){
     if(saved.accountForecastRange) prefs.accountForecastRange = cleanAccountForecastRange(saved.accountForecastRange);
     if(saved.accountForecastCustomStart) prefs.accountForecastCustomStart = saved.accountForecastCustomStart;
     if(saved.accountForecastCustomEnd) prefs.accountForecastCustomEnd = saved.accountForecastCustomEnd;
+    if(["compact","comfortable","detailed"].includes(saved.calendarDensity)) prefs.calendarDensity = saved.calendarDensity;
     return prefs;
   } catch(err){
     console.warn("Could not load Money Nest UI preferences", err);
@@ -2789,7 +2791,8 @@ function saveUiPrefs(){
       accountDetailMode,
       accountForecastRange,
       accountForecastCustomStart,
-      accountForecastCustomEnd
+      accountForecastCustomEnd,
+      calendarDensity
     }));
   } catch(err){
     console.warn("Could not save Money Nest UI preferences", err);
@@ -2812,6 +2815,7 @@ let billFilters = {...defaultUiPrefs.billFilters, ...(uiPrefs.billFilters || {})
 if(!Array.isArray(billFilters.categories)) billFilters.categories = [billFilters.category || "all"];
 let transactionFilterDefaults = {...defaultUiPrefs.transactionFilterDefaults, ...(uiPrefs.transactionFilterDefaults || {})};
 let transactionFilters = {...defaultUiPrefs.transactionFilters, ...(uiPrefs.transactionFilters || {})};
+let calendarDensity = uiPrefs.calendarDensity || "comfortable";
 let budgetReviewMonth = todayISO().slice(0,7);
 let budgetReviewAccountIds = [];
 let budgetReviewIncludeRecurringBills = true;
@@ -3076,7 +3080,8 @@ function normalizeData(raw){
     loanFeeAmount: tx.loanFeeAmount === undefined || tx.loanFeeAmount === "" ? "" : Number(tx.loanFeeAmount),
     loanBalanceAdjustment: tx.loanBalanceAdjustment === undefined || tx.loanBalanceAdjustment === "" ? "" : Number(tx.loanBalanceAdjustment),
     dateOverrides: tx.dateOverrides || {},
-    occurrenceOverrides: tx.occurrenceOverrides || {}
+    occurrenceOverrides: tx.occurrenceOverrides || {},
+    linkedTransactionIds: Array.isArray(tx.linkedTransactionIds) ? [...new Set(tx.linkedTransactionIds.filter(Boolean).map(String))] : []
   }));
 
   return d;
@@ -4461,7 +4466,7 @@ function setView(view){
     if(view === "debts") view = "accounts";
     currentView = view;
     document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active", v.id===view));
-    document.body.classList.remove("money-nest-view-dashboard", "money-nest-view-calendar", "money-nest-view-accounts", "money-nest-view-bills", "money-nest-view-debts", "money-nest-view-settings", "money-nest-view-accountDetail", "money-nest-view-debtDetail");
+    document.body.classList.remove("money-nest-view-dashboard", "money-nest-view-calendar", "money-nest-view-accounts", "money-nest-view-bills", "money-nest-view-debts", "money-nest-view-settings", "money-nest-view-accountDetail", "money-nest-view-debtDetail", "money-nest-view-review");
     document.body.classList.add(`money-nest-view-${view}`);
     document.querySelectorAll(".nav-btn").forEach(b=>b.classList.toggle("active", b.dataset.view===view));
     const titles = {accountDetail: accountById(selectedAccountId)?.name || "Account", debtDetail: debtById(selectedDebtId)?.name || "Debt"};
@@ -4559,6 +4564,7 @@ function render(){
   if(currentView==="bills") renderBills();
   if(currentView==="debtDetail") renderDebtDetail();
   if(currentView==="settings") renderSettings();
+  if(currentView==="review") renderNeedsReview();
 }
 
 
@@ -6220,26 +6226,27 @@ function renderBudgetReview(){
       <label>Month<select onchange="setBudgetReviewMonth(this.value)">${monthOptions.join("")}</select></label>
       <button type="button" class="ghost small" onclick="explainBudgetTotals()">ⓘ Why these totals?</button>
     </div>
-    <div class="budget-review-summary">
-      <article class="mini-card"><span>💸 Spending</span><b>${money(stats.totalSpent)}</b><small>cleared expenses</small></article>
-      <article class="mini-card"><span>💰 Income</span><b>${money(stats.totalIncome)}</b><small>cleared income/paychecks</small></article>
-      <article class="mini-card"><span>🎯 Budget status</span><b>${budgetMood}</b><small>${money(stats.totalBudgeted)} budgeted</small></article>
-      <article class="mini-card"><span>🕵️ Unbudgeted</span><b>${money(stats.unbudgetedSpent)}</b><small>spending without a budget</small></article>
-    </div>
-    <section class="budget-month-compare">
-      <article class="mini-card"><span>Vs. last month</span><b class="${monthCompare.delta>0?'bad':'good'}">${monthCompare.delta>0?'+':''}${money(monthCompare.delta)}</b><small>${monthCompare.pct===null?'No prior-month baseline':`${monthCompare.pct>0?'+':''}${monthCompare.pct}% change`}</small></article>
-      <article class="mini-card"><span>Biggest category change</span><b>${monthCompare.biggest ? `${categoryById(monthCompare.biggest.id)?.emoji || '🏷️'} ${categoryById(monthCompare.biggest.id)?.name || 'Unknown category'}` : '—'}</b><small>${monthCompare.biggest ? `${monthCompare.biggest.delta>0?'+':''}${money(monthCompare.biggest.delta)}` : 'No comparison data'}</small></article>
+    <section class="budget-summary-strip" aria-label="Budget review summary">
+      <article><span>💸 Spending</span><b>${money(stats.totalSpent)}</b></article>
+      <article><span>💰 Income</span><b>${money(stats.totalIncome)}</b></article>
+      <article><span>🎯 Budgeted</span><b>${money(stats.totalBudgeted)}</b><small>${budgetMood}</small></article>
+      <article><span>🕵️ Unbudgeted</span><b>${money(stats.unbudgetedSpent)}</b></article>
     </section>
-    <section class="budget-insight-card budget-trend-card">
-      <div class="budget-trend-heading">
-        <div>
-          <div class="section-kicker">Monthly pattern</div>
-          <h4>Last 6 months spending</h4>
-        </div>
-        <p class="hint">Uses the same outflow rules as the review summary.</p>
+    <details class="budget-more-insights">
+      <summary><span><b>More insights</b><small>Month comparison and six-month trend</small></span><span aria-hidden="true">⌄</span></summary>
+      <div class="budget-more-insights-body">
+        <section class="budget-month-compare">
+          <article class="mini-card"><span>Vs. last month</span><b class="${monthCompare.delta>0?'bad':'good'}">${monthCompare.delta>0?'+':''}${money(monthCompare.delta)}</b><small>${monthCompare.pct===null?'No prior-month baseline':`${monthCompare.pct>0?'+':''}${monthCompare.pct}% change`}</small></article>
+          <article class="mini-card"><span>Biggest category change</span><b>${monthCompare.biggest ? `${categoryById(monthCompare.biggest.id)?.emoji || '🏷️'} ${categoryById(monthCompare.biggest.id)?.name || 'Unknown category'}` : '—'}</b><small>${monthCompare.biggest ? `${monthCompare.biggest.delta>0?'+':''}${money(monthCompare.biggest.delta)}` : 'No comparison data'}</small></article>
+        </section>
+        <section class="budget-trend-compact">
+          <div class="budget-trend-heading">
+            <div><div class="section-kicker">Monthly pattern</div><h4>Last 6 months spending</h4></div>
+          </div>
+          <div class="budget-trend-chart">${trendBars}</div>
+        </section>
       </div>
-      <div class="budget-trend-chart">${trendBars}</div>
-    </section>
+    </details>
     <div class="budget-review-grid budget-review-grid-wide">
       <section class="budget-insight-card spending-pie-card">
         <div class="section-kicker">Where money went</div>
@@ -8237,7 +8244,8 @@ function transactionPayloadFromForm(id){
     recurrence: buildRecurrenceFromForm(),
     repeat: false,
     notes: txNotes.value,
-    dateOverrides: {}
+    dateOverrides: {},
+    linkedTransactionIds: [...txLinkDraftIds]
   };
 
   const calc = autoPaycheck && tempTx.type === "paycheck" ? paycheckAmountForTransaction(tempTx, tempTx.date) : null;
@@ -8406,6 +8414,8 @@ window.openTransaction = (id=null, defaults={})=>{
   if(document.getElementById("txPaycheckHoursOverride")) txPaycheckHoursOverride.value = tx?.paycheckHoursOverride ?? defaults.paycheckHoursOverride ?? "";
   setRecurrenceForm(tx?.recurrence || (tx?.repeat ? {type:"monthly", interval:1} : defaults.recurrence) || {type:"none", interval:1}, occurrenceDate);
   txNotes.value = tx?.notes || defaults.notes || "";
+  txLinkDraftIds = Array.isArray(tx?.linkedTransactionIds) ? [...tx.linkedTransactionIds] : (Array.isArray(defaults.linkedTransactionIds) ? [...defaults.linkedTransactionIds] : []);
+  renderTxLinkedList();
   const calcPanel = document.getElementById("txAmountCalcPanel");
   const calcInput = document.getElementById("txAmountCalcExpression");
   if(calcPanel) calcPanel.hidden = true;
@@ -10598,7 +10608,7 @@ function exportEditableCSVs(){
     "pendingReimbursement","reimbursementToAccountId",
     "loanPrincipalAmount","loanInterestAmount","loanFeeAmount","loanBalanceAdjustment",
     "autoPaycheck","autoMakPaycheck","paycheckHoursOverride","autoPaycheckInfoJSON",
-    "repeatType","repeatInterval","repeatWeekday","repeatOrdinal","weekendHandling","recurrenceUntil","billArchived","billArchivedAt","billArchivedPreviousRecurrenceUntil","dateOverridesJSON","occurrenceOverridesJSON","notes"
+    "repeatType","repeatInterval","repeatWeekday","repeatOrdinal","weekendHandling","recurrenceUntil","billArchived","billArchivedAt","billArchivedPreviousRecurrenceUntil","dateOverridesJSON","occurrenceOverridesJSON","linkedTransactionIdsJSON","notes"
   ];
   const txRows = data.transactions.map(tx=>({
     id:tx.id, date:tx.date, title:tx.title, amount:tx.amount, type:tx.type, status:tx.status,
@@ -10616,6 +10626,7 @@ function exportEditableCSVs(){
     billArchivedPreviousRecurrenceUntil: tx.billArchivedPreviousRecurrenceUntil || "",
     dateOverridesJSON: JSON.stringify(tx.dateOverrides || {}),
     occurrenceOverridesJSON: JSON.stringify(tx.occurrenceOverrides || {}),
+    linkedTransactionIdsJSON: JSON.stringify(tx.linkedTransactionIds || []),
     notes:tx.notes || ""
   }));
 
@@ -10841,6 +10852,9 @@ function importEditedCSV(file){
         if(row.occurrenceOverridesJSON){
           try{ tx.occurrenceOverrides = JSON.parse(row.occurrenceOverridesJSON); } catch(err){ console.warn("Bad occurrenceOverridesJSON", err); }
         }
+        if(row.linkedTransactionIdsJSON){
+          try{ tx.linkedTransactionIds = JSON.parse(row.linkedTransactionIdsJSON); } catch(err){ console.warn("Bad linkedTransactionIdsJSON", err); }
+        }
         tx.notes = row.notes || "";
       });
       saveData();
@@ -10907,7 +10921,7 @@ function clearEverything(){
   alert("Money Nest has been cleared.");
 }
 
-if(document.getElementById("backupBtn")) backupBtn.onclick = ()=>{ const blob = new Blob([JSON.stringify(data,null,2)],{type:"application/json"}); const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "money-nest-backup.json"; a.click(); };
+if(document.getElementById("backupBtn")) backupBtn.onclick = ()=>{ const blob = new Blob([JSON.stringify(data,null,2)],{type:"application/json"}); const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "money-nest-backup.json"; a.click(); saveLocalMeta({lastJsonBackup:new Date().toISOString()}); renderBackupHealthIndicator(); };
 if(document.getElementById("financialPictureBtn")) financialPictureBtn.onclick = exportFinancialPicture;
 if(document.getElementById("extendedFinancialPictureBtn")) extendedFinancialPictureBtn.onclick = exportExtendedFinancialPicture;
 if(document.getElementById("csvExportBtn")) csvExportBtn.onclick = exportEditableCSVs;
@@ -11105,4 +11119,99 @@ renderMoneyNestHealthCenter=function(){
 // v2-208: reserve a dedicated Bills amount column so archive controls cannot squeeze totals.
 
 
+// v2-213: Simplified Budget Review with a compact summary strip and collapsed secondary insights; Smart Cleanup now starts collapsed.
 // v2-212: Combined Cash Accounts and Debts into one Accounts page while preserving all existing data models and detail views.
+
+
+// v2-214: transaction linking, Needs Review inbox, calendar density, and backup health.
+let txLinkDraftIds = [];
+function txByAnyId(id){ return (data.transactions || []).find(t=>String(t.id)===String(id)); }
+function transactionLinkLabel(tx){
+  const acct = accountById(tx.accountId)?.name || debtById(tx.debtAccountId || tx.linkedDebtId)?.name || "Unknown account";
+  const cat = categoryById(tx.categoryId)?.name || "Unassigned";
+  return `${tx.date || "No date"} • ${acct} • ${cat} • ${money(tx.amount || 0)}`;
+}
+function renderTxLinkedList(){
+  const el=document.getElementById('txLinkedList'); if(!el)return;
+  const rows=txLinkDraftIds.map(txByAnyId).filter(Boolean);
+  el.innerHTML=rows.length ? rows.map(tx=>`<div class="linked-tx-row"><span><b>${escapeAttr(tx.title||'Untitled')}</b><small>${escapeAttr(transactionLinkLabel(tx))}</small></span><button type="button" class="ghost small" onclick="removeDraftTransactionLink('${tx.id}')">Remove</button></div>`).join('') : '<div class="empty">No linked transactions yet.</div>';
+}
+window.removeDraftTransactionLink=id=>{txLinkDraftIds=txLinkDraftIds.filter(x=>x!==id);renderTxLinkedList();};
+function candidateTransactionText(tx){ return [tx.title,tx.date,tx.amount,accountById(tx.accountId)?.name,categoryById(tx.categoryId)?.name,debtById(tx.debtAccountId||tx.linkedDebtId)?.name].filter(Boolean).join(' ').toLowerCase(); }
+function renderTxLinkCandidates(){
+  const el=document.getElementById('txLinkCandidates'); if(!el)return;
+  const q=(document.getElementById('txLinkSearch')?.value||'').trim().toLowerCase();
+  const currentId=document.getElementById('txId')?.value||'';
+  const rows=(data.transactions||[]).filter(tx=>tx.id!==currentId && !isRecurring(tx) && (!q || candidateTransactionText(tx).includes(q))).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))).slice(0,100);
+  el.innerHTML=rows.length?rows.map(tx=>`<label class="link-candidate"><input type="checkbox" value="${tx.id}" ${txLinkDraftIds.includes(tx.id)?'checked':''}><span><b>${escapeAttr(tx.title||'Untitled')}</b><small>${escapeAttr(transactionLinkLabel(tx))}</small></span><b>${money(tx.amount||0)}</b></label>`).join(''):'<div class="empty">No matching saved transactions.</div>';
+}
+function openTxLinkManager(){ const d=document.getElementById('txLinkModal'); if(!d)return; document.getElementById('txLinkSearch').value=''; renderTxLinkCandidates(); d.showModal(); }
+function closeTxLinkManager(){document.getElementById('txLinkModal')?.close();}
+document.getElementById('manageTxLinksBtn')?.addEventListener('click',openTxLinkManager);
+document.getElementById('closeTxLinkModal')?.addEventListener('click',closeTxLinkManager);
+document.getElementById('cancelTxLinks')?.addEventListener('click',closeTxLinkManager);
+document.getElementById('txLinkSearch')?.addEventListener('input',renderTxLinkCandidates);
+document.getElementById('saveTxLinks')?.addEventListener('click',()=>{
+  txLinkDraftIds=[...document.querySelectorAll('#txLinkCandidates input:checked')].map(x=>x.value);
+  renderTxLinkedList(); closeTxLinkManager();
+});
+function reconcileTransactionLinks(){
+  const valid=new Set((data.transactions||[]).map(t=>String(t.id)));
+  (data.transactions||[]).forEach(tx=>{tx.linkedTransactionIds=[...new Set((tx.linkedTransactionIds||[]).filter(id=>valid.has(String(id))&&String(id)!==String(tx.id)).map(String))];});
+  (data.transactions||[]).forEach(tx=>tx.linkedTransactionIds.forEach(id=>{const other=txByAnyId(id);if(other&&!other.linkedTransactionIds.includes(tx.id))other.linkedTransactionIds.push(tx.id);}));
+}
+const _saveData214=saveData; saveData=function(){reconcileTransactionLinks();_saveData214();};
+
+const REVIEW_DISMISSALS_KEY=`${STORAGE_KEY}.reviewDismissals`;
+function getReviewDismissals(){try{return new Set(JSON.parse(localStorage.getItem(REVIEW_DISMISSALS_KEY)||'[]'));}catch(e){return new Set();}}
+function reviewKey(kind,id){return `${kind}:${id}`;}
+window.dismissReviewItem=(key)=>{const s=getReviewDismissals();s.add(key);localStorage.setItem(REVIEW_DISMISSALS_KEY,JSON.stringify([...s]));renderNeedsReview();};
+window.restoreReviewDismissals=()=>{localStorage.removeItem(REVIEW_DISMISSALS_KEY);renderNeedsReview();};
+function collectNeedsReview(){
+  const dismissed=getReviewDismissals(), out=[];
+  const today=todayISO();
+  (data.transactions||[]).forEach(tx=>{
+    const id=tx.id||uid();
+    if(tx.status==='planned' && tx.date && tx.date<today && !isRecurring(tx)) out.push({kind:'past',id,key:reviewKey('past',id),title:`Past planned: ${tx.title||'Untitled'}`,sub:`${tx.date} • ${money(tx.amount||0)} • ${transactionAccountText(tx)}`,action:`openTransaction('${id}')`});
+    if(tx.accountId && !accountById(tx.accountId)) out.push({kind:'account',id,key:reviewKey('account',id),title:`Unknown account: ${tx.title||'Untitled'}`,sub:`${tx.date||''} • ${money(tx.amount||0)}`,action:`openTransaction('${id}')`});
+    if(tx.categoryId && !(data.categories||[]).some(c=>c.id===tx.categoryId)) out.push({kind:'category',id,key:reviewKey('category',id),title:`Unknown category: ${tx.title||'Untitled'}`,sub:`${tx.date||''} • ${money(tx.amount||0)}`,action:`openTransaction('${id}')`});
+  });
+  const h=healthScan();
+  h.likely.forEach(x=>out.push({kind:'bill',id:x.tx.id,key:reviewKey('bill',x.tx.id),title:`Possible unlinked bill: ${x.tx.title}`,sub:`${x.tx.date} looks like ${x.match.title}`,action:`openTransaction('${x.tx.id}')`,secondary:`linkLikelyRecurring('${x.tx.id}','${x.match.id}')`,secondaryLabel:'Link bill'}));
+  h.duplicates.forEach(([a,b])=>out.push({kind:'duplicate',id:`${a.id}-${b.id}`,key:reviewKey('duplicate',duplicatePairKey(a,b)),title:`Possible duplicate: ${a.title}`,sub:`${a.date} • ${money(a.amount)} • two matching saved records`,action:`openTransaction('${a.id}')`,secondary:`openTransaction('${b.id}')`,secondaryLabel:'Review second'}));
+  h.stale.forEach(x=>out.push({kind:'stale',id:x.id,key:reviewKey('stale',x.id),title:`Recurring rule may be stale: ${x.title}`,sub:'No matched activity in roughly 120 days',action:`openTransaction('${x.id}')`}));
+  return out.filter(x=>!dismissed.has(x.key));
+}
+window.renderNeedsReview=function(){
+  const list=document.getElementById('needsReviewList'),summary=document.getElementById('needsReviewSummary');
+  const items=collectNeedsReview(); const groups={past:0,account:0,category:0,bill:0,duplicate:0,stale:0};items.forEach(x=>groups[x.kind]=(groups[x.kind]||0)+1);
+  const badge=document.getElementById('reviewNavBadge');if(badge){badge.textContent=items.length;badge.hidden=!items.length;}
+  if(summary)summary.innerHTML=`<article><b>${items.length}</b><span>Total findings</span></article><article><b>${groups.past||0}</b><span>Past planned</span></article><article><b>${(groups.account||0)+(groups.category||0)}</b><span>Broken references</span></article><article><b>${(groups.bill||0)+(groups.duplicate||0)+(groups.stale||0)}</b><span>Cleanup suggestions</span></article>`;
+  if(list)list.innerHTML=items.length?items.map(x=>`<div class="review-item"><span><b>${escapeAttr(x.title)}</b><small>${escapeAttr(x.sub)}</small></span><div class="review-actions"><button class="ghost small" onclick="${x.action}">Review</button>${x.secondary?`<button class="ghost small" onclick="${x.secondary}">${x.secondaryLabel}</button>`:''}<button class="ghost small" onclick="dismissReviewItem('${escapeAttr(x.key)}')">Dismiss</button></div></div>`).join(''):`<div class="empty-state">Nothing needs review right now. 🎉 <button class="ghost small" onclick="restoreReviewDismissals()">Restore dismissed</button></div>`;
+};
+const _render214=render; render=function(){_render214();renderNeedsReview();};
+
+function applyCalendarDensity(){
+  const grid=document.getElementById('calendarGrid');if(!grid)return;
+  grid.classList.remove('density-compact','density-comfortable','density-detailed');grid.classList.add(`density-${calendarDensity}`);
+  const sel=document.getElementById('calendarDensity');if(sel)sel.value=calendarDensity;
+}
+const _renderCalendar214=renderCalendar;renderCalendar=function(){_renderCalendar214();applyCalendarDensity();};
+document.getElementById('calendarDensity')?.addEventListener('change',e=>{calendarDensity=e.target.value;saveUiPrefs();applyCalendarDensity();});
+
+function backupHealthData(){
+  const meta=loadLocalMeta(), cloud=loadCloudConfig();
+  const local=meta.lastLocalChange||'', json=meta.lastJsonBackup||'', cloudSave=cloud.lastCloudSave||'';
+  const newestBackup=newestISO(json,cloudSave); const changedSince=!newestBackup||isoIsAfter(local,newestBackup);
+  return {local,json,cloudSave,changedSince};
+}
+window.renderBackupHealthIndicator=function(){
+  const el=document.getElementById('backupHealthIndicator');if(!el)return;
+  const b=backupHealthData();
+  el.innerHTML=`<article><b class="${b.changedSince?'backup-warn':'backup-good'}">${b.changedSince?'Backup recommended':'Backed up'}</b><span>${b.changedSince?'Local data changed after the newest saved copy.':'Newest backup is at least as recent as local edits.'}</span></article><article><b>${fmtCloudTime(b.json)}</b><span>Last JSON backup</span></article><article><b>${fmtCloudTime(b.cloudSave)}</b><span>Last cloud save</span></article>`;
+};
+const _renderSettings214=renderSettings;renderSettings=function(){_renderSettings214();renderBackupHealthIndicator();};
+
+// Ensure old backups get normalized and links become reciprocal without changing totals.
+reconcileTransactionLinks();
+renderNeedsReview();

@@ -2,7 +2,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-212`
+Current version: `money-nest-v2-214`
 
 ## Important Notes
 
@@ -148,6 +148,22 @@ Use CSV for reviewing or batch-editing data.
 * [ ]
 
 ## Version Notes
+
+
+
+### v2-214
+
+- Added transaction linking for related purchases, payments, reimbursements, transfers, and planned/cleared records. Links are reciprocal and preserved in JSON and transaction CSV import/export.
+- Added a centralized Needs Review inbox for past planned transactions, broken references, possible unlinked bills, duplicates, and stale recurring rules. Findings can be reviewed or dismissed.
+- Added Compact, Comfortable, and Detailed calendar density controls, saved as a browser UI preference.
+- Added a backup health indicator showing the last JSON backup, last cloud save, and whether local edits are newer than the newest saved copy.
+
+### v2-213
+- Simplified Budget Review by replacing the four large summary cards with one compact summary strip.
+- Moved month-over-month comparison, biggest category change, and the six-month trend into a collapsed **More insights** section so the primary review is easier to scan.
+- Kept spending-by-category and budget-performance drill-downs visible as the main review tools.
+- Smart Cleanup & Data Health in Settings now starts collapsed like the other Settings sections.
+- No saved data fields, calculations, JSON backups, or CSV formats changed.
 
 
 ### v2-212

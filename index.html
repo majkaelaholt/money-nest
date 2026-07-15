@@ -32,6 +32,7 @@
         <button class="nav-btn" data-view="accounts" aria-label="Accounts"><span class="nav-emoji" aria-hidden="true">💳</span><span class="nav-text">Accounts</span></button>
         <button class="nav-btn" data-view="budgets" aria-label="Budgets"><span class="nav-emoji" aria-hidden="true">📊</span><span class="nav-text">Budgets</span></button>
         <button class="nav-btn" data-view="bills" aria-label="Bills"><span class="nav-emoji" aria-hidden="true">🧾</span><span class="nav-text">Bills</span></button>
+        <button class="nav-btn" data-view="review" aria-label="Needs Review"><span class="nav-emoji" aria-hidden="true">📥</span><span class="nav-text">Review</span><span id="reviewNavBadge" class="nav-count" hidden>0</span></button>
         <button class="nav-btn" data-view="settings" aria-label="Settings"><span class="nav-emoji" aria-hidden="true">⚙️</span><span class="nav-text">Settings</span></button>
       </nav>
 
@@ -100,6 +101,9 @@
               <button type="button" class="check-dropdown-btn" id="calendarCategoryHighlightBtn">All categories</button>
               <div class="check-dropdown-menu" id="calendarCategoryHighlightMenu"></div>
             </div>
+          </label>
+          <label class="inline-label">Density
+            <select id="calendarDensity"><option value="compact">Compact</option><option value="comfortable">Comfortable</option><option value="detailed">Detailed</option></select>
           </label>
         </div>
 
@@ -217,6 +221,15 @@
         <div id="debtDetailContent"></div>
       </section>
 
+
+      <section id="review" class="view">
+        <div class="panel review-inbox-panel">
+          <div class="panel-head"><div><h3>Needs Review</h3><p class="hint">One inbox for transactions and data that may need your attention.</p></div><button class="ghost small" type="button" onclick="renderNeedsReview()">Refresh</button></div>
+          <div id="needsReviewSummary" class="review-summary"></div>
+          <div id="needsReviewList" class="review-list"></div>
+        </div>
+      </section>
+
       <section id="settings" class="view">
         <div class="settings-stack settings-stack-v175">
           <section class="settings-overview panel">
@@ -225,6 +238,7 @@
               <h3>⚙️ Money Nest controls</h3>
               <p class="hint">Cloud sync and backups first, then editing/customization tools. Recent Changes is local browser undo history, so cloud save dates can be newer than this list.</p>
             </div>
+          <div id="backupHealthIndicator" class="backup-health-indicator"></div>
           </section>
 
           <details class="panel settings-collapsible settings-sync-card">
@@ -244,7 +258,7 @@
             </div>
           </details>
 
-          <details class="panel settings-collapsible settings-intelligence-card" open>
+          <details class="panel settings-collapsible settings-intelligence-card">
             <summary><span class="settings-summary-main"><span class="settings-emoji">🧠</span><span><b>Smart cleanup & data health</b><small>Recurring links, duplicates, broken references, and suggestions</small></span></span><span class="summary-pill" id="healthIssueCount">scan</span></summary>
             <div class="settings-collapse-body"><div id="moneyNestHealthCenter"></div></div>
           </details>
@@ -658,6 +672,16 @@
         </div>
       </details>
 
+
+      <details class="form-details" id="txLinksDetails">
+        <summary>Linked transactions</summary>
+        <div class="details-inner">
+          <p class="hint">Connect related records, such as a purchase and card payment, reimbursement pair, transfer pair, or planned and cleared versions.</p>
+          <div id="txLinkedList" class="linked-transaction-list"></div>
+          <button type="button" class="ghost small" id="manageTxLinksBtn">Manage links</button>
+        </div>
+      </details>
+
       <details class="form-details">
         <summary>Notes</summary>
         <div class="details-inner">
@@ -674,6 +698,16 @@
         <button class="primary" id="saveTxBtn">Save</button>
       </div>
     </form>
+  </dialog>
+
+
+  <dialog id="txLinkModal">
+    <div class="modal-card link-modal-card">
+      <div class="panel-head"><div><h3>Link transactions</h3><p class="hint">Select related saved transactions.</p></div><button type="button" class="icon-btn" id="closeTxLinkModal">×</button></div>
+      <input id="txLinkSearch" placeholder="Search title, account, category, date, or amount">
+      <div id="txLinkCandidates" class="link-candidate-list"></div>
+      <div class="modal-actions"><button type="button" class="ghost" id="cancelTxLinks">Cancel</button><button type="button" class="primary" id="saveTxLinks">Save links</button></div>
+    </div>
   </dialog>
 
   <dialog id="simpleModal">

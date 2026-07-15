@@ -6,7 +6,7 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-212`
+Latest known version: `money-nest-v2-214`
 
 Before editing, always inspect `README.md` and confirm the current version in the repository. If `README.md` shows a different version, continue from the repo version and mention the mismatch in your summary.
 
@@ -142,7 +142,7 @@ Example README note:
 ### v2-200
 - Banking is excluded from budgeting. Savings transfers net contributions by direction.
 
-- Current version: money-nest-v2-212. Includes combinable Budget Review spending/account filters, budget presets/groups, comparisons, calculation inspector, global search, mobile quick review, recurring cleanup, smart matching, and data-health scanning.
+- Current version: money-nest-v2-214. Includes combinable Budget Review spending/account filters, budget presets/groups, comparisons, calculation inspector, global search, mobile quick review, recurring cleanup, smart matching, and data-health scanning.
 
 
 ### v2-205
@@ -163,6 +163,19 @@ Example README note:
 - Archive preserves cleared history, suppresses future generation, and removes non-cleared/future linked occurrence rows; Restore re-enables the stored recurrence rule.
 
 
+
+
+### v2-214
+
+- Transaction records may include `linkedTransactionIds`, an array of related transaction IDs. Link editing must keep links reciprocal and remove missing/self references.
+- Needs Review is a UI inbox built from existing transactions and health scans; dismissals are local browser preferences and do not delete data.
+- Calendar density is a local UI preference with compact, comfortable, and detailed modes.
+- Backup health uses local metadata timestamps and must not replace JSON export or manual Supabase safety warnings.
+
+### v2-213
+- Budget Review uses a compact four-metric summary strip instead of four separate mini-cards.
+- Secondary comparison and trend information lives in a collapsed `budget-more-insights` details section.
+- Smart Cleanup & Data Health is collapsed by default; no data model or import/export changes were made.
 
 ### v2-212
 - Accounts and Debts are now combined into one Accounts page. Cash accounts render first and the unchanged debt grouping/tools render below.
