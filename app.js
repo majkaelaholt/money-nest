@@ -5806,9 +5806,45 @@ function isBudgetReviewOutflow(tx){
   if(isBudgetReviewTransferOutflow(tx)) return true;
   return false;
 }
+function transactionBelongsToRecurringBill(tx){
+  if(!tx) return false;
+  if(isRecurring(tx)) return true;
+
+  // Preserve the recurring identity on occurrence-only replacements created by
+  // older/newer save paths whenever that metadata is available.
+  const sourceId = tx.recurringSourceId || tx.originalId || tx.recurrenceSourceId || "";
+  if(sourceId){
+    const source = data.transactions.find(item => item?.id === sourceId);
+    if(source && isRecurring(source)) return true;
+  }
+  if(tx.wasRecurringOccurrence || tx.fromRecurringBill) return true;
+
+  // Older occurrence-only edits may have been saved as ordinary one-time rows
+  // with no recurrence metadata. Match those rows back to a recurring bill by
+  // routing/category/title/amount and a nearby scheduled occurrence. This uses
+  // the same loose bill matching rules as the Bills page, while keeping the
+  // date window narrow enough to avoid hiding unrelated purchases.
+  try{
+    const txDate = parseDate(tx.date || todayISO());
+    return data.transactions.some(template => {
+      if(!template || template.id === tx.id || !isRecurring(template)) return false;
+      if(!billRouteMatches(template, tx)) return false;
+      const seriesStart = parseDate(template.date);
+      for(let offset=-7; offset<=7; offset++){
+        const cursor = addDays(txDate, offset);
+        if(cursor < seriesStart) continue;
+        if(recurrenceOccursOn(template, cursor, seriesStart)) return true;
+      }
+      return false;
+    });
+  } catch(err){
+    console.warn("Could not determine recurring-bill membership for budget review", tx?.title, err);
+    return false;
+  }
+}
 function budgetIncludesTransaction(tx, includeRecurringBills=budgetReviewIncludeRecurringBills){
   if(!isBudgetReviewOutflow(tx)) return false;
-  if(!includeRecurringBills && isRecurring(tx)) return false;
+  if(!includeRecurringBills && transactionBelongsToRecurringBill(tx)) return false;
   return true;
 }
 function budgetCategoryIds(budget){
@@ -8149,6 +8185,8 @@ function makeOneTimeFromSeriesEdit(baseTx, formTx, occurrenceOriginalDate, occur
     originalId:"",
     originalDate:"",
     overrideFrom:"",
+    recurringSourceId: baseTx.id,
+    wasRecurringOccurrence:true,
     dateOverrides:{},
     notes: formTx.notes || baseTx.notes || ""
   };

@@ -6,7 +6,7 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-201`
+Latest known version: `money-nest-v2-202`
 
 Before editing, always inspect `README.md` and confirm the current version in the repository. If `README.md` shows a different version, continue from the repo version and mention the mismatch in your summary.
 
@@ -123,6 +123,11 @@ Example README note:
 ```
 
 
+
+### v2-202
+
+- Budget recurring-bill exclusion recognizes edited occurrence-only replacements, including older rows that lost direct recurrence metadata.
+- One-time replacements preserve recurring-source metadata.
 
 ### v2-201
 - Budget Review now has an `Include recurring bills` toggle instead of the older transfer/payment toggle. Recurring transactions are excluded consistently from summaries, pie/category review, trends, budget performance, and budget detail when disabled.
