@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-225";
+const APP_VERSION = "2-229";
 const CURRENT_SCHEMA_VERSION = 223;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -11442,8 +11442,8 @@ function organizeSettingsIntoFourSections(){
   const overview=stack.querySelector('.settings-overview');
   const cards=[...stack.children].filter(el=>el!==overview && el.matches('details.panel'));
   const defs=[
-    ['appearance','🎨','Appearance','Palettes, categories, colors, and labels'],
     ['data','📦','Data & Backup','Cloud sync, backups, reports, and undo history'],
+    ['appearance','🎨','Appearance','Palettes, categories, colors, and labels'],
     ['automation','⚙️','Automation','Templates, paychecks, and repeating workflows'],
     ['preferences','🎛️','App Preferences','Defaults, reference notes, and behavior']
   ];
@@ -11485,7 +11485,8 @@ function openTransactionDetail(id,defaults={}){
   document.getElementById('transactionDetailModal').showModal();
 }
 window.openTransactionDetail=openTransactionDetail;
-window.openTransaction=(id=null,defaults={})=> id ? openTransactionDetail(id,defaults) : openTransactionEditor(id,defaults);
+// v2-228: restore direct editing when an existing transaction is selected.
+window.openTransaction=(id=null,defaults={})=>openTransactionEditor(id,defaults);
 // Bill series editing is an explicit edit action, so bypass the review screen.
 const _openBillSeriesEditor223=openBillSeriesEditor; openBillSeriesEditor=function(txId){
   const tx=data.transactions.find(t=>t.id===txId); if(!tx||!isRecurring(tx))return;
@@ -11500,3 +11501,5 @@ function showOlderSchemaWarning(){
   const bar=document.createElement('div');bar.className='schema-upgrade-banner';bar.innerHTML=`<span><b>Money Nest upgraded older saved data.</b> Schema ${w.from} → ${w.to}. Make a fresh JSON backup when convenient.</span><button type="button" class="icon-btn">×</button>`;bar.querySelector('button').onclick=()=>bar.remove();document.body.prepend(bar);
 }
 setTimeout(showOlderSchemaWarning,0);
+
+// v2-229: Data & Backup is the first grouped Settings card below the Settings Map.

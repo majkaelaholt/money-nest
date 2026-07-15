@@ -5054,3 +5054,36 @@ input,select,textarea{background:var(--panel);color:var(--ink)}
   .account-summary-row > div:last-child{border-bottom:0}
   .ledger-panel-head > div{display:block}
 }
+
+/* v2-226: keep the transaction date field aligned with the amount field */
+#transactionModal #txDate{
+  height:44px;
+  min-height:44px;
+  padding-block:10px;
+  box-sizing:border-box;
+}
+#transactionModal #txDate::-webkit-date-and-time-value{
+  min-height:0;
+  line-height:1.2;
+  padding:0;
+}
+@media(max-width:700px){
+  #transactionModal #txDate{
+    height:46px !important;
+    min-height:46px !important;
+  }
+}
+
+/* v2-228: keep Dashboard list cards on one consistent palette surface */
+#dashboard #safeSpendList .row,
+#dashboard #upcomingList .upcoming-row,
+#dashboard .action-row-v2,
+#dashboard .action-list-v2 > .empty{
+  background:var(--panel-2) !important;
+  border-color:var(--line) !important;
+}
+#dashboard #safeSpendList .row:hover,
+#dashboard #upcomingList .upcoming-row:hover,
+#dashboard .action-row-v2:hover{
+  background:color-mix(in srgb,var(--panel-2) 92%,var(--panel)) !important;
+}
