@@ -6,7 +6,7 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-200`
+Latest known version: `money-nest-v2-201`
 
 Before editing, always inspect `README.md` and confirm the current version in the repository. If `README.md` shows a different version, continue from the repo version and mention the mismatch in your summary.
 
@@ -122,6 +122,12 @@ Example README note:
 * No JSON/CSV schema changes needed.
 ```
 
+
+
+### v2-201
+- Budget Review now has an `Include recurring bills` toggle instead of the older transfer/payment toggle. Recurring transactions are excluded consistently from summaries, pie/category review, trends, budget performance, and budget detail when disabled.
+- Budgets support `categoryIds` for one or multiple categories. `categoryId` remains populated with the first selected category for backward compatibility.
+- CSV budgets include `categoryIdsJSON`; older CSV/JSON data using only `categoryId` imports as a single-category budget.
 
 ### v2-200
 - Banking is excluded from budgeting. Savings transfers net contributions by direction.
