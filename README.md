@@ -2,7 +2,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-218`
+Current version: `money-nest-v2-219`
 
 ## Important Notes
 
@@ -149,11 +149,13 @@ Use CSV for reviewing or batch-editing data.
 
 ## Version Notes
 
-### v2-218
+### v2-219
 
-- Added bulk category color editing in Settings → Categories.
-- Multiple categories can be selected and assigned one palette role together, given one shared custom color override, or have their custom overrides removed.
-- Bulk editing changes only category color settings; names, emojis, IDs, transactions, JSON backups, and CSV compatibility are unchanged.
+- Fixed a startup runtime crash caused by saved data loading before the color-palette constants were initialized.
+- Palette settings and bulk category color editing remain available; no palette rollback was required.
+- Added versioned asset references to prevent GitHub Pages from mixing cached HTML, CSS, and JavaScript files.
+- Verified dashboard rendering and navigation across Dashboard, Calendar, Accounts, Budgets, Bills, and Settings in a browser-like runtime test.
+- No saved data, JSON backup, or CSV compatibility changes.
 
 ### v2-216
 - Fixed Calendar density controls so Compact, Comfortable, and Detailed visibly change day sizing, chip sizing, metadata, and the number of transactions shown before “+ more.”

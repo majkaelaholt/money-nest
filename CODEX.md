@@ -6,7 +6,7 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-218`
+Latest known version: `money-nest-v2-219`
 
 Before editing, always inspect `README.md` and confirm the current version in the repository. If `README.md` shows a different version, continue from the repo version and mention the mismatch in your summary.
 
@@ -142,7 +142,7 @@ Example README note:
 ### v2-200
 - Banking is excluded from budgeting. Savings transfers net contributions by direction.
 
-- Current version: money-nest-v2-218. Includes combinable Budget Review spending/account filters, budget presets/groups, comparisons, calculation inspector, global search, mobile quick review, recurring cleanup, smart matching, and data-health scanning.
+- Current version: money-nest-v2-219. Includes combinable Budget Review spending/account filters, budget presets/groups, comparisons, calculation inspector, global search, mobile quick review, recurring cleanup, smart matching, and data-health scanning.
 
 
 ### v2-205
@@ -165,10 +165,11 @@ Example README note:
 
 
 
-### v2-218
+### v2-219
 
-- Added bulk category color editing for palette roles and custom color overrides.
-- Bulk category editing does not alter category IDs, names, emojis, or transaction assignments.
+- Fixed app startup ordering so `data = loadData()` runs only after the palette constants and normalization helpers are initialized.
+- This prevents the `Cannot access MONEY_NEST_PALETTES before initialization` runtime failure that blocked rendering and navigation.
+- Palette and bulk category color features remain enabled; saved-data and import/export schemas are unchanged.
 
 ### v2-216
 - Calendar density controls now visibly alter the calendar; Needs Review and Smart Cleanup/Data Health are unified in a collapsible Dashboard panel, and the standalone Review page was removed.

@@ -2733,7 +2733,7 @@ const sampleData = {
   ]
 };
 
-let data = loadData();
+let data;
 const CHANGE_HISTORY_KEY = `${STORAGE_KEY}.changeHistory`;
 let suppressChangeHistory = false;
 let currentView = "dashboard";
@@ -2928,6 +2928,9 @@ window.saveCustomMoneyNestPalette=()=>{
   document.querySelectorAll('[data-custom-app]').forEach(i=>a.customPalette.app[i.dataset.customApp]=i.value);
   a.paletteId="custom";applyMoneyNestPalette();saveData();renderAppearanceSettings();
 };
+
+// v2-219: load saved data only after palette constants exist, preventing startup TDZ errors.
+data = loadData();
 
 function normalizeCategoryId(id){
   return id || "unassigned";
