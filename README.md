@@ -2,7 +2,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-237`
+Current version: `money-nest-v2-238`
 
 ## Important Notes
 
@@ -892,3 +892,9 @@ Use CSV for reviewing or batch-editing data.
 - Legacy split-series matching now also requires a matching recurrence schedule, preventing unrelated same-title rules from being merged or hidden.
 - Deleting a recurring series now removes only that exact series and its linked occurrences; similarly named recurring rules remain untouched.
 - Loose bill-payment matching will not borrow a transaction already linked to another recurring series.
+
+
+### v2-238
+- Added an iPad/tablet-only modal layout for coarse-pointer devices wider than phones.
+- Transaction and small update dialogs use a wider, better-proportioned card with tighter internal spacing on iPad.
+- Desktop and iPhone breakpoints remain unchanged.

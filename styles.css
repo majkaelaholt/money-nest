@@ -5087,3 +5087,63 @@ input,select,textarea{background:var(--panel);color:var(--ink)}
 #dashboard .action-row-v2:hover{
   background:color-mix(in srgb,var(--panel-2) 92%,var(--panel)) !important;
 }
+
+/* v2-238 iPad/tablet modal spacing without changing desktop or phone layouts */
+@media (hover:none) and (pointer:coarse) and (min-width:701px){
+  #transactionModal{
+    width:min(720px,calc(100vw - 56px));
+  }
+  #simpleModal,
+  #recurringScopeModal{
+    width:min(680px,calc(100vw - 56px));
+  }
+  #transactionModal .modal-card,
+  #simpleModal .modal-card,
+  #recurringScopeModal .modal-card{
+    max-height:88dvh;
+    overflow:auto;
+    padding:18px;
+    gap:10px;
+  }
+  #transactionModal .form-section,
+  #transactionModal .form-details{
+    border-radius:17px;
+  }
+  #transactionModal .form-section{
+    padding:14px;
+    gap:10px;
+  }
+  #transactionModal .details-inner{
+    padding:0 14px 14px;
+    gap:10px;
+  }
+  #transactionModal .two-col,
+  #simpleModal .two-col{
+    gap:10px 14px;
+  }
+  #transactionModal label,
+  #simpleModal label{
+    gap:5px;
+  }
+  #transactionModal input,
+  #transactionModal select,
+  #transactionModal textarea,
+  #simpleModal input,
+  #simpleModal select,
+  #simpleModal textarea{
+    padding:10px 12px;
+  }
+  #transactionModal input[type="date"],
+  #simpleModal input[type="date"]{
+    min-height:43px;
+  }
+  #transactionModal .panel-head,
+  #simpleModal .panel-head{
+    margin-bottom:8px;
+  }
+  #transactionModal .modal-actions,
+  #simpleModal .modal-actions{
+    gap:8px;
+    padding-top:8px;
+  }
+}

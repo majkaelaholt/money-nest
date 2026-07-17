@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-237";
+const APP_VERSION = "2-238";
 const CURRENT_SCHEMA_VERSION = 224;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
