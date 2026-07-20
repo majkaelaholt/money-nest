@@ -1,4 +1,9 @@
-# CODEX.md — Money Nest Developer Rules
+# CODEX
+
+## v2-239
+- iPad-specific modal layout now uses runtime iPad detection.
+- Touch calendar chips expose explicit quick actions; credit-card charge editor exposes Create card payment.
+.md — Money Nest Developer Rules
 
 This file is the working guide for Codex or any AI coding agent editing **Money Nest**.
 
@@ -6,7 +11,7 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-238`
+Latest known version: `money-nest-v2-239`
 
 Before editing, always inspect `README.md` and confirm the current version in the repository. If `README.md` shows a different version, continue from the repo version and mention the mismatch in your summary.
 
@@ -142,7 +147,7 @@ Example README note:
 ### v2-200
 - Banking is excluded from budgeting. Savings transfers net contributions by direction.
 
-- Current version: money-nest-v2-238. Includes in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
+- Current version: money-nest-v2-239. Includes in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
 
 
 ### v2-205
@@ -307,5 +312,5 @@ Example README note:
 - Loose payment matching excludes rows linked to another recurring lineage.
 
 
-### v2-238
+### v2-239
 - Added tablet-only responsive modal sizing and spacing using a coarse-pointer media query, preserving desktop and phone layouts.

@@ -1,8 +1,14 @@
 # Money Nest
 
+## v2-239
+- Fixed iPad modal sizing with direct iPad detection rather than unreliable pointer media queries.
+- Added visible touch quick-actions buttons to calendar transactions.
+- Added a direct Create card payment action when editing an existing credit-card purchase.
+
+
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-238`
+Current version: `money-nest-v2-239`
 
 ## Important Notes
 
@@ -894,7 +900,7 @@ Use CSV for reviewing or batch-editing data.
 - Loose bill-payment matching will not borrow a transaction already linked to another recurring series.
 
 
-### v2-238
+### v2-239
 - Added an iPad/tablet-only modal layout for coarse-pointer devices wider than phones.
 - Transaction and small update dialogs use a wider, better-proportioned card with tighter internal spacing on iPad.
 - Desktop and iPhone breakpoints remain unchanged.

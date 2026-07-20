@@ -1,7 +1,13 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-238";
+const APP_VERSION = "2-239";
 const CURRENT_SCHEMA_VERSION = 224;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
+
+// v2-239: reliably detect iPad/tablet Safari and touch-capable layouts.
+const MONEY_NEST_IS_IPAD = /iPad/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const MONEY_NEST_HAS_TOUCH = navigator.maxTouchPoints > 0 || "ontouchstart" in window;
+document.documentElement.classList.toggle("money-nest-ipad", MONEY_NEST_IS_IPAD);
+document.documentElement.classList.toggle("money-nest-touch", MONEY_NEST_HAS_TOUCH);
 
 // v2.167: Supabase cloud sync helpers. This stores the full Money Nest JSON as one
 // per-user row in public.money_nest_data. RLS should restrict each row to auth.uid().
@@ -5156,6 +5162,7 @@ function renderCalendar(){
     return `<div class="tx-chip ${extraClass} ${chipStatus} ${highlighted ? "" : "muted-category"}" draggable="true" style="${style}" data-tx="${tx.originalId || tx.id}" data-generated="${!!tx.generated}" data-original-date="${tx.originalDate || tx.date}" data-occurrence-date="${tx.date}" data-calendar-side="${tx.calendarSide || ""}" data-calendar-account="${tx.calendarAccountId || ""}">
       <span class="tx-name">${highlighted ? cat.emoji : "◦"} ${calendarEntryLabel(tx)}<small class="chip-meta">${accountById(tx.calendarAccountId || tx.accountId)?.name || "Unknown account"} • ${tx.status === "cleared" ? "Cleared" : "Planned"}</small></span>
       <span class="tx-chip-amount">${isPositive?'+':'-'}${money(tx.amount)}</span>
+      <button type="button" class="tx-touch-actions" aria-label="Transaction quick actions" onclick="event.preventDefault();event.stopPropagation();showTxActionsFromButton(this)">•••</button>
     </div>`;
   };
 
@@ -8448,6 +8455,21 @@ function showTxContextMenu(event, id, meta={}){
   menu.style.left = `${Math.max(8, x)}px`;
   menu.style.top = `${Math.max(8, y)}px`;
 }
+window.showTxActionsFromButton = (button)=>{
+  const row = button?.closest?.("[data-tx]");
+  if(!row) return;
+  const rect = button.getBoundingClientRect();
+  showTxContextMenu({
+    preventDefault(){},
+    stopPropagation(){},
+    clientX:Math.min(rect.right, window.innerWidth - 8),
+    clientY:Math.min(rect.bottom + 6, window.innerHeight - 8)
+  }, row.dataset.tx, {
+    originalDate:row.dataset.originalDate || "",
+    occurrenceDate:row.dataset.occurrenceDate || ""
+  });
+};
+
 function hideTxContextMenu(){
   const menu = document.getElementById("txContextMenu");
   if(menu) menu.classList.remove("open");
@@ -8820,6 +8842,18 @@ window.openTransaction = (id=null, defaults={})=>{
 
   deleteTxBtn.style.display = tx ? "inline-block" : "none";
   duplicateTxBtn.style.display = tx ? "inline-block" : "none";
+  const directCardPaymentBtn = document.getElementById("createCardPaymentTxBtn");
+  if(directCardPaymentBtn){
+    const debt = tx ? debtById(tx.debtAccountId) : null;
+    const canCreateCardPayment = !!tx && tx.type === "expense" && !!tx.debtAccountId && isCreditCardDebt(debt);
+    directCardPaymentBtn.style.display = canCreateCardPayment ? "inline-block" : "none";
+    directCardPaymentBtn.onclick = canCreateCardPayment ? ()=>{
+      const chargeId = baseTx?.id || tx?.id;
+      const meta = {...txEditMeta};
+      txModal.close();
+      createCardPaymentForCharge(chargeId, meta);
+    } : null;
+  }
   updateTransactionFormUI();
   txModal.showModal();
 };

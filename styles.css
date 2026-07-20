@@ -5088,62 +5088,63 @@ input,select,textarea{background:var(--panel);color:var(--ink)}
   background:color-mix(in srgb,var(--panel-2) 92%,var(--panel)) !important;
 }
 
-/* v2-238 iPad/tablet modal spacing without changing desktop or phone layouts */
-@media (hover:none) and (pointer:coarse) and (min-width:701px){
-  #transactionModal{
-    width:min(720px,calc(100vw - 56px));
-  }
-  #simpleModal,
-  #recurringScopeModal{
-    width:min(680px,calc(100vw - 56px));
-  }
-  #transactionModal .modal-card,
-  #simpleModal .modal-card,
-  #recurringScopeModal .modal-card{
-    max-height:88dvh;
-    overflow:auto;
-    padding:18px;
-    gap:10px;
-  }
-  #transactionModal .form-section,
-  #transactionModal .form-details{
-    border-radius:17px;
-  }
-  #transactionModal .form-section{
-    padding:14px;
-    gap:10px;
-  }
-  #transactionModal .details-inner{
-    padding:0 14px 14px;
-    gap:10px;
-  }
-  #transactionModal .two-col,
-  #simpleModal .two-col{
-    gap:10px 14px;
-  }
-  #transactionModal label,
-  #simpleModal label{
-    gap:5px;
-  }
-  #transactionModal input,
-  #transactionModal select,
-  #transactionModal textarea,
-  #simpleModal input,
-  #simpleModal select,
-  #simpleModal textarea{
-    padding:10px 12px;
-  }
-  #transactionModal input[type="date"],
-  #simpleModal input[type="date"]{
-    min-height:43px;
-  }
-  #transactionModal .panel-head,
-  #simpleModal .panel-head{
-    margin-bottom:8px;
-  }
-  #transactionModal .modal-actions,
-  #simpleModal .modal-actions{
-    gap:8px;
-    padding-top:8px;
-  }
+/* v2-239 iPad/tablet modal layout detected in JavaScript so Safari desktop-mode
+   user-agent/pointer reporting cannot prevent the rules from applying. */
+.money-nest-ipad #transactionModal{
+  width:min(760px,calc(100vw - 48px)) !important;
+  max-width:760px !important;
+}
+.money-nest-ipad #simpleModal,
+.money-nest-ipad #recurringScopeModal{
+  width:min(700px,calc(100vw - 48px)) !important;
+  max-width:700px !important;
+}
+.money-nest-ipad #transactionModal .modal-card,
+.money-nest-ipad #simpleModal .modal-card,
+.money-nest-ipad #recurringScopeModal .modal-card{
+  width:100%;
+  max-height:88dvh;
+  overflow:auto;
+  padding:20px;
+  gap:12px;
+}
+.money-nest-ipad #transactionModal .form-section{padding:16px;gap:12px}
+.money-nest-ipad #transactionModal .details-inner{padding:0 16px 16px;gap:12px}
+.money-nest-ipad #transactionModal .two-col,
+.money-nest-ipad #simpleModal .two-col{gap:12px 16px}
+.money-nest-ipad #transactionModal input,
+.money-nest-ipad #transactionModal select,
+.money-nest-ipad #transactionModal textarea,
+.money-nest-ipad #simpleModal input,
+.money-nest-ipad #simpleModal select,
+.money-nest-ipad #simpleModal textarea{padding:11px 13px;min-height:46px}
+.money-nest-ipad #transactionModal input[type="date"],
+.money-nest-ipad #simpleModal input[type="date"]{height:46px!important;min-height:46px!important}
+.money-nest-ipad #transactionModal .modal-actions,
+.money-nest-ipad #simpleModal .modal-actions{gap:10px;padding-top:10px}
+
+/* Touch devices get an explicit quick-actions affordance instead of relying on right-click. */
+.tx-touch-actions{
+  display:none;
+  flex:0 0 auto;
+  align-items:center;
+  justify-content:center;
+  min-width:28px;
+  width:28px;
+  height:28px;
+  padding:0;
+  border-radius:999px;
+  border:1px solid color-mix(in srgb,var(--chip-outline) 55%,var(--line));
+  background:color-mix(in srgb,var(--panel) 88%,transparent);
+  color:var(--ink);
+  font-size:12px;
+  line-height:1;
+  letter-spacing:-2px;
+}
+.money-nest-touch .tx-chip .tx-touch-actions{display:inline-flex}
+.money-nest-touch .tx-chip{padding-right:4px}
+.money-nest-touch .tx-chip .tx-name{min-width:0}
+.money-nest-touch .tx-chip .tx-chip-amount{margin-left:auto}
+@media(max-width:700px){
+  .tx-touch-actions{width:26px;height:26px;min-width:26px}
 }
