@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-239";
+const APP_VERSION = "2-240";
 const CURRENT_SCHEMA_VERSION = 224;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -8482,6 +8482,47 @@ function attachTransactionContextMenus(){
       originalDate: el.dataset.originalDate || "",
       occurrenceDate: el.dataset.occurrenceDate || ""
     });
+
+    // v2-240: touch users can long-press a transaction for the same quick actions
+    // as desktop right-click, without permanently consuming chip width with a dots button.
+    if(MONEY_NEST_HAS_TOUCH && !el.dataset.longPressReady){
+      el.dataset.longPressReady = "1";
+      let pressTimer = null;
+      let startX = 0;
+      let startY = 0;
+      const cancelPress = ()=>{ if(pressTimer){ clearTimeout(pressTimer); pressTimer = null; } };
+      el.addEventListener("pointerdown", event=>{
+        if(event.pointerType === "mouse") return;
+        startX = event.clientX;
+        startY = event.clientY;
+        cancelPress();
+        pressTimer = setTimeout(()=>{
+          pressTimer = null;
+          if(navigator.vibrate) navigator.vibrate(20);
+          el.dataset.suppressNextClick = "1";
+          showTxContextMenu({
+            preventDefault(){},
+            stopPropagation(){},
+            clientX:event.clientX,
+            clientY:event.clientY
+          }, el.dataset.tx, {
+            originalDate:el.dataset.originalDate || "",
+            occurrenceDate:el.dataset.occurrenceDate || ""
+          });
+        }, 520);
+      }, {passive:true});
+      el.addEventListener("pointermove", event=>{
+        if(Math.abs(event.clientX-startX)>10 || Math.abs(event.clientY-startY)>10) cancelPress();
+      }, {passive:true});
+      ["pointerup","pointercancel","pointerleave"].forEach(name=>el.addEventListener(name,cancelPress,{passive:true}));
+      el.addEventListener("click", event=>{
+        if(el.dataset.suppressNextClick === "1"){
+          event.preventDefault();
+          event.stopPropagation();
+          delete el.dataset.suppressNextClick;
+        }
+      }, true);
+    }
   });
 }
 

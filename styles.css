@@ -5148,3 +5148,109 @@ input,select,textarea{background:var(--panel);color:var(--ink)}
 @media(max-width:700px){
   .tx-touch-actions{width:26px;height:26px;min-width:26px}
 }
+
+/* v2-240: iPad gets an app-style full-width workspace and touch actions without
+   sacrificing calendar chip text to inline ellipsis buttons. */
+.money-nest-ipad .app-shell{display:block!important}
+.money-nest-ipad .main{
+  width:100%!important;
+  max-width:none!important;
+  padding:22px 22px calc(94px + env(safe-area-inset-bottom))!important;
+}
+.money-nest-ipad .sidebar{
+  position:fixed!important;
+  z-index:9000!important;
+  left:50%!important;
+  right:auto!important;
+  top:auto!important;
+  bottom:max(10px,env(safe-area-inset-bottom))!important;
+  transform:translateX(-50%)!important;
+  width:min(680px,calc(100vw - 40px))!important;
+  height:68px!important;
+  min-height:68px!important;
+  max-height:68px!important;
+  padding:7px 10px!important;
+  border:1px solid var(--line)!important;
+  border-radius:26px!important;
+  box-shadow:0 10px 30px rgba(40,30,20,.18)!important;
+  overflow:visible!important;
+  background:color-mix(in srgb,var(--panel) 94%,transparent)!important;
+  backdrop-filter:blur(18px)!important;
+}
+.money-nest-ipad .sidebar .brand{display:none!important}
+.money-nest-ipad .sidebar .nav{
+  display:grid!important;
+  grid-template-columns:repeat(6,minmax(0,1fr))!important;
+  gap:5px!important;
+  height:54px!important;
+  margin:0!important;
+}
+.money-nest-ipad .sidebar .nav-btn{
+  height:54px!important;
+  min-height:54px!important;
+  padding:5px 6px!important;
+  border-radius:18px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:2px!important;
+  font-size:.68rem!important;
+}
+.money-nest-ipad .sidebar .nav-emoji{font-size:20px!important;line-height:1!important}
+.money-nest-ipad .sidebar .nav-text{display:block!important;font-size:10px!important;line-height:1!important}
+.money-nest-ipad .sidebar .nav-count{position:absolute;top:2px;right:7px}
+.money-nest-ipad .side-card.recent-card{
+  position:fixed!important;
+  z-index:8999!important;
+  right:20px!important;
+  bottom:calc(88px + env(safe-area-inset-bottom))!important;
+  width:auto!important;
+  min-width:0!important;
+  padding:0!important;
+  border:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  display:flex!important;
+  gap:8px!important;
+}
+.money-nest-ipad .side-card.recent-card .side-card-head,
+.money-nest-ipad .side-card.recent-card #recentPlacesList{display:none!important}
+.money-nest-ipad .side-card.recent-card .sidebar-search-btn,
+.money-nest-ipad .side-card.recent-card #quickAddBtn{
+  display:flex!important;
+  width:52px!important;
+  min-width:52px!important;
+  height:52px!important;
+  min-height:52px!important;
+  padding:0!important;
+  border-radius:50%!important;
+  align-items:center!important;
+  justify-content:center!important;
+  font-size:0!important;
+  box-shadow:0 8px 20px rgba(40,30,20,.18)!important;
+}
+.money-nest-ipad .side-card.recent-card .sidebar-search-btn::before{content:"🔎";font-size:21px}
+.money-nest-ipad .side-card.recent-card #quickAddBtn::before{content:"+";font-size:30px;line-height:1}
+.money-nest-ipad .calendar-toolbar-local{padding:10px 12px!important;gap:10px!important}
+.money-nest-ipad .calendar{grid-template-columns:repeat(7,minmax(145px,1fr))!important}
+.money-nest-ipad .tx-chip{padding:5px 7px!important;gap:5px!important}
+.money-nest-ipad .tx-chip .tx-name{font-size:11px!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}
+.money-nest-ipad .tx-chip .tx-chip-amount{font-size:11px!important;flex:0 0 auto!important}
+.money-nest-ipad .tx-chip .tx-touch-actions{display:none!important}
+.money-nest-ipad #transactionModal{width:min(860px,calc(100vw - 56px))!important;max-width:860px!important}
+.money-nest-ipad #simpleModal,.money-nest-ipad #recurringScopeModal{width:min(820px,calc(100vw - 56px))!important;max-width:820px!important}
+.money-nest-ipad #transactionModal .modal-card,
+.money-nest-ipad #simpleModal .modal-card,
+.money-nest-ipad #recurringScopeModal .modal-card{padding:22px!important;gap:16px!important;max-height:90dvh!important}
+.money-nest-ipad #transactionModal .form-section{padding:18px!important;gap:15px!important}
+.money-nest-ipad #transactionModal .details-inner{padding:0 18px 18px!important;gap:15px!important}
+.money-nest-ipad #transactionModal .two-col,
+.money-nest-ipad #simpleModal .two-col{gap:15px 18px!important}
+.money-nest-ipad #simpleModal .modal-card>form,
+.money-nest-ipad #simpleModal .simple-fields{gap:14px!important}
+
+@media (orientation:portrait){
+  .money-nest-ipad .calendar{grid-template-columns:repeat(7,minmax(125px,1fr))!important}
+  .money-nest-ipad .main{padding-left:14px!important;padding-right:14px!important}
+}
