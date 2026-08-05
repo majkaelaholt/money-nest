@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <title>Money Nest</title>
-  <link rel="stylesheet" href="styles.css?v=2-240"/>
+  <link rel="stylesheet" href="styles.css?v=2-241"/>
 
   <link rel="icon" href="favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
@@ -347,7 +347,7 @@
             <div class="settings-collapse-body">
               <div class="panel-head compact-head">
                 <p class="hint">Edit transaction category names, emojis, and colors.</p>
-                <div class="inline-actions"><button class="ghost small" id="bulkEditCategoriesBtn">Bulk edit colors</button><button class="primary small" id="addCategoryBtn">+ Category</button></div>
+                <div class="inline-actions"><button class="ghost small" id="categoryCleanupBtn">Category cleanup</button><button class="ghost small" id="bulkEditCategoriesBtn">Bulk edit colors</button><button class="primary small" id="addCategoryBtn">+ Category</button></div>
               </div>
               <div id="categoryList" class="category-list"></div>
             </div>
@@ -366,8 +366,8 @@
             </summary>
             <div class="settings-collapse-body">
               <div class="panel-head compact-head">
-                <p class="hint">Saved autofill shortcuts. Each template can choose whether to apply category, type, notes, status, or routing fields.</p>
-                <button class="primary small" id="addTemplateBtn">+ Template</button>
+                <p class="hint">Templates are grouped into title families with named variants. Recurring schedules stay on the Bills page.</p>
+                <div class="inline-actions"><button class="ghost small" id="templateCleanupBtn">Template cleanup</button><button class="primary small" id="addTemplateBtn">+ Template</button></div>
               </div>
               <div id="transactionTemplateList" class="template-list"></div>
             </div>
@@ -724,6 +724,27 @@
     </div>
   </dialog>
 
+
+  <dialog id="templateCleanupModal" class="cleanup-modal">
+    <div class="modal-card cleanup-modal-card">
+      <div class="panel-head"><div><h3>Template cleanup</h3><p class="hint">Review families, merge deliberate duplicates, and archive variants without touching transactions.</p></div><button type="button" class="icon-btn" onclick="document.getElementById('templateCleanupModal').close()">×</button></div>
+      <div id="templateCleanupSummary" class="cleanup-summary-grid"></div>
+      <div class="inline-actions"><button type="button" class="ghost small" onclick="mergeExactTemplateDuplicates()">Merge exact duplicates</button><button type="button" class="ghost small" onclick="setView('bills');document.getElementById('templateCleanupModal').close()">Open recurring bills</button></div>
+      <div id="templateCleanupContent" class="cleanup-content"></div>
+      <div class="modal-actions"><button type="button" class="ghost" onclick="document.getElementById('templateCleanupModal').close()">Close</button></div>
+    </div>
+  </dialog>
+
+  <dialog id="categoryCleanupModal" class="cleanup-modal">
+    <div class="modal-card cleanup-modal-card">
+      <div class="panel-head"><div><h3>Category cleanup</h3><p class="hint">See usage, configuration links, and which categories may be worth merging or removing.</p></div><button type="button" class="icon-btn" onclick="document.getElementById('categoryCleanupModal').close()">×</button></div>
+      <div id="categoryCleanupSummary" class="cleanup-summary-grid"></div>
+      <label class="cleanup-filter">Show<select id="categoryCleanupFilter" onchange="renderCategoryCleanup()"><option value="all">All categories</option><option value="unused">Unused</option><option value="review">Worth reviewing</option><option value="configured">Used by budgets/templates/recurring</option></select></label>
+      <div id="categoryCleanupContent" class="cleanup-content"></div>
+      <div class="modal-actions"><button type="button" class="ghost" onclick="document.getElementById('categoryCleanupModal').close()">Close</button></div>
+    </div>
+  </dialog>
+
   <dialog id="simpleModal">
     <form method="dialog" class="modal-card" id="simpleForm">
       <div class="panel-head">
@@ -809,7 +830,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=2-240"></script>
+  <script src="app.js?v=2-241"></script>
   <dialog id="globalSearchModal" class="global-search-modal">
     <div class="global-search-shell">
       <div class="modal-head"><div><h3>🔎 Search Money Nest</h3><p class="hint">Transactions, merchants, categories, accounts, amounts, and dates.</p></div><button class="icon-btn" onclick="document.getElementById('globalSearchModal').close()">×</button></div>

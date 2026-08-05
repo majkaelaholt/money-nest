@@ -1,9 +1,11 @@
 # CODEX
 
-## v2-240
-- iPad-specific modal layout now uses runtime iPad detection.
-- Touch calendar chips expose explicit quick actions; credit-card charge editor exposes Create card payment.
-.md — Money Nest Developer Rules
+## v2-241
+- Transaction templates now use title families with named variants, per-variant defaults/archive state, and deliberate field application.
+- Added template cleanup/merge tools and category usage/merge cleanup.
+- Automatic template remembering is restricted to title + category and excludes recurring series/occurrences.
+
+Money Nest Developer Rules
 
 This file is the working guide for Codex or any AI coding agent editing **Money Nest**.
 
@@ -11,7 +13,7 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-240`
+Latest known version: `money-nest-v2-241`
 
 Before editing, always inspect `README.md` and confirm the current version in the repository. If `README.md` shows a different version, continue from the repo version and mention the mismatch in your summary.
 
@@ -147,7 +149,7 @@ Example README note:
 ### v2-200
 - Banking is excluded from budgeting. Savings transfers net contributions by direction.
 
-- Current version: money-nest-v2-240. Includes in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
+- Current version: money-nest-v2-241. Includes in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
 
 
 ### v2-205
@@ -314,3 +316,11 @@ Example README note:
 
 ### v2-240
 - Added tablet-only responsive modal sizing and spacing using a coarse-pointer media query, preserving desktop and phone layouts.
+
+
+### v2-241
+- Transaction templates are grouped by normalized title into families; variants have custom labels, default/archive state, and independent field-application rules.
+- Automatic template remembering stores title/category only and ignores recurring series/occurrences.
+- Template cleanup supports exact duplicate consolidation and deliberate selected-variant merge/archive/delete.
+- Category cleanup reports transaction counts, last use, configured references, and supports safe category merge or unused deletion.
+- Template CSV includes variantLabel, isDefault, archived, source, and createdAt.

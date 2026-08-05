@@ -1,14 +1,15 @@
 # Money Nest
 
-## v2-240
-- Fixed iPad modal sizing with direct iPad detection rather than unreliable pointer media queries.
-- Added visible touch quick-actions buttons to calendar transactions.
-- Added a direct Create card payment action when editing an existing credit-card purchase.
+## v2-241
+- Reorganized transaction templates into title families with named, independently editable variants.
+- Added defaults, archive/restore, context-aware suggestions, usage details, and template cleanup/merge tools.
+- Automatic shortcuts now remember only title and category and no longer create variants from recurring bill occurrences.
+- Added Category Cleanup with usage counts, last use, budget/template/recurring references, safe merge, and unused-category deletion.
 
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-240`
+Current version: `money-nest-v2-241`
 
 ## Important Notes
 
@@ -904,3 +905,11 @@ Use CSV for reviewing or batch-editing data.
 - Added an iPad/tablet-only modal layout for coarse-pointer devices wider than phones.
 - Transaction and small update dialogs use a wider, better-proportioned card with tighter internal spacing on iPad.
 - Desktop and iPhone breakpoints remain unchanged.
+
+
+### v2-241
+- Transaction templates are grouped into title families with editable variant labels and per-variant field controls.
+- Added default/archive state, context-aware suggestions, usage/last-use details, exact duplicate consolidation, and selected-variant merge/archive/delete tools.
+- Automatic templates now save title + category only and skip recurring series/occurrences.
+- Added Category Cleanup with usage statistics, configuration references, category merge, and unused deletion.
+- Template CSV preserves `variantLabel`, `isDefault`, `archived`, `source`, and `createdAt`; older CSV files remain compatible.
