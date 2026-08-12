@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-245";
+const APP_VERSION = "2-247";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -8,6 +8,11 @@ const MONEY_NEST_IS_IPAD = /iPad/.test(navigator.userAgent) || (navigator.platfo
 const MONEY_NEST_HAS_TOUCH = navigator.maxTouchPoints > 0 || "ontouchstart" in window;
 document.documentElement.classList.toggle("money-nest-ipad", MONEY_NEST_IS_IPAD);
 document.documentElement.classList.toggle("money-nest-touch", MONEY_NEST_HAS_TOUCH);
+function moneyNestIsPhone(){
+  return !MONEY_NEST_IS_IPAD && !!window.matchMedia?.("(max-width: 700px)").matches;
+}
+let mobileFutureAccountId = "";
+let mobileFutureHorizonDays = 30;
 
 // v2.167: Supabase cloud sync helpers. This stores the full Money Nest JSON as one
 // per-user row in public.money_nest_data. RLS should restrict each row to auth.uid().
@@ -4637,9 +4642,12 @@ function setView(view){
     if(view === "debts") view = "accounts";
     currentView = view;
     document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active", v.id===view));
-    document.body.classList.remove("money-nest-view-dashboard", "money-nest-view-calendar", "money-nest-view-accounts", "money-nest-view-bills", "money-nest-view-debts", "money-nest-view-settings", "money-nest-view-accountDetail", "money-nest-view-debtDetail");
+    document.body.classList.remove("money-nest-view-dashboard", "money-nest-view-future", "money-nest-view-calendar", "money-nest-view-accounts", "money-nest-view-budgets", "money-nest-view-bills", "money-nest-view-debts", "money-nest-view-settings", "money-nest-view-accountDetail", "money-nest-view-debtDetail");
     document.body.classList.add(`money-nest-view-${view}`);
-    document.querySelectorAll(".nav-btn").forEach(b=>b.classList.toggle("active", b.dataset.view===view));
+    const navView = ["accountDetail","debtDetail"].includes(view) ? "accounts" : view;
+    document.querySelectorAll(".nav-btn").forEach(b=>b.classList.toggle("active", b.dataset.view===navView));
+    const mobileMore=document.getElementById("mobileMoreNavBtn");
+    if(mobileMore) mobileMore.classList.toggle("active", ["calendar","budgets","bills","settings"].includes(view));
     const titles = {accountDetail: accountById(selectedAccountId)?.name || "Account", debtDetail: debtById(selectedDebtId)?.name || "Debt"};
     const titleEl = document.getElementById("viewTitle");
     if(titleEl) titleEl.textContent = titles[view] || view[0].toUpperCase()+view.slice(1);
@@ -4728,6 +4736,7 @@ function render(){
   renderSelectors();
   renderRecentPlaces();
   if(currentView==="dashboard") renderDashboard();
+  if(currentView==="future") renderMobileFuture();
   if(currentView==="calendar") renderCalendar();
   if(currentView==="accounts") renderAccounts();
   if(currentView==="accountDetail") renderAccountDetail();
@@ -4926,6 +4935,175 @@ function dashboardNeedsAttention(){
   return items.slice(0,8);
 }
 
+function mobileCashAccounts(){
+  return orderedAccounts().filter(a=>!isSavingsAccount(a));
+}
+function mobileFriendlyDate(iso){
+  if(!iso) return "—";
+  if(iso===todayISO()) return "Today";
+  if(iso===toISO(addDays(parseDate(todayISO()),1))) return "Tomorrow";
+  try{return parseDate(iso).toLocaleDateString(undefined,{month:"short",day:"numeric"});}
+  catch(err){return iso;}
+}
+function mobileTransactionDateLabel(tx){
+  if(!tx) return "—";
+  return tx.overrideFrom ? `${mobileFriendlyDate(tx.date)} • moved from ${mobileFriendlyDate(tx.overrideFrom)}` : mobileFriendlyDate(tx.date);
+}
+function mobileForecastFloor(accountId, days=30, spendAmount=0, spendDate=todayISO()){
+  const start=todayISO();
+  const end=toISO(addDays(parseDate(start), Number(days || 30)));
+  let min=Infinity, minDate=start;
+  let cursor=parseDate(start);
+  while(toISO(cursor) <= end){
+    const iso=toISO(cursor);
+    let bal=accountBalance(accountId, true, iso);
+    if(Number(spendAmount || 0) > 0 && iso >= (spendDate || start)) bal -= Number(spendAmount || 0);
+    if(bal < min){ min=bal; minDate=iso; }
+    cursor=addDays(cursor,1);
+  }
+  return {amount:Number.isFinite(min)?Number(min):0,date:minDate,end};
+}
+function mobileFutureAccount(){
+  const accounts=mobileCashAccounts();
+  if(!accounts.length) return null;
+  if(!mobileFutureAccountId || !accounts.some(a=>a.id===mobileFutureAccountId)){
+    mobileFutureAccountId = accounts.find(a=>a.id === "joint-checking")?.id || accounts[0].id;
+  }
+  return accountById(mobileFutureAccountId) || accounts[0];
+}
+function setMobileFutureAccount(id){
+  mobileFutureAccountId=id || "";
+  renderMobileFuture();
+}
+window.setMobileFutureAccount=setMobileFutureAccount;
+function setMobileFutureHorizon(days){
+  mobileFutureHorizonDays=[14,30,60,90].includes(Number(days)) ? Number(days) : 30;
+  renderMobileFuture();
+}
+window.setMobileFutureHorizon=setMobileFutureHorizon;
+function updateMobileWhatIf(){
+  const result=document.getElementById("mobileWhatIfResult");
+  const amount=Number(document.getElementById("mobileWhatIfAmount")?.value || 0);
+  const date=document.getElementById("mobileWhatIfDate")?.value || todayISO();
+  const account=mobileFutureAccount();
+  if(!result || !account) return;
+  if(!(amount > 0)){
+    result.innerHTML='<span>Enter an amount to preview the impact without saving anything.</span>';
+    result.className="mobile-whatif-result";
+    return;
+  }
+  const floor=mobileForecastFloor(account.id, mobileFutureHorizonDays, amount, date);
+  const currentFloor=mobileForecastFloor(account.id, mobileFutureHorizonDays);
+  const level=floor.amount < 0 ? "bad" : floor.amount < 75 ? "warn" : "good";
+  result.className=`mobile-whatif-result ${level}`;
+  result.innerHTML=`<span>After spending <b>${money(amount)}</b> from ${escapeAttr(account.name)} on ${escapeAttr(mobileFriendlyDate(date))}:</span><strong>${money(floor.amount)}</strong><small>lowest projected balance on ${escapeAttr(mobileFriendlyDate(floor.date))} • ${money(Math.max(0,currentFloor.amount-floor.amount))} less cushion</small>`;
+}
+window.updateMobileWhatIf=updateMobileWhatIf;
+function renderMobileHome({attention=[],cashSafe=[],lowestSafe=null}={}){
+  const el=document.getElementById("mobileHome");
+  if(!el) return;
+  const accounts=mobileCashAccounts();
+  const defaultAccount=lowestSafe?.a || accounts[0] || null;
+  const upcoming=expandedTransactions(toISO(addDays(parseDate(todayISO()),14)))
+    .filter(tx=>tx.date>=todayISO() && tx.status!=="cleared")
+    .sort((a,b)=>a.date.localeCompare(b.date) || String(a.title||"").localeCompare(String(b.title||"")))
+    .slice(0,4);
+  const safeChips=cashSafe.map(({a,s})=>`<button type="button" class="mobile-safe-chip" onclick="setMobileFutureAccount('${a.id}');setView('future')"><span>${a.emoji||"💵"} ${escapeAttr(a.name)}</span><b class="${s.amount>75?'good':s.amount>0?'warn':'bad'}">${money(s.amount)}</b></button>`).join("");
+  el.innerHTML=`
+    <section class="mobile-home-hero ${lowestSafe?.s.amount<=0?'has-alert':''}">
+      <div class="mobile-home-hero-top"><span><small>SAFE TO SPEND</small><b>${lowestSafe?.a ? `${lowestSafe.a.emoji||"💵"} ${escapeAttr(lowestSafe.a.name)}` : "No cash account"}</b></span><button type="button" class="mobile-text-btn" onclick="setView('future')">View future →</button></div>
+      <strong class="mobile-safe-amount ${lowestSafe?.s.amount>75?'good':lowestSafe?.s.amount>0?'warn':'bad'}">${lowestSafe?money(lowestSafe.s.amount):'—'}</strong>
+      <p>${lowestSafe ? escapeAttr(lowestSafe.s.label) : 'Add a cash account to start forecasting.'}</p>
+      ${safeChips ? `<div class="mobile-safe-chips">${safeChips}</div>` : ""}
+    </section>
+
+    <section class="mobile-home-actions" aria-label="Quick actions">
+      <button type="button" class="primary" onclick="openTransaction(null,{accountId:'${defaultAccount?.id||''}'})"><span>＋</span><b>Transaction</b></button>
+      <button type="button" onclick="openTransaction(null,{type:'transfer',accountId:'${defaultAccount?.id||''}'})"><span>↔</span><b>Transfer</b></button>
+      <button type="button" onclick="setView('future')"><span>🔮</span><b>Future</b></button>
+      <button type="button" onclick="openGlobalSearch()"><span>⌕</span><b>Search</b></button>
+    </section>
+
+    <section class="mobile-home-section">
+      <div class="mobile-home-section-head"><div><small>COMING UP</small><h3>Next transactions</h3></div><button type="button" class="mobile-text-btn" onclick="setView('future')">See future</button></div>
+      <div class="mobile-home-list">${upcoming.length ? upcoming.map(tx=>{
+        const cat=categoryById(tx.categoryId);
+        const positive=tx.type==="income"||tx.type==="paycheck"||(tx.type==="transfer"&&tx.transferToAccountId&&!tx.accountId);
+        return `<button type="button" onclick="openTransaction('${tx.originalId||tx.id}',{generated:${!!tx.generated},occurrenceOriginalDate:'${tx.originalDate||tx.date}',occurrenceDate:'${tx.date}'})"><span><b>${cat.emoji||"•"} ${escapeAttr(tx.title||"Untitled")}</b><small>${escapeAttr(mobileTransactionDateLabel(tx))} • ${escapeAttr(transactionAccountText(tx))}</small></span><strong class="${positive?'good':'bad'}">${positive?'+':'-'}${money(tx.amount)}</strong></button>`;
+      }).join("") : '<div class="mobile-home-empty">Nothing planned in the next 14 days.</div>'}</div>
+    </section>
+
+    ${attention.length ? `<button type="button" class="mobile-attention-strip" onclick="toggleMobileDashboardDetails()"><span>⚠️</span><span><b>${attention.length} item${attention.length===1?'':'s'} need attention</b><small>Tap to show the full review tools</small></span><span>›</span></button>` : ""}
+  `;
+}
+function toggleMobileDashboardDetails(){
+  document.getElementById("dashboard")?.classList.toggle("mobile-dashboard-details-open");
+}
+window.toggleMobileDashboardDetails=toggleMobileDashboardDetails;
+function renderMobileFuture(){
+  const el=document.getElementById("mobileFutureContent");
+  if(!el) return;
+  const accounts=mobileCashAccounts();
+  const account=mobileFutureAccount();
+  if(!account){
+    el.innerHTML='<div class="panel"><div class="empty">Add a cash account before using Future.</div></div>';
+    return;
+  }
+  const floor=mobileForecastFloor(account.id,mobileFutureHorizonDays);
+  const current=accountBalance(account.id,false,todayISO());
+  const safe=safeToSpend(account);
+  const end=floor.end;
+  const planned=forecastWindowTransactions(account.id,end)
+    .filter(tx=>tx.status!=="cleared")
+    .sort((a,b)=>{
+      const aPast=a.date<todayISO(), bPast=b.date<todayISO();
+      if(aPast !== bPast) return aPast ? -1 : 1;
+      if(aPast && bPast) return b.date.localeCompare(a.date);
+      return a.date.localeCompare(b.date) || accountTransactionSortRank(a,account.id)-accountTransactionSortRank(b,account.id);
+    })
+    .slice(0,12);
+  const accountOptions=accounts.map(a=>`<option value="${a.id}" ${a.id===account.id?'selected':''}>${escapeAttr(a.emoji||"💵")} ${escapeAttr(a.name)}</option>`).join("");
+  const cushions=accounts.map(a=>{const s=safeToSpend(a);return `<button type="button" class="mobile-cushion-row ${a.id===account.id?'active':''}" onclick="setMobileFutureAccount('${a.id}')"><span><b>${a.emoji||"💵"} ${escapeAttr(a.name)}</b><small>${escapeAttr(s.label)}</small></span><strong class="${s.amount>75?'good':s.amount>0?'warn':'bad'}">${money(s.amount)}</strong></button>`}).join("");
+  el.innerHTML=`
+    <section class="mobile-future-hero">
+      <div class="mobile-future-controls">
+        <label>Account<select onchange="setMobileFutureAccount(this.value)">${accountOptions}</select></label>
+        <div class="mobile-horizon-tabs" role="group" aria-label="Forecast range">${[14,30,60,90].map(d=>`<button type="button" class="${mobileFutureHorizonDays===d?'active':''}" onclick="setMobileFutureHorizon(${d})">${d}d</button>`).join("")}</div>
+      </div>
+      <div class="mobile-future-floor"><span><small>LOWEST PROJECTED</small><b>${escapeAttr(mobileFriendlyDate(floor.date))}</b></span><strong class="${floor.amount>75?'good':floor.amount>0?'warn':'bad'}">${money(floor.amount)}</strong></div>
+      <div class="mobile-future-stats"><div><span>Current</span><b>${money(current)}</b></div><div><span>Safe to spend</span><b class="${safe.amount>75?'good':safe.amount>0?'warn':'bad'}">${money(safe.amount)}</b></div></div>
+      <div class="mobile-future-actions"><button type="button" class="primary" onclick="openTransaction(null,{accountId:'${account.id}'})">+ Transaction</button><button type="button" onclick="openTransferFromAccount('${account.id}')">↔ Move money</button></div>
+    </section>
+
+    <details class="mobile-whatif" open>
+      <summary><span><b>What if I have to spend?</b><small>Preview it without creating a transaction.</small></span><span>⌄</span></summary>
+      <div class="mobile-whatif-body"><div class="mobile-whatif-fields"><label>Amount<input id="mobileWhatIfAmount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" oninput="updateMobileWhatIf()"></label><label>Date<input id="mobileWhatIfDate" type="date" value="${todayISO()}" min="${todayISO()}" max="${end}" onchange="updateMobileWhatIf()"></label></div><div id="mobileWhatIfResult" class="mobile-whatif-result"><span>Enter an amount to preview the impact without saving anything.</span></div></div>
+    </details>
+
+    <section class="mobile-home-section mobile-future-timeline">
+      <div class="mobile-home-section-head"><div><small>PLANNED CASHFLOW</small><h3>Through ${escapeAttr(mobileFriendlyDate(end))}</h3></div></div>
+      <div class="mobile-home-list">${planned.length ? planned.map(tx=>{
+        const incoming=tx.type==="income"||tx.type==="paycheck"||(tx.type==="transfer"&&tx.transferToAccountId===account.id);
+        const outgoing=(tx.accountId===account.id && tx.type!=="income"&&tx.type!=="paycheck");
+        const sign=incoming?'+':outgoing?'-':'';
+        return `<button type="button" onclick="openTransaction('${tx.originalId||tx.id}',{generated:${!!tx.generated},occurrenceOriginalDate:'${tx.originalDate||tx.date}',occurrenceDate:'${tx.date}'})"><span><b>${escapeAttr(tx.title||"Untitled")}</b><small>${tx.date<todayISO()?'Past planned • ':''}${escapeAttr(mobileFriendlyDate(tx.date))} • ${escapeAttr(transactionAccountText(tx))}</small></span><strong class="${incoming?'good':outgoing?'bad':''}">${sign}${money(tx.amount)}</strong></button>`;
+      }).join("") : '<div class="mobile-home-empty">No planned activity in this range.</div>'}</div>
+    </section>
+
+    <details class="mobile-cushions">
+      <summary><span><b>Other cash cushions</b><small>See where money has room before moving it.</small></span><span>⌄</span></summary>
+      <div>${cushions}</div>
+    </details>
+  `;
+}
+function openMobileMore(){
+  const modal=document.getElementById("mobileMoreModal");
+  if(modal && !modal.open) modal.showModal();
+}
+function closeMobileMore(){ document.getElementById("mobileMoreModal")?.close(); }
+window.openMobileMore=openMobileMore;
+window.closeMobileMore=closeMobileMore;
+
 function renderDashboard(){
   try{
     const attention = dashboardNeedsAttention();
@@ -4962,8 +5140,10 @@ function renderDashboard(){
     if(quick){
       const next=expandedTransactions(toISO(addDays(parseDate(todayISO()),14))).filter(t=>t.date>=todayISO()&&t.status!=="cleared"&&isBudgetReviewOutflow({...t,status:"cleared"})).sort((a,b)=>a.date.localeCompare(b.date))[0];
       const bs=budgetReviewStats(todayISO().slice(0,7),"all");
-      quick.innerHTML=`<button onclick="showView('accounts')"><span>Safe to spend</span><b>${lowestSafe?money(lowestSafe.s.amount):'—'}</b><small>${lowestSafe?.a.name||'No cash account'}</small></button><button onclick="showView('bills')"><span>Next bill</span><b>${next?money(next.amount):'—'}</b><small>${next?`${next.title} • ${next.date}`:'Nothing upcoming'}</small></button><button onclick="showView('budgets')"><span>Month spending</span><b>${money(bs.totalSpent)}</b><small>${bs.overBudgetCount} budget(s) over</small></button>`;
+      quick.innerHTML=`<button onclick="setView('accounts')"><span>Safe to spend</span><b>${lowestSafe?money(lowestSafe.s.amount):'—'}</b><small>${lowestSafe?.a.name||'No cash account'}</small></button><button onclick="setView('bills')"><span>Next bill</span><b>${next?money(next.amount):'—'}</b><small>${next?`${next.title} • ${next.date}`:'Nothing upcoming'}</small></button><button onclick="setView('budgets')"><span>Month spending</span><b>${money(bs.totalSpent)}</b><small>${bs.overBudgetCount} budget(s) over</small></button>`;
     }
+
+    renderMobileHome({attention,cashSafe,lowestSafe});
 
     const safeList = cashSafe.filter(({a})=>a.id !== lowestSafe?.a.id).map(({a,s})=>`<button type="button" class="dashboard-list-row dashboard-safe-row" onclick="openAccountDetail('${a.id}', 'dashboard')">
       <span class="dashboard-list-main"><b>${a.emoji || "💵"} ${a.name}</b><small>${s.label}</small></span>
@@ -9151,7 +9331,15 @@ window.openTransaction = (id=null, defaults={})=>{
     } : null;
   }
   updateTransactionFormUI();
+  txModal.classList.toggle("mobile-quick-add", moneyNestIsPhone() && !tx);
+  txModal.classList.toggle("mobile-transaction-edit", moneyNestIsPhone() && !!tx);
   txModal.showModal();
+  if(moneyNestIsPhone() && !tx){
+    setTimeout(()=>{
+      const first = txTitle.value ? txAmount : txTitle;
+      try{ first?.focus({preventScroll:true}); }catch(err){ first?.focus(); }
+    },50);
+  }
 };
 
 const simpleModal = document.getElementById("simpleModal");
@@ -10847,9 +11035,11 @@ function dedupeRecurringBillRows(rows){
     // schedules are display/content fields and may intentionally match another
     // independent series. Only collapse rows that resolve to the same explicit
     // canonical lineage; never hide a separate template because its name matches.
+    // Keep the rendered row rather than replacing it with the raw canonical
+    // transaction so derived display fields such as nextDate/billInfo survive.
     const canonical = canonicalRecurringSeries(tx) || tx;
     const key = String(canonical.id || tx.id || "");
-    if(!grouped.has(key)) grouped.set(key, canonical);
+    if(!grouped.has(key)) grouped.set(key, tx);
   });
   return [...grouped.values()];
 }
@@ -11049,10 +11239,11 @@ function billCardHTML(tx, archivedSection=false){
   const cat = categoryById(tx.categoryId);
   const account = billAccountLabel(tx);
   const route = tx.type === "transfer" ? transactionTransferLabel(tx) : `${account}${tx.linkedDebtId ? ` → ${debtById(tx.linkedDebtId)?.name || "debt"}` : ""}`;
+  const displayDate = tx.nextDate || tx.billInfo?.date || billOccurrenceInfo(tx).date || tx.date || "—";
   const dateLabel = archivedSection
-    ? (tx.billArchivedAt ? `Archived ${tx.billArchivedAt}` : `Ended ${tx.nextDate}`)
-    : `Next ${tx.nextDate}`;
-  return `<div class="bill-card ${archivedSection ? "bill-card-archived" : ""}" style="--bill-category:${escapeAttr(cat.color)}" data-tx="${tx.id}" data-original-date="${tx.billInfo?.originalDate || tx.nextDate}" data-occurrence-date="${tx.nextDate}" onclick="openBillDetails('${tx.id}')">
+    ? (tx.billArchivedAt ? `Archived ${tx.billArchivedAt}` : `Ended ${displayDate}`)
+    : `Next ${displayDate}`;
+  return `<div class="bill-card ${archivedSection ? "bill-card-archived" : ""}" style="--bill-category:${escapeAttr(cat.color)}" data-tx="${tx.id}" data-original-date="${tx.billInfo?.originalDate || displayDate}" data-occurrence-date="${displayDate}" onclick="openBillDetails('${tx.id}')">
     <div class="bill-card-main">
       <div class="row-title">${cat.emoji} ${tx.title}</div>
       <div class="row-sub">${route} • ${cat.name}</div>
@@ -11230,7 +11421,11 @@ window.closeDayModalNow = function(){
 
 
 setupContextMenuEvents();
-document.querySelectorAll(".nav-btn").forEach(btn=>btn.addEventListener("click",()=>setView(btn.dataset.view)));
+document.querySelectorAll(".nav-btn").forEach(btn=>btn.addEventListener("click",()=>{ if(btn.dataset.view) setView(btn.dataset.view); }));
+const mobileMoreNavBtn=document.getElementById("mobileMoreNavBtn");
+if(mobileMoreNavBtn) mobileMoreNavBtn.addEventListener("click",openMobileMore);
+const closeMobileMoreBtn=document.getElementById("closeMobileMoreBtn");
+if(closeMobileMoreBtn) closeMobileMoreBtn.addEventListener("click",closeMobileMore);
 prevMonth.onclick = ()=>{ calendarDate = addMonths(calendarDate,-1); renderCalendar(); };
 nextMonth.onclick = ()=>{ calendarDate = addMonths(calendarDate,1); renderCalendar(); };
 function scrollCalendarToToday(){
@@ -12341,4 +12536,7 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 // v2-243: Dashboard hierarchy is calmer and more compact; Action Center groups are collapsible and shared surfaces use lighter visual weight.
 
 // v2-244: Action Center groups default closed; Bills and Budgets use flatter, more compact presentation without changing finance logic.
+// v2-246: Bills deduplication preserves derived next-date display fields; bill rows also fall back safely instead of ever rendering "Next undefined".
 // v2-245: Accounts use calmer scan-first rows, arrangement controls are opt-in, debt utilities are tucked away, and touch/detail action layouts are less cluttered.
+
+// v2-247: iPhone task-first mode adds a streamlined Home, Future cashflow view, four-item mobile nav, More sheet, and quicker transaction-entry presentation without changing saved financial data.

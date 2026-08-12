@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <title>Money Nest</title>
-  <link rel="stylesheet" href="styles.css?v=2-245"/>
+  <link rel="stylesheet" href="styles.css?v=2-247"/>
 
   <link rel="icon" href="favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
@@ -27,12 +27,14 @@
       </div>
 
       <nav class="nav">
-        <button class="nav-btn active" data-view="dashboard" aria-label="Dashboard"><span class="nav-emoji" aria-hidden="true">🏠</span><span class="nav-text">Dashboard</span><span id="reviewNavBadge" class="nav-count" hidden>0</span></button>
-        <button class="nav-btn" data-view="calendar" aria-label="Calendar"><span class="nav-emoji" aria-hidden="true">🗓️</span><span class="nav-text">Calendar</span></button>
-        <button class="nav-btn" data-view="accounts" aria-label="Accounts"><span class="nav-emoji" aria-hidden="true">💳</span><span class="nav-text">Accounts</span></button>
-        <button class="nav-btn" data-view="budgets" aria-label="Budgets"><span class="nav-emoji" aria-hidden="true">📊</span><span class="nav-text">Budgets</span></button>
-        <button class="nav-btn" data-view="bills" aria-label="Bills"><span class="nav-emoji" aria-hidden="true">🧾</span><span class="nav-text">Bills</span></button>
-        <button class="nav-btn" data-view="settings" aria-label="Settings"><span class="nav-emoji" aria-hidden="true">⚙️</span><span class="nav-text">Settings</span></button>
+        <button class="nav-btn active" data-view="dashboard" aria-label="Dashboard"><span class="nav-emoji" aria-hidden="true">🏠</span><span class="nav-text">Dashboard</span><span class="mobile-nav-text">Home</span><span id="reviewNavBadge" class="nav-count" hidden>0</span></button>
+        <button class="nav-btn desktop-calendar-nav" data-view="calendar" aria-label="Calendar"><span class="nav-emoji" aria-hidden="true">🗓️</span><span class="nav-text">Calendar</span></button>
+        <button class="nav-btn mobile-only-nav" data-view="future" aria-label="Future"><span class="nav-emoji" aria-hidden="true">🔮</span><span class="mobile-nav-text">Future</span></button>
+        <button class="nav-btn" data-view="accounts" aria-label="Accounts"><span class="nav-emoji" aria-hidden="true">💳</span><span class="nav-text">Accounts</span><span class="mobile-nav-text">Accounts</span></button>
+        <button class="nav-btn desktop-secondary-nav" data-view="budgets" aria-label="Budgets"><span class="nav-emoji" aria-hidden="true">📊</span><span class="nav-text">Budgets</span></button>
+        <button class="nav-btn desktop-secondary-nav" data-view="bills" aria-label="Bills"><span class="nav-emoji" aria-hidden="true">🧾</span><span class="nav-text">Bills</span></button>
+        <button class="nav-btn desktop-secondary-nav" data-view="settings" aria-label="Settings"><span class="nav-emoji" aria-hidden="true">⚙️</span><span class="nav-text">Settings</span></button>
+        <button class="mobile-more-nav" id="mobileMoreNavBtn" type="button" aria-label="More"><span class="nav-emoji" aria-hidden="true">•••</span><span class="mobile-nav-text">More</span></button>
       </nav>
 
       <div class="side-card recent-card">
@@ -56,6 +58,8 @@
       </header>
 
       <section id="dashboard" class="view active">
+        <section id="mobileHome" class="mobile-home-only"></section>
+
         <section class="panel mobile-quick-review-panel dashboard-mobile-glance">
           <div class="panel-head"><div><h3>Today at a glance</h3><span class="hint">the numbers most useful on your phone</span></div></div>
           <div id="mobileQuickReview" class="mobile-quick-review"></div>
@@ -96,6 +100,10 @@
           </div>
           <div id="debtSnapshot" class="debt-grid"></div>
         </section>
+      </section>
+
+      <section id="future" class="view mobile-future-view">
+        <div id="mobileFutureContent"></div>
       </section>
 
       <section id="calendar" class="view">
@@ -520,6 +528,19 @@
     </form>
   </dialog>
 
+  <dialog id="mobileMoreModal" class="mobile-more-modal">
+    <div class="modal-card mobile-more-card">
+      <div class="panel-head"><div><p class="eyebrow">More</p><h3>Money Nest</h3></div><button type="button" class="icon-btn" id="closeMobileMoreBtn">×</button></div>
+      <div class="mobile-more-grid">
+        <button type="button" onclick="closeMobileMore();setView('calendar')"><span>🗓️</span><b>Month calendar</b><small>Full calendar view</small></button>
+        <button type="button" onclick="closeMobileMore();setView('bills')"><span>🧾</span><b>Bills</b><small>Recurring management</small></button>
+        <button type="button" onclick="closeMobileMore();setView('budgets')"><span>📊</span><b>Budgets</b><small>Monthly review</small></button>
+        <button type="button" onclick="closeMobileMore();setView('settings')"><span>⚙️</span><b>Settings</b><small>Backup, appearance & tools</small></button>
+        <button type="button" onclick="closeMobileMore();openGlobalSearch()"><span>🔎</span><b>Search</b><small>Find a transaction</small></button>
+      </div>
+    </div>
+  </dialog>
+
   <dialog id="transactionModal">
     <form method="dialog" class="modal-card" id="transactionForm">
       <div class="panel-head">
@@ -841,7 +862,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=2-245"></script>
+  <script src="app.js?v=2-247"></script>
   <dialog id="globalSearchModal" class="global-search-modal">
     <div class="global-search-shell">
       <div class="modal-head"><div><h3>🔎 Search Money Nest</h3><p class="hint">Transactions, merchants, categories, accounts, amounts, and dates.</p></div><button class="icon-btn" onclick="document.getElementById('globalSearchModal').close()">×</button></div>

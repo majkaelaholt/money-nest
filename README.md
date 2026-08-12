@@ -1,5 +1,19 @@
 # Money Nest
 
+## v2-247
+- Added a task-first iPhone mode focused on quick transaction entry, Safe to Spend, near-term cashflow, and fast money-movement decisions.
+- Replaced the crowded iPhone bottom navigation with four primary destinations: Home, Future, Accounts, and More. Calendar, Bills, Budgets, Settings, and Search remain available from the mobile More sheet. Desktop and iPad navigation are unchanged.
+- Added a dedicated iPhone Home view with a Safe-to-Spend hero, per-account cash cushions, quick Transaction/Transfer/Future/Search actions, the next four planned transactions, and a compact attention indicator. Full Dashboard review tools stay hidden until explicitly opened on phone.
+- Added a mobile Future view with selectable cash account, 14/30/60/90-day horizons, current balance, lowest projected balance/date, Safe to Spend, planned cashflow, other account cushions, and a non-saving “What if I have to spend?” preview.
+- Streamlined Add Transaction on iPhone into a full-screen quick-entry layout with the primary fields and account/payment section emphasized while repeat, links, notes, and other secondary sections remain available but tucked away. Existing transaction fields and behavior are preserved.
+- No financial formulas, transaction fields, recurring logic, storage schema, JSON/CSV formats, or Supabase behavior changed. Schema remains 225.
+
+## v2-246
+- Fixed Bills rows showing `Next undefined` after the compact-list overhaul.
+- Recurring-series deduplication now preserves the already-calculated `nextDate` and `billInfo` display fields instead of replacing each prepared row with the raw canonical transaction.
+- Bill rows include a defensive date fallback so an unavailable derived date displays safely rather than leaking `undefined`.
+- No recurring schedule calculations, financial data, saved fields, JSON/CSV formats, cloud behavior, or schema version changed.
+
 ## v2-245
 - Overhaul pass 3 simplifies Accounts into scan-first cash/debt rows with less persistent button clutter.
 - Cash-account ordering controls now appear only in an explicit Arrange mode; normal rows open details with a quiet chevron.
@@ -27,7 +41,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-245`
+Current version: `money-nest-v2-247`
 
 ## Important Notes
 
@@ -923,6 +937,21 @@ Use CSV for reviewing or batch-editing data.
 - Added an iPad/tablet-only modal layout for coarse-pointer devices wider than phones.
 - Transaction and small update dialogs use a wider, better-proportioned card with tighter internal spacing on iPad.
 - Desktop and iPhone breakpoints remain unchanged.
+
+
+### v2-247
+- Introduced the iPhone task-first Home and Future views instead of squeezing the full desktop management experience into the phone layout.
+- iPhone bottom nav is now Home / Future / Accounts / More; secondary management pages remain accessible through More.
+- Mobile Future includes a temporary what-if spending preview and cash-cushion comparison without creating or changing financial records.
+- iPhone Add Transaction uses a full-screen quick-entry presentation while keeping the same underlying form fields and save logic.
+- Desktop/iPad behavior and data schema remain unchanged.
+
+
+### v2-246
+- Fixed the Bills list regression that displayed `Next undefined` after v2-244/v2-245 visual changes.
+- `dedupeRecurringBillRows()` now keeps the prepared render row so computed `nextDate` / `billInfo` fields survive lineage deduplication.
+- `billCardHTML()` defensively resolves a display date from prepared bill data before falling back to occurrence/source dates.
+- Data schema remains unchanged; this is a rendering-only bug fix.
 
 
 ### v2-245

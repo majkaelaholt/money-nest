@@ -1,5 +1,17 @@
 # CODEX
 
+## v2-247
+- iPhone now has a task-first presentation layer: Home, Future, Accounts, and More. Desktop/iPad navigation and management workflows remain intact.
+- `renderMobileHome()` is presentation-only and uses existing `safeToSpend()`, transaction expansion, and attention calculations. Full Dashboard review/action tools are still present and can be revealed on phone.
+- `renderMobileFuture()` uses existing account balance/forecast helpers and a runtime-only account/horizon selection. The What-if preview subtracts a temporary hypothetical spend from projected daily balances and never saves a transaction or changes data.
+- Mobile Add Transaction uses CSS/runtime dialog classes only; the existing transaction form, field IDs, validation, templates, save logic, recurrence, links, loan breakdowns, and exports remain unchanged.
+- No schema migration or saved field is introduced; schema remains 225.
+
+## v2-246
+- Bills rendering bug fix: recurring dedupe must retain prepared render fields such as `nextDate` and `billInfo`; do not replace prepared rows with raw canonical transactions.
+- `billCardHTML()` has a defensive display-date fallback, but recurring schedule/date calculation logic itself is unchanged.
+- Schema remains 225 and no saved-data format changes are introduced.
+
 ## v2-245
 - Visual/UX overhaul pass 3 simplifies Accounts without changing account/debt math, storage, or schema.
 - Cash-account reorder controls are runtime-only Arrange mode UI; account ordering still uses the existing `order` field and reorder helpers.
@@ -24,7 +36,7 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-245`
+Latest known version: `money-nest-v2-247`
 
 Before editing, always inspect `README.md` and confirm the current version in the repository. If `README.md` shows a different version, continue from the repo version and mention the mismatch in your summary.
 
@@ -160,7 +172,7 @@ Example README note:
 ### v2-200
 - Banking is excluded from budgeting. Savings transfers net contributions by direction.
 
-- Current version: money-nest-v2-245. Includes the first visual/UX overhaul pass with a calmer Dashboard hierarchy, plus completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
+- Current version: money-nest-v2-247. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
 
 
 ### v2-205
@@ -328,6 +340,18 @@ Example README note:
 ### v2-240
 - Added tablet-only responsive modal sizing and spacing using a coarse-pointer media query, preserving desktop and phone layouts.
 
+
+### v2-247
+- Phone-only Home/Future rendering is intentionally separate from desktop/iPad management views. Keep the mobile UI task-first rather than re-expanding hidden management surfaces by default.
+- The mobile Future What-if calculator is non-persistent. Do not save hypothetical amounts into transactions unless the user explicitly creates one.
+- The four-item iPhone nav hides Calendar/Bills/Budgets/Settings only at the phone breakpoint; those pages must remain reachable through the More sheet and must remain visible in desktop/iPad navigation.
+- Transaction quick-entry classes must not remove form fields or change save semantics; they are presentation-only.
+- Data schema remains 225.
+
+### v2-246
+- `dedupeRecurringBillRows()` groups by canonical recurring-series identity but returns the prepared render row so derived `nextDate` / `billInfo` values are not discarded.
+- `billCardHTML()` resolves `displayDate` defensively and never intentionally renders an undefined date label.
+- Recurrence generation, bill next-date selection, storage, exports, Supabase, and schema remain unchanged.
 
 ### v2-245
 - `accountReorderMode` is an unsaved runtime UI state; it does not alter backup/schema formats.
