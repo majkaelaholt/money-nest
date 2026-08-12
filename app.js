@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-243";
+const APP_VERSION = "2-244";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -4993,7 +4993,7 @@ function renderDashboard(){
 
     document.getElementById("debtSnapshot").innerHTML = `
       <div class="dashboard-action-groups">
-        <details class="dashboard-action-group attention-group" ${attention.length ? "open" : ""}>
+        <details class="dashboard-action-group attention-group">
           <summary><span><b>⚠️ Needs attention</b><small>${attention.length ? "Items that may need a decision or correction" : "Nothing urgent right now"}</small></span><span class="dashboard-action-count">${attention.length}</span></summary>
           <div class="dashboard-action-body">
             <div class="action-list-v2 dashboard-flat-list">
@@ -6386,18 +6386,13 @@ function renderBudgetReview(){
         </section>
       </div>
     </details>
-    <div class="budget-review-grid budget-review-grid-wide">
-      <section class="budget-insight-card spending-pie-card">
-        <div class="section-kicker">Where money went</div>
-        <h4>Spending by category</h4>
-        ${spendingPie}
-        <p class="hint">Pie chart uses cleared cash-account spending and categorized transfers. Turn off recurring bills to focus on extra spending beyond your normal repeating expenses. ${pieGroup.note} Tap a slice/category to review the transactions included in that category.</p>
-      </section>
-    </div>
-    <section class="budget-insight-card budget-performance-card">
-      <div class="section-kicker">Budget performance</div>
-      <h4>How you did vs budget</h4>
-      <p class="hint">Review-only snapshot for the selected month/account. Use this to see how the month is going; edit the targets in the section below.</p>
+    <section class="budget-review-section spending-pie-section">
+      <div class="budget-section-head"><div><div class="section-kicker">Where money went</div><h4>Spending by category</h4></div><small>Tap a category to review transactions</small></div>
+      ${spendingPie}
+      <p class="budget-section-note">Cleared spending for the selected view. ${pieGroup.note}</p>
+    </section>
+    <section class="budget-review-section budget-performance-section">
+      <div class="budget-section-head"><div><div class="section-kicker">Budget performance</div><h4>How you did vs budget</h4></div><small>Tap a budget for details</small></div>
       <div class="budget-review-list">${budgetRows}</div>
     </section>`;
 }
@@ -6410,16 +6405,12 @@ function renderBudgets(){
     const cat = budgetCategoryLabel(b);
     const avgLabel = avg.activeMonths ? `${money(avg.average)} avg/month over ${avg.activeMonths} active month${avg.activeMonths === 1 ? "" : "s"}` : "No spending history yet";
     return `<div class="row budget-target-row budget-set-row" role="button" tabindex="0" onclick="simpleBudget('${b.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();simpleBudget('${b.id}');}">
-      <div class="budget-target-main" style="flex:1">
+      <div class="budget-target-main">
         <div class="budget-category-title"><span class="cat-preview" style="background:${hexToSoft(cat.color)}">${cat.emoji} ${cat.text}</span></div>
         <div class="budget-account-sub">${escapeAttr(budgetScopeLabel(b))}</div>
-        <div class="budget-set-meta">
-          <span><b>${money(b.amount)}</b> monthly budget</span>
-          <span>${avgLabel}</span>
-          <span>${money(spent)} spent in ${monthRange.label}</span>
-        </div>
+        <div class="budget-set-meta"><span>${avgLabel}</span><span>${money(spent)} spent in ${monthRange.label}</span></div>
       </div>
-      <button class="ghost small" onclick="event.stopPropagation();simpleBudget('${b.id}')">Edit</button>
+      <div class="budget-target-side"><strong>${money(b.amount)}</strong><small>monthly</small><span class="budget-row-chevron" aria-hidden="true">›</span></div>
     </div>`;
   }).join("") || `<div class="empty-state">No budgets yet. Add one to start tracking monthly targets.</div>`;
 }
@@ -10840,8 +10831,8 @@ function dedupeRecurringBillRows(rows){
 
 function archiveRecurringBill(txId){
   const tx = data.transactions.find(t=>t.id === txId);
-  if(!tx || !isRecurring(tx)) return;
-  if(!confirm(`Archive ${tx.title}? Future and non-cleared occurrences will be removed, while cleared history and the recurring rule stay available.`)) return;
+  if(!tx || !isRecurring(tx)) return false;
+  if(!confirm(`Archive ${tx.title}? Future and non-cleared occurrences will be removed, while cleared history and the recurring rule stay available.`)) return false;
 
   const today = todayISO();
   tx.billArchived = true;
@@ -10876,13 +10867,14 @@ function archiveRecurringBill(txId){
 
   saveData();
   renderBills();
+  return true;
 }
 
 function restoreArchivedBill(txId){
   const tx = data.transactions.find(t=>t.id === txId);
-  if(!tx || !isRecurring(tx)) return;
+  if(!tx || !isRecurring(tx)) return false;
   const label = tx.billArchived ? "Restore" : "Reactivate";
-  if(!confirm(`${label} ${tx.title} as an active recurring bill?`)) return;
+  if(!confirm(`${label} ${tx.title} as an active recurring bill?`)) return false;
 
   if(tx.billArchived){
     tx.recurrenceUntil = tx.billArchivedPreviousRecurrenceUntil || "";
@@ -10894,6 +10886,7 @@ function restoreArchivedBill(txId){
   tx.billArchivedPreviousRecurrenceUntil = "";
   saveData();
   renderBills();
+  return true;
 }
 
 
@@ -10988,6 +10981,7 @@ function openBillDetails(txId){
   const summary = document.getElementById("billDetailSummary");
   const list = document.getElementById("billDetailTransactions");
   const editBtn = document.getElementById("editBillSeriesBtn");
+  const manageBtn = document.getElementById("billArchiveSeriesBtn");
   const deleteBtn = document.getElementById("deleteBillSeriesBtn");
   const rows = billLinkedTransactions(tx);
   const cleared = rows.filter(row=>row.status === "cleared");
@@ -11004,6 +10998,14 @@ function openBillDetails(txId){
   editBtn.textContent = tx.billArchived ? "Restore before editing" : "Edit series";
   editBtn.disabled = !!tx.billArchived;
   editBtn.onclick = ()=>openBillSeriesEditor(tx.id);
+  if(manageBtn){
+    const inactive = tx.billArchived || info.status === "ended";
+    manageBtn.textContent = tx.billArchived ? "Restore series" : (info.status === "ended" ? "Reactivate series" : "Archive series");
+    manageBtn.onclick = ()=>{
+      const changed = inactive ? restoreArchivedBill(tx.id) : archiveRecurringBill(tx.id);
+      if(changed) modal.close();
+    };
+  }
   if(deleteBtn){
     deleteBtn.onclick = ()=>{
       if(!confirm(`Delete the entire ${tx.title} recurring series? Cleared history will stay as normal transactions, while the repeating rule and every uncleared occurrence will be removed.`)) return;
@@ -11021,25 +11023,21 @@ function billCardHTML(tx, archivedSection=false){
   const cat = categoryById(tx.categoryId);
   const account = billAccountLabel(tx);
   const route = tx.type === "transfer" ? transactionTransferLabel(tx) : `${account}${tx.linkedDebtId ? ` → ${debtById(tx.linkedDebtId)?.name || "debt"}` : ""}`;
-  const action = archivedSection
-    ? `<button type="button" class="ghost small bill-archive-action" onclick="event.stopPropagation();restoreArchivedBill('${tx.id}')">${tx.billArchived ? "Restore" : "Reactivate"}</button>`
-    : `<button type="button" class="ghost small bill-archive-action" onclick="event.stopPropagation();archiveRecurringBill('${tx.id}')">Archive</button>`;
-  const nextLabel = archivedSection
-    ? (tx.billArchivedAt ? `Archived: ${tx.billArchivedAt}` : `Ended: ${tx.nextDate}`)
-    : `Next: ${tx.nextDate}`;
-  return `<div class="bill-card ${archivedSection ? "bill-card-archived" : ""}" data-tx="${tx.id}" data-original-date="${tx.billInfo?.originalDate || tx.nextDate}" data-occurrence-date="${tx.nextDate}" onclick="openBillDetails('${tx.id}')">
-    <div>
+  const dateLabel = archivedSection
+    ? (tx.billArchivedAt ? `Archived ${tx.billArchivedAt}` : `Ended ${tx.nextDate}`)
+    : `Next ${tx.nextDate}`;
+  return `<div class="bill-card ${archivedSection ? "bill-card-archived" : ""}" style="--bill-category:${escapeAttr(cat.color)}" data-tx="${tx.id}" data-original-date="${tx.billInfo?.originalDate || tx.nextDate}" data-occurrence-date="${tx.nextDate}" onclick="openBillDetails('${tx.id}')">
+    <div class="bill-card-main">
       <div class="row-title">${cat.emoji} ${tx.title}</div>
-      <div class="row-sub">${route}</div>
+      <div class="row-sub">${route} • ${cat.name}</div>
     </div>
-    <div><span class="cat-preview" style="background:${hexToSoft(cat.color)}">${cat.emoji} ${cat.name}</span></div>
-    <div class="bill-repeat">
-      <div class="label">Repeats</div>
-      <div class="row-sub">${recurrenceDescription(tx)}</div>
-      <div class="row-sub">${nextLabel}</div>
+    <div class="bill-card-schedule">
+      <b>${dateLabel}</b>
+      <span>${recurrenceDescription(tx)}</span>
     </div>
-    <div class="bill-card-actions">${billStatusBadge(tx)}${action}</div>
+    <div class="bill-card-status">${billStatusBadge(tx)}</div>
     <div class="amount bill-amount ${(tx.type==='income'||tx.type==='paycheck')?'good':'bad'}">${(tx.type==='income'||tx.type==='paycheck')?'+':'-'}${money(tx.amount)}</div>
+    <span class="bill-row-chevron" aria-hidden="true">›</span>
   </div>`;
 }
 
@@ -11086,7 +11084,7 @@ function renderBills(){
     }
 
     const activeHTML = active.length
-      ? `<div class="bill-active-list">${active.map(tx=>billCardHTML(tx,false)).join("")}</div>`
+      ? `<div class="bill-list-summary"><span><b>${active.length}</b> active recurring item${active.length===1?"":"s"}</span><small>Tap a row for history and series actions.</small></div><div class="bill-active-list">${active.map(tx=>billCardHTML(tx,false)).join("")}</div>`
       : `<div class="empty compact">No active recurring bills match these filters.</div>`;
     const archivedHTML = archived.length
       ? `<details class="archived-bills-section"><summary><span>Ended / Archived bills</span><span class="pill">${archived.length}</span></summary><div class="archived-bills-list">${archived.map(tx=>billCardHTML(tx,true)).join("")}</div></details>`
@@ -12315,3 +12313,5 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 // v2-242: loan forecasts learn from completed cleared recurring occurrences; incomplete cleared loan breakdowns are flagged on Dashboard.
 
 // v2-243: Dashboard hierarchy is calmer and more compact; Action Center groups are collapsible and shared surfaces use lighter visual weight.
+
+// v2-244: Action Center groups default closed; Bills and Budgets use flatter, more compact presentation without changing finance logic.

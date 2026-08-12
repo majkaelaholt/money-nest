@@ -1,5 +1,10 @@
 # CODEX
 
+## v2-244
+- Visual/UX overhaul pass 2 keeps Dashboard Action Center groups closed by default and reduces Bills/Budgets visual clutter without changing finance calculations or saved data.
+- Bills use compact category-accented list rows; Archive/Restore/Reactivate moved into the bill detail modal, while filters/repair tools are collapsed until needed.
+- Budget Review and Monthly Budget Targets use flatter rows/section separators with less redundant UI.
+
 ## v2-243
 - Visual/UX overhaul pass 1 reduces shared card/panel visual weight and restructures Dashboard hierarchy without changing saved data or finance calculations.
 - Dashboard uses a compact alert metric strip, a lowest-cushion Safe to Spend focus, shorter Upcoming preview, and collapsible Action Center groups.
@@ -13,7 +18,7 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-243`
+Latest known version: `money-nest-v2-244`
 
 Before editing, always inspect `README.md` and confirm the current version in the repository. If `README.md` shows a different version, continue from the repo version and mention the mismatch in your summary.
 
@@ -149,7 +154,7 @@ Example README note:
 ### v2-200
 - Banking is excluded from budgeting. Savings transfers net contributions by direction.
 
-- Current version: money-nest-v2-243. Includes the first visual/UX overhaul pass with a calmer Dashboard hierarchy, plus completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
+- Current version: money-nest-v2-244. Includes the first visual/UX overhaul pass with a calmer Dashboard hierarchy, plus completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
 
 
 ### v2-205
@@ -317,6 +322,13 @@ Example README note:
 ### v2-240
 - Added tablet-only responsive modal sizing and spacing using a coarse-pointer media query, preserving desktop and phone layouts.
 
+
+### v2-244
+- Dashboard Action Center sections are collapsed on every render.
+- Bills rows are compact; list-level Archive/Restore controls were moved to bill details, with return values added to archive/restore helpers only to support closing the modal after successful confirmation.
+- Bills filter/repair controls are inside a collapsed disclosure; existing IDs and event bindings remain unchanged.
+- Budget Review and Monthly Budget Targets are visually flattened; budget calculations and editor behavior are unchanged.
+- Data schema remains 225.
 
 ### v2-243
 - Dashboard markup keeps the existing `summaryCards`, `mobileQuickReview`, `safeSpendList`, `upcomingList`, `needsReviewSummary`, `needsReviewList`, and `debtSnapshot` IDs so existing render/event hooks remain compatible.

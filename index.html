@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <title>Money Nest</title>
-  <link rel="stylesheet" href="styles.css?v=2-243"/>
+  <link rel="stylesheet" href="styles.css?v=2-244"/>
 
   <link rel="icon" href="favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
@@ -184,11 +184,11 @@
             </div>
             <button class="primary small" id="addBillBtn">+ Recurring</button>
           </div>
-          <div class="recurring-management-strip">
-            <div><b>Recurring management</b><span>Edit Series replaces the active rule while keeping cleared history. Use Repair split series to clean older duplicate fragments created by previous edits.</span></div>
-            <div class="inline-actions"><button type="button" class="ghost small" onclick="repairRecurringSeriesData()">Repair split series</button><button type="button" class="ghost small" onclick="document.querySelector('.archived-bills-section')?.setAttribute('open','')">Show archived</button><button type="button" class="ghost small" onclick="setBillFilterPreset('active')">Active only</button></div>
-          </div>
-          <div class="bill-filters">
+          <details class="bill-controls-disclosure">
+            <summary><span><b>Filters & recurring tools</b><small>Filter the list or open the less-used series maintenance tools.</small></span><span class="bill-controls-chevron" aria-hidden="true">⌄</span></summary>
+            <div class="bill-controls-body">
+              <div class="bill-filter-heading"><span>Filter list</span><button type="button" class="ghost small" onclick="setBillFilterPreset('active')">Clear filters</button></div>
+              <div class="bill-filters">
             <label>Account / owner
               <select id="billAccountFilter"></select>
             </label>
@@ -228,7 +228,10 @@
                 <option value="account">Account</option>
               </select>
             </label>
-          </div>
+              </div>
+              <div class="bill-tools-row"><span><b>Series tools</b><small>Repair is only for older split-series problems.</small></span><div class="inline-actions"><button type="button" class="ghost small" onclick="repairRecurringSeriesData()">Repair split series</button><button type="button" class="ghost small" onclick="document.querySelector('.archived-bills-section')?.setAttribute('open','')">Show archived</button></div></div>
+            </div>
+          </details>
 
           <div id="billsList" class="bill-list"></div>
         </div>
@@ -810,6 +813,7 @@
       <div id="billDetailTransactions" class="bill-detail-transactions"></div>
       <div class="modal-actions">
         <button type="button" class="danger" id="deleteBillSeriesBtn">Delete series</button>
+        <button type="button" class="ghost" id="billArchiveSeriesBtn">Archive series</button>
         <button type="button" class="ghost" onclick="document.getElementById('billDetailModal').close()">Close</button>
         <button type="button" class="primary" id="editBillSeriesBtn">Edit series</button>
       </div>
@@ -834,7 +838,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=2-243"></script>
+  <script src="app.js?v=2-244"></script>
   <dialog id="globalSearchModal" class="global-search-modal">
     <div class="global-search-shell">
       <div class="modal-head"><div><h3>🔎 Search Money Nest</h3><p class="hint">Transactions, merchants, categories, accounts, amounts, and dates.</p></div><button class="icon-btn" onclick="document.getElementById('globalSearchModal').close()">×</button></div>

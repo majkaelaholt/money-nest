@@ -1,5 +1,13 @@
 # Money Nest
 
+## v2-244
+- Action Center groups now always start collapsed, including Needs Attention; warning counts remain visible in the Dashboard summary strip.
+- Overhaul pass 2 simplifies Bills into compact, category-accented rows with amount/status/date visible at a glance; Archive/Restore/Reactivate actions now live in the bill detail modal instead of every list row.
+- Bills filters and uncommon recurring-series repair tools are tucked into a collapsed Filters & recurring tools section, while archived series remain separately collapsed.
+- Budget Review uses flatter section separators instead of nested insight cards, with shorter helper text and cleaner performance rows.
+- Monthly Budget Targets are flatter clickable rows with the budget amount emphasized on the right; the redundant Edit button was removed because the whole row already opens the editor.
+- No finance calculations, saved-data fields, JSON/CSV formats, recurring-series rules, or schema version changed.
+
 ## v2-243
 - Started the visual/UX overhaul with a calmer shared surface system: lighter shadows, slightly tighter card radii, and less visual weight without changing finance logic or saved data.
 - Reworked Dashboard hierarchy so Safe to Spend and Upcoming are the primary working areas while alert counts become a compact summary strip.
@@ -11,7 +19,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-243`
+Current version: `money-nest-v2-244`
 
 ## Important Notes
 
@@ -908,6 +916,12 @@ Use CSV for reviewing or batch-editing data.
 - Transaction and small update dialogs use a wider, better-proportioned card with tighter internal spacing on iPad.
 - Desktop and iPhone breakpoints remain unchanged.
 
+
+### v2-244
+- Kept all Dashboard Action Center groups closed by default.
+- Simplified Bills list density and moved series-management actions into bill details.
+- Collapsed Bills filters/tools by default and flattened Budget Review / Monthly Budget Targets presentation.
+- Data schema remains unchanged; this is a presentation-only overhaul pass.
 
 ### v2-243
 - Began the visual overhaul with lower-weight shared panels/cards and a calmer Dashboard information hierarchy.
