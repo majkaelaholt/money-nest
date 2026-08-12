@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-242";
+const APP_VERSION = "2-243";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -4932,140 +4932,114 @@ function renderDashboard(){
     const dueSoonRows = dueSoon.slice(0, 6);
     const dueSoonExtra = Math.max(0, dueSoon.length - dueSoonRows.length);
     const statementsToCheck = creditCardStatementsToCheck(7);
+    const statementRows = statementsToCheck.slice(0, 6);
+    const statementExtra = Math.max(0, statementsToCheck.length - statementRows.length);
+    const cashAccounts = orderedAccounts().filter(a=>!isSavingsAccount(a));
+    const cashSafe = cashAccounts.map(a=>({a,s:safeToSpend(a)}));
+    const lowestSafe = cashSafe.slice().sort((x,y)=>x.s.amount-y.s.amount)[0];
+    const overdrawCount = cashSafe.filter(x=>x.s.amount <= 0).length;
 
     document.getElementById("summaryCards").innerHTML = `
-      <article class="card attention-card">
-        <p class="eyebrow">Needs attention</p>
-        <div class="value">${attention.length}</div>
-        <p class="sub">${attention.length ? "item(s) to review" : "nothing urgent 🎉"}</p>
+      <article class="dashboard-metric ${attention.length ? "has-alert" : ""}">
+        <span class="dashboard-metric-icon" aria-hidden="true">⚠️</span>
+        <div><p class="eyebrow">Needs attention</p><div class="value">${attention.length}</div><p class="sub">${attention.length ? "item(s) to review" : "nothing urgent"}</p></div>
       </article>
-      <article class="card attention-card">
-        <p class="eyebrow">Debt payments due soon</p>
-        <div class="value">${dueSoon.length}</div>
-        <p class="sub">next 30 days, estimated monthly</p>
+      <article class="dashboard-metric">
+        <span class="dashboard-metric-icon" aria-hidden="true">💳</span>
+        <div><p class="eyebrow">Debt due soon</p><div class="value">${dueSoon.length}</div><p class="sub">next 30 days</p></div>
       </article>
-      <article class="card attention-card">
-        <p class="eyebrow">Overdraw risk</p>
-        <div class="value">${data.accounts.filter(a=>!isSavingsAccount(a) && safeToSpend(a).amount <= 0).length}</div>
-        <p class="sub">accounts at $0 or less safe</p>
+      <article class="dashboard-metric ${overdrawCount ? "has-alert" : ""}">
+        <span class="dashboard-metric-icon" aria-hidden="true">📉</span>
+        <div><p class="eyebrow">Overdraw risk</p><div class="value">${overdrawCount}</div><p class="sub">accounts at $0 or less safe</p></div>
       </article>
-      <article class="card attention-card">
-        <p class="eyebrow">Statements to check</p>
-        <div class="value">${statementsToCheck.length}</div>
-        <p class="sub">past due + next 7 days</p>
+      <article class="dashboard-metric">
+        <span class="dashboard-metric-icon" aria-hidden="true">📄</span>
+        <div><p class="eyebrow">Statements to check</p><div class="value">${statementsToCheck.length}</div><p class="sub">past due + next 7 days</p></div>
       </article>`;
 
     const quick=document.getElementById("mobileQuickReview");
     if(quick){
-      const cash=orderedAccounts().filter(a=>!isSavingsAccount(a));
-      const lowest=cash.map(a=>({a,s:safeToSpend(a)})).sort((x,y)=>x.s.amount-y.s.amount)[0];
       const next=expandedTransactions(toISO(addDays(parseDate(todayISO()),14))).filter(t=>t.date>=todayISO()&&t.status!=="cleared"&&isBudgetReviewOutflow({...t,status:"cleared"})).sort((a,b)=>a.date.localeCompare(b.date))[0];
       const bs=budgetReviewStats(todayISO().slice(0,7),"all");
-      quick.innerHTML=`<button onclick="showView('accounts')"><span>Safe to spend</span><b>${lowest?money(lowest.s.amount):'—'}</b><small>${lowest?.a.name||'No cash account'}</small></button><button onclick="showView('bills')"><span>Next bill</span><b>${next?money(next.amount):'—'}</b><small>${next?`${next.title} • ${next.date}`:'Nothing upcoming'}</small></button><button onclick="showView('budgets')"><span>Month spending</span><b>${money(bs.totalSpent)}</b><small>${bs.overBudgetCount} budget(s) over</small></button>`;
+      quick.innerHTML=`<button onclick="showView('accounts')"><span>Safe to spend</span><b>${lowestSafe?money(lowestSafe.s.amount):'—'}</b><small>${lowestSafe?.a.name||'No cash account'}</small></button><button onclick="showView('bills')"><span>Next bill</span><b>${next?money(next.amount):'—'}</b><small>${next?`${next.title} • ${next.date}`:'Nothing upcoming'}</small></button><button onclick="showView('budgets')"><span>Month spending</span><b>${money(bs.totalSpent)}</b><small>${bs.overBudgetCount} budget(s) over</small></button>`;
     }
 
-    document.getElementById("safeSpendList").innerHTML = orderedAccounts().filter(a=>!isSavingsAccount(a)).map(a=>{
-      const safe = safeToSpend(a);
-      const metric = billsMetricForAccount(a);
-      return `<div class="row clickable" onclick="openAccountDetail('${a.id}', 'dashboard')">
-        <div>
-          <div class="row-title">${a.emoji || "💵"} ${a.name}</div>
-          <div class="row-sub">${safe.label} • ${metric.sub}</div>
-        </div>
-        <div class="amount ${safe.amount>75?'good':safe.amount>0?'warn':'bad'}">${money(safe.amount)}</div>
-      </div>`;
-    }).join("");
+    const safeList = cashSafe.filter(({a})=>a.id !== lowestSafe?.a.id).map(({a,s})=>`<button type="button" class="dashboard-list-row dashboard-safe-row" onclick="openAccountDetail('${a.id}', 'dashboard')">
+      <span class="dashboard-list-main"><b>${a.emoji || "💵"} ${a.name}</b><small>${s.label}</small></span>
+      <strong class="amount ${s.amount>75?'good':s.amount>0?'warn':'bad'}">${money(s.amount)}</strong>
+    </button>`).join("");
+    document.getElementById("safeSpendList").innerHTML = lowestSafe ? `
+      <button type="button" class="dashboard-safe-hero" onclick="openAccountDetail('${lowestSafe.a.id}', 'dashboard')">
+        <span><small>Lowest cash cushion</small><b>${lowestSafe.a.emoji || "💵"} ${lowestSafe.a.name}</b><em>${lowestSafe.s.label}</em></span>
+        <strong class="amount ${lowestSafe.s.amount>75?'good':lowestSafe.s.amount>0?'warn':'bad'}">${money(lowestSafe.s.amount)}</strong>
+      </button>
+      ${safeList ? `<div class="dashboard-flat-list">${safeList}</div>` : ""}` : `<div class="empty">No cash accounts yet.</div>`;
 
     const upcomingEnd = toISO(addDays(parseDate(todayISO()), 14));
-    const upcoming = expandedTransactions(toISO(addMonths(parseDate(todayISO()), 1)))
-      .filter(tx => tx.date >= todayISO() && tx.date <= upcomingEnd && tx.status !== "cleared")
-      .slice(0,10);
+    const allUpcoming = expandedTransactions(toISO(addMonths(parseDate(todayISO()), 1)))
+      .filter(tx => tx.date >= todayISO() && tx.date <= upcomingEnd && tx.status !== "cleared");
+    const upcoming = allUpcoming.slice(0,6);
+    const upcomingExtra = Math.max(0, allUpcoming.length - upcoming.length);
 
-    document.getElementById("upcomingList").innerHTML = upcoming.length ? upcoming.map(tx=>{
+    document.getElementById("upcomingList").innerHTML = upcoming.length ? `<div class="dashboard-flat-list">${upcoming.map(tx=>{
       const cat = categoryById(tx.categoryId);
       const acctText = transactionAccountText(tx);
       const isPositive = tx.type === "income" || tx.type === "paycheck";
-      return `<div class="upcoming-row" data-tx="${tx.originalId || tx.id}" data-generated="${!!tx.generated}" data-original-date="${tx.originalDate || tx.date}" data-occurrence-date="${tx.date}" onclick="openTransaction('${tx.originalId || tx.id}',{generated:${!!tx.generated}, occurrenceOriginalDate:'${tx.originalDate || tx.date}', occurrenceDate:'${tx.date}'})">
-        <div class="upcoming-main">
-          <div class="row-title">${cat.emoji} ${tx.title}</div>
-          <div class="row-sub">${displayDateWithOverride(tx)} • ${cat.name} • ${acctText}</div>
-        </div>
-        <div class="amount ${isPositive?'good':'bad'}">${isPositive?'+':'-'}${money(tx.amount)}</div>
-      </div>`;
-    }).join("") : `<div class="empty">No upcoming transactions in the next 14 days.</div>`;
+      return `<button type="button" class="dashboard-list-row dashboard-upcoming-row" data-tx="${tx.originalId || tx.id}" data-generated="${!!tx.generated}" data-original-date="${tx.originalDate || tx.date}" data-occurrence-date="${tx.date}" onclick="openTransaction('${tx.originalId || tx.id}',{generated:${!!tx.generated}, occurrenceOriginalDate:'${tx.originalDate || tx.date}', occurrenceDate:'${tx.date}'})">
+        <span class="dashboard-list-main"><b>${cat.emoji} ${tx.title}</b><small>${displayDateWithOverride(tx)} • ${cat.name} • ${acctText}</small></span>
+        <strong class="amount ${isPositive?'good':'bad'}">${isPositive?'+':'-'}${money(tx.amount)}</strong>
+      </button>`;
+    }).join("")}</div>${upcomingExtra ? `<button type="button" class="dashboard-more-link" onclick="setView('calendar')">View ${upcomingExtra} more upcoming transaction${upcomingExtra===1?'':'s'} →</button>` : ""}` : `<div class="empty">No upcoming transactions in the next 14 days.</div>`;
 
     document.getElementById("debtSnapshot").innerHTML = `
-      <div class="action-center-v2">
-        <section class="action-section-v2">
-          <div class="action-section-title">
-            <h4>Needs attention</h4>
-            <span>${attention.length} item(s)</span>
+      <div class="dashboard-action-groups">
+        <details class="dashboard-action-group attention-group" ${attention.length ? "open" : ""}>
+          <summary><span><b>⚠️ Needs attention</b><small>${attention.length ? "Items that may need a decision or correction" : "Nothing urgent right now"}</small></span><span class="dashboard-action-count">${attention.length}</span></summary>
+          <div class="dashboard-action-body">
+            <div class="action-list-v2 dashboard-flat-list">
+              ${attention.length ? attention.map(item=>`<button type="button" class="action-row-v2 dashboard-action-row ${item.level}" onclick="${item.action}">
+                <span class="action-left"><span class="action-symbol">${item.level==="bad" ? "🚨" : "⚠️"}</span><span><b class="row-title">${item.title}</b><small class="row-sub">${item.sub}</small></span></span>
+              </button>`).join("") : `<div class="empty">Nothing needs attention right now.</div>`}
+            </div>
           </div>
-          <div class="action-list-v2">
-            ${attention.length ? attention.map(item=>`<div class="action-row-v2 clickable ${item.level}" onclick="${item.action}">
-              <div class="action-left">
-                <span class="action-symbol">${item.level==="bad" ? "🚨" : "⚠️"}</span>
-                <div>
-                  <div class="row-title">${item.title}</div>
-                  <div class="row-sub">${item.sub}</div>
-                </div>
-              </div>
-            </div>`).join("") : `<div class="empty">Nothing needs attention right now.</div>`}
-          </div>
-        </section>
+        </details>
 
-        <section class="action-section-v2">
-          <div class="action-section-title">
-            <h4>Debt payments due soon</h4>
-            <span>next 30 days${dueSoonExtra ? ` • showing first ${dueSoonRows.length}` : ""}</span>
+        <details class="dashboard-action-group">
+          <summary><span><b>💳 Debt payments due soon</b><small>Next 30 days${dueSoonExtra ? ` • ${dueSoonExtra} more beyond the preview` : ""}</small></span><span class="dashboard-action-count">${dueSoon.length}</span></summary>
+          <div class="dashboard-action-body">
+            <div class="action-list-v2 dashboard-flat-list">
+              ${dueSoonRows.length ? dueSoonRows.map(d=>{
+                const plannedTx = plannedDebtPaymentInfo(d, d.nextDue);
+                const planned = !!plannedTx;
+                const paidEarly = plannedTx?.status === "cleared";
+                const plannedEarly = plannedTx?.status !== "cleared" && plannedTx?.date && d.nextDue && plannedTx.date < d.nextDue;
+                const good = planned || ["paid","autopay","scheduled"].includes(d.paymentStatus);
+                const route = debtAttentionAccountText(d, plannedTx);
+                return `<button type="button" class="action-row-v2 dashboard-action-row debt-due" onclick="openDebtDetail('${d.id}')">
+                  <span class="action-left"><span class="action-symbol">${d.emoji || "💳"}</span><span><b class="row-title">${d.name}</b><small class="row-sub">Due ${d.nextDue} • Min ${debtMinDueText(d)}</small><small class="row-sub">${route}</small></span></span>
+                  <span class="debt-status-pill ${good ? "good" : "warn"}">${planned ? (paidEarly ? "Paid early" : plannedEarly ? "Planned early" : "Planned") : debtPaymentStatusLabel(d.paymentStatus)}</span>
+                </button>`;
+              }).join("") : `<div class="empty">No debt due dates in the next 30 days.</div>`}
+            </div>
+            ${dueSoonExtra ? `<button type="button" class="dashboard-more-link" onclick="setView('accounts')">Review ${dueSoonExtra} more in Accounts →</button>` : ""}
           </div>
-          <div class="action-list-v2">
-            ${dueSoonRows.length ? dueSoonRows.map(d=>{
-              const plannedTx = plannedDebtPaymentInfo(d, d.nextDue);
-              const planned = !!plannedTx;
-              const paidEarly = plannedTx?.status === "cleared";
-              const plannedEarly = plannedTx?.status !== "cleared" && plannedTx?.date && d.nextDue && plannedTx.date < d.nextDue;
-              const good = planned || ["paid","autopay","scheduled"].includes(d.paymentStatus);
-              const route = debtAttentionAccountText(d, plannedTx);
-              return `<div class="action-row-v2 debt-due clickable" onclick="openDebtDetail('${d.id}')">
-                <div class="action-left">
-                  <span class="action-symbol">${d.emoji || "💳"}</span>
-                  <div>
-                    <div class="row-title">${d.name}</div>
-                    <div class="row-sub">Due ${d.nextDue} • Min ${debtMinDueText(d)}</div>
-                    <div class="row-sub">${route}</div>
-                    <div class="row-sub">${debtPaymentStatusLabel(d.paymentStatus)}${planned ? ` • ${paidEarly ? "paid early" : plannedEarly ? "planned early" : "payment planned"}${plannedTx?.date ? ` ${plannedTx.date}` : ""}` : ""}</div>
-                  </div>
-                </div>
-                <div class="debt-status-pill ${good ? "good" : "warn"}">${planned ? (paidEarly ? "Paid early" : plannedEarly ? "Planned early" : "Planned") : debtPaymentStatusLabel(d.paymentStatus)}</div>
-              </div>`;
-            }).join("") : `<div class="empty">No debt due dates in the next 30 days.</div>`}
-            ${dueSoonExtra ? `<div class="action-row-v2 clickable" onclick="setView('accounts')"><div class="action-left"><span class="action-symbol">➕</span><div><div class="row-title">${dueSoonExtra} more due soon</div><div class="row-sub">Open Accounts to review the rest.</div></div></div></div>` : ""}
-          </div>
-        </section>
+        </details>
 
-        <section class="action-section-v2">
-          <div class="action-section-title">
-            <h4>Credit card statements</h4>
-            <span>past due + next 7 days</span>
+        <details class="dashboard-action-group">
+          <summary><span><b>📄 Credit card statements</b><small>Past due + next 7 days${statementExtra ? ` • ${statementExtra} more beyond the preview` : ""}</small></span><span class="dashboard-action-count">${statementsToCheck.length}</span></summary>
+          <div class="dashboard-action-body">
+            <div class="action-list-v2 dashboard-flat-list">
+              ${statementRows.length ? statementRows.map(d=>{
+                const statementUpcoming = d.nextStatementDate > todayISO();
+                return `<button type="button" class="action-row-v2 dashboard-action-row" onclick="openDebtDetail('${d.id}')">
+                  <span class="action-left"><span class="action-symbol">${d.emoji || "💳"}</span><span><b class="row-title">${d.name}</b><small class="row-sub">${d.nextStatementDate < todayISO() ? "Past due / check" : "Expected around"} ${d.nextStatementDate}${d.statementBalance ? ` • previous ${money(d.statementBalance)}` : ""}</small></span></span>
+                  <span class="debt-status-pill ${statementUpcoming ? "warn" : "bad"}">${statementUpcoming ? "Upcoming" : "Check"}</span>
+                </button>`;
+              }).join("") : `<div class="empty">No credit card statements past due or expected in the next 7 days.</div>`}
+            </div>
+            ${statementExtra ? `<button type="button" class="dashboard-more-link" onclick="setView('accounts')">Review ${statementExtra} more in Accounts →</button>` : ""}
           </div>
-          <div class="action-list-v2">
-            ${statementsToCheck.length ? statementsToCheck.map(d=>{
-              const upcoming = d.nextStatementDate > todayISO();
-              return `<div class="action-row-v2 clickable" onclick="openDebtDetail('${d.id}')">
-              <div class="action-left">
-                <span class="action-symbol">${d.emoji || "💳"}</span>
-                <div>
-                  <div class="row-title">${d.name}</div>
-                  <div class="row-sub">${d.nextStatementDate < todayISO() ? "Past due / check" : "Expected around"} ${d.nextStatementDate}</div>
-                  <div class="row-sub">Previous statement ${d.statementDate}${d.statementBalance ? ` • ${money(d.statementBalance)}` : ""}</div>
-                </div>
-              </div>
-              <div class="debt-status-pill ${upcoming ? "warn" : "bad"}">${upcoming ? "Upcoming" : "Check statement"}</div>
-            </div>`;
-            }).join("") : `<div class="empty">No credit card statements past due or expected in the next 7 days.</div>`}
-          </div>
-        </section>
+        </details>
       </div>`;
 
     attachTransactionContextMenus();
@@ -5077,7 +5051,6 @@ function renderDashboard(){
     document.getElementById("debtSnapshot").innerHTML = "";
   }
 }
-
 
 function moveTransactionOccurrence(id, originalDate, newDate){
   let tx = data.transactions.find(t => t.id === id);
@@ -12340,3 +12313,5 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 // v2-236: Bill series editing starts from the earliest uncleared linked occurrence, preserving cleared history and updating that occurrence forward.
 
 // v2-242: loan forecasts learn from completed cleared recurring occurrences; incomplete cleared loan breakdowns are flagged on Dashboard.
+
+// v2-243: Dashboard hierarchy is calmer and more compact; Action Center groups are collapsible and shared surfaces use lighter visual weight.

@@ -1,9 +1,9 @@
 # CODEX
 
-## v2-242
-- Loan forecast sampling includes fully completed cleared recurring occurrences as well as one-time cleared payments.
-- Blank loan breakdown fields are never treated as forecast-training zeroes; explicit numeric zero remains valid.
-- Dashboard review surfaces incomplete cleared loan payment breakdowns until corrected.
+## v2-243
+- Visual/UX overhaul pass 1 reduces shared card/panel visual weight and restructures Dashboard hierarchy without changing saved data or finance calculations.
+- Dashboard uses a compact alert metric strip, a lowest-cushion Safe to Spend focus, shorter Upcoming preview, and collapsible Action Center groups.
+- Action Center still surfaces the same attention/debt/statement data; preview limits are presentation-only and link back to Calendar/Accounts for the remainder.
 
 Money Nest Developer Rules
 
@@ -13,7 +13,7 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-242`
+Latest known version: `money-nest-v2-243`
 
 Before editing, always inspect `README.md` and confirm the current version in the repository. If `README.md` shows a different version, continue from the repo version and mention the mismatch in your summary.
 
@@ -149,7 +149,7 @@ Example README note:
 ### v2-200
 - Banking is excluded from budgeting. Savings transfers net contributions by direction.
 
-- Current version: money-nest-v2-242. Includes completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
+- Current version: money-nest-v2-243. Includes the first visual/UX overhaul pass with a calmer Dashboard hierarchy, plus completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
 
 
 ### v2-205
@@ -316,6 +316,13 @@ Example README note:
 
 ### v2-240
 - Added tablet-only responsive modal sizing and spacing using a coarse-pointer media query, preserving desktop and phone layouts.
+
+
+### v2-243
+- Dashboard markup keeps the existing `summaryCards`, `mobileQuickReview`, `safeSpendList`, `upcomingList`, `needsReviewSummary`, `needsReviewList`, and `debtSnapshot` IDs so existing render/event hooks remain compatible.
+- `renderDashboard()` keeps the same Safe to Spend, attention, debt-due, statement, and budget calculations; only presentation/order/preview length changed.
+- Action Center groups use native `<details>` disclosure elements. Needs Attention opens automatically only when findings exist; debt and statement groups start collapsed.
+- Shared panel/card shadow/radius adjustments are CSS-only. No schema, storage, import/export, Supabase, recurring-series, budget, or loan-calculation changes.
 
 
 ### v2-242

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <title>Money Nest</title>
-  <link rel="stylesheet" href="styles.css?v=2-242"/>
+  <link rel="stylesheet" href="styles.css?v=2-243"/>
 
   <link rel="icon" href="favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
@@ -56,11 +56,30 @@
       </header>
 
       <section id="dashboard" class="view active">
-        <div class="grid cards-4" id="summaryCards"></div>
-        <section class="panel mobile-quick-review-panel">
+        <section class="panel mobile-quick-review-panel dashboard-mobile-glance">
           <div class="panel-head"><div><h3>Today at a glance</h3><span class="hint">the numbers most useful on your phone</span></div></div>
           <div id="mobileQuickReview" class="mobile-quick-review"></div>
         </section>
+
+        <div id="summaryCards" class="dashboard-metric-strip"></div>
+
+        <div class="dashboard-primary-grid">
+          <section class="panel dashboard-safe-panel">
+            <div class="panel-head dashboard-section-head">
+              <div><p class="eyebrow">Cash cushion</p><h3>Safe to spend</h3></div>
+              <span class="hint">after planned bills</span>
+            </div>
+            <div id="safeSpendList" class="dashboard-safe-list"></div>
+          </section>
+          <section class="panel dashboard-upcoming-panel">
+            <div class="panel-head dashboard-section-head">
+              <div><p class="eyebrow">Coming up</p><h3>Upcoming</h3></div>
+              <span class="hint">next 14 days</span>
+            </div>
+            <div id="upcomingList" class="dashboard-upcoming-list"></div>
+          </section>
+        </div>
+
         <details class="panel dashboard-review-panel settings-collapsible">
           <summary><span class="settings-summary-main"><span class="settings-emoji">📥</span><span><b>Needs review & data health</b><small>Past planned items, recurring matches, duplicates, and broken references</small></span></span><span class="summary-pill" id="dashboardReviewCount">scan</span></summary>
           <div class="settings-collapse-body">
@@ -69,26 +88,11 @@
             <div id="needsReviewList" class="review-list"></div>
           </div>
         </details>
-        <div class="split">
-          <section class="panel">
-            <div class="panel-head">
-              <h3>Safe to spend</h3>
-              <span class="hint">after planned bills</span>
-            </div>
-            <div id="safeSpendList" class="stack"></div>
-          </section>
-          <section class="panel">
-            <div class="panel-head">
-              <h3>Upcoming</h3>
-              <span class="hint">next 14 days</span>
-            </div>
-            <div id="upcomingList" class="stack"></div>
-          </section>
-        </div>
-        <section class="panel">
-          <div class="panel-head">
-            <h3>Action Center</h3>
-            <span class="hint">attention + due soon</span>
+
+        <section class="panel dashboard-action-center-panel">
+          <div class="panel-head dashboard-section-head">
+            <div><p class="eyebrow">Follow-ups</p><h3>Action Center</h3></div>
+            <span class="hint">open only what you need</span>
           </div>
           <div id="debtSnapshot" class="debt-grid"></div>
         </section>
@@ -830,7 +834,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=2-242"></script>
+  <script src="app.js?v=2-243"></script>
   <dialog id="globalSearchModal" class="global-search-modal">
     <div class="global-search-shell">
       <div class="modal-head"><div><h3>🔎 Search Money Nest</h3><p class="hint">Transactions, merchants, categories, accounts, amounts, and dates.</p></div><button class="icon-btn" onclick="document.getElementById('globalSearchModal').close()">×</button></div>

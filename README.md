@@ -1,15 +1,17 @@
 # Money Nest
 
-## v2-242
-- Loan forecast training now includes cleared recurring occurrences whose actual principal/interest/fee breakdown is stored in occurrence overrides.
-- Only fully entered Principal, Interest, and Fees fields are used as forecast-training samples; an explicit $0 counts as entered.
-- Real transaction samples replace matching history-only samples so caught-up payments are not double-counted.
-- Dashboard Action Center and Needs Review now flag cleared loan payments with incomplete breakdown fields.
+## v2-243
+- Started the visual/UX overhaul with a calmer shared surface system: lighter shadows, slightly tighter card radii, and less visual weight without changing finance logic or saved data.
+- Reworked Dashboard hierarchy so Safe to Spend and Upcoming are the primary working areas while alert counts become a compact summary strip.
+- Safe to Spend now highlights the lowest cash cushion first and uses flatter account rows instead of nested mini-cards.
+- Upcoming previews six transactions and links to the Calendar for the remainder instead of making the Dashboard grow indefinitely.
+- Action Center is now organized into collapsible Needs Attention, Debt Payments Due Soon, and Credit Card Statements groups; large statement/debt lists stay tucked away until opened.
+- iPhone Today at a Glance is more compact and appears before alert counters; desktop, iPad, and phone keep the same underlying calculations and navigation behavior.
 
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-242`
+Current version: `money-nest-v2-243`
 
 ## Important Notes
 
@@ -905,6 +907,14 @@ Use CSV for reviewing or batch-editing data.
 - Added an iPad/tablet-only modal layout for coarse-pointer devices wider than phones.
 - Transaction and small update dialogs use a wider, better-proportioned card with tighter internal spacing on iPad.
 - Desktop and iPhone breakpoints remain unchanged.
+
+
+### v2-243
+- Began the visual overhaul with lower-weight shared panels/cards and a calmer Dashboard information hierarchy.
+- Replaced four separate top Dashboard cards with one compact metric strip.
+- Added a lowest-cash-cushion Safe to Spend hero plus flat account rows, and capped the Upcoming preview at six rows with a Calendar continuation link.
+- Converted Action Center into collapsible groups and capped debt/statement previews at six rows each, keeping the full data available from Accounts.
+- No financial calculations, schema fields, JSON/CSV formats, recurring logic, or cloud-sync behavior changed.
 
 
 ### v2-242
