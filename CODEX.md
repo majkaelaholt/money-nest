@@ -1,9 +1,9 @@
 # CODEX
 
-## v2-241
-- Transaction templates now use title families with named variants, per-variant defaults/archive state, and deliberate field application.
-- Added template cleanup/merge tools and category usage/merge cleanup.
-- Automatic template remembering is restricted to title + category and excludes recurring series/occurrences.
+## v2-242
+- Loan forecast sampling includes fully completed cleared recurring occurrences as well as one-time cleared payments.
+- Blank loan breakdown fields are never treated as forecast-training zeroes; explicit numeric zero remains valid.
+- Dashboard review surfaces incomplete cleared loan payment breakdowns until corrected.
 
 Money Nest Developer Rules
 
@@ -13,7 +13,7 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-241`
+Latest known version: `money-nest-v2-242`
 
 Before editing, always inspect `README.md` and confirm the current version in the repository. If `README.md` shows a different version, continue from the repo version and mention the mismatch in your summary.
 
@@ -149,7 +149,7 @@ Example README note:
 ### v2-200
 - Banking is excluded from budgeting. Savings transfers net contributions by direction.
 
-- Current version: money-nest-v2-241. Includes in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
+- Current version: money-nest-v2-242. Includes completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
 
 
 ### v2-205
@@ -316,6 +316,13 @@ Example README note:
 
 ### v2-240
 - Added tablet-only responsive modal sizing and spacing using a coarse-pointer media query, preserving desktop and phone layouts.
+
+
+### v2-242
+- `loanBreakdownSamples()` reads expanded cleared occurrences so occurrence-level loan breakdowns contribute to forecasting.
+- Only complete Principal/Interest/Fees samples train forecasts; matching history-only samples are skipped when a real transaction exists.
+- `clearedLoanPaymentsMissingBreakdown()` powers a persistent Action Center warning and per-payment Needs Review findings.
+- No schema change was required; existing JSON/CSV fields and older backups remain compatible.
 
 
 ### v2-241

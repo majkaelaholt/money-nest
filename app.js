@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-241";
+const APP_VERSION = "2-242";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -4003,6 +4003,23 @@ function loanPaymentHasManualBreakdown(tx){
     Number(tx.loanFeeAmount || 0)
   ));
 }
+function loanBreakdownFieldIsEntered(value){
+  return value !== "" && value !== undefined && value !== null && Number.isFinite(Number(value));
+}
+function loanPaymentBreakdownComplete(tx){
+  return !!(tx &&
+    loanBreakdownFieldIsEntered(tx.loanPrincipalAmount) &&
+    loanBreakdownFieldIsEntered(tx.loanInterestAmount) &&
+    loanBreakdownFieldIsEntered(tx.loanFeeAmount)
+  );
+}
+function loanPaymentMissingBreakdownFields(tx){
+  const fields=[];
+  if(!loanBreakdownFieldIsEntered(tx?.loanPrincipalAmount)) fields.push("Principal");
+  if(!loanBreakdownFieldIsEntered(tx?.loanInterestAmount)) fields.push("Interest");
+  if(!loanBreakdownFieldIsEntered(tx?.loanFeeAmount)) fields.push("Fees");
+  return fields;
+}
 function loanPrincipalReductionForPayment(tx){
   const amount = Number(tx?.amount || 0);
   const explicitPrincipal = tx?.loanPrincipalAmount === "" || tx?.loanPrincipalAmount === undefined ? null : Number(tx.loanPrincipalAmount);
@@ -4018,9 +4035,11 @@ function loanPrincipalReductionForPayment(tx){
 }
 function loanBreakdownSamples(d){
   if(!d) return [];
-  const txSamples = data.transactions
-    .filter(tx => tx.linkedDebtId === d.id && tx.type === "transfer" && tx.status === "cleared" && Number(tx.amount || 0) > 0 && loanPaymentHasManualBreakdown(tx))
-    .filter(tx => debtTransactionCountsForBalance(d, tx))
+  // Use expanded transactions so cleared recurring occurrences (whose actual
+  // breakdown lives in occurrenceOverrides) teach the forecast too. Only fully
+  // entered breakdowns are training samples; blanks should not silently become $0.
+  const txSamples = expandedTransactions(todayISO())
+    .filter(tx => tx.linkedDebtId === d.id && tx.type === "transfer" && tx.status === "cleared" && Number(tx.amount || 0) > 0 && loanPaymentBreakdownComplete(tx))
     .map(tx => {
       const amount = Number(tx.amount || 0);
       const principal = loanPrincipalReductionForPayment(tx);
@@ -4029,6 +4048,9 @@ function loanBreakdownSamples(d){
       return {tx, date:tx.date || "", amount, principal, interest, fees, balanceBefore:"", source:"transaction"};
     });
 
+  // If an older history-only sample was later entered as a real transaction,
+  // prefer the transaction so the same payment is not counted twice.
+  const transactionKeys = new Set(txSamples.map(s => `${s.date}|${Number(s.amount || 0).toFixed(2)}`));
   const historySamples = normalizeLoanForecastHistory(d.loanForecastHistory || []).map(item => {
     const principal = item.principal === "" || item.principal === undefined
       ? Math.max(0, Number(item.amount || 0) - Number(item.interest || 0) - Number(item.fees || 0))
@@ -4043,8 +4065,10 @@ function loanBreakdownSamples(d){
       balanceBefore:item.balanceBefore === "" ? "" : Number(item.balanceBefore),
       source:item.source || "history"
     };
-  });
+  }).filter(s => !transactionKeys.has(`${s.date}|${Number(s.amount || 0).toFixed(2)}`));
 
+  // Keep the most recent window so changing loan behavior is not drowned out by
+  // very old payments while still learning from all recent completed breakdowns.
   return [...historySamples, ...txSamples]
     .filter(s => Number(s.amount || 0) > 0)
     .sort((a,b)=>String(a.date || "").localeCompare(String(b.date || "")))
@@ -4837,6 +4861,21 @@ function debtDashboardPaymentHandled(d, dueISO){
   if(["paid", "autopay", "scheduled", "skip"].includes(d.paymentStatus)) return true;
   return !!plannedDebtPaymentInfo(d, dueISO);
 }
+function clearedLoanPaymentsMissingBreakdown(){
+  return expandedTransactions(todayISO())
+    .filter(tx => tx.status === "cleared" && tx.type === "transfer" && Number(tx.amount || 0) > 0)
+    .filter(tx => {
+      const debt=debtById(tx.linkedDebtId);
+      return debt && isLoanDebt(debt) && !loanPaymentBreakdownComplete(tx);
+    })
+    .sort((a,b)=>String(b.date || "").localeCompare(String(a.date || "")) || String(a.id || "").localeCompare(String(b.id || "")));
+}
+function loanPaymentReviewAction(tx){
+  const id=tx.originalId || tx.id;
+  const originalDate=tx.originalDate || tx.date || "";
+  const occurrenceDate=tx.date || originalDate;
+  return `openTransaction('${id}',{generated:${!!tx.generated}, occurrenceOriginalDate:'${originalDate}', occurrenceDate:'${occurrenceDate}'})`;
+}
 
 function dashboardNeedsAttention(){
   const items = [];
@@ -4855,6 +4894,17 @@ function dashboardNeedsAttention(){
     .forEach(tx=>{
       items.push({level:"warn", title:`Past planned: ${tx.title}`, sub:`${tx.date} • ${money(tx.amount)} • ${transactionAccountText(tx)}`, action:`openTransaction('${tx.originalId || tx.id}')`});
     });
+
+  const missingLoanBreakdowns=clearedLoanPaymentsMissingBreakdown();
+  if(missingLoanBreakdowns.length){
+    const first=missingLoanBreakdowns[0];
+    items.push({
+      level:"warn",
+      title:`${missingLoanBreakdowns.length} cleared loan payment${missingLoanBreakdowns.length === 1 ? "" : "s"} missing breakdown`,
+      sub:"Enter Principal, Interest, and Fees (use 0 when applicable) so future loan estimates can learn from the payment.",
+      action:loanPaymentReviewAction(first)
+    });
+  }
 
   data.debts.forEach(d=>{
     const debtRoute = debtAttentionAccountText(d);
@@ -12118,6 +12168,20 @@ function collectNeedsReview(){
     if(tx.accountId && !accountById(tx.accountId)) out.push({kind:'account',id,key:reviewKey('account',id),title:`Unknown account: ${tx.title||'Untitled'}`,sub:`${tx.date||''} • ${money(tx.amount||0)}`,action:`openTransaction('${id}')`});
     if(tx.categoryId && !(data.categories||[]).some(c=>c.id===tx.categoryId)) out.push({kind:'category',id,key:reviewKey('category',id),title:`Unknown category: ${tx.title||'Untitled'}`,sub:`${tx.date||''} • ${money(tx.amount||0)}`,action:`openTransaction('${id}')`});
   });
+  clearedLoanPaymentsMissingBreakdown().forEach(tx=>{
+    const debt=debtById(tx.linkedDebtId);
+    const baseId=tx.originalId || tx.id;
+    const occurrenceKey=tx.originalDate || tx.date || "";
+    const missing=loanPaymentMissingBreakdownFields(tx);
+    out.push({
+      kind:'loanBreakdown',
+      id:`${baseId}-${occurrenceKey}`,
+      key:reviewKey('loanBreakdown',`${baseId}-${occurrenceKey}`),
+      title:`Loan breakdown missing: ${tx.title || debt?.name || 'Loan payment'}`,
+      sub:`${tx.date || ''} • ${debt?.name || 'Loan'} • ${money(tx.amount || 0)} • missing ${missing.join(', ')}`,
+      action:loanPaymentReviewAction(tx)
+    });
+  });
   const h=healthScan();
   h.likely.forEach(x=>out.push({kind:'bill',id:x.tx.id,key:reviewKey('bill',x.tx.id),title:`Possible unlinked bill: ${x.tx.title}`,sub:`${x.tx.date} looks like ${x.match.title}`,action:`openTransaction('${x.tx.id}')`,secondary:`linkLikelyRecurring('${x.tx.id}','${x.match.id}')`,secondaryLabel:'Link bill'}));
   h.duplicates.forEach(([a,b])=>out.push({kind:'duplicate',id:`${a.id}-${b.id}`,key:reviewKey('duplicate',duplicatePairKey(a,b)),title:`Possible duplicate: ${a.title}`,sub:`${a.date} • ${money(a.amount)} • two matching saved records`,action:`openTransaction('${a.id}')`,secondary:`openTransaction('${b.id}')`,secondaryLabel:'Review second'}));
@@ -12126,10 +12190,10 @@ function collectNeedsReview(){
 }
 window.renderNeedsReview=function(){
   const list=document.getElementById('needsReviewList'),summary=document.getElementById('needsReviewSummary');
-  const items=collectNeedsReview(); const groups={past:0,account:0,category:0,bill:0,duplicate:0,stale:0};items.forEach(x=>groups[x.kind]=(groups[x.kind]||0)+1);
+  const items=collectNeedsReview(); const groups={past:0,account:0,category:0,bill:0,duplicate:0,stale:0,loanBreakdown:0};items.forEach(x=>groups[x.kind]=(groups[x.kind]||0)+1);
   const badge=document.getElementById('reviewNavBadge');if(badge){badge.textContent=items.length;badge.hidden=!items.length;}
   const dashboardCount=document.getElementById('dashboardReviewCount');if(dashboardCount)dashboardCount.textContent=items.length?`${items.length} found`:'clear';
-  if(summary)summary.innerHTML=`<article><b>${items.length}</b><span>Total findings</span></article><article><b>${groups.past||0}</b><span>Past planned</span></article><article><b>${(groups.account||0)+(groups.category||0)}</b><span>Broken references</span></article><article><b>${(groups.bill||0)+(groups.duplicate||0)+(groups.stale||0)}</b><span>Cleanup suggestions</span></article>`;
+  if(summary)summary.innerHTML=`<article><b>${items.length}</b><span>Total findings</span></article><article><b>${groups.past||0}</b><span>Past planned</span></article><article><b>${groups.loanBreakdown||0}</b><span>Loan breakdowns</span></article><article><b>${(groups.account||0)+(groups.category||0)}</b><span>Broken references</span></article><article><b>${(groups.bill||0)+(groups.duplicate||0)+(groups.stale||0)}</b><span>Cleanup suggestions</span></article>`;
   if(list)list.innerHTML=items.length?items.map(x=>`<div class="review-item"><span><b>${escapeAttr(x.title)}</b><small>${escapeAttr(x.sub)}</small></span><div class="review-actions"><button class="ghost small" onclick="${x.action}">Review</button>${x.secondary?`<button class="ghost small" onclick="${x.secondary}">${x.secondaryLabel}</button>`:''}<button class="ghost small" onclick="dismissReviewItem('${escapeAttr(x.key)}')">Dismiss</button></div></div>`).join(''):`<div class="empty-state">Nothing needs review right now. 🎉 <button class="ghost small" onclick="restoreReviewDismissals()">Restore dismissed</button></div>`;
 };
 const _render214=render; render=function(){_render214();renderNeedsReview();};
@@ -12274,3 +12338,5 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 // v2-235: Monthly Budget Targets and Budget Performance are sorted alphabetically by displayed budget title.
 // v2-237: Recurring series identity now includes its schedule, so same-title bills on different dates/rules remain separate and safe to edit/delete.
 // v2-236: Bill series editing starts from the earliest uncleared linked occurrence, preserving cleared history and updating that occurrence forward.
+
+// v2-242: loan forecasts learn from completed cleared recurring occurrences; incomplete cleared loan breakdowns are flagged on Dashboard.

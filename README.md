@@ -1,15 +1,15 @@
 # Money Nest
 
-## v2-241
-- Reorganized transaction templates into title families with named, independently editable variants.
-- Added defaults, archive/restore, context-aware suggestions, usage details, and template cleanup/merge tools.
-- Automatic shortcuts now remember only title and category and no longer create variants from recurring bill occurrences.
-- Added Category Cleanup with usage counts, last use, budget/template/recurring references, safe merge, and unused-category deletion.
+## v2-242
+- Loan forecast training now includes cleared recurring occurrences whose actual principal/interest/fee breakdown is stored in occurrence overrides.
+- Only fully entered Principal, Interest, and Fees fields are used as forecast-training samples; an explicit $0 counts as entered.
+- Real transaction samples replace matching history-only samples so caught-up payments are not double-counted.
+- Dashboard Action Center and Needs Review now flag cleared loan payments with incomplete breakdown fields.
 
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-241`
+Current version: `money-nest-v2-242`
 
 ## Important Notes
 
@@ -905,6 +905,13 @@ Use CSV for reviewing or batch-editing data.
 - Added an iPad/tablet-only modal layout for coarse-pointer devices wider than phones.
 - Transaction and small update dialogs use a wider, better-proportioned card with tighter internal spacing on iPad.
 - Desktop and iPhone breakpoints remain unchanged.
+
+
+### v2-242
+- Loan forecasting now learns from fully completed cleared loan-payment occurrences, including recurring occurrence overrides.
+- Forecast samples with blank Principal, Interest, or Fees fields are excluded until completed; entered zeroes remain valid.
+- Matching history-only samples are de-duplicated when the same payment now exists as a real cleared transaction.
+- Dashboard Action Center shows a persistent aggregate warning for incomplete cleared loan breakdowns, with per-payment findings in Needs Review & Data Health.
 
 
 ### v2-241
