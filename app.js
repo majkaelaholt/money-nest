@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-244";
+const APP_VERSION = "2-245";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -2750,6 +2750,7 @@ let selectedAccountId = null;
 let selectedDebtId = null;
 let accountDetailSortInitialized = false;
 let ledgerFiltersOpen = false;
+let accountReorderMode = false;
 
 const defaultUiPrefs = {
   calendarFilter: "all",
@@ -5443,26 +5444,36 @@ window.moveAccount = (id, direction)=>{
   renderAccounts();
 };
 
+window.toggleAccountReorderMode = ()=>{
+  accountReorderMode = !accountReorderMode;
+  renderAccounts();
+};
+
 function renderAccounts(){
-  document.getElementById("accountList").innerHTML = orderedAccounts().map(a=>`
-    <div class="account-card tinted-card" draggable="true" data-id="${a.id}" style="--card-color:${a.color || "#8c6f4d"}; background:${hexToSoft(a.color || "#8c6f4d")}" onclick="openAccountDetail('${a.id}', 'accounts')">
-      <div><div class="row-title">${a.emoji || "💵"} ${a.name}</div><div class="row-sub">${a.owner} • ${a.paycheckAccount ? "personal/paycheck" : "shared/other"}</div></div>
-      <div><div class="label">Actual</div><div class="amount">${money(accountBalance(a.id,false,todayISO()))}</div></div>
-      <div><div class="label">${billsMetricForAccount(a).label}</div><div class="amount ${isSavingsAccount(a) ? "good" : "bad"}">${money(billsMetricForAccount(a).amount)}</div><div class="row-sub">${billsMetricForAccount(a).sub}</div></div>
+  const reorderBtn = document.getElementById("toggleAccountReorderBtn");
+  if(reorderBtn){
+    reorderBtn.textContent = accountReorderMode ? "Done arranging" : "Arrange";
+    reorderBtn.classList.toggle("active", accountReorderMode);
+  }
+  const ordered = orderedAccounts();
+  document.getElementById("accountList").innerHTML = ordered.map((a,index)=>`
+    <div class="account-card tinted-card ${accountReorderMode ? "is-arranging" : ""}" draggable="${accountReorderMode ? "true" : "false"}" data-id="${a.id}" style="--card-color:${a.color || "#8c6f4d"}; background:${hexToSoft(a.color || "#8c6f4d")}" onclick="${accountReorderMode ? "event.preventDefault(); event.stopPropagation();" : `openAccountDetail('${a.id}', 'accounts')`}">
+      <div class="account-card-main"><div class="row-title">${a.emoji || "💵"} ${a.name}</div><div class="row-sub">${a.owner} • ${a.paycheckAccount ? "personal/paycheck" : "shared/other"}</div></div>
+      <div class="account-metric account-metric-actual"><div class="label">Actual</div><div class="amount">${money(accountBalance(a.id,false,todayISO()))}</div></div>
+      <div class="account-metric account-metric-secondary"><div class="label">${billsMetricForAccount(a).label}</div><div class="amount ${isSavingsAccount(a) ? "good" : "bad"}">${money(billsMetricForAccount(a).amount)}</div><div class="row-sub">${billsMetricForAccount(a).sub}</div></div>
       ${isSavingsAccount(a)
-        ? `<div>
+        ? `<div class="account-metric account-metric-tertiary">
             <div class="label">${savingsGoalAmount(a) ? "Left to Goal" : "Goal"}</div>
             <div class="amount">${savingsGoalAmount(a) ? money(savingsGoalRemaining(a)) : "Not set"}</div>
             <div class="row-sub">${savingsGoalAmount(a) ? `${savingsGoalProgress(a)}% of ${money(savingsGoalAmount(a))}${a.goalName ? ` • ${a.goalName}` : ""}` : "set a savings goal"}</div>
           </div>`
-        : `<div><div class="label">Safe</div><div class="amount good">${money(safeToSpend(a).amount)}</div></div>`}
-      <div class="inline-actions account-reorder-actions">
-        <button class="ghost tiny" onclick="event.stopPropagation(); moveAccount('${a.id}', -1)">↑</button>
-        <button class="ghost tiny" onclick="event.stopPropagation(); moveAccount('${a.id}', 1)">↓</button>
-        <button class="ghost small" onclick="event.stopPropagation(); simpleAccount('${a.id}')">Edit</button>
-      </div>
+        : `<div class="account-metric account-metric-tertiary"><div class="label">Safe</div><div class="amount good">${money(safeToSpend(a).amount)}</div></div>`}
+      ${accountReorderMode ? `<div class="inline-actions account-reorder-actions">
+        <button class="ghost tiny" ${index===0 ? "disabled" : ""} onclick="event.stopPropagation(); moveAccount('${a.id}', -1)" aria-label="Move ${escapeAttr(a.name)} up">↑</button>
+        <button class="ghost tiny" ${index===ordered.length-1 ? "disabled" : ""} onclick="event.stopPropagation(); moveAccount('${a.id}', 1)" aria-label="Move ${escapeAttr(a.name)} down">↓</button>
+      </div>` : `<span class="account-row-chevron" aria-hidden="true">›</span>`}
     </div>`).join("");
-  setupReorder(".account-card[data-id]", "account");
+  if(accountReorderMode) setupReorder(".account-card[data-id]", "account");
   renderDebts();
 }
 
@@ -5690,11 +5701,16 @@ function renderAccountDetail(){
             : ` • ${metric.label} ${money(metric.amount)} • Safe ${money(safeToSpend(a).amount)}`}</p>
         </div>
       </div>
-      <div class="detail-actions">
+      <div class="detail-actions detail-actions-v245">
         <button class="primary" onclick="openTransaction(null,{accountId:'${a.id}'})">+ Transaction</button>
         <button class="ghost" onclick="openTransferFromAccount('${a.id}')">↔ Transfer</button>
-        <button class="ghost" onclick="openPendingReimbursement('${a.id}')">IOU / reimbursement</button>
-        <button class="ghost" onclick="simpleAccount('${a.id}')">Edit account</button>
+        <details class="detail-more-actions">
+          <summary class="ghost">More</summary>
+          <div class="detail-more-menu">
+            <button class="ghost" onclick="openPendingReimbursement('${a.id}'); this.closest('details').removeAttribute('open')">IOU / reimbursement</button>
+            <button class="ghost" onclick="simpleAccount('${a.id}'); this.closest('details').removeAttribute('open')">Edit account</button>
+          </div>
+        </details>
       </div>
     </div>
 
@@ -7022,23 +7038,28 @@ function updateUtilSimSummary(){
 
 function renderDebts(){
   const groupedType = groupBy(orderedDebts(), "type");
-  document.getElementById("debtGroups").innerHTML = creditCardUtilizationSummariesHTML() + `<div class="panel-actions debt-label-actions"><button class="primary small" onclick="addBNPLPurchase()">+ BNPL purchase</button><button class="ghost small" onclick="editDebtTypes()">Edit debt category labels</button></div>` + Object.entries(groupedType).map(([type,debts])=>{
+  const debtTools = `<details class="account-tools-disclosure">
+    <summary><span><b>Debt tools</b><small>BNPL purchases and category-label maintenance.</small></span><span class="account-tools-chevron" aria-hidden="true">⌄</span></summary>
+    <div class="account-tools-body"><button class="primary small" onclick="addBNPLPurchase()">+ BNPL purchase</button><button class="ghost small" onclick="editDebtTypes()">Edit debt category labels</button></div>
+  </details>`;
+  document.getElementById("debtGroups").innerHTML = creditCardUtilizationSummariesHTML() + debtTools + Object.entries(groupedType).map(([type,debts])=>{
     const typeTotal = debts.reduce((s,d)=>s+debtAmountLeftNow(d),0);
     const byCompany = groupBy(orderedDebts(debts), "company");
+    const companies = Object.keys(byCompany);
+    const allCompaniesOpen = companies.length > 0 && companies.every(company=>isDebtExpanded("openDebtCompanies", debtCompanyKey(type, company)));
     return `<details class="debt-type-section" ${isDebtExpanded("openDebtTypes", type) ? "open" : ""} ontoggle="rememberExpanded('openDebtTypes','${type}',this.open)">
       <summary class="debt-type-summary">
-        <span>${debtTypeLabel(type)}</span>
+        <span class="debt-type-name">${debtTypeLabel(type)}</span>
         <span class="debt-type-summary-actions">
-          <button class="ghost tiny" onclick="event.preventDefault(); event.stopPropagation(); expandDebtTypeAccounts('${type}')">Expand accounts</button>
-          <button class="ghost tiny" onclick="event.preventDefault(); event.stopPropagation(); collapseDebtTypeAccounts('${type}')">Collapse accounts</button>
-          <span>${money(typeTotal)} • ${debts.length} account${debts.length === 1 ? "" : "s"} ▾</span>
+          <button class="ghost tiny debt-company-toggle" onclick="event.preventDefault(); event.stopPropagation(); ${allCompaniesOpen ? "collapseDebtTypeAccounts" : "expandDebtTypeAccounts"}('${type}')">${allCompaniesOpen ? "Collapse accounts" : "Expand accounts"}</button>
+          <span class="debt-type-total">${money(typeTotal)} • ${debts.length} account${debts.length === 1 ? "" : "s"} <span aria-hidden="true">⌄</span></span>
         </span>
       </summary>
       <div class="debt-type-body">
         ${Object.entries(byCompany).map(([company,cards])=>`
           <div class="debt-company ${isDebtExpanded("openDebtCompanies", debtCompanyKey(type, company)) ? "open" : ""}" onclick="this.classList.toggle('open'); rememberExpanded('openDebtCompanies', debtCompanyKey('${type}', '${company.replaceAll("'", "\'")}'), this.classList.contains('open'))">
             <strong>${company}</strong>
-            <span>${money(cards.reduce((s,d)=>s+debtAmountLeftNow(d),0))} ▾</span>
+            <span>${money(cards.reduce((s,d)=>s+debtAmountLeftNow(d),0))} <span aria-hidden="true">⌄</span></span>
           </div>
           <div class="debt-cards ${isDebtExpanded("openDebtCompanies", debtCompanyKey(type, company)) ? "open" : ""}">
             ${orderedDebts(cards).map(d=>{
@@ -7047,31 +7068,31 @@ function renderDebts(){
               const displayStatus = debtDisplayPaymentStatus(d);
               const statusClass = debtPaymentStatusClass(displayStatus);
               return `<div class="debt-account-card tinted-card clickable ${d.frozenLocked ? "debt-frozen" : ""}" draggable="true" data-id="${d.id}" style="--card-color:${d.color || "#8c6f4d"}; background:${hexToSoft(d.color || "#8c6f4d")}" onclick="openDebtDetail('${d.id}')">
-                <div>
+                <div class="debt-card-main">
                   <div class="row-title">${d.frozenLocked ? "🔒 " : ""}${d.emoji || "💳"} ${d.name}</div>
                   <div class="row-sub">${d.owner} • ${debtFrozenText(d)}${d.apr ? ` • ${d.apr}% APR` : ""}</div>
                 </div>
-                <div>
+                <div class="debt-card-metric debt-card-current">
                   <div class="label">Current</div>
                   <div class="amount bad">${money(bal)}</div>
                   <div class="row-sub">${debtStatementLine(d)}</div>
                   ${debtNextStatementText(d) ? `<div class="row-sub">${debtNextStatementText(d)}</div>` : (debtAfterPaymentText(d) ? `<div class="row-sub">${debtAfterPaymentText(d)}</div>` : "")}
                 </div>
-                <div>
+                <div class="debt-card-metric debt-card-credit">
                   <div class="label">Credit line</div>
                   <div class="row-sub">${debtCreditLineText(d)}</div>
                   ${d.limit && !isBNPLDebt(d) && !isMedicalDebt(d) && !isLoanDebt(d) ? `<div class="row-sub">${debtCreditLineSubText(d, bal, util)}</div>` : (util !== null ? `<div class="row-sub">${util}% used</div>` : "")}
                 </div>
-                <div>
+                <div class="debt-card-metric debt-card-due">
                   <div class="label">Due / Payment</div>
                   <div class="row-sub">${debtDueText(d)}</div>
                   <div class="row-sub">${debtMonthlyPaymentText(d)}</div>
                 </div>
-                <div>
+                <div class="debt-card-status">
                   <div class="label">Status</div>
                   <div class="debt-status-pill ${statusClass}">${debtPaymentStatusLabel(displayStatus)}</div>
-                  <button class="ghost tiny" onclick="event.stopPropagation(); quickDebtDue('${d.id}')">Update</button>
                 </div>
+                <span class="debt-row-chevron" aria-hidden="true">›</span>
               </div>`;
             }).join("")}
           </div>`).join("")}
@@ -7275,13 +7296,18 @@ function renderDebtDetail(){
           <p class="hint">${d.type} • ${d.owner} • ${debtFrozenText(d)}${d.apr ? ` • ${d.apr}% APR` : ""}</p>
         </div>
       </div>
-      <div class="detail-actions">
+      <div class="detail-actions detail-actions-v245">
         <button class="primary" onclick="openTransaction(null,{debtAccountId:'${d.id}', type:'expense'})">+ Card/Klarna spend</button>
         <button class="ghost" onclick="openTransaction(null,{linkedDebtId:'${d.id}', type:'transfer'})">+ Payment</button>
-        <button class="ghost" onclick="simpleDebt('${d.id}')">Edit debt</button>
-        <button class="ghost" onclick="quickDebtDue('${d.id}')">Update due/min</button>
-        ${isLoanDebt(d) ? `<button class="ghost" onclick="openLoanBalanceAdjustment('${d.id}')">Adjust balance</button>` : ""}
-        ${Number(debtMonthlyPaymentAmount(d) || 0) && d.dueDate ? `<button class="ghost" onclick="createDebtMinPayment('${d.id}')">Plan payment</button>` : ""}
+        <details class="detail-more-actions">
+          <summary class="ghost">More</summary>
+          <div class="detail-more-menu">
+            <button class="ghost" onclick="simpleDebt('${d.id}'); this.closest('details').removeAttribute('open')">Edit debt</button>
+            <button class="ghost" onclick="quickDebtDue('${d.id}'); this.closest('details').removeAttribute('open')">Update due/min</button>
+            ${isLoanDebt(d) ? `<button class="ghost" onclick="openLoanBalanceAdjustment('${d.id}'); this.closest('details').removeAttribute('open')">Adjust balance</button>` : ""}
+            ${Number(debtMonthlyPaymentAmount(d) || 0) && d.dueDate ? `<button class="ghost" onclick="createDebtMinPayment('${d.id}'); this.closest('details').removeAttribute('open')">Plan payment</button>` : ""}
+          </div>
+        </details>
       </div>
     </div>
 
@@ -12315,3 +12341,4 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 // v2-243: Dashboard hierarchy is calmer and more compact; Action Center groups are collapsible and shared surfaces use lighter visual weight.
 
 // v2-244: Action Center groups default closed; Bills and Budgets use flatter, more compact presentation without changing finance logic.
+// v2-245: Accounts use calmer scan-first rows, arrangement controls are opt-in, debt utilities are tucked away, and touch/detail action layouts are less cluttered.

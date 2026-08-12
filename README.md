@@ -1,5 +1,13 @@
 # Money Nest
 
+## v2-245
+- Overhaul pass 3 simplifies Accounts into scan-first cash/debt rows with less persistent button clutter.
+- Cash-account ordering controls now appear only in an explicit Arrange mode; normal rows open details with a quiet chevron.
+- Debt tools are collapsed by default, debt type sections use one contextual expand/collapse control, and per-row Update buttons were removed because the same control remains in debt details.
+- Cash/debt detail action bars keep the primary actions visible and move maintenance actions into a More menu.
+- iPhone/iPad account layouts are tightened for touch, and iPad Search/+ quick actions now share one quieter floating control.
+- No finance calculations, saved-data fields, JSON/CSV formats, recurring/debt logic, or schema version changed.
+
 ## v2-244
 - Action Center groups now always start collapsed, including Needs Attention; warning counts remain visible in the Dashboard summary strip.
 - Overhaul pass 2 simplifies Bills into compact, category-accented rows with amount/status/date visible at a glance; Archive/Restore/Reactivate actions now live in the bill detail modal instead of every list row.
@@ -19,7 +27,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-244`
+Current version: `money-nest-v2-245`
 
 ## Important Notes
 
@@ -915,6 +923,15 @@ Use CSV for reviewing or batch-editing data.
 - Added an iPad/tablet-only modal layout for coarse-pointer devices wider than phones.
 - Transaction and small update dialogs use a wider, better-proportioned card with tighter internal spacing on iPad.
 - Desktop and iPhone breakpoints remain unchanged.
+
+
+### v2-245
+- Reworked Accounts into flatter scan-first cash/debt rows while preserving all account and debt calculations.
+- Added opt-in cash-account Arrange mode so reorder arrows no longer occupy every row by default.
+- Moved BNPL/category-label utilities into a collapsed Debt tools disclosure and replaced paired debt expand/collapse buttons with one contextual control.
+- Removed debt-row Update buttons because Update due/min remains available from debt details; primary detail actions stay visible while maintenance actions live under More.
+- Refined iPhone/iPad account spacing and consolidated iPad Search/+ into a quieter paired floating control.
+- Data schema remains unchanged; JSON/CSV/cloud compatibility is unaffected.
 
 
 ### v2-244

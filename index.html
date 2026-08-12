@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <title>Money Nest</title>
-  <link rel="stylesheet" href="styles.css?v=2-244"/>
+  <link rel="stylesheet" href="styles.css?v=2-245"/>
 
   <link rel="icon" href="favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
@@ -125,12 +125,15 @@
 
       <section id="accounts" class="view">
         <div class="panel">
-          <div class="panel-head">
+          <div class="panel-head account-section-head">
             <div>
               <h3>Cash accounts</h3>
               <p class="hint">Checking, shared cash, and savings accounts.</p>
             </div>
-            <button class="primary small" id="addAccountBtn">+ Account</button>
+            <div class="inline-actions account-head-actions">
+              <button class="ghost small" id="toggleAccountReorderBtn" type="button" onclick="toggleAccountReorderMode()">Arrange</button>
+              <button class="primary small" id="addAccountBtn">+ Account</button>
+            </div>
           </div>
           <div id="accountList" class="account-list"></div>
         </div>
@@ -838,7 +841,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=2-244"></script>
+  <script src="app.js?v=2-245"></script>
   <dialog id="globalSearchModal" class="global-search-modal">
     <div class="global-search-shell">
       <div class="modal-head"><div><h3>🔎 Search Money Nest</h3><p class="hint">Transactions, merchants, categories, accounts, amounts, and dates.</p></div><button class="icon-btn" onclick="document.getElementById('globalSearchModal').close()">×</button></div>

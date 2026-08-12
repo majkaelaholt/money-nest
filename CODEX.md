@@ -1,5 +1,11 @@
 # CODEX
 
+## v2-245
+- Visual/UX overhaul pass 3 simplifies Accounts without changing account/debt math, storage, or schema.
+- Cash-account reorder controls are runtime-only Arrange mode UI; account ordering still uses the existing `order` field and reorder helpers.
+- Debt tools are collapsed by default; per-row due/min Update was removed only from list presentation and remains available in debt detail.
+- Detail action menus are presentation-only and keep existing edit/payment/adjustment functions intact.
+
 ## v2-244
 - Visual/UX overhaul pass 2 keeps Dashboard Action Center groups closed by default and reduces Bills/Budgets visual clutter without changing finance calculations or saved data.
 - Bills use compact category-accented list rows; Archive/Restore/Reactivate moved into the bill detail modal, while filters/repair tools are collapsed until needed.
@@ -18,7 +24,7 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-244`
+Latest known version: `money-nest-v2-245`
 
 Before editing, always inspect `README.md` and confirm the current version in the repository. If `README.md` shows a different version, continue from the repo version and mention the mismatch in your summary.
 
@@ -154,7 +160,7 @@ Example README note:
 ### v2-200
 - Banking is excluded from budgeting. Savings transfers net contributions by direction.
 
-- Current version: money-nest-v2-244. Includes the first visual/UX overhaul pass with a calmer Dashboard hierarchy, plus completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
+- Current version: money-nest-v2-245. Includes the first visual/UX overhaul pass with a calmer Dashboard hierarchy, plus completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
 
 
 ### v2-205
@@ -322,6 +328,13 @@ Example README note:
 ### v2-240
 - Added tablet-only responsive modal sizing and spacing using a coarse-pointer media query, preserving desktop and phone layouts.
 
+
+### v2-245
+- `accountReorderMode` is an unsaved runtime UI state; it does not alter backup/schema formats.
+- `renderAccounts()` keeps existing balance/Safe-to-Spend/savings calculations and only changes row presentation plus when existing reorder helpers are exposed.
+- `renderDebts()` keeps debt totals/status/utilization/due calculations; list-level Update is removed because `quickDebtDue()` remains in debt detail.
+- Cash/debt detail secondary actions are grouped under native `<details>` menus but call the same existing functions.
+- No JSON/CSV/schema/Supabase changes.
 
 ### v2-244
 - Dashboard Action Center sections are collapsed on every render.
