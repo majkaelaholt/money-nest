@@ -1,5 +1,19 @@
 # CODEX
 
+## v2-249
+- Dashboard/Needs Review past-planned findings use `pastPlannedNeedsAttention(tx, 7)` and must not flag a transaction until it is more than 7 days past its planned date.
+- Credit Card `paymentStatus` is now presentation-derived through `automaticCreditCardPaymentInfo()` / `debtDisplayPaymentStatus()`. Preserve the legacy saved `paymentStatus` field for imports/exports and non-credit debt types; do not migrate or delete it.
+- Automatic Credit Card status precedence: statement balance ≈ $0 AND minimum due ≈ $0 => Paid; active non-archived recurring linked payment series => Autopay; linked planned payment in the relevant statement due cycle => Scheduled; linked cleared payment in that cycle => Paid; otherwise Unpaid.
+- `creditCardRelevantDueDate()` anchors the payment due cycle to the saved statement date when available so missed payments remain detectable after the calendar due day passes.
+- Dashboard Needs Attention flags automatic Unpaid cards when their relevant due date is within 7 days or past due. $0 statement/$0 minimum cards do not count as needing payment planning even if newer charges increased current balance.
+- Credit-card edit/update UIs show payment status as automatic; the manual status selector remains for loans, medical debts, and BNPL as before.
+- Schema remains 225. No JSON/CSV/Supabase shape changes.
+
+## v2-248
+- Calendar drag/drop must work for cleared recurring occurrences, not only planned occurrences.
+- `moveTransactionOccurrence()` updates both `dateOverrides[originalDate]` and an existing non-deleted `occurrenceOverrides[originalDate].date`; otherwise the cleared occurrence override wins during `applyOccurrenceOverride()` and makes the transaction appear not to move.
+- This is a date-editing fix only. Preserve cleared status, recurrence lineage, linked transaction/payment metadata, storage/export formats, and schema 225.
+
 ## v2-247
 - iPhone now has a task-first presentation layer: Home, Future, Accounts, and More. Desktop/iPad navigation and management workflows remain intact.
 - `renderMobileHome()` is presentation-only and uses existing `safeToSpend()`, transaction expansion, and attention calculations. Full Dashboard review/action tools are still present and can be revealed on phone.
@@ -36,7 +50,7 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-247`
+Latest known version: `money-nest-v2-249`
 
 Before editing, always inspect `README.md` and confirm the current version in the repository. If `README.md` shows a different version, continue from the repo version and mention the mismatch in your summary.
 
@@ -172,7 +186,7 @@ Example README note:
 ### v2-200
 - Banking is excluded from budgeting. Savings transfers net contributions by direction.
 
-- Current version: money-nest-v2-247. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
+- Current version: money-nest-v2-249. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
 
 
 ### v2-205
@@ -340,6 +354,17 @@ Example README note:
 ### v2-240
 - Added tablet-only responsive modal sizing and spacing using a coarse-pointer media query, preserving desktop and phone layouts.
 
+
+### v2-249
+- Use the shared 7-day grace helper for both Dashboard and integrated Needs Review past-planned findings.
+- Credit Card statuses must be derived from linked payment evidence, not manually edited `paymentStatus`. The old field remains serialized for compatibility.
+- Relevant card due dates should stay tied to the current saved statement cycle when `statementDate` is present; this is required for overdue-card detection.
+- Automatic Unpaid status only becomes a Dashboard alert when the relevant due date is within 7 days or already overdue.
+
+### v2-248
+- `moveTransactionOccurrence()` keeps cleared recurring occurrence overrides synchronized with calendar drag/drop date changes.
+- Do not remove or recreate the occurrence override when moving it; update its `date` in place so cleared status and any loan/payment/link metadata remain attached to the same occurrence.
+- Schema remains 225.
 
 ### v2-247
 - Phone-only Home/Future rendering is intentionally separate from desktop/iPad management views. Keep the mobile UI task-first rather than re-expanding hidden management surfaces by default.

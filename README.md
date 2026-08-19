@@ -1,5 +1,18 @@
 # Money Nest
 
+## v2-249
+- Dashboard Past planned warnings now wait until a planned transaction is more than 7 days overdue, giving bank-clearing delays a grace period. The integrated Needs Review past-planned count uses the same rule.
+- Credit Card payment status is now automatic: $0 statement + $0 minimum due = Paid; an active linked recurring payment series = Autopay; a linked one-time planned payment in the statement due cycle = Scheduled; a linked cleared payment = Paid; otherwise the card is Unpaid.
+- Credit-card due-cycle matching is tied to the saved statement date when available, so a genuinely missed statement payment can remain overdue instead of silently rolling to the next month.
+- Unpaid credit cards are flagged in Dashboard Needs Attention when due within 7 days or already overdue. Cards with $0 statement/$0 due are excluded from payment-planning warnings even if newer post-statement charges exist.
+- Credit-card status controls are now presented as automatic in debt/update forms; the legacy saved paymentStatus field remains preserved for JSON/CSV backward compatibility and continues to apply to other debt types.
+- No schema, transaction, JSON/CSV, or Supabase format changes. Schema remains 225.
+
+## v2-248
+- Calendar drag/drop now supports cleared recurring occurrences as well as planned ones.
+- Moving a cleared recurring occurrence keeps its saved occurrence override date synchronized with the recurring date override, so the transaction stays cleared and actually appears on the new day.
+- No transaction fields, recurrence rules, linked-payment metadata, JSON/CSV formats, Supabase behavior, or schema version changed. Schema remains 225.
+
 ## v2-247
 - Added a task-first iPhone mode focused on quick transaction entry, Safe to Spend, near-term cashflow, and fast money-movement decisions.
 - Replaced the crowded iPhone bottom navigation with four primary destinations: Home, Future, Accounts, and More. Calendar, Bills, Budgets, Settings, and Search remain available from the mobile More sheet. Desktop and iPad navigation are unchanged.
@@ -41,7 +54,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-247`
+Current version: `money-nest-v2-249`
 
 ## Important Notes
 
@@ -937,6 +950,19 @@ Use CSV for reviewing or batch-editing data.
 - Added an iPad/tablet-only modal layout for coarse-pointer devices wider than phones.
 - Transaction and small update dialogs use a wider, better-proportioned card with tighter internal spacing on iPad.
 - Desktop and iPhone breakpoints remain unchanged.
+
+
+### v2-249
+- Added a 7-day grace period before planned transactions become Dashboard/Needs Review past-planned findings.
+- Credit Card status is derived from live Money Nest data instead of the manual status field: zero statement/minimum = Paid, active recurring payment = Autopay, one-time planned payment = Scheduled, cleared payment = Paid, otherwise Unpaid.
+- Unpaid cards surface in Needs Attention when the relevant statement due date is within 7 days or overdue; $0-due cards do not generate payment-planning alerts.
+- Saved legacy status fields and all backup/export formats remain compatible.
+
+
+### v2-248
+- Fixed calendar drag/drop for cleared recurring occurrences.
+- Cleared occurrence overrides now move their stored display date together with the recurrence date override, preventing the cleared override from snapping the occurrence back to its old day.
+- Status, recurrence lineage, links, payment metadata, storage/export formats, and schema remain unchanged.
 
 
 ### v2-247

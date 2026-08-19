@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-247";
+const APP_VERSION = "2-249";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -4828,11 +4828,71 @@ function plannedDebtPaymentInfo(d, dueISO){
 function hasPlannedDebtPayment(d, dueISO){
   return !!plannedDebtPaymentInfo(d, dueISO);
 }
+function pastPlannedNeedsAttention(tx, graceDays=7){
+  if(!tx || tx.status !== "planned" || !tx.date) return false;
+  const cutoff = toISO(addDays(parseDate(todayISO()), -Math.max(0, Number(graceDays || 0))));
+  return tx.date < cutoff;
+}
+function creditCardRelevantDueDate(d, fromISO=todayISO()){
+  if(!d || d.type !== "Credit Card" || !d.dueDate) return "";
+  // When a statement date is known, keep the due date tied to that statement cycle.
+  // This lets a genuinely missed payment stay overdue instead of silently rolling to next month.
+  if(d.statementDate) return nextDebtDueDate(d, d.statementDate);
+  return nextDebtDueDate(d, fromISO);
+}
+function activeRecurringDebtPaymentSeries(d, asOfISO=todayISO()){
+  if(!d) return null;
+  return (data.transactions || []).find(tx =>
+    isRecurring(tx) &&
+    debtPaymentMatches(d, tx) &&
+    !tx.billArchived &&
+    (!tx.recurrenceUntil || tx.recurrenceUntil >= asOfISO)
+  ) || null;
+}
+function creditCardPaymentForDue(d, dueISO){
+  if(!d || d.type !== "Credit Card" || !dueISO) return null;
+  const previousDue = toISO(addMonthsClamped(parseDate(dueISO), -1));
+  const cycleStart = toISO(addDays(parseDate(previousDue), 1));
+  const candidates = expandedTransactions(dueISO)
+    .filter(tx =>
+      debtPaymentMatches(d, tx) &&
+      tx.date >= cycleStart &&
+      tx.date <= dueISO &&
+      ["planned", "cleared"].includes(tx.status)
+    )
+    .sort((a,b)=>{
+      const aPlanned = a.status === "planned" ? 0 : 1;
+      const bPlanned = b.status === "planned" ? 0 : 1;
+      return aPlanned - bPlanned || String(a.date || "").localeCompare(String(b.date || ""));
+    });
+  return candidates[0] || null;
+}
+function automaticCreditCardPaymentInfo(d){
+  if(!d || d.type !== "Credit Card") return {status:d?.paymentStatus || "not-set", dueDate:"", paymentTx:null, recurringTx:null};
+  const statementBalance = Number(d.statementBalance || 0);
+  const minDue = Number(d.minDue || 0);
+  const dueDate = creditCardRelevantDueDate(d);
+
+  if(statementBalance <= 0.005 && minDue <= 0.005){
+    return {status:"paid", dueDate, paymentTx:null, recurringTx:null, reason:"zero-due"};
+  }
+
+  const recurringTx = activeRecurringDebtPaymentSeries(d);
+  if(recurringTx){
+    return {status:"autopay", dueDate, paymentTx:null, recurringTx, reason:"recurring"};
+  }
+
+  const paymentTx = creditCardPaymentForDue(d, dueDate);
+  if(paymentTx?.status === "planned") return {status:"scheduled", dueDate, paymentTx, recurringTx:null, reason:"planned"};
+  if(paymentTx?.status === "cleared") return {status:"paid", dueDate, paymentTx, recurringTx:null, reason:"cleared"};
+
+  return {status:"unpaid", dueDate, paymentTx:null, recurringTx:null, reason:dueDate ? "no-payment" : "missing-due-date"};
+}
 function debtPaymentsDueSoon(days=30){
   const start = todayISO();
   const end = toISO(addDays(parseDate(start), days));
   return data.debts
-    .map(d => ({...d, nextDue: debtDashboardDueDate(d, start)}))
+    .map(d => ({...d, nextDue: d.type === "Credit Card" ? creditCardRelevantDueDate(d, start) : debtDashboardDueDate(d, start)}))
     .filter(d => d.nextDue && d.nextDue >= start && d.nextDue <= end && debtDashboardNeedsPaymentPlanning(d))
     .sort((a,b)=>a.nextDue.localeCompare(b.nextDue));
 }
@@ -4864,10 +4924,12 @@ function debtDashboardNeedsPaymentPlanning(d){
   if(!d) return false;
   if(isBNPLDebt(d)) return !!bnplNextPayment(d.id);
   if(isMedicalDebt(d)) return !!medicalNextPayment(d) || debtDashboardAmountDue(d) > 0.005;
+  if(d.type === "Credit Card" && Number(d.statementBalance || 0) <= 0.005 && Number(d.minDue || 0) <= 0.005) return false;
   return debtDashboardAmountDue(d) > 0.005 || Number(d.minDue || 0) > 0.005;
 }
 function debtDashboardPaymentHandled(d, dueISO){
   if(!d || !dueISO) return false;
+  if(d.type === "Credit Card") return ["paid", "autopay", "scheduled"].includes(debtDisplayPaymentStatus(d));
   if(["paid", "autopay", "scheduled", "skip"].includes(d.paymentStatus)) return true;
   return !!plannedDebtPaymentInfo(d, dueISO);
 }
@@ -4899,7 +4961,7 @@ function dashboardNeedsAttention(){
   });
 
   expandedTransactions(today)
-    .filter(tx => tx.status === "planned" && tx.date < today)
+    .filter(tx => pastPlannedNeedsAttention(tx, 7))
     .slice(0,5)
     .forEach(tx=>{
       items.push({level:"warn", title:`Past planned: ${tx.title}`, sub:`${tx.date} • ${money(tx.amount)} • ${transactionAccountText(tx)}`, action:`openTransaction('${tx.originalId || tx.id}')`});
@@ -4925,9 +4987,14 @@ function dashboardNeedsAttention(){
     if((d.type === "Credit Card" || d.type === "Klarna") && !Number(d.minDue || 0) && !isBNPLDebt(d) && needsPaymentPlanning){
       items.push({level:"warn", title:`${d.name} missing minimum due`, sub:`${debtRoute} • Add min due for payment planning`, action:`openDebtDetail('${d.id}')`});
     }
-    const due = debtDashboardDueDate(d);
-    const plannedTx = plannedDebtPaymentInfo(d, due);
-    if(due && due <= toISO(addDays(parseDate(today), 7)) && needsPaymentPlanning && !debtDashboardPaymentHandled(d, due)){
+    const due = d.type === "Credit Card" ? creditCardRelevantDueDate(d) : debtDashboardDueDate(d);
+    const autoCardStatus = d.type === "Credit Card" ? debtDisplayPaymentStatus(d) : "";
+    if(d.type === "Credit Card"){
+      if(due && due <= toISO(addDays(parseDate(today), 7)) && needsPaymentPlanning && autoCardStatus === "unpaid"){
+        const overdue = due < today;
+        items.push({level:"bad", title:`${d.name} unpaid`, sub:`${debtRoute} • ${overdue ? "Was due" : "Due"} ${due} • no scheduled payment found`, action:`openDebtDetail('${d.id}')`});
+      }
+    } else if(due && due <= toISO(addDays(parseDate(today), 7)) && needsPaymentPlanning && !debtDashboardPaymentHandled(d, due)){
       items.push({level:"bad", title:`${d.name} due soon`, sub:`${debtRoute} • Due ${due} • no planned payment found`, action:`openDebtDetail('${d.id}')`});
     }
   });
@@ -5190,15 +5257,18 @@ function renderDashboard(){
           <div class="dashboard-action-body">
             <div class="action-list-v2 dashboard-flat-list">
               ${dueSoonRows.length ? dueSoonRows.map(d=>{
-                const plannedTx = plannedDebtPaymentInfo(d, d.nextDue);
+                const isCard = d.type === "Credit Card";
+                const autoInfo = isCard ? automaticCreditCardPaymentInfo(d) : null;
+                const plannedTx = isCard ? autoInfo?.paymentTx : plannedDebtPaymentInfo(d, d.nextDue);
                 const planned = !!plannedTx;
                 const paidEarly = plannedTx?.status === "cleared";
                 const plannedEarly = plannedTx?.status !== "cleared" && plannedTx?.date && d.nextDue && plannedTx.date < d.nextDue;
-                const good = planned || ["paid","autopay","scheduled"].includes(d.paymentStatus);
-                const route = debtAttentionAccountText(d, plannedTx);
+                const displayStatus = isCard ? autoInfo.status : (planned ? (paidEarly ? "paid" : "scheduled") : debtDisplayPaymentStatus(d));
+                const route = debtAttentionAccountText(d, plannedTx || autoInfo?.recurringTx);
+                const label = isCard ? debtPaymentStatusLabel(displayStatus) : (planned ? (paidEarly ? "Paid early" : plannedEarly ? "Planned early" : "Planned") : debtPaymentStatusLabel(displayStatus));
                 return `<button type="button" class="action-row-v2 dashboard-action-row debt-due" onclick="openDebtDetail('${d.id}')">
                   <span class="action-left"><span class="action-symbol">${d.emoji || "💳"}</span><span><b class="row-title">${d.name}</b><small class="row-sub">Due ${d.nextDue} • Min ${debtMinDueText(d)}</small><small class="row-sub">${route}</small></span></span>
-                  <span class="debt-status-pill ${good ? "good" : "warn"}">${planned ? (paidEarly ? "Paid early" : plannedEarly ? "Planned early" : "Planned") : debtPaymentStatusLabel(d.paymentStatus)}</span>
+                  <span class="debt-status-pill ${debtPaymentStatusClass(displayStatus)}">${label}</span>
                 </button>`;
               }).join("") : `<div class="empty">No debt due dates in the next 30 days.</div>`}
             </div>
@@ -5252,6 +5322,14 @@ function moveTransactionOccurrence(id, originalDate, newDate){
   if(isRepeating){
     tx.dateOverrides ||= {};
     tx.dateOverrides[occurrenceOriginalDate] = newDate;
+
+    // A cleared recurring occurrence has its own occurrence override. That override
+    // stores the cleared transaction's displayed date, so update it together with
+    // dateOverrides or it would overwrite the newly dragged date during expansion.
+    const occurrenceOverride = tx.occurrenceOverrides?.[occurrenceOriginalDate];
+    if(occurrenceOverride && !occurrenceOverride.deleted){
+      occurrenceOverride.date = newDate;
+    }
   } else {
     tx.date = newDate;
   }
@@ -6749,6 +6827,7 @@ function debtPaymentStatusClass(status){
   return "";
 }
 function debtDisplayPaymentStatus(d){
+  if(d?.type === "Credit Card") return automaticCreditCardPaymentInfo(d).status;
   if(isBNPLDebt(d)){
     const explicit = d?.paymentStatus || "not-set";
     if(explicit && explicit !== "not-set") return explicit;
@@ -7398,7 +7477,7 @@ function debtDetailMetricsHTML(d, currentBal, util){
       <div class="card mini"><p class="eyebrow">Credit line</p><div class="value">${d.limit ? money(Number(d.limit)) : "—"}</div><p class="sub">${debtCreditLineSubText(d, currentBal, util)}</p></div>
       <div class="card mini"><p class="eyebrow">Monthly payment</p><div class="value">${debtMonthlyPaymentText(d)}</div><p class="sub">${debtMonthlyPaymentSubText(d)}</p></div>
       ${debtEstimatedPayoffCardHTML(d)}
-      <div class="card mini"><p class="eyebrow">Payment status</p><div class="debt-status-pill ${debtPaymentStatusClass(d.paymentStatus)}">${debtPaymentStatusLabel(d.paymentStatus)}</div><p class="sub">Extra: ${money(Number(d.manualExtra || 0))}</p></div>
+      <div class="card mini"><p class="eyebrow">Payment status</p><div class="debt-status-pill ${debtPaymentStatusClass(debtDisplayPaymentStatus(d))}">${debtPaymentStatusLabel(debtDisplayPaymentStatus(d))}</div><p class="sub">Automatic from statement + payment schedule</p></div>
     </div>`;
 }
 
@@ -10076,6 +10155,7 @@ window.quickDebtDue = (id)=>{
   if(!d) return;
   const isBnpl = isBNPLDebt(d);
   const isMedical = isMedicalDebt(d);
+  const isCreditCard = d.type === "Credit Card";
   const dueLabel = isBnpl || isMedical ? "Next payment due" : "Due date";
   const amountLabel = isBnpl ? "Next payment amount" : (isMedical ? "Monthly payment" : "Minimum due");
   simpleTitle.textContent = isBnpl || isMedical ? "Update payment plan" : "Update due date / minimum";
@@ -10097,7 +10177,7 @@ window.quickDebtDue = (id)=>{
     </div>
     <label class="checkbox"><input id="sResetTrackingToStatement" type="checkbox"> Reset tracking baseline to this statement balance/date</label>
     <p class="hint">Use this when you want Current Balance to start from the statement balance, then only count cleared debt activity after the statement date.</p>`}
-    <label>${isBnpl ? "Installment status" : "Payment status"}
+    ${isCreditCard ? `<div class="subpanel"><p class="eyebrow">Automatic payment status</p><div class="debt-status-pill ${debtPaymentStatusClass(debtDisplayPaymentStatus(d))}">${debtPaymentStatusLabel(debtDisplayPaymentStatus(d))}</div><p class="hint">Money Nest derives this from the statement/minimum due plus linked planned or recurring card payments. Save changes to refresh it.</p></div>` : `<label>${isBnpl ? "Installment status" : "Payment status"}
       <select id="sPaymentStatus">
         <option value="not-set">Not set</option>
         <option value="planned">Planned</option>
@@ -10107,7 +10187,7 @@ window.quickDebtDue = (id)=>{
         <option value="paid">Paid</option>
         <option value="skip">Skip/Ignore</option>
       </select>
-    </label>`;
+    </label>`}`;
   setTimeout(()=>{
     if(document.getElementById("sPaymentStatus")) sPaymentStatus.value = isBnpl ? debtDisplayPaymentStatus(d) : (d.paymentStatus || "not-set");
     let totalMonthlyTouched = false;
@@ -10204,6 +10284,7 @@ window.simpleDebt = (id=null)=>{
         <option value="skip">Skip/Ignore</option>
       </select>
     </label>
+    <div class="subpanel" id="sAutoPaymentStatusBlock" style="display:none"></div>
     <label class="checkbox" id="sFrozenLockedLabel"><input id="sFrozenLocked" type="checkbox" ${d?.frozenLocked ? "checked" : ""}> Frozen / locked</label>
 
     <div class="subpanel" id="sLoanForecastBlock">
@@ -10241,6 +10322,7 @@ window.simpleDebt = (id=null)=>{
     const isBnpl = type === "Buy Now, Pay Later" || type === "Klarna";
     const isMedical = type === "Medical";
     const isLoan = type === "Loan";
+    const isCreditCard = type === "Credit Card";
 
     const startingBalanceLabel = document.getElementById("sStartingBalanceLabel");
     const balanceLabel = document.getElementById("sBalanceLabel");
@@ -10255,6 +10337,7 @@ window.simpleDebt = (id=null)=>{
     const aprLabel = document.getElementById("sAprLabel");
     const totalMonthlyLabel = document.getElementById("sTotalMonthlyPaymentLabel");
     const paymentStatusLabel = document.getElementById("sPaymentStatusLabel");
+    const autoPaymentStatusBlock = document.getElementById("sAutoPaymentStatusBlock");
     const frozenLabel = document.getElementById("sFrozenLockedLabel");
     const loanForecastBlock = document.getElementById("sLoanForecastBlock");
     const loanForecastHint = document.getElementById("sLoanForecastHint");
@@ -10272,6 +10355,7 @@ window.simpleDebt = (id=null)=>{
       if(extraRow) extraRow.style.display = "none";
       if(totalMonthlyLabel) totalMonthlyLabel.style.display = "none";
       if(paymentStatusLabel){ paymentStatusLabel.style.display = ""; paymentStatusLabel.childNodes[0].textContent = "Installment status"; }
+      if(autoPaymentStatusBlock) autoPaymentStatusBlock.style.display = "none";
       if(frozenLabel) frozenLabel.style.display = "none";
       if(loanForecastBlock) loanForecastBlock.style.display = "none";
       if(hint) hint.textContent = "BNPL balances are calculated from linked installment payments. These fields are fallback/reference values.";
@@ -10289,6 +10373,7 @@ window.simpleDebt = (id=null)=>{
       if(aprLabel) aprLabel.style.display = "none";
       if(totalMonthlyLabel) totalMonthlyLabel.style.display = "";
       if(paymentStatusLabel){ paymentStatusLabel.style.display = ""; paymentStatusLabel.childNodes[0].textContent = "Payment status"; }
+      if(autoPaymentStatusBlock) autoPaymentStatusBlock.style.display = "none";
       if(frozenLabel) frozenLabel.style.display = "none";
       if(loanForecastBlock) loanForecastBlock.style.display = "none";
       if(hint) hint.textContent = "Medical Current Balance uses Statement/Current Balance + Date as the live provider baseline when provided, then counts cleared payments after that date.";
@@ -10305,7 +10390,14 @@ window.simpleDebt = (id=null)=>{
       if(manualExtraLabel) manualExtraLabel.style.display = "";
       if(aprLabel) aprLabel.style.display = "";
       if(totalMonthlyLabel) totalMonthlyLabel.style.display = "";
-      if(paymentStatusLabel){ paymentStatusLabel.style.display = ""; paymentStatusLabel.childNodes[0].textContent = "Payment status"; }
+      if(paymentStatusLabel){ paymentStatusLabel.style.display = isCreditCard ? "none" : ""; paymentStatusLabel.childNodes[0].textContent = "Payment status"; }
+      if(autoPaymentStatusBlock){
+        autoPaymentStatusBlock.style.display = isCreditCard ? "" : "none";
+        if(isCreditCard){
+          const autoStatus = d && d.type === "Credit Card" ? debtDisplayPaymentStatus(d) : "unpaid";
+          autoPaymentStatusBlock.innerHTML = `<p class="eyebrow">Automatic payment status</p><div class="debt-status-pill ${debtPaymentStatusClass(autoStatus)}">${d ? debtPaymentStatusLabel(autoStatus) : "Automatic after save"}</div><p class="hint">Credit cards use linked payment data automatically: recurring series = Autopay, one planned payment = Scheduled, a cleared payment or $0 statement/$0 due = Paid, otherwise Unpaid.</p>`;
+        }
+      }
       if(frozenLabel) frozenLabel.style.display = "";
       if(loanForecastBlock) loanForecastBlock.style.display = isLoan ? "" : "none";
       if(loanForecastHint && isLoan){
@@ -10379,7 +10471,7 @@ window.simpleDebt = (id=null)=>{
       manualExtra:isBnpl ? 0 : Number(sManualExtra.value || 0),
       totalMonthlyPayment:isBnpl ? Number(sMinDue.value || 0) : (Number(document.getElementById("sTotalMonthlyPayment")?.value || 0) || (Number(sMinDue.value || 0) + Number(sManualExtra.value || 0))),
       apr:(isBnpl || isMedical) ? 0 : Number(sApr.value || 0),
-      paymentStatus:sPaymentStatus.value,
+      paymentStatus:(sType.value === "Credit Card" ? (d?.paymentStatus || "not-set") : sPaymentStatus.value),
       loanForecastBreakdownMode:isLoan ? (document.getElementById("sLoanForecastBreakdownMode")?.value || "auto") : "auto",
       loanFeeTiming:isLoan ? (document.getElementById("sLoanFeeTiming")?.value || "auto") : "auto",
       loanEstPrincipalPct:isLoan ? (document.getElementById("sLoanEstPrincipalPct")?.value || "") : "",
@@ -12356,7 +12448,7 @@ function collectNeedsReview(){
   const today=todayISO();
   (data.transactions||[]).forEach(tx=>{
     const id=tx.id||uid();
-    if(tx.status==='planned' && tx.date && tx.date<today && !isRecurring(tx)) out.push({kind:'past',id,key:reviewKey('past',id),title:`Past planned: ${tx.title||'Untitled'}`,sub:`${tx.date} • ${money(tx.amount||0)} • ${transactionAccountText(tx)}`,action:`openTransaction('${id}')`});
+    if(!isRecurring(tx) && pastPlannedNeedsAttention(tx,7)) out.push({kind:'past',id,key:reviewKey('past',id),title:`Past planned: ${tx.title||'Untitled'}`,sub:`${tx.date} • ${money(tx.amount||0)} • ${transactionAccountText(tx)}`,action:`openTransaction('${id}')`});
     if(tx.accountId && !accountById(tx.accountId)) out.push({kind:'account',id,key:reviewKey('account',id),title:`Unknown account: ${tx.title||'Untitled'}`,sub:`${tx.date||''} • ${money(tx.amount||0)}`,action:`openTransaction('${id}')`});
     if(tx.categoryId && !(data.categories||[]).some(c=>c.id===tx.categoryId)) out.push({kind:'category',id,key:reviewKey('category',id),title:`Unknown category: ${tx.title||'Untitled'}`,sub:`${tx.date||''} • ${money(tx.amount||0)}`,action:`openTransaction('${id}')`});
   });
@@ -12540,3 +12632,7 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 // v2-245: Accounts use calmer scan-first rows, arrangement controls are opt-in, debt utilities are tucked away, and touch/detail action layouts are less cluttered.
 
 // v2-247: iPhone task-first mode adds a streamlined Home, Future cashflow view, four-item mobile nav, More sheet, and quicker transaction-entry presentation without changing saved financial data.
+
+// v2-248: Calendar drag/drop now moves cleared recurring occurrences by keeping their occurrence-override date in sync with the recurrence date override.
+
+// v2-249: Dashboard past-planned alerts now wait more than 7 days; credit-card payment statuses are derived automatically from statement/minimum due plus linked planned, cleared, or active recurring payments.
