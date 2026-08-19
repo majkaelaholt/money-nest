@@ -1,5 +1,11 @@
 # CODEX
 
+## v2-256
+- Transaction modal visual correction only: keep the progressive-disclosure structure from v2-250+, but use compact desktop proportions closer to the earlier Money Nest form.
+- Desktop `#transactionModal` must remain viewport-bounded and vertically scrollable through `.transaction-modal-card`; long recurring/paycheck/loan edits must never become unreachable below the viewport.
+- Calculator remains inline with the Amount label but must stay visually quiet and must not increase the Amount/Date row height.
+- Preserve iPhone full-screen quick entry and iPad modal overrides. No transaction payload, template data, JSON/CSV, cloud, or schema changes; schema remains 225.
+
 ## v2-255
 - Template suggestion metadata must not redundantly say “Applies category.” Category is a core shortcut field and is already conveyed by the option/category label; `templateFieldSummary()` should surface only additional autofill fields beyond title/category.
 - Preserve template data/ranking/application behavior and all CSV/JSON/Supabase compatibility. Schema remains 225.
@@ -86,7 +92,7 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-255`
+Latest known version: `money-nest-v2-256`
 
 Before editing, always inspect `README.md` and confirm the current version in the repository. If `README.md` shows a different version, continue from the repo version and mention the mismatch in your summary.
 
@@ -222,7 +228,7 @@ Example README note:
 ### v2-200
 - Banking is excluded from budgeting. Savings transfers net contributions by direction.
 
-- Current version: money-nest-v2-255. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
+- Current version: money-nest-v2-256. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
 
 
 ### v2-205

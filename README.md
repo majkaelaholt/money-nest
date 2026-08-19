@@ -1,5 +1,11 @@
 # Money Nest
 
+## v2-256
+- Restored the Add/Edit Transaction dialog to a more compact desktop scale while keeping the newer progressive-disclosure layout. Fields, disclosure rows, action buttons, and the paycheck auto-calc row use tighter spacing instead of oversized card/button proportions.
+- Fixed long transaction edits that could extend below the viewport without scrolling. The desktop transaction dialog now has a viewport-bounded scroll container, so recurring/paycheck/loan fields and Save/Cancel remain reachable.
+- Kept the Amount calculator available as a quiet inline control without letting it increase the Amount row height or misalign Date.
+- iPhone task-first transaction entry and iPad-specific modal sizing remain unchanged. No transaction logic, saved data, JSON/CSV, Supabase behavior, or schema changes. Schema remains 225.
+
 ## v2-255
 - Simplified transaction-template suggestion metadata: category is no longer repeated as “Applies category” because category is a core template field and is already represented by the option/category label. Only extra autofill behavior such as notes, status, account, or routing is called out.
 - No template data, ranking, application, transaction behavior, CSV/JSON, Supabase, or schema changes. Schema remains 225.
@@ -91,7 +97,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-255`
+Current version: `money-nest-v2-256`
 
 ## Important Notes
 

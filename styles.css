@@ -6992,3 +6992,156 @@ button.budget-review-row:hover,button.budget-review-row:focus-visible{
 @media(max-width:700px){
   #transactionModal .tx-field-label-row .amount-calc-toggle{padding:3px 7px!important;font-size:9px!important}
 }
+
+/* v2-256: restore compact transaction-dialog proportions while keeping progressive disclosure. */
+#transactionModal{
+  max-height:calc(100dvh - 24px);
+  overflow:hidden;
+}
+#transactionModal .transaction-modal-card{
+  max-height:calc(100dvh - 24px);
+  overflow-x:hidden;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  scrollbar-gutter:stable;
+}
+
+@media (min-width:701px){
+  html:not(.money-nest-ipad) #transactionModal{
+    width:min(680px,calc(100vw - 24px));
+    max-width:680px;
+  }
+  html:not(.money-nest-ipad) #transactionModal .transaction-modal-card{
+    padding:15px 16px;
+    gap:8px;
+    border-radius:20px;
+  }
+  html:not(.money-nest-ipad) #transactionModal .transaction-modal-head{
+    margin-bottom:1px;
+  }
+  html:not(.money-nest-ipad) #transactionModal .transaction-modal-head h3{
+    font-size:20px;
+  }
+  html:not(.money-nest-ipad) #transactionModal .transaction-modal-head .icon-btn{
+    min-width:34px;
+    width:34px;
+    height:34px;
+    padding:0;
+    display:grid;
+    place-items:center;
+  }
+  html:not(.money-nest-ipad) #transactionModal .tx-primary-section{
+    gap:8px;
+    padding:1px 0 4px;
+  }
+  html:not(.money-nest-ipad) #transactionModal .tx-primary-section > label,
+  html:not(.money-nest-ipad) #transactionModal .tx-primary-section .tx-amount-date-grid > label,
+  html:not(.money-nest-ipad) #transactionModal .tx-primary-section .tx-account-category-grid > label,
+  html:not(.money-nest-ipad) #transactionModal .tx-primary-section .tx-type-status-grid > label{
+    font-size:11.5px;
+    gap:4px;
+  }
+  html:not(.money-nest-ipad) #transactionModal .tx-amount-date-grid,
+  html:not(.money-nest-ipad) #transactionModal .tx-account-category-grid,
+  html:not(.money-nest-ipad) #transactionModal .tx-type-status-grid{
+    gap:8px;
+  }
+  html:not(.money-nest-ipad) #transactionModal .tx-primary-section input,
+  html:not(.money-nest-ipad) #transactionModal .tx-primary-section select{
+    min-height:39px;
+    height:39px;
+    padding:8px 10px;
+    border-radius:11px;
+    font-size:12.5px;
+  }
+  html:not(.money-nest-ipad) #transactionModal .tx-title-field input{
+    font-size:14px;
+  }
+  html:not(.money-nest-ipad) #transactionModal .tx-amount-field input{
+    font-size:17px;
+  }
+  html:not(.money-nest-ipad) #transactionModal .tx-field-block{
+    gap:4px;
+  }
+  html:not(.money-nest-ipad) #transactionModal .tx-field-label-row{
+    min-height:18px;
+  }
+  html:not(.money-nest-ipad) #transactionModal .tx-field-label-row label{
+    font-size:11.5px;
+  }
+  html:not(.money-nest-ipad) #transactionModal .tx-field-label-row .amount-calc-toggle{
+    min-height:0;
+    padding:0 2px;
+    border:0;
+    background:transparent;
+    font-size:9.5px;
+    line-height:18px;
+    color:var(--accent);
+    box-shadow:none;
+  }
+  html:not(.money-nest-ipad) #transactionModal .tx-amount-date-grid>label,
+  html:not(.money-nest-ipad) #transactionModal .tx-amount-date-grid>.tx-field-block{
+    grid-template-rows:18px 39px;
+    gap:4px;
+  }
+  html:not(.money-nest-ipad) #transactionModal .auto-paycheck-box{
+    margin-top:0;
+    padding:3px 1px;
+    border:0;
+    border-radius:0;
+    background:transparent;
+    font-size:11.5px;
+  }
+  html:not(.money-nest-ipad) #transactionModal .auto-paycheck-box input{
+    min-height:0;
+    height:auto;
+  }
+  html:not(.money-nest-ipad) #transactionModal .form-details{
+    border-radius:12px;
+    background:color-mix(in srgb,var(--panel-2) 15%,var(--panel));
+  }
+  html:not(.money-nest-ipad) #transactionModal .form-details>summary{
+    min-height:0;
+    padding:8px 10px;
+    gap:7px;
+    font-size:12px;
+  }
+  html:not(.money-nest-ipad) #transactionModal .form-details>summary>small{
+    font-size:9.5px;
+  }
+  html:not(.money-nest-ipad) #transactionModal .details-inner{
+    padding:0 10px 10px;
+    gap:8px;
+  }
+  html:not(.money-nest-ipad) #transactionModal .details-inner input,
+  html:not(.money-nest-ipad) #transactionModal .details-inner select{
+    min-height:39px;
+    padding:8px 10px;
+    border-radius:11px;
+    font-size:12.5px;
+  }
+  html:not(.money-nest-ipad) #transactionModal .details-inner label{
+    gap:4px;
+    font-size:11.5px;
+  }
+  html:not(.money-nest-ipad) #transactionModal .details-inner .hint,
+  html:not(.money-nest-ipad) #transactionModal .tx-primary-section>.hint{
+    font-size:10.5px;
+    line-height:1.3;
+  }
+  html:not(.money-nest-ipad) #transactionModal .transaction-modal-actions{
+    gap:7px;
+    padding-top:1px;
+  }
+  html:not(.money-nest-ipad) #transactionModal .transaction-modal-actions>button,
+  html:not(.money-nest-ipad) #transactionModal .tx-more-actions>summary{
+    min-height:34px;
+    padding:7px 11px;
+    border-radius:999px;
+    font-size:12px;
+  }
+  html:not(.money-nest-ipad) #transactionModal .amount-calculator-panel{
+    padding:9px 10px;
+    border-radius:12px;
+  }
+}
