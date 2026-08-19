@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-251";
+const APP_VERSION = "2-252";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -7983,6 +7983,7 @@ function simpleTemplate(id=null, familyTitle=""){
 
   simpleTitle.textContent = id ? "Edit template" : (familyTitle ? `Add ${familyTitle} option` : "Add transaction template");
   simpleFields.innerHTML = `
+    <div class="template-editor-fields">
     <div class="template-editor-intro">
       <b>Start simple.</b>
       <span>Title + category are the normal shortcut. Advanced autofill is only for fields you intentionally want this template to change.</span>
@@ -8020,7 +8021,8 @@ function simpleTemplate(id=null, familyTitle=""){
         <label>Saved note<textarea id="sTplNotes" placeholder="Optional">${escapeAttr(tpl?.notes || "")}</textarea></label>
       </div>
     </details>
-    <p class="hint">Tip: use Manage templates when the same change needs to be made to several shortcuts at once. Recurring schedules stay on the Bills page.</p>`;
+    <p class="hint">Tip: use Manage templates when the same change needs to be made to several shortcuts at once. Recurring schedules stay on the Bills page.</p>
+    </div>`;
 
   const categorySelect=document.getElementById("sTplCategory");
   if(categorySelect) categorySelect.value = fields.categoryId ? (tpl.categoryId || "unassigned") : ignore;
@@ -8290,9 +8292,12 @@ function renderTemplateCleanup(){
   content.querySelectorAll("[data-template-manager-edit]").forEach(btn=>btn.onclick=()=>{document.getElementById("templateCleanupModal")?.close();simpleTemplate(btn.dataset.templateManagerEdit);});
 }
 function openTemplateCleanup(familyKey=""){
+  // Event handlers may pass a PointerEvent/MouseEvent as the first argument. Only
+  // a real string is a valid family filter; otherwise open the normal full view.
+  const requestedFamily = typeof familyKey === "string" ? familyKey : "";
   templateManagerState.query="";
   templateManagerState.filter="active";
-  templateManagerState.familyKey=familyKey||"";
+  templateManagerState.familyKey=requestedFamily||"";
   templateManagerState.selected.clear();
   renderTemplateCleanup();
   document.getElementById("templateCleanupModal")?.showModal();
@@ -10691,7 +10696,7 @@ const categoryCleanupBtnEl = document.getElementById("categoryCleanupBtn");
 const addTemplateBtnEl = document.getElementById("addTemplateBtn");
 const templateCleanupBtnEl = document.getElementById("templateCleanupBtn");
 if(addTemplateBtnEl) addTemplateBtnEl.onclick = () => simpleTemplate();
-if(templateCleanupBtnEl) templateCleanupBtnEl.onclick = openTemplateCleanup;
+if(templateCleanupBtnEl) templateCleanupBtnEl.onclick = () => openTemplateCleanup();
 if(categoryCleanupBtnEl) categoryCleanupBtnEl.onclick = openCategoryCleanup;
 const undoLastChangeBtnEl = document.getElementById("undoLastChangeBtn");
 if(undoLastChangeBtnEl) undoLastChangeBtnEl.onclick = undoLastChange;

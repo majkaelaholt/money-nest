@@ -6793,3 +6793,146 @@ button.budget-review-row:hover,button.budget-review-row:focus-visible{
   background:color-mix(in srgb,var(--panel-2) 16%,var(--panel));
 }
 #transactionModal .form-details>summary{padding:10px 12px}
+
+
+/* v2-252: consistent transaction/template field rhythm + template-manager open-state fix polish */
+#transactionModal .tx-primary-section > label,
+#transactionModal .tx-primary-section .tx-amount-date-grid > label,
+#transactionModal .tx-primary-section .tx-account-category-grid > label,
+#transactionModal .tx-primary-section .tx-type-status-grid > label{
+  font-size:12px;
+  gap:5px;
+  letter-spacing:0;
+}
+#transactionModal .tx-primary-section input,
+#transactionModal .tx-primary-section select{
+  min-height:44px;
+  height:44px;
+  padding:10px 12px;
+  box-sizing:border-box;
+  font-size:13px;
+  line-height:1.2;
+}
+#transactionModal .tx-type-status-grid select{
+  min-height:44px;
+  height:44px;
+  padding:10px 12px;
+}
+#transactionModal .tx-title-field input{
+  font-size:15px;
+}
+#transactionModal .tx-amount-field input{
+  font-size:18px;
+}
+#transactionModal .tx-amount-field .amount-calc-toggle{
+  justify-self:start;
+}
+
+.template-editor-fields{
+  display:grid;
+  gap:10px;
+}
+.template-editor-fields .two-col{
+  gap:10px;
+}
+.template-editor-fields label:not(.checkbox-row){
+  font-size:12px;
+  gap:5px;
+  letter-spacing:0;
+}
+.template-editor-fields input:not([type="checkbox"]),
+.template-editor-fields select,
+.template-editor-fields textarea{
+  min-height:42px;
+  box-sizing:border-box;
+  padding:9px 11px;
+  font-size:13px;
+  line-height:1.2;
+}
+.template-editor-fields textarea{
+  min-height:74px;
+}
+.template-editor-fields .checkbox-row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:12px;
+  line-height:1.25;
+}
+.template-editor-fields .checkbox-row input{
+  flex:0 0 auto;
+}
+.template-editor-fields .template-advanced-details > summary{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:11px 13px;
+  color:var(--ink);
+  font-size:13px;
+}
+.template-editor-fields .template-advanced-details > summary > span{
+  font-weight:900;
+}
+.template-editor-fields .template-advanced-details > summary > small{
+  margin-left:auto;
+  color:var(--muted);
+  font-size:10.5px;
+  font-weight:700;
+}
+.template-editor-fields .template-advanced-details > summary::after{
+  float:none;
+  margin-left:4px;
+  color:var(--muted);
+}
+
+.template-manager-controls label,
+.template-bulk-bar label{
+  font-size:12px;
+  gap:5px;
+  letter-spacing:0;
+}
+.template-manager-controls input,
+.template-manager-controls select,
+.template-bulk-bar select{
+  min-height:42px;
+  height:42px;
+  box-sizing:border-box;
+  padding:9px 11px;
+  font-size:12px;
+}
+.template-manager-controls button,
+.template-bulk-bar > button,
+.template-bulk-more > summary{
+  min-height:42px;
+  box-sizing:border-box;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.template-select-all{
+  min-height:42px;
+  display:flex;
+  align-items:center;
+  gap:7px;
+  padding:0 4px;
+  font-size:12px;
+}
+.template-bulk-head b{font-size:13px}
+.template-bulk-head small{font-size:10.5px}
+.template-manager-row > [data-template-manager-edit]{
+  min-height:36px;
+}
+
+@media(max-width:700px){
+  #transactionModal .tx-primary-section input,
+  #transactionModal .tx-primary-section select{
+    min-height:44px!important;
+    height:44px!important;
+  }
+  .template-manager-controls input,
+  .template-manager-controls select,
+  .template-bulk-bar select{
+    min-height:42px;
+    height:42px;
+  }
+}

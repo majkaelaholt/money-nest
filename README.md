@@ -1,5 +1,11 @@
 # Money Nest
 
+## v2-252
+- Fixed Template Manager opening with an accidental `[object PointerEvent]` family filter when launched from Settings. It now opens directly to the normal Active templates view, with all active templates visible immediately.
+- Added defensive argument handling so click/pointer events can never be mistaken for a template-family filter again.
+- Standardized label sizes, input/select heights, spacing, and alignment across Add/Edit Transaction, Add/Edit Template, and the bulk Template Manager.
+- Fixed the Advanced autofill header so its title, Optional hint, and expand control align cleanly instead of running together.
+
 ## v2-251
 - Fixed Add/Edit Transaction horizontal overflow introduced in v2-250: the transaction dialog and card now share the same responsive width, form grid children may shrink correctly, and the modal no longer forces a 720px card inside the older 560px dialog shell.
 - Replaced the nested Transaction Templates settings UI with a scan-first one-row-per-title library. Selecting a title opens the new Template Manager rather than exposing every variant and destructive control in Settings.
@@ -70,7 +76,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-251`
+Current version: `money-nest-v2-252`
 
 ## Important Notes
 
@@ -967,6 +973,10 @@ Use CSV for reviewing or batch-editing data.
 - Transaction and small update dialogs use a wider, better-proportioned card with tighter internal spacing on iPad.
 - Desktop and iPhone breakpoints remain unchanged.
 
+
+### v2-252
+- Fixed Template Manager startup filtering caused by click events being treated as family keys.
+- Normalized transaction/template form field sizing and Advanced autofill summary alignment.
 
 ### v2-251
 - Fixed the transaction modal width mismatch that caused horizontal scrolling/cut-off fields after the v2-250 form redesign.
