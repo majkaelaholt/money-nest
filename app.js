@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-254";
+const APP_VERSION = "2-255";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -7632,8 +7632,10 @@ function templateSavedFieldNames(t){
   return Object.keys(TEMPLATE_FIELD_LABELS).filter(key=>fields[key]).map(key=>TEMPLATE_FIELD_LABELS[key]);
 }
 function templateFieldSummary(t){
-  const names = templateSavedFieldNames(t).filter(name=>name !== "title");
-  return names.length ? `Applies ${names.join(", ")}` : "Applies title only";
+  // Category is the normal/core part of every shortcut and is already shown
+  // by the generated option label, so only call out extra autofill behavior.
+  const names = templateSavedFieldNames(t).filter(name=>!['title','category'].includes(name));
+  return names.length ? `Applies ${names.join(", ")}` : "";
 }
 function templateGeneratedVariantLabel(t){
   const cat = categoryById(t.categoryId || "unassigned");
@@ -7883,15 +7885,16 @@ function renderTemplateSuggestions(){
     box.innerHTML = families.map(family=>{
       const best=family.templates[0];
       const others=family.templates.slice(1);
+      const bestSummary = templateFieldSummary(best);
       const bestMeta = family.templates.length > 1
-        ? `${templateVariantLabel(best)} • ${templateFieldSummary(best)}`
-        : templateFieldSummary(best);
+        ? [templateVariantLabel(best), bestSummary].filter(Boolean).join(" • ")
+        : (bestSummary || templateVariantLabel(best));
       return `<div class="template-suggestion-family compact">
         <div class="template-suggestion-row compact">
           <button type="button" class="template-suggestion-main" data-template-id="${best.id}">
-            <span><b>${escapeAttr(family.title)}</b><small>${escapeAttr(bestMeta)}</small></span>
+            <span><b>${escapeAttr(family.title)}</b>${bestMeta?`<small>${escapeAttr(bestMeta)}</small>`:""}</span>
           </button>
-          ${others.length?`<details class="template-suggestion-variants"><summary>${family.templates.length} options</summary><div class="template-suggestion-variant-menu">${family.templates.map(t=>`<button type="button" data-template-id="${t.id}"><b>${escapeAttr(templateVariantLabel(t))}${t.isDefault?' • Default':''}</b><small>${escapeAttr(templateFieldSummary(t))}</small></button>`).join("")}</div></details>`:""}
+          ${others.length?`<details class="template-suggestion-variants"><summary>${family.templates.length} options</summary><div class="template-suggestion-variant-menu">${family.templates.map(t=>{ const summary=templateFieldSummary(t); return `<button type="button" data-template-id="${t.id}"><b>${escapeAttr(templateVariantLabel(t))}${t.isDefault?' • Default':''}</b>${summary?`<small>${escapeAttr(summary)}</small>`:""}</button>`; }).join("")}</div></details>`:""}
         </div>
       </div>`;
     }).join("");

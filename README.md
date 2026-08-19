@@ -1,5 +1,9 @@
 # Money Nest
 
+## v2-255
+- Simplified transaction-template suggestion metadata: category is no longer repeated as “Applies category” because category is a core template field and is already represented by the option/category label. Only extra autofill behavior such as notes, status, account, or routing is called out.
+- No template data, ranking, application, transaction behavior, CSV/JSON, Supabase, or schema changes. Schema remains 225.
+
 ## v2-254
 - Fixed transaction-template autocomplete family option controls. Opening “N options” now keeps the suggestion popover open so a specific variant can be selected instead of the title-field blur dismissing the whole menu.
 - Template application/ranking/data are unchanged; this is an interaction-only fix. Schema remains 225.
@@ -87,7 +91,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-254`
+Current version: `money-nest-v2-255`
 
 ## Important Notes
 
