@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <title>Money Nest</title>
-  <link rel="stylesheet" href="styles.css?v=2-252"/>
+  <link rel="stylesheet" href="styles.css?v=2-253"/>
 
   <link rel="icon" href="favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
@@ -557,10 +557,10 @@
         </label>
 
         <div class="tx-amount-date-grid">
-          <label class="tx-amount-field">Amount
+          <div class="tx-amount-field tx-field-block">
+            <div class="tx-field-label-row"><label for="txAmount">Amount</label><button type="button" class="ghost tiny amount-calc-toggle" onclick="toggleAmountCalculator()">🧮 Calculator</button></div>
             <input id="txAmount" required type="number" step="0.01" placeholder="0.00" inputmode="decimal"/>
-            <button type="button" class="ghost tiny amount-calc-toggle" onclick="toggleAmountCalculator()">🧮 Calculator</button>
-          </label>
+          </div>
           <label>Date
             <input id="txDate" required type="date"/>
           </label>
@@ -886,7 +886,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=2-252"></script>
+  <script src="app.js?v=2-253"></script>
   <dialog id="globalSearchModal" class="global-search-modal">
     <div class="global-search-shell">
       <div class="modal-head"><div><h3>🔎 Search Money Nest</h3><p class="hint">Transactions, merchants, categories, accounts, amounts, and dates.</p></div><button class="icon-btn" onclick="document.getElementById('globalSearchModal').close()">×</button></div>

@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-252";
+const APP_VERSION = "2-253";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -12793,11 +12793,31 @@ const _openBillSeriesEditor223=openBillSeriesEditor; openBillSeriesEditor=functi
 
 
 function showOlderSchemaWarning(){
-  const w=loadLocalMeta().olderSchemaWarning; if(!w || sessionStorage.getItem('moneyNest.schemaWarned'))return;
+  const meta=loadLocalMeta();
+  const w=meta.olderSchemaWarning;
+  if(!w) return;
+  const signature=`${w.from}->${w.to}`;
+  if(meta.olderSchemaWarningDismissed===signature) return;
+  if(sessionStorage.getItem('moneyNest.schemaWarned')){
+    // Migrate the old session-only acknowledgement into the persistent v2-253
+    // acknowledgement so someone who already saw this notice is not asked again.
+    saveLocalMeta({olderSchemaWarningDismissed:signature});
+    return;
+  }
   sessionStorage.setItem('moneyNest.schemaWarned','1');
-  const bar=document.createElement('div');bar.className='schema-upgrade-banner';bar.innerHTML=`<span><b>Money Nest upgraded older saved data.</b> Schema ${w.from} → ${w.to}. Make a fresh JSON backup when convenient.</span><button type="button" class="icon-btn">×</button>`;bar.querySelector('button').onclick=()=>bar.remove();document.body.prepend(bar);
+  const bar=document.createElement('div');
+  bar.className='schema-upgrade-banner';
+  bar.innerHTML=`<span><b>Money Nest upgraded older saved data.</b> Schema ${w.from} → ${w.to}. Make a fresh JSON backup when convenient.</span><button type="button" class="icon-btn" aria-label="Dismiss older schema notice">×</button>`;
+  bar.querySelector('button').onclick=()=>{
+    // v2-253: remember dismissal for this specific schema jump so the same
+    // startup normalization warning does not reappear every browser session.
+    // A future schema jump gets a different signature and may warn again.
+    saveLocalMeta({olderSchemaWarningDismissed:signature});
+    bar.remove();
+  };
+  document.body.prepend(bar);
 }
-setTimeout(showOlderSchemaWarning,0);
+// v2-253: older-schema information remains in Settings/Data & Backup; do not interrupt startup with a banner.
 
 // v2-229: Data & Backup is the first grouped Settings card below the Settings Map.
 

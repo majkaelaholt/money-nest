@@ -6936,3 +6936,59 @@ button.budget-review-row:hover,button.budget-review-row:focus-visible{
     height:42px;
   }
 }
+
+
+/* v2-253: remove false empty template strip, match bulk-action styling, and keep amount/date aligned. */
+.template-manager-family-filter[hidden]{display:none!important}
+.template-bulk-more>summary{
+  display:inline-flex!important;
+  align-items:center;
+  justify-content:center;
+  min-height:42px;
+  padding:8px 12px;
+  border:1px solid var(--line);
+  border-radius:999px;
+  background:color-mix(in srgb,var(--panel) 86%,transparent);
+  color:var(--accent);
+  font-size:13px;
+  font-weight:800;
+  line-height:1;
+  cursor:pointer;
+}
+#transactionModal .tx-field-block{min-width:0;display:grid;gap:5px}
+#transactionModal .tx-field-label-row{
+  min-height:24px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+}
+#transactionModal .tx-field-label-row label{
+  margin:0;
+  font-size:12px;
+  font-weight:800;
+  letter-spacing:0;
+  line-height:1.2;
+}
+#transactionModal .tx-field-label-row .amount-calc-toggle{
+  flex:0 0 auto;
+  min-height:24px;
+  padding:3px 8px;
+  margin:0;
+  font-size:10px;
+  line-height:1;
+}
+#transactionModal .tx-amount-date-grid>label{
+  display:grid;
+  grid-template-rows:24px 44px;
+  gap:5px;
+  align-content:start;
+}
+#transactionModal .tx-amount-date-grid>.tx-field-block{
+  grid-template-rows:24px 44px;
+  align-content:start;
+}
+#transactionModal .tx-amount-field input{width:100%;margin:0}
+@media(max-width:700px){
+  #transactionModal .tx-field-label-row .amount-calc-toggle{padding:3px 7px!important;font-size:9px!important}
+}

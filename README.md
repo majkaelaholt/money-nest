@@ -1,5 +1,12 @@
 # Money Nest
 
+## v2-253
+- Removed the interrupting older-schema startup banner entirely. Older-schema upgrade information remains available in Settings/Data & Backup without appearing every time Money Nest opens.
+- Removed the Template Manager's blank skinny family-filter strip when no title family is being filtered.
+- Restyled More bulk actions as a normal rounded Money Nest control instead of a square summary box.
+- Reworked the Amount + Date row so Calculator sits beside the Amount label rather than underneath the amount input, keeping both fields and the next row aligned.
+- No transaction/template data fields, JSON/CSV formats, Supabase behavior, or schema version changed. Schema remains 225.
+
 ## v2-252
 - Fixed Template Manager opening with an accidental `[object PointerEvent]` family filter when launched from Settings. It now opens directly to the normal Active templates view, with all active templates visible immediately.
 - Added defensive argument handling so click/pointer events can never be mistaken for a template-family filter again.
@@ -76,7 +83,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-252`
+Current version: `money-nest-v2-253`
 
 ## Important Notes
 
@@ -973,6 +980,10 @@ Use CSV for reviewing or batch-editing data.
 - Transaction and small update dialogs use a wider, better-proportioned card with tighter internal spacing on iPad.
 - Desktop and iPhone breakpoints remain unchanged.
 
+
+### v2-253
+- Removed the repeating older-schema startup banner while keeping schema-upgrade information in Settings/Data & Backup; also removed the false empty Template Manager filter strip, normalized the More bulk actions control, and aligned Amount/Date by moving Calculator into the Amount label row.
+- Data schema remains 225 and all financial/template storage formats are unchanged.
 
 ### v2-252
 - Fixed Template Manager startup filtering caused by click events being treated as family keys.
