@@ -1,5 +1,13 @@
 # Money Nest
 
+## v2-250
+- Simplified Add/Edit Transaction without changing transaction fields or save behavior: Account and Category now live in the primary form, while card/debt routing, repeat settings, links, notes, and edit-only actions are tucked into compact disclosures.
+- Transaction suggestions now show one best/context-aware option per title family. Extra variants remain available behind a small options control instead of filling the autocomplete list.
+- Transaction template Settings now render as collapsed title-family rows. Variant management, archived variants, and less-used actions only appear after opening a family.
+- Simplified the template editor around Title, optional option name, Category, and Default. Type/status/routing/note autofill moved into Advanced autofill with explicit “Don't change” choices; dormant legacy values remain preserved when a field is not applied.
+- Template Cleanup now uses compact summary pills and collapsed family review sections instead of showing every family and control at once.
+- Recurring schedules remain Bills-only; automatic lightweight templates still remember title + category; no template/transaction schema, JSON/CSV, or Supabase format changes. Schema remains 225.
+
 ## v2-249
 - Dashboard Past planned warnings now wait until a planned transaction is more than 7 days overdue, giving bank-clearing delays a grace period. The integrated Needs Review past-planned count uses the same rule.
 - Credit Card payment status is now automatic: $0 statement + $0 minimum due = Paid; an active linked recurring payment series = Autopay; a linked one-time planned payment in the statement due cycle = Scheduled; a linked cleared payment = Paid; otherwise the card is Unpaid.
@@ -54,7 +62,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-249`
+Current version: `money-nest-v2-250`
 
 ## Important Notes
 
@@ -951,6 +959,13 @@ Use CSV for reviewing or batch-editing data.
 - Transaction and small update dialogs use a wider, better-proportioned card with tighter internal spacing on iPad.
 - Desktop and iPhone breakpoints remain unchanged.
 
+
+### v2-250
+- Overhauled transaction entry around the common path: title, amount/date, account/category, and type/status are primary; routing/repeat/links/notes are progressive disclosures.
+- Edit-only Duplicate/Delete/Create card payment actions are grouped under More actions instead of crowding the main Save/Cancel row.
+- Transaction template autocomplete presents one best match per title family, with additional variants still selectable on demand.
+- Template Settings and Cleanup are collapsed, scan-first views; the simplified editor replaces the old duplicated field-value + apply-checkbox matrix with explicit optional autofill choices.
+- Existing template family IDs/variants/default/archive/source metadata and CSV compatibility remain intact. Schema remains 225.
 
 ### v2-249
 - Added a 7-day grace period before planned transactions become Dashboard/Needs Review past-planned findings.

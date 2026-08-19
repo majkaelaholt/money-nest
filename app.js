@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-249";
+const APP_VERSION = "2-250";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -7827,8 +7827,20 @@ function matchingTransactionTemplates(query){
       const aExact=aKey===q?2:aKey.startsWith(q)?1:0;
       const bExact=bKey===q?2:bKey.startsWith(q)?1:0;
       return bExact-aExact || templateContextScore(b)-templateContextScore(a) || a.title.localeCompare(b.title) || templateVariantLabel(a).localeCompare(templateVariantLabel(b));
-    })
-    .slice(0,16);
+    });
+}
+function matchingTransactionTemplateFamilies(query){
+  const q = templateKey(query);
+  if(!q) return [];
+  const matches = matchingTransactionTemplates(query);
+  const families = transactionTemplateFamilies({includeArchived:false,templates:matches});
+  families.forEach(family=>family.templates.sort((a,b)=>templateContextScore(b)-templateContextScore(a) || Number(b.isDefault)-Number(a.isDefault) || templateVariantLabel(a).localeCompare(templateVariantLabel(b))));
+  return families.sort((a,b)=>{
+    const aKey=templateKey(a.title), bKey=templateKey(b.title);
+    const aExact=aKey===q?2:aKey.startsWith(q)?1:0;
+    const bExact=bKey===q?2:bKey.startsWith(q)?1:0;
+    return bExact-aExact || templateContextScore(b.templates[0])-templateContextScore(a.templates[0]) || a.title.localeCompare(b.title);
+  }).slice(0,8);
 }
 function applyTransactionTemplate(templateId){
   const tpl = normalizeTransactionTemplate((data.settings?.transactionTemplates || []).find(t => t.id === templateId));
@@ -7861,27 +7873,30 @@ function renderTemplateSuggestions(){
     const txTitleEl = document.getElementById("txTitle");
     if(!box || !txTitleEl) return;
 
-    const matches = matchingTransactionTemplates(txTitleEl.value);
-    if(!matches.length){
+    const families = matchingTransactionTemplateFamilies(txTitleEl.value);
+    if(!families.length){
       box.classList.remove("open");
       box.innerHTML = "";
       return;
     }
-    const families = transactionTemplateFamilies({includeArchived:false,templates:matches});
-    box.innerHTML = families.map(family=>`<section class="template-suggestion-family">
-      <div class="template-suggestion-family-head"><b>${escapeAttr(family.title)}</b><small>${family.templates.length} ${family.templates.length===1?"variant":"variants"}</small></div>
-      ${family.templates.map(t=>`<div class="template-suggestion-row">
-        <button type="button" class="template-suggestion-main" data-template-id="${t.id}">
-          <span><b>${escapeAttr(templateVariantLabel(t))}${t.isDefault?' <span class="template-default-inline">Default</span>':''}</b><small>${escapeAttr(templateFieldSummary(t))}</small></span>
-        </button>
-        <button type="button" class="template-suggestion-delete" data-template-delete-inline="${t.id}" title="Delete this saved variant" aria-label="Delete saved variant ${escapeAttr(templateVariantLabel(t))}">×</button>
-      </div>`).join("")}
-    </section>`).join("");
+
+    box.innerHTML = families.map(family=>{
+      const best=family.templates[0];
+      const others=family.templates.slice(1);
+      const bestMeta = family.templates.length > 1
+        ? `${templateVariantLabel(best)} • ${templateFieldSummary(best)}`
+        : templateFieldSummary(best);
+      return `<div class="template-suggestion-family compact">
+        <div class="template-suggestion-row compact">
+          <button type="button" class="template-suggestion-main" data-template-id="${best.id}">
+            <span><b>${escapeAttr(family.title)}</b><small>${escapeAttr(bestMeta)}</small></span>
+          </button>
+          ${others.length?`<details class="template-suggestion-variants"><summary>${family.templates.length} options</summary><div class="template-suggestion-variant-menu">${family.templates.map(t=>`<button type="button" data-template-id="${t.id}"><b>${escapeAttr(templateVariantLabel(t))}${t.isDefault?' • Default':''}</b><small>${escapeAttr(templateFieldSummary(t))}</small></button>`).join("")}</div></details>`:""}
+        </div>
+      </div>`;
+    }).join("");
 
     box.querySelectorAll("[data-template-id]").forEach(btn=>{ btn.onclick = () => applyTransactionTemplate(btn.dataset.templateId); });
-    box.querySelectorAll("[data-template-delete-inline]").forEach(btn=>{
-      btn.onclick = (ev) => { ev.preventDefault(); ev.stopPropagation(); deleteTemplateSuggestion(btn.dataset.templateDeleteInline); };
-    });
     box.classList.add("open");
   } catch(err){ console.warn("Template suggestions could not render", err); }
 }
@@ -7911,38 +7926,42 @@ function renderTransactionTemplates(){
   if(!list) return;
   const families = transactionTemplateFamilies({includeArchived:true});
   if(!families.length){
-    list.innerHTML = `<div class="empty">No templates yet. Saving a non-recurring transaction remembers one clean title/category shortcut. Add deliberate variants here when routing or status should also be applied.</div>`;
+    list.innerHTML = `<div class="empty">No templates yet. Saving a normal transaction automatically remembers a simple title + category shortcut.</div>`;
     return;
   }
+
+  const rowMarkup=t=>{const usage=templateUsageStats(t);return `<div class="template-variant-row ${t.archived?'archived':''}">
+    <div class="template-variant-main">
+      <div class="row-title">${escapeAttr(templateVariantLabel(t))} ${t.isDefault&&!t.archived?'<span class="template-badge default">Default</span>':''}${t.archived?'<span class="template-badge archived">Archived</span>':''}</div>
+      <div class="row-sub">${escapeAttr(templateFieldSummary(t))}</div>
+      <div class="row-sub">${usage.count} use${usage.count===1?'':'s'} • ${templateLastUsedLabel(usage.lastDate)}</div>
+    </div>
+    <button class="ghost small" data-template-edit="${t.id}">Edit</button>
+    <details class="template-variant-menu">
+      <summary aria-label="More template actions">•••</summary>
+      <div class="template-variant-menu-popover">
+        ${!t.archived&&!t.isDefault?`<button class="ghost small" data-template-default="${t.id}">Make default</button>`:''}
+        <button class="ghost small" data-template-archive="${t.id}">${t.archived?'Restore':'Archive'}</button>
+        <button class="danger ghost small" data-template-delete="${t.id}">Delete</button>
+      </div>
+    </details>
+  </div>`;};
 
   list.innerHTML = families.map(family=>{
     const stats=templateFamilyUsageStats(family);
     const active=family.templates.filter(t=>!t.archived);
     const archived=family.templates.filter(t=>t.archived);
-    return `<details class="template-family" ${families.length<=8?'open':''}>
+    const preferred=active.find(t=>t.isDefault) || [...active].sort((a,b)=>templateUsageStats(b).count-templateUsageStats(a).count)[0];
+    const preview=preferred ? `${templateVariantLabel(preferred)} • ${templateGeneratedVariantLabel(preferred)}` : "Archived only";
+    return `<details class="template-family">
       <summary class="template-family-summary">
-        <span><b>${escapeAttr(family.title)}</b><small>${active.length} active variant${active.length===1?'':'s'}${archived.length?` • ${archived.length} archived`:''}</small></span>
-        <span class="template-family-stats"><b>${stats.count}</b><small>matching transactions • ${templateLastUsedLabel(stats.lastDate)}</small></span>
+        <span class="template-family-name"><b>${escapeAttr(family.title)}</b><small>${escapeAttr(preview)}</small></span>
+        <span class="template-family-meta"><b>${active.length}</b><small>option${active.length===1?'':'s'} • ${stats.count} use${stats.count===1?'':'s'}</small></span>
       </summary>
       <div class="template-family-body">
-        <div class="template-family-actions"><button class="ghost small" type="button" data-template-add-variant="${escapeAttr(family.title)}">+ Variant</button></div>
-        ${family.templates.map(t=>{
-          const usage=templateUsageStats(t);
-          return `<div class="template-variant-row ${t.archived?'archived':''}">
-            <div class="template-variant-main">
-              <div class="row-title">${escapeAttr(templateVariantLabel(t))} ${t.isDefault&&!t.archived?'<span class="template-badge default">Default</span>':''} ${t.archived?'<span class="template-badge archived">Archived</span>':''}</div>
-              <div class="row-sub">${escapeAttr(templateGeneratedVariantLabel(t))}</div>
-              <div class="row-sub template-fields-line">${escapeAttr(templateFieldSummary(t))}</div>
-            </div>
-            <div class="template-variant-usage"><b>${usage.count}</b><span>transactions</span><small>${templateLastUsedLabel(usage.lastDate)}</small></div>
-            <div class="template-actions">
-              ${!t.archived&&!t.isDefault?`<button class="ghost small" data-template-default="${t.id}">Make default</button>`:''}
-              <button class="ghost small" data-template-edit="${t.id}">Edit</button>
-              <button class="ghost small" data-template-archive="${t.id}">${t.archived?'Restore':'Archive'}</button>
-              <button class="danger ghost small" data-template-delete="${t.id}">Delete</button>
-            </div>
-          </div>`;
-        }).join("")}
+        <div class="template-family-toolbar"><span class="hint">Choose an option to edit only when this title needs different routing or behavior.</span><button class="ghost small" type="button" data-template-add-variant="${escapeAttr(family.title)}">+ Add option</button></div>
+        <div class="template-active-variants">${active.map(rowMarkup).join("") || '<div class="empty">No active options.</div>'}</div>
+        ${archived.length?`<details class="template-archived-group"><summary>Archived (${archived.length})</summary><div class="template-archived-list">${archived.map(rowMarkup).join("")}</div></details>`:""}
       </div>
     </details>`;
   }).join("");
@@ -7985,71 +8004,86 @@ function simpleTemplate(id=null, familyTitle=""){
   data.settings ||= {};
   normalizeTransactionTemplates();
   const tpl = id ? normalizeTransactionTemplate(data.settings.transactionTemplates.find(t=>t.id===id)) : normalizeTransactionTemplate({title:familyTitle,source:"manual",createdAt:new Date().toISOString()}, {legacySafe:false});
-  const fields = normalizeTemplateFields(id ? tpl.fields : DEFAULT_TEMPLATE_FIELDS);
+  const fields = normalizeTemplateFields(id ? tpl.fields : AUTO_TEMPLATE_FIELDS);
+  const ignore = "__ignore__";
+  const option = (value,label,selectedValue)=>`<option value="${escapeAttr(value)}" ${String(value)===String(selectedValue)?"selected":""}>${escapeAttr(label)}</option>`;
+  const optionalSelect = (selectedValue, options)=>option(ignore,"Don't change",selectedValue)+options;
 
-  simpleTitle.textContent = id ? "Edit template variant" : (familyTitle ? `Add ${familyTitle} variant` : "Add transaction template");
+  simpleTitle.textContent = id ? "Edit template" : (familyTitle ? `Add ${familyTitle} option` : "Add transaction template");
   simpleFields.innerHTML = `
-    <div class="two-col">
-      <label>Template family / transaction title<input id="sTplTitle" value="${escapeAttr(tpl?.title || familyTitle || "")}" placeholder="Gas" required></label>
-      <label>Variant label<input id="sTplVariantLabel" value="${escapeAttr(tpl?.variantLabel || "")}" placeholder="Mak debit, OnePay, Joint transfer…"></label>
-    </div>
-    <label class="checkbox-row"><input id="sTplDefault" type="checkbox" ${tpl.isDefault?"checked":""}> Make this the default variant for this title</label>
-    <div class="two-col">
-      <label>Category<select id="sTplCategory">${sortedCategories().map(c=>`<option value="${c.id}">${c.emoji} ${c.name}</option>`).join("")}</select></label>
-      <label>Type<select id="sTplType">
-        <option value="expense">Expense</option><option value="income">Income</option><option value="paycheck">Paycheck</option><option value="transfer">Transfer / Payment</option>
-      </select></label>
+    <div class="template-editor-intro">
+      <b>Keep templates simple.</b>
+      <span>Title + category are usually enough. Only add routing or status when this option should deliberately change them.</span>
     </div>
     <div class="two-col">
-      <label>Status<select id="sTplStatus"><option value="planned">Planned</option><option value="cleared">Cleared</option></select></label>
-      <label>Cash account money comes from<select id="sTplAccount"><option value="">None</option>${data.accounts.map(a=>`<option value="${a.id}">${a.name}</option>`).join("")}</select></label>
+      <label>Transaction title<input id="sTplTitle" value="${escapeAttr(tpl?.title || familyTitle || "")}" placeholder="Gas" required></label>
+      <label>Option name, optional<input id="sTplVariantLabel" value="${escapeAttr(tpl?.variantLabel || "")}" placeholder="Joint card, Mak debit…"></label>
     </div>
-    <div class="two-col">
-      <label>Debt account used for spending<select id="sTplDebtAccount"><option value="">None</option>${data.debts.map(d=>`<option value="${d.id}">${d.company} • ${d.name}</option>`).join("")}</select></label>
-      <label>Transfer to cash account<select id="sTplTransferTo"><option value="">None</option>${data.accounts.map(a=>`<option value="${a.id}">${a.name}</option>`).join("")}</select></label>
-    </div>
-    <label>Transfer/payment to debt<select id="sTplLinkedDebt"><option value="">None</option>${data.debts.map(d=>`<option value="${d.id}">${d.company} • ${d.name}</option>`).join("")}</select></label>
-    <label>Notes<textarea id="sTplNotes">${escapeAttr(tpl?.notes || "")}</textarea></label>
-    <div class="subpanel template-fields-editor">
-      <h4>What this variant should apply</h4>
-      <p class="hint">Title is always applied. Leave routing/status off for a safe general shortcut; turn them on only for a deliberate variant.</p>
-      <div class="template-field-grid">
-        ${templateCheckbox("categoryId", "Category", fields.categoryId)}
-        ${templateCheckbox("notes", "Notes", fields.notes)}
-        ${templateCheckbox("type", "Type", fields.type)}
-        ${templateCheckbox("status", "Status", fields.status)}
-        ${templateCheckbox("accountId", "Cash account", fields.accountId)}
-        ${templateCheckbox("debtAccountId", "Debt/card used for spending", fields.debtAccountId)}
-        ${templateCheckbox("transferToAccountId", "Transfer to cash account", fields.transferToAccountId)}
-        ${templateCheckbox("linkedDebtId", "Payment to debt", fields.linkedDebtId)}
-      </div>
-    </div>
-    <p class="hint">Recurring schedules are managed on the Bills page and are never saved inside a transaction template.</p>`;
+    <label>Category
+      <select id="sTplCategory">
+        ${option(ignore,"Don't change category",fields.categoryId ? "" : ignore)}
+        ${sortedCategories().map(c=>option(c.id,`${c.emoji} ${c.name}`,fields.categoryId ? (tpl.categoryId || "unassigned") : "")).join("")}
+      </select>
+    </label>
+    <label class="checkbox-row"><input id="sTplDefault" type="checkbox" ${tpl.isDefault?"checked":""}> Use this option by default for this title</label>
 
-  const set = (elId,value)=>{ const el = document.getElementById(elId); if(el) el.value = value ?? ""; };
-  set("sTplCategory", tpl.categoryId || "unassigned"); set("sTplType", tpl.type || "expense"); set("sTplStatus", tpl.status || "planned");
-  set("sTplAccount", tpl.accountId || ""); set("sTplDebtAccount", tpl.debtAccountId || ""); set("sTplTransferTo", tpl.transferToAccountId || ""); set("sTplLinkedDebt", tpl.linkedDebtId || "");
+    <details class="form-details template-advanced-details">
+      <summary><span>Advanced autofill</span><small>Optional</small></summary>
+      <div class="details-inner">
+        <div class="two-col">
+          <label>Type<select id="sTplType">${optionalSelect(fields.type ? tpl.type : ignore,
+            option("expense","Expense",fields.type ? tpl.type : ignore)+option("income","Income",fields.type ? tpl.type : ignore)+option("paycheck","Paycheck",fields.type ? tpl.type : ignore)+option("transfer","Transfer / Payment",fields.type ? tpl.type : ignore))}</select></label>
+          <label>Status<select id="sTplStatus">${optionalSelect(fields.status ? tpl.status : ignore,
+            option("planned","Planned",fields.status ? tpl.status : ignore)+option("cleared","Cleared",fields.status ? tpl.status : ignore))}</select></label>
+        </div>
+        <label>Cash account<select id="sTplAccount">${optionalSelect(fields.accountId ? tpl.accountId : ignore,
+          option("","None",fields.accountId ? tpl.accountId : ignore)+data.accounts.map(a=>option(a.id,a.name,fields.accountId ? tpl.accountId : ignore)).join(""))}</select></label>
+        <label>Card/debt used for spending<select id="sTplDebtAccount">${optionalSelect(fields.debtAccountId ? tpl.debtAccountId : ignore,
+          option("","None",fields.debtAccountId ? tpl.debtAccountId : ignore)+data.debts.map(d=>option(d.id,`${d.company} • ${d.name}`,fields.debtAccountId ? tpl.debtAccountId : ignore)).join(""))}</select></label>
+        <label>Transfer to cash account<select id="sTplTransferTo">${optionalSelect(fields.transferToAccountId ? tpl.transferToAccountId : ignore,
+          option("","None",fields.transferToAccountId ? tpl.transferToAccountId : ignore)+data.accounts.map(a=>option(a.id,a.name,fields.transferToAccountId ? tpl.transferToAccountId : ignore)).join(""))}</select></label>
+        <label>Payment to debt<select id="sTplLinkedDebt">${optionalSelect(fields.linkedDebtId ? tpl.linkedDebtId : ignore,
+          option("","None",fields.linkedDebtId ? tpl.linkedDebtId : ignore)+data.debts.map(d=>option(d.id,`${d.company} • ${d.name}`,fields.linkedDebtId ? tpl.linkedDebtId : ignore)).join(""))}</select></label>
+        <label class="checkbox-row"><input id="sTplApplyNotes" type="checkbox" ${fields.notes?"checked":""}> Autofill a saved note</label>
+        <label>Saved note<textarea id="sTplNotes" placeholder="Optional">${escapeAttr(tpl?.notes || "")}</textarea></label>
+      </div>
+    </details>
+    <p class="hint">Recurring schedules stay on the Bills page and are never stored in transaction templates.</p>`;
+
+  const categorySelect=document.getElementById("sTplCategory");
+  if(categorySelect) categorySelect.value = fields.categoryId ? (tpl.categoryId || "unassigned") : ignore;
+  const setOptional=(elId,enabled,value)=>{const el=document.getElementById(elId);if(el)el.value=enabled?String(value??""):ignore;};
+  setOptional("sTplType",fields.type,tpl.type||"expense");
+  setOptional("sTplStatus",fields.status,tpl.status||"planned");
+  setOptional("sTplAccount",fields.accountId,tpl.accountId||"");
+  setOptional("sTplDebtAccount",fields.debtAccountId,tpl.debtAccountId||"");
+  setOptional("sTplTransferTo",fields.transferToAccountId,tpl.transferToAccountId||"");
+  setOptional("sTplLinkedDebt",fields.linkedDebtId,tpl.linkedDebtId||"");
 
   simpleSubmit = ()=>{
     const titleEl = document.getElementById("sTplTitle");
     if(!titleEl || !titleEl.value.trim()) return false;
+    const readChoice=id=>document.getElementById(id)?.value ?? ignore;
+    const categoryChoice=readChoice("sTplCategory"), typeChoice=readChoice("sTplType"), statusChoice=readChoice("sTplStatus");
+    const accountChoice=readChoice("sTplAccount"), debtAccountChoice=readChoice("sTplDebtAccount"), transferChoice=readChoice("sTplTransferTo"), linkedDebtChoice=readChoice("sTplLinkedDebt");
     const nextFields = normalizeTemplateFields({
-      categoryId: !!document.getElementById("sTplField_categoryId")?.checked,
-      notes: !!document.getElementById("sTplField_notes")?.checked,
-      type: !!document.getElementById("sTplField_type")?.checked,
-      status: !!document.getElementById("sTplField_status")?.checked,
-      accountId: !!document.getElementById("sTplField_accountId")?.checked,
-      debtAccountId: !!document.getElementById("sTplField_debtAccountId")?.checked,
-      transferToAccountId: !!document.getElementById("sTplField_transferToAccountId")?.checked,
-      linkedDebtId: !!document.getElementById("sTplField_linkedDebtId")?.checked
+      categoryId: categoryChoice !== ignore,
+      notes: !!document.getElementById("sTplApplyNotes")?.checked,
+      type: typeChoice !== ignore,
+      status: statusChoice !== ignore,
+      accountId: accountChoice !== ignore,
+      debtAccountId: debtAccountChoice !== ignore,
+      transferToAccountId: transferChoice !== ignore,
+      linkedDebtId: linkedDebtChoice !== ignore
     });
     const payload = normalizeTransactionTemplate({
       id:id || uid(), title:titleEl.value.trim(), variantLabel:document.getElementById("sTplVariantLabel")?.value || "",
-      categoryId:document.getElementById("sTplCategory")?.value || "unassigned", type:document.getElementById("sTplType")?.value || "expense",
-      status:document.getElementById("sTplStatus")?.value || "planned", accountId:document.getElementById("sTplAccount")?.value || "",
-      debtAccountId:document.getElementById("sTplDebtAccount")?.value || "", transferToAccountId:document.getElementById("sTplTransferTo")?.value || "",
-      linkedDebtId:document.getElementById("sTplLinkedDebt")?.value || "", notes:document.getElementById("sTplNotes")?.value || "",
-      fields:nextFields, isDefault:!!document.getElementById("sTplDefault")?.checked, archived:false,
+      categoryId:categoryChoice!==ignore?categoryChoice:(tpl.categoryId||"unassigned"),
+      type:typeChoice!==ignore?typeChoice:(tpl.type||"expense"), status:statusChoice!==ignore?statusChoice:(tpl.status||"planned"),
+      accountId:accountChoice!==ignore?accountChoice:(tpl.accountId||""), debtAccountId:debtAccountChoice!==ignore?debtAccountChoice:(tpl.debtAccountId||""),
+      transferToAccountId:transferChoice!==ignore?transferChoice:(tpl.transferToAccountId||""), linkedDebtId:linkedDebtChoice!==ignore?linkedDebtChoice:(tpl.linkedDebtId||""),
+      notes:document.getElementById("sTplNotes")?.value || tpl.notes || "", fields:nextFields,
+      isDefault:!!document.getElementById("sTplDefault")?.checked, archived:false,
       source:id?(tpl.source||"manual"):"manual", createdAt:tpl.createdAt || new Date().toISOString()
     }, {legacySafe:false});
     if(id){
@@ -8065,7 +8099,6 @@ function simpleTemplate(id=null, familyTitle=""){
   deleteSimpleBtn.style.display = id ? "inline-block" : "none";
   simpleModal.showModal();
 }
-
 function exactTemplateDuplicateGroups(){
   const groups=new Map();
   normalizeTransactionTemplates().forEach(t=>{
@@ -8127,12 +8160,19 @@ function renderTemplateCleanup(){
   const templates=normalizeTransactionTemplates();
   const exact=exactTemplateDuplicateGroups();
   const unused=templates.filter(t=>templateUsageStats(t).count===0).length;
-  summary.innerHTML=`<article><b>${families.length}</b><span>template families</span></article><article><b>${templates.filter(t=>!t.archived).length}</b><span>active variants</span></article><article><b>${exact.reduce((n,g)=>n+g.length-1,0)}</b><span>exact duplicates</span></article><article><b>${unused}</b><span>unused variants</span></article>`;
-  content.innerHTML=families.map(family=>`<section class="cleanup-family" data-template-cleanup-family="${escapeAttr(family.key)}">
-    <div class="cleanup-family-head"><div><h4>${escapeAttr(family.title)}</h4><p class="hint">Keep separate routes as variants, or deliberately merge selected versions.</p></div><label>Keep when merging<select data-template-merge-target>${family.templates.map(t=>`<option value="${t.id}">${escapeAttr(templateVariantLabel(t))}</option>`).join("")}</select></label></div>
-    <div class="cleanup-variant-list">${family.templates.map(t=>{const u=templateUsageStats(t);return `<label class="cleanup-variant-row"><input type="checkbox" data-template-cleanup-select value="${t.id}"><span><b>${escapeAttr(templateVariantLabel(t))}</b><small>${escapeAttr(templateFieldSummary(t))} • ${u.count} transactions • ${templateLastUsedLabel(u.lastDate)}${t.archived?' • Archived':''}${t.isDefault?' • Default':''}</small></span><button type="button" class="ghost small" data-template-cleanup-edit="${t.id}">Edit</button></label>`;}).join("")}</div>
-    <div class="inline-actions"><button type="button" class="ghost small" data-template-cleanup-action="merge">Merge selected</button><button type="button" class="ghost small" data-template-cleanup-action="archive">Archive selected</button><button type="button" class="danger ghost small" data-template-cleanup-action="delete">Delete selected</button></div>
-  </section>`).join("") || `<div class="empty">No transaction templates yet.</div>`;
+  const duplicateCount=exact.reduce((n,g)=>n+g.length-1,0);
+  summary.innerHTML=`<span><b>${families.length}</b> families</span><span><b>${templates.filter(t=>!t.archived).length}</b> active options</span><span><b>${duplicateCount}</b> exact duplicates</span><span><b>${unused}</b> unused</span>`;
+  content.innerHTML=families.map(family=>`<details class="cleanup-family" data-template-cleanup-family="${escapeAttr(family.key)}">
+    <summary class="cleanup-family-summary"><span><b>${escapeAttr(family.title)}</b><small>${family.templates.length} option${family.templates.length===1?'':'s'}</small></span><span>Review</span></summary>
+    <div class="cleanup-family-body">
+      <p class="hint">Select only the versions you intentionally want to combine, archive, or delete.</p>
+      <div class="cleanup-variant-list">${family.templates.map(t=>{const u=templateUsageStats(t);return `<label class="cleanup-variant-row"><input type="checkbox" data-template-cleanup-select value="${t.id}"><span><b>${escapeAttr(templateVariantLabel(t))}</b><small>${escapeAttr(templateFieldSummary(t))} • ${u.count} use${u.count===1?'':'s'}${t.archived?' • Archived':''}${t.isDefault?' • Default':''}</small></span><button type="button" class="ghost small" data-template-cleanup-edit="${t.id}">Edit</button></label>`;}).join("")}</div>
+      <div class="cleanup-family-actions">
+        <label>Merge into<select data-template-merge-target>${family.templates.map(t=>`<option value="${t.id}">${escapeAttr(templateVariantLabel(t))}</option>`).join("")}</select></label>
+        <div class="inline-actions"><button type="button" class="ghost small" data-template-cleanup-action="merge">Merge selected</button><button type="button" class="ghost small" data-template-cleanup-action="archive">Archive selected</button><button type="button" class="danger ghost small" data-template-cleanup-action="delete">Delete selected</button></div>
+      </div>
+    </div>
+  </details>`).join("") || `<div class="empty">No transaction templates yet.</div>`;
   content.querySelectorAll("[data-template-cleanup-edit]").forEach(btn=>btn.onclick=()=>{document.getElementById("templateCleanupModal")?.close();simpleTemplate(btn.dataset.templateCleanupEdit);});
   content.querySelectorAll("[data-template-cleanup-action]").forEach(btn=>btn.onclick=()=>{
     const familyKey=btn.closest("[data-template-cleanup-family]")?.dataset.templateCleanupFamily || "";
@@ -9075,6 +9115,26 @@ window.calculateTransactionAmount = ()=>{
   }
 };
 
+function updateTransactionDisclosureSummaries(){
+  const routingSummary=document.getElementById("txRoutingSummary");
+  const routingDetails=document.getElementById("txRoutingDetails");
+  const type=document.getElementById("txType")?.value || "expense";
+  if(routingDetails) routingDetails.style.display = ["expense","transfer"].includes(type) ? "block" : "none";
+  if(routingSummary){
+    if(type === "transfer"){
+      const target = accountById(document.getElementById("txTransferTo")?.value)?.name || debtById(document.getElementById("txDebt")?.value)?.name || "Choose destination";
+      routingSummary.textContent = target;
+    } else {
+      const card = debtById(document.getElementById("txDebtAccount")?.value);
+      routingSummary.textContent = card ? (card.name || card.company || "Card selected") : "Optional card/debt";
+    }
+  }
+  const notesSummary=document.getElementById("txNotesSummary");
+  if(notesSummary) notesSummary.textContent = String(document.getElementById("txNotes")?.value || "").trim() ? "Added" : "Optional";
+  const linksSummary=document.getElementById("txLinksSummary");
+  if(linksSummary) linksSummary.textContent = txLinkDraftIds.length ? `${txLinkDraftIds.length} linked` : "None";
+}
+
 function updateTransactionFormUI(){
   const type = txType.value;
 
@@ -9092,10 +9152,16 @@ function updateTransactionFormUI(){
     txDebt.value = "";
   }
 
+  const routingDetails=document.getElementById("txRoutingDetails");
+  if(routingDetails && type === "transfer") routingDetails.open = true;
+
   const loanDebt = debtById(txDebt.value);
   const showLoanBreakdown = type === "transfer" && !!txDebt.value && isLoanDebt(loanDebt);
   const loanWrap = document.getElementById("txLoanBreakdownWrap");
-  if(loanWrap) loanWrap.style.display = showLoanBreakdown ? "block" : "none";
+  if(loanWrap){
+    loanWrap.style.display = showLoanBreakdown ? "block" : "none";
+    if(showLoanBreakdown && txStatus.value === "cleared") loanWrap.open = true;
+  }
   if(!showLoanBreakdown){
     ["txLoanPrincipal","txLoanInterest","txLoanFees"].forEach(id=>{ const el = document.getElementById(id); if(el) el.value = ""; });
   } else {
@@ -9158,9 +9224,10 @@ function updateTransactionFormUI(){
       if(hoursWrap) hoursWrap.style.display = "none";
     }
   }
+  updateTransactionDisclosureSummaries();
 }
 
-["txType","txAccount","txDate","txDebt","txAmount","txLoanPrincipal","txLoanInterest","txLoanFees","txPaycheckHoursOverride"].forEach(id=>{
+["txType","txStatus","txAccount","txDate","txDebtAccount","txTransferTo","txDebt","txAmount","txLoanPrincipal","txLoanInterest","txLoanFees","txPaycheckHoursOverride"].forEach(id=>{
   const el = document.getElementById(id);
   if(el) el.addEventListener("change", ()=>{
     updateTransactionFormUI();
@@ -9173,6 +9240,7 @@ if(txTitleTemplateEl){
   txTitleTemplateEl.addEventListener("focus", renderTemplateSuggestions);
   txTitleTemplateEl.addEventListener("blur", ()=>setTimeout(hideTemplateSuggestions, 180));
 }
+document.getElementById("txNotes")?.addEventListener("input", updateTransactionDisclosureSummaries);
 
 if(document.getElementById("txAutoPaycheck")){
   txAutoPaycheck.addEventListener("change", ()=>{
@@ -9410,6 +9478,17 @@ window.openTransaction = (id=null, defaults={})=>{
     } : null;
   }
   updateTransactionFormUI();
+  const routingDetails=document.getElementById("txRoutingDetails");
+  if(routingDetails) routingDetails.open = txType.value === "transfer" || !!txDebtAccount.value || !!txTransferTo.value || !!txDebt.value;
+  const repeatDetails=document.getElementById("txRepeatDetails");
+  if(repeatDetails) repeatDetails.open = !!tx && isRecurringEdit;
+  const linksDetails=document.getElementById("txLinksDetails");
+  if(linksDetails) linksDetails.open = !!txLinkDraftIds.length;
+  const notesDetails=document.getElementById("txNotesDetails");
+  if(notesDetails) notesDetails.open = false;
+  const moreActions=document.getElementById("txMoreActions");
+  if(moreActions){ moreActions.style.display = tx ? "block" : "none"; moreActions.open = false; }
+  updateTransactionDisclosureSummaries();
   txModal.classList.toggle("mobile-quick-add", moneyNestIsPhone() && !tx);
   txModal.classList.toggle("mobile-transaction-edit", moneyNestIsPhone() && !!tx);
   txModal.showModal();
@@ -11455,6 +11534,12 @@ function updateRecurrenceUI(){
     txRepeatOrdinal.closest("label").style.display = "grid";
     txRepeatIntervalUnit.value = "month(s)";
   }
+  const repeatSummary=document.getElementById("txRepeatSummary");
+  if(repeatSummary){
+    const labels={none:"Does not repeat",weekly:"Weekly",biweekly:"Every 2 weeks",monthly:"Monthly","last-day-month":"Last day monthly",yearly:"Yearly","every-x-days":`Every ${Math.max(1,Number(txRepeatInterval.value||1))} days`,"nth-weekday":"Monthly pattern"};
+    repeatSummary.textContent=labels[type] || "Custom repeat";
+  }
+
 }
 
 
@@ -12411,6 +12496,7 @@ function renderTxLinkedList(){
   const el=document.getElementById('txLinkedList'); if(!el)return;
   const rows=txLinkDraftIds.map(txByAnyId).filter(Boolean);
   el.innerHTML=rows.length ? rows.map(tx=>`<div class="linked-tx-row"><span><b>${escapeAttr(tx.title||'Untitled')}</b><small>${escapeAttr(transactionLinkLabel(tx))}</small></span><button type="button" class="ghost small" onclick="removeDraftTransactionLink('${tx.id}')">Remove</button></div>`).join('') : '<div class="empty">No linked transactions yet.</div>';
+  const summary=document.getElementById('txLinksSummary'); if(summary) summary.textContent=rows.length?`${rows.length} linked`:'None';
 }
 window.removeDraftTransactionLink=id=>{txLinkDraftIds=txLinkDraftIds.filter(x=>x!==id);renderTxLinkedList();};
 function candidateTransactionText(tx){ return [tx.title,tx.date,tx.amount,accountById(tx.accountId)?.name,categoryById(tx.categoryId)?.name,debtById(tx.debtAccountId||tx.linkedDebtId)?.name].filter(Boolean).join(' ').toLowerCase(); }

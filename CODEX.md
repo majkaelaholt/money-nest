@@ -1,5 +1,13 @@
 # CODEX
 
+## v2-250
+- Transaction entry is now progressive-disclosure UI only. Preserve all existing transaction IDs/fields and save semantics: primary fields are title, amount/date, account/category, type/status; routing, recurrence, links, notes, loan breakdown, and edit actions remain available behind contextual disclosures.
+- `txAccount` moved into the primary form; `txRoutingDetails` now contains only optional card/debt and transfer/payment destinations. Do not move routing data or change transaction payload semantics.
+- Template autocomplete should show one best/context-aware variant per title family first; extra variants stay selectable through the compact options control. Never collapse/merge saved variants merely because titles match.
+- Template Settings families start collapsed. Archived variants and destructive/default/archive controls remain available after opening a family or Cleanup, but should not dominate the scan view.
+- `simpleTemplate()` uses explicit “Don't change” values for optional fields. When a field is not applied, preserve its dormant saved value for backward compatibility; only its `fields.*` application flag is disabled.
+- Automatic lightweight templates still store title + category only, recurring series still do not generate template clutter, and template CSV family/variant metadata remains compatible. Schema remains 225.
+
 ## v2-249
 - Dashboard/Needs Review past-planned findings use `pastPlannedNeedsAttention(tx, 7)` and must not flag a transaction until it is more than 7 days past its planned date.
 - Credit Card `paymentStatus` is now presentation-derived through `automaticCreditCardPaymentInfo()` / `debtDisplayPaymentStatus()`. Preserve the legacy saved `paymentStatus` field for imports/exports and non-credit debt types; do not migrate or delete it.
@@ -50,7 +58,7 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-249`
+Latest known version: `money-nest-v2-250`
 
 Before editing, always inspect `README.md` and confirm the current version in the repository. If `README.md` shows a different version, continue from the repo version and mention the mismatch in your summary.
 
@@ -186,7 +194,7 @@ Example README note:
 ### v2-200
 - Banking is excluded from budgeting. Savings transfers net contributions by direction.
 
-- Current version: money-nest-v2-249. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
+- Current version: money-nest-v2-250. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
 
 
 ### v2-205
@@ -354,6 +362,13 @@ Example README note:
 ### v2-240
 - Added tablet-only responsive modal sizing and spacing using a coarse-pointer media query, preserving desktop and phone layouts.
 
+
+### v2-250
+- Keep the transaction modal common-path-first. `transactionPayloadFromForm()` and recurrence/link/payment logic remain the source of truth; the overhaul is presentation and disclosure only.
+- `matchingTransactionTemplateFamilies()` ranks a best option for each title family using the existing default/context/usage scoring. Additional variants must remain reachable and independently selectable.
+- Main template management is scan-first: families closed by default, archived versions nested, and destructive/default/archive operations behind secondary controls.
+- The simplified template editor must preserve saved values for disabled optional fields while setting only their `fields.*` application flags to false.
+- No schema, JSON/CSV, localStorage, or Supabase shape changes. Schema remains 225.
 
 ### v2-249
 - Use the shared 7-day grace helper for both Dashboard and integrated Needs Review past-planned findings.

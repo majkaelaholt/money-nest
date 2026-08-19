@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <title>Money Nest</title>
-  <link rel="stylesheet" href="styles.css?v=2-249"/>
+  <link rel="stylesheet" href="styles.css?v=2-250"/>
 
   <link rel="icon" href="favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
@@ -377,15 +377,15 @@
                 <span class="settings-emoji">⚡</span>
                 <span>
                   <b>Transaction templates</b>
-                  <small>Saved autofill shortcuts with field controls</small>
+                  <small>Quick autofill shortcuts by transaction title</small>
                 </span>
               </span>
               <span class="summary-pill" id="settingsTemplateCount">0</span>
             </summary>
             <div class="settings-collapse-body">
               <div class="panel-head compact-head">
-                <p class="hint">Templates are grouped into title families with named variants. Recurring schedules stay on the Bills page.</p>
-                <div class="inline-actions"><button class="ghost small" id="templateCleanupBtn">Template cleanup</button><button class="primary small" id="addTemplateBtn">+ Template</button></div>
+                <p class="hint">Money Nest automatically remembers simple title + category shortcuts. Add options only when the same title needs different routing.</p>
+                <div class="inline-actions"><button class="ghost small" id="templateCleanupBtn">Clean up</button><button class="primary small" id="addTemplateBtn">+ Template</button></div>
               </div>
               <div id="transactionTemplateList" class="template-list"></div>
             </div>
@@ -542,25 +542,23 @@
   </dialog>
 
   <dialog id="transactionModal">
-    <form method="dialog" class="modal-card" id="transactionForm">
-      <div class="panel-head">
-        <h3 id="modalTitle">Add transaction</h3>
+    <form method="dialog" class="modal-card transaction-modal-card" id="transactionForm">
+      <div class="panel-head transaction-modal-head">
+        <div><p class="eyebrow">Transaction</p><h3 id="modalTitle">Add transaction</h3></div>
         <button type="button" class="icon-btn" id="closeModal">×</button>
       </div>
 
       <input type="hidden" id="txId"/>
 
-      <section class="form-section">
-        <p class="eyebrow">Basics</p>
-
-        <label class="template-title-wrap">Title
-          <input id="txTitle" required autocomplete="off" placeholder="e.g. Ulta, Paycheck, Capital One payment"/>
+      <section class="form-section tx-primary-section">
+        <label class="template-title-wrap tx-title-field">Title
+          <input id="txTitle" required autocomplete="off" placeholder="What was it?"/>
           <div id="txTemplateSuggestions" class="template-suggestions"></div>
         </label>
 
-        <div class="two-col">
-          <label>Amount
-            <input id="txAmount" required type="number" step="0.01" placeholder="0.00"/>
+        <div class="tx-amount-date-grid">
+          <label class="tx-amount-field">Amount
+            <input id="txAmount" required type="number" step="0.01" placeholder="0.00" inputmode="decimal"/>
             <button type="button" class="ghost tiny amount-calc-toggle" onclick="toggleAmountCalculator()">🧮 Calculator</button>
           </label>
           <label>Date
@@ -576,10 +574,19 @@
             <button type="button" class="primary tiny" onclick="calculateTransactionAmount()">Use result</button>
             <button type="button" class="ghost tiny" onclick="clearAmountCalculator()">Clear</button>
           </div>
-          <p class="hint">Use +, -, ×, ÷, *, /, and parentheses. Helpful for fees or split charges.</p>
+          <p class="hint">Use +, -, ×, ÷, *, /, and parentheses.</p>
         </div>
 
-        <div class="two-col">
+        <div class="tx-account-category-grid">
+          <label>Account
+            <select id="txAccount"></select>
+          </label>
+          <label>Category
+            <select id="txCategory"></select>
+          </label>
+        </div>
+
+        <div class="tx-type-status-grid">
           <label>Type
             <select id="txType">
               <option value="expense">Expense</option>
@@ -596,28 +603,20 @@
           </label>
         </div>
 
-        <label>Category
-          <select id="txCategory"></select>
-        </label>
-
         <label class="checkbox auto-paycheck-box" id="autoPaycheckLabel">
           <input id="txAutoPaycheck" type="checkbox">
           Auto-calculate paycheck amount
         </label>
         <label id="paycheckHoursWrap">Hours override, optional
-          <input id="txPaycheckHoursOverride" type="number" step="0.25" placeholder="Leave blank to use default / calculated hours"/>
+          <input id="txPaycheckHoursOverride" type="number" step="0.25" placeholder="Leave blank to use calculated hours"/>
         </label>
         <p class="hint" id="autoPaycheckHint"></p>
       </section>
 
-      <details class="form-details" open>
-        <summary>Account / transfer details</summary>
+      <details class="form-details tx-routing-details" id="txRoutingDetails">
+        <summary><span>Payment / routing</span><small id="txRoutingSummary">Only when needed</small></summary>
         <div class="details-inner">
-          <label>Cash account money comes from
-            <select id="txAccount"></select>
-          </label>
-
-          <label>Debt account used for spending, optional
+          <label>Card/debt used for spending, optional
             <select id="txDebtAccount">
               <option value="">None</option>
             </select>
@@ -629,7 +628,7 @@
             </select>
           </label>
 
-          <label>Transfer/payment to debt, optional
+          <label>Payment to debt, optional
             <select id="txDebt">
               <option value="">None</option>
             </select>
@@ -638,9 +637,9 @@
       </details>
 
       <details class="form-details" id="txLoanBreakdownWrap">
-        <summary>Loan payment breakdown</summary>
+        <summary><span>Loan payment breakdown</span><small>Principal, interest & fees</small></summary>
         <div class="details-inner">
-          <p class="hint">For loans with interest/fees, the cash payment leaves your bank, but only the principal portion lowers the loan balance.</p>
+          <p class="hint">Only principal lowers the loan balance. Leave fields blank when you want Money Nest to estimate a planned payment.</p>
           <div class="two-col">
             <label>Principal paid
               <input id="txLoanPrincipal" type="number" step="0.01" placeholder="Leave blank to auto-calc"/>
@@ -656,8 +655,8 @@
         </div>
       </details>
 
-      <details class="form-details">
-        <summary>Repeat settings</summary>
+      <details class="form-details" id="txRepeatDetails">
+        <summary><span>Repeat</span><small id="txRepeatSummary">Does not repeat</small></summary>
         <div class="details-inner">
           <label>Repeats
             <select id="txRepeatRule">
@@ -716,18 +715,17 @@
         </div>
       </details>
 
-
       <details class="form-details" id="txLinksDetails">
-        <summary>Linked transactions</summary>
+        <summary><span>Linked transactions</span><small id="txLinksSummary">None</small></summary>
         <div class="details-inner">
-          <p class="hint">Connect related records, such as a purchase and card payment, reimbursement pair, transfer pair, or planned and cleared versions.</p>
+          <p class="hint">Connect related records such as a purchase and card payment, reimbursement pair, or transfer pair.</p>
           <div id="txLinkedList" class="linked-transaction-list"></div>
           <button type="button" class="ghost small" id="manageTxLinksBtn">Manage links</button>
         </div>
       </details>
 
-      <details class="form-details">
-        <summary>Notes</summary>
+      <details class="form-details" id="txNotesDetails">
+        <summary><span>Notes</span><small id="txNotesSummary">Optional</small></summary>
         <div class="details-inner">
           <label>Notes
             <textarea id="txNotes" placeholder="Optional"></textarea>
@@ -735,16 +733,21 @@
         </div>
       </details>
 
-      <div class="modal-actions">
-        <button type="button" class="ghost" id="createCardPaymentTxBtn" style="display:none">💸 Create card payment</button>
-        <button type="button" class="ghost" id="duplicateTxBtn">Duplicate</button>
-        <button type="button" class="danger ghost" id="deleteTxBtn">Delete</button>
+      <div class="modal-actions transaction-modal-actions">
+        <details class="tx-more-actions" id="txMoreActions">
+          <summary>More actions</summary>
+          <div class="tx-more-actions-menu">
+            <button type="button" class="ghost" id="createCardPaymentTxBtn" style="display:none">💸 Create card payment</button>
+            <button type="button" class="ghost" id="duplicateTxBtn">Duplicate</button>
+            <button type="button" class="danger ghost" id="deleteTxBtn">Delete</button>
+          </div>
+        </details>
+        <span class="transaction-action-spacer"></span>
         <button type="button" class="ghost" id="cancelTxBtn">Cancel</button>
         <button class="primary" id="saveTxBtn">Save</button>
       </div>
     </form>
   </dialog>
-
 
   <dialog id="txLinkModal">
     <div class="modal-card link-modal-card">
@@ -862,7 +865,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=2-249"></script>
+  <script src="app.js?v=2-250"></script>
   <dialog id="globalSearchModal" class="global-search-modal">
     <div class="global-search-shell">
       <div class="modal-head"><div><h3>🔎 Search Money Nest</h3><p class="hint">Transactions, merchants, categories, accounts, amounts, and dates.</p></div><button class="icon-btn" onclick="document.getElementById('globalSearchModal').close()">×</button></div>
