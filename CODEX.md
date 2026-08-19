@@ -1,5 +1,9 @@
 # CODEX
 
+## v2-254
+- Transaction-template autocomplete must remain open when focus moves from `txTitle` into `#txTemplateSuggestions`, including the `<summary>` used to open a family’s option list. Do not hide suggestions solely because the title input blurred when the new active element is inside the suggestion popover.
+- Selecting a concrete template option still applies that template and closes the popover normally. No template ranking, application, persistence, CSV/JSON, or schema changes. Schema remains 225.
+
 ## v2-253
 - Do not show the older-schema upgrade notice as a startup banner. Keep the existing schema-upgrade information available in Settings/Data & Backup instead of interrupting app launch.
 - Keep `templateManagerFamilyFilter` truly hidden when no family filter is active; author CSS must not override its `hidden` attribute.
@@ -78,7 +82,7 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-253`
+Latest known version: `money-nest-v2-254`
 
 Before editing, always inspect `README.md` and confirm the current version in the repository. If `README.md` shows a different version, continue from the repo version and mention the mismatch in your summary.
 
@@ -214,7 +218,7 @@ Example README note:
 ### v2-200
 - Banking is excluded from budgeting. Savings transfers net contributions by direction.
 
-- Current version: money-nest-v2-253. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
+- Current version: money-nest-v2-254. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
 
 
 ### v2-205

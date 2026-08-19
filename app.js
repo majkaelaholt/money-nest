@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-253";
+const APP_VERSION = "2-254";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -9357,7 +9357,13 @@ const txTitleTemplateEl = document.getElementById("txTitle");
 if(txTitleTemplateEl){
   txTitleTemplateEl.addEventListener("input", renderTemplateSuggestions);
   txTitleTemplateEl.addEventListener("focus", renderTemplateSuggestions);
-  txTitleTemplateEl.addEventListener("blur", ()=>setTimeout(hideTemplateSuggestions, 180));
+  txTitleTemplateEl.addEventListener("blur", ()=>setTimeout(()=>{
+    const box = document.getElementById("txTemplateSuggestions");
+    // v2-254: moving focus from the title into the suggestion popover (for
+    // example, opening a family's “options” disclosure) must not dismiss it.
+    if(box && box.contains(document.activeElement)) return;
+    hideTemplateSuggestions();
+  }, 180));
 }
 document.getElementById("txNotes")?.addEventListener("input", updateTransactionDisclosureSummaries);
 

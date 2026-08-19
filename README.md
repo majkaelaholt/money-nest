@@ -1,5 +1,9 @@
 # Money Nest
 
+## v2-254
+- Fixed transaction-template autocomplete family option controls. Opening “N options” now keeps the suggestion popover open so a specific variant can be selected instead of the title-field blur dismissing the whole menu.
+- Template application/ranking/data are unchanged; this is an interaction-only fix. Schema remains 225.
+
 ## v2-253
 - Removed the interrupting older-schema startup banner entirely. Older-schema upgrade information remains available in Settings/Data & Backup without appearing every time Money Nest opens.
 - Removed the Template Manager's blank skinny family-filter strip when no title family is being filtered.
@@ -83,7 +87,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-253`
+Current version: `money-nest-v2-254`
 
 ## Important Notes
 
