@@ -6597,3 +6597,199 @@ button.budget-review-row:hover,button.budget-review-row:focus-visible{
     order:2!important;
   }
 }
+
+/* v2-251: transaction modal fit + practical bulk template manager */
+#transactionModal{
+  width:min(760px,calc(100vw - 24px));
+  max-width:760px;
+  padding:0;
+  overflow:visible;
+}
+#transactionModal .transaction-modal-card{
+  width:100%;
+  max-width:100%;
+  min-width:0;
+}
+#transactionModal .tx-primary-section,
+#transactionModal .form-details,
+#transactionModal .details-inner,
+#transactionModal label,
+#transactionModal input,
+#transactionModal select,
+#transactionModal textarea{
+  min-width:0;
+}
+#transactionModal .tx-amount-date-grid,
+#transactionModal .tx-account-category-grid,
+#transactionModal .tx-type-status-grid{
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+}
+#transactionModal .transaction-modal-card{
+  overflow-x:hidden;
+}
+
+/* Settings now stays scan-first: one row per title family. */
+#transactionTemplateList.template-list{display:grid;gap:6px}
+.template-library-row{
+  width:100%;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto auto;
+  gap:12px;
+  align-items:center;
+  padding:11px 12px;
+  border:1px solid color-mix(in srgb,var(--line) 82%,transparent);
+  border-radius:13px;
+  background:color-mix(in srgb,var(--panel-2) 30%,var(--panel));
+  color:var(--ink);
+  text-align:left;
+  box-shadow:none;
+}
+.template-library-row:hover{background:color-mix(in srgb,var(--panel-2) 52%,var(--panel))}
+.template-library-main{display:grid;gap:2px;min-width:0}
+.template-library-main b{font-size:13px}
+.template-library-main small{font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.template-library-meta{display:grid;gap:1px;text-align:right;color:var(--muted)}
+.template-library-meta b{font-size:12px;color:var(--ink)}
+.template-library-meta small{font-size:9.5px;white-space:nowrap}
+.template-library-chevron{font-size:20px;color:var(--muted);line-height:1}
+
+/* Template manager: bulk editing first, cleanup second. */
+.template-manager-modal{width:min(1100px,calc(100vw - 24px));max-width:1100px;padding:0}
+.template-manager-card{width:100%;max-width:none;max-height:92dvh;overflow:auto;gap:10px}
+.template-manager-head{margin-bottom:0;align-items:flex-start}
+.template-manager-head .eyebrow{margin:0 0 2px}
+.template-manager-controls{
+  display:grid;
+  grid-template-columns:minmax(230px,1.3fr) minmax(120px,.45fr) auto auto;
+  gap:8px;
+  align-items:end;
+  padding:10px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:color-mix(in srgb,var(--panel-2) 34%,var(--panel));
+}
+.template-manager-controls label{font-size:11px}
+.template-manager-controls input,
+.template-manager-controls select{min-height:38px;padding:8px 10px}
+.template-select-all{align-self:center;white-space:nowrap;padding:8px 2px 2px}
+.template-select-all input,.template-manager-check input{width:auto;margin:0}
+.template-manager-family-filter{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:8px 10px;
+  border-radius:12px;
+  background:color-mix(in srgb,var(--accent) 8%,var(--panel));
+  border:1px solid color-mix(in srgb,var(--accent) 18%,var(--line));
+  font-size:11px;
+}
+.template-bulk-bar{
+  display:grid;
+  grid-template-columns:minmax(120px,.45fr) minmax(150px,.55fr) minmax(210px,.8fr) auto auto;
+  gap:8px;
+  align-items:end;
+  padding:10px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:var(--panel);
+  opacity:.58;
+}
+.template-bulk-bar.active{opacity:1;box-shadow:0 8px 22px rgba(60,45,30,.06)}
+.template-bulk-head{display:grid;gap:2px;align-self:center}
+.template-bulk-head b{font-size:13px}
+.template-bulk-head small{font-size:9.5px;color:var(--muted)}
+.template-bulk-bar label{font-size:10px}
+.template-bulk-bar select{min-height:38px;padding:8px 9px}
+.template-bulk-more{position:relative;align-self:end}
+.template-bulk-more>summary{list-style:none;white-space:nowrap;text-align:center}
+.template-bulk-more>summary::-webkit-details-marker{display:none}
+.template-bulk-more-menu{
+  position:absolute;
+  z-index:90;
+  right:0;
+  top:calc(100% + 5px);
+  min-width:230px;
+  display:grid;
+  gap:4px;
+  padding:6px;
+  border:1px solid var(--line);
+  border-radius:13px;
+  background:var(--panel);
+  box-shadow:0 14px 30px rgba(60,45,30,.18);
+}
+.template-bulk-more-menu button{width:100%;text-align:left;justify-content:flex-start}
+.template-manager-list{display:grid;gap:6px;margin-top:0}
+.template-manager-row{
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) minmax(130px,.34fr) auto;
+  gap:10px;
+  align-items:center;
+  padding:10px 11px;
+  border:1px solid color-mix(in srgb,var(--line) 82%,transparent);
+  border-radius:13px;
+  background:color-mix(in srgb,var(--panel-2) 24%,var(--panel));
+}
+.template-manager-row.selected{border-color:color-mix(in srgb,var(--accent) 55%,var(--line));background:color-mix(in srgb,var(--accent) 8%,var(--panel))}
+.template-manager-row.archived{opacity:.67}
+.template-manager-check{display:grid;place-items:center;padding:8px;cursor:pointer}
+.template-manager-main{display:grid;gap:2px;min-width:0}
+.template-manager-title{display:flex;align-items:center;gap:5px;min-width:0;flex-wrap:wrap}
+.template-manager-title>b{font-size:13px}
+.template-manager-title>span:not(.template-badge){font-size:10px;color:var(--muted);font-weight:750}
+.template-manager-main>small{font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.template-manager-main>.template-manager-usage{font-size:9.5px}
+.template-manager-category{font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right}
+.template-badge.duplicate{background:color-mix(in srgb,var(--yellow) 17%,var(--panel));color:var(--yellow)}
+
+@media(max-width:820px){
+  .template-manager-controls{grid-template-columns:1fr 1fr}
+  .template-manager-search{grid-column:1/-1}
+  .template-bulk-bar{grid-template-columns:1fr 1fr}
+  .template-bulk-head{grid-column:1/-1}
+  .template-manager-row{grid-template-columns:auto minmax(0,1fr) auto}
+  .template-manager-category{grid-column:2;text-align:left}
+}
+@media(max-width:700px){
+  #transactionModal{width:calc(100% - 12px);max-width:none}
+  #transactionModal .transaction-modal-card{width:100%;max-width:100%}
+  .template-library-row{grid-template-columns:minmax(0,1fr) auto}
+  .template-library-meta{display:none}
+  .template-manager-modal{width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;margin:0;padding:0}
+  .template-manager-card{height:100dvh;max-height:none;border-radius:0;padding:12px;gap:8px}
+  .template-manager-controls{grid-template-columns:1fr 1fr;padding:8px}
+  .template-manager-controls #mergeExactTemplatesBtn{grid-column:1/-1}
+  .template-bulk-bar{grid-template-columns:1fr 1fr;padding:8px}
+  .template-bulk-bar #applyTemplateBulkEdit{grid-column:1}
+  .template-bulk-more{grid-column:2}
+  .template-bulk-more>summary{width:100%;box-sizing:border-box}
+  .template-bulk-more-menu{position:fixed;left:10px;right:10px;top:auto;bottom:12px;min-width:0}
+  .template-manager-row{grid-template-columns:auto minmax(0,1fr) auto;padding:9px 8px;gap:7px}
+  .template-manager-category{grid-column:2;font-size:9.5px}
+  .template-manager-main>small{white-space:normal}
+  .template-manager-row>[data-template-manager-edit]{padding:7px 9px;font-size:11px}
+}
+@media(max-width:480px){
+  .template-manager-controls{grid-template-columns:1fr}
+  .template-manager-search,.template-manager-controls #mergeExactTemplatesBtn{grid-column:auto}
+  .template-select-all{padding:2px 0}
+  .template-bulk-bar{grid-template-columns:1fr}
+  .template-bulk-head,.template-bulk-bar #applyTemplateBulkEdit,.template-bulk-more{grid-column:auto}
+}
+/* v2-251 refinement: template manager rows keep only the information needed for editing. */
+.template-manager-row{grid-template-columns:auto minmax(0,1fr) auto}
+.template-manager-category{display:none!important}
+@media(max-width:820px){.template-manager-row{grid-template-columns:auto minmax(0,1fr) auto}.template-manager-category{display:none!important}}
+@media(max-width:700px){.template-manager-row{grid-template-columns:auto minmax(0,1fr) auto}.template-manager-category{display:none!important}}
+/* v2-251 transaction-entry polish: the dialog itself is the container, so the common fields do not need another card inside it. */
+#transactionModal .tx-primary-section{
+  padding:2px 1px 5px;
+  border:0;
+  background:transparent;
+  border-radius:0;
+}
+#transactionModal .form-details{
+  border-radius:14px;
+  background:color-mix(in srgb,var(--panel-2) 16%,var(--panel));
+}
+#transactionModal .form-details>summary{padding:10px 12px}

@@ -1,5 +1,13 @@
 # Money Nest
 
+## v2-251
+- Fixed Add/Edit Transaction horizontal overflow introduced in v2-250: the transaction dialog and card now share the same responsive width, form grid children may shrink correctly, and the modal no longer forces a 720px card inside the older 560px dialog shell.
+- Replaced the nested Transaction Templates settings UI with a scan-first one-row-per-title library. Selecting a title opens the new Template Manager rather than exposing every variant and destructive control in Settings.
+- Rebuilt Template Cleanup as a bulk Template Manager with search, Active/All/Archived/Unused filters, Select All Shown, multi-select, exact-duplicate cleanup, deliberate same-title merge, archive/restore/delete, and bulk field editing.
+- Bulk template editing can change Status (Planned/Cleared), Category, Type, cash account, card/debt routing, transfer destination, or payment debt across many selected templates at once; “Don't autofill this field” disables only that application flag while preserving its dormant saved value.
+- Added a bulk “Keep title + category only” action for quickly simplifying messy/legacy templates. Templates intentionally edited through the editor or bulk manager become Custom/manual so later automatic learning will not silently overwrite those custom rules.
+- Automatic lightweight templates still remember title + category only, recurring transactions still do not create template clutter, title families are never merged solely because their names match, and JSON/CSV/Supabase formats remain unchanged. Schema remains 225.
+
 ## v2-250
 - Simplified Add/Edit Transaction without changing transaction fields or save behavior: Account and Category now live in the primary form, while card/debt routing, repeat settings, links, notes, and edit-only actions are tucked into compact disclosures.
 - Transaction suggestions now show one best/context-aware option per title family. Extra variants remain available behind a small options control instead of filling the autocomplete list.
@@ -62,7 +70,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-250`
+Current version: `money-nest-v2-251`
 
 ## Important Notes
 
@@ -959,6 +967,13 @@ Use CSV for reviewing or batch-editing data.
 - Transaction and small update dialogs use a wider, better-proportioned card with tighter internal spacing on iPad.
 - Desktop and iPhone breakpoints remain unchanged.
 
+
+### v2-251
+- Fixed the transaction modal width mismatch that caused horizontal scrolling/cut-off fields after the v2-250 form redesign.
+- Settings shows one compact row per active template title; advanced template management moved into a dedicated bulk manager.
+- Template Manager supports search/filtering, Select All Shown, bulk status/category/type/routing changes, simplify-to-title+category, archive/restore/delete, exact duplicate merge, and deliberate selected same-title merge.
+- Manual/bulk edits convert learned templates to Custom so automatic title+category learning cannot overwrite intentional advanced rules. Disabled bulk fields preserve dormant values and only switch off the corresponding `fields.*` flag.
+- Transaction/template CSV columns, JSON backup shape, Supabase blob shape, and schema remain unchanged at 225.
 
 ### v2-250
 - Overhauled transaction entry around the common path: title, amount/date, account/category, and type/status are primary; routing/repeat/links/notes are progressive disclosures.

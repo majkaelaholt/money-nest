@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-250";
+const APP_VERSION = "2-251";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -7925,52 +7925,25 @@ function renderTransactionTemplates(){
   const list = document.getElementById("transactionTemplateList");
   if(!list) return;
   const families = transactionTemplateFamilies({includeArchived:true});
-  if(!families.length){
-    list.innerHTML = `<div class="empty">No templates yet. Saving a normal transaction automatically remembers a simple title + category shortcut.</div>`;
+  const activeFamilies = families.map(family=>({...family, active:family.templates.filter(t=>!t.archived)})).filter(family=>family.active.length);
+  if(!activeFamilies.length){
+    const archivedCount = normalizeTransactionTemplates().filter(t=>t.archived).length;
+    list.innerHTML = `<div class="empty">No active templates yet. Saving a normal transaction automatically remembers a simple title + category shortcut.${archivedCount?` <button type="button" class="ghost small" data-template-open-manager>View ${archivedCount} archived</button>`:""}</div>`;
+    list.querySelector("[data-template-open-manager]")?.addEventListener("click",()=>openTemplateCleanup());
     return;
   }
 
-  const rowMarkup=t=>{const usage=templateUsageStats(t);return `<div class="template-variant-row ${t.archived?'archived':''}">
-    <div class="template-variant-main">
-      <div class="row-title">${escapeAttr(templateVariantLabel(t))} ${t.isDefault&&!t.archived?'<span class="template-badge default">Default</span>':''}${t.archived?'<span class="template-badge archived">Archived</span>':''}</div>
-      <div class="row-sub">${escapeAttr(templateFieldSummary(t))}</div>
-      <div class="row-sub">${usage.count} use${usage.count===1?'':'s'} • ${templateLastUsedLabel(usage.lastDate)}</div>
-    </div>
-    <button class="ghost small" data-template-edit="${t.id}">Edit</button>
-    <details class="template-variant-menu">
-      <summary aria-label="More template actions">•••</summary>
-      <div class="template-variant-menu-popover">
-        ${!t.archived&&!t.isDefault?`<button class="ghost small" data-template-default="${t.id}">Make default</button>`:''}
-        <button class="ghost small" data-template-archive="${t.id}">${t.archived?'Restore':'Archive'}</button>
-        <button class="danger ghost small" data-template-delete="${t.id}">Delete</button>
-      </div>
-    </details>
-  </div>`;};
-
-  list.innerHTML = families.map(family=>{
+  list.innerHTML = activeFamilies.map(family=>{
     const stats=templateFamilyUsageStats(family);
-    const active=family.templates.filter(t=>!t.archived);
-    const archived=family.templates.filter(t=>t.archived);
-    const preferred=active.find(t=>t.isDefault) || [...active].sort((a,b)=>templateUsageStats(b).count-templateUsageStats(a).count)[0];
-    const preview=preferred ? `${templateVariantLabel(preferred)} • ${templateGeneratedVariantLabel(preferred)}` : "Archived only";
-    return `<details class="template-family">
-      <summary class="template-family-summary">
-        <span class="template-family-name"><b>${escapeAttr(family.title)}</b><small>${escapeAttr(preview)}</small></span>
-        <span class="template-family-meta"><b>${active.length}</b><small>option${active.length===1?'':'s'} • ${stats.count} use${stats.count===1?'':'s'}</small></span>
-      </summary>
-      <div class="template-family-body">
-        <div class="template-family-toolbar"><span class="hint">Choose an option to edit only when this title needs different routing or behavior.</span><button class="ghost small" type="button" data-template-add-variant="${escapeAttr(family.title)}">+ Add option</button></div>
-        <div class="template-active-variants">${active.map(rowMarkup).join("") || '<div class="empty">No active options.</div>'}</div>
-        ${archived.length?`<details class="template-archived-group"><summary>Archived (${archived.length})</summary><div class="template-archived-list">${archived.map(rowMarkup).join("")}</div></details>`:""}
-      </div>
-    </details>`;
+    const preferred=family.active.find(t=>t.isDefault) || [...family.active].sort((a,b)=>templateUsageStats(b).count-templateUsageStats(a).count)[0];
+    const preview = preferred ? templateManagerAutofillSummary(preferred) : "Title only";
+    return `<button type="button" class="template-library-row" data-template-manage-family="${escapeAttr(family.key)}">
+      <span class="template-library-main"><b>${escapeAttr(family.title)}</b><small>${escapeAttr(preview)}</small></span>
+      <span class="template-library-meta"><b>${family.active.length}</b><small>option${family.active.length===1?'':'s'} • ${stats.count} use${stats.count===1?'':'s'}</small></span>
+      <span class="template-library-chevron">›</span>
+    </button>`;
   }).join("");
-
-  list.querySelectorAll("[data-template-add-variant]").forEach(btn=>btn.onclick=()=>simpleTemplate(null,btn.dataset.templateAddVariant));
-  list.querySelectorAll("[data-template-edit]").forEach(btn=>btn.onclick=()=>simpleTemplate(btn.dataset.templateEdit));
-  list.querySelectorAll("[data-template-delete]").forEach(btn=>btn.onclick=()=>deleteTemplate(btn.dataset.templateDelete));
-  list.querySelectorAll("[data-template-default]").forEach(btn=>btn.onclick=()=>setDefaultTemplate(btn.dataset.templateDefault));
-  list.querySelectorAll("[data-template-archive]").forEach(btn=>btn.onclick=()=>toggleTemplateArchived(btn.dataset.templateArchive));
+  list.querySelectorAll("[data-template-manage-family]").forEach(btn=>btn.onclick=()=>openTemplateCleanup(btn.dataset.templateManageFamily || ""));
 }
 function setDefaultTemplate(id){
   normalizeTransactionTemplates();
@@ -7991,14 +7964,13 @@ function toggleTemplateArchived(id){
   saveData();
 }
 function deleteTemplate(id){
-  if(!confirm("Delete this transaction template variant? This does not delete any transactions.")) return;
+  if(!confirm("Delete this transaction template? This does not delete any transactions.")) return;
   data.settings ||= {};
   data.settings.transactionTemplates = (data.settings.transactionTemplates || []).filter(t=>t.id !== id);
+  templateManagerState.selected.delete(id);
   normalizeTransactionTemplates();
   saveData();
-}
-function templateCheckbox(key, label, checked){
-  return `<label class="checkbox template-field-toggle"><input type="checkbox" id="sTplField_${key}" ${checked ? "checked" : ""}> ${label}</label>`;
+  if(document.getElementById("templateCleanupModal")?.open) renderTemplateCleanup();
 }
 function simpleTemplate(id=null, familyTitle=""){
   data.settings ||= {};
@@ -8012,12 +7984,12 @@ function simpleTemplate(id=null, familyTitle=""){
   simpleTitle.textContent = id ? "Edit template" : (familyTitle ? `Add ${familyTitle} option` : "Add transaction template");
   simpleFields.innerHTML = `
     <div class="template-editor-intro">
-      <b>Keep templates simple.</b>
-      <span>Title + category are usually enough. Only add routing or status when this option should deliberately change them.</span>
+      <b>Start simple.</b>
+      <span>Title + category are the normal shortcut. Advanced autofill is only for fields you intentionally want this template to change.</span>
     </div>
     <div class="two-col">
       <label>Transaction title<input id="sTplTitle" value="${escapeAttr(tpl?.title || familyTitle || "")}" placeholder="Gas" required></label>
-      <label>Option name, optional<input id="sTplVariantLabel" value="${escapeAttr(tpl?.variantLabel || "")}" placeholder="Joint card, Mak debit…"></label>
+      <label>Option label, optional<input id="sTplVariantLabel" value="${escapeAttr(tpl?.variantLabel || "")}" placeholder="Joint card, Mak debit…"></label>
     </div>
     <label>Category
       <select id="sTplCategory">
@@ -8048,7 +8020,7 @@ function simpleTemplate(id=null, familyTitle=""){
         <label>Saved note<textarea id="sTplNotes" placeholder="Optional">${escapeAttr(tpl?.notes || "")}</textarea></label>
       </div>
     </details>
-    <p class="hint">Recurring schedules stay on the Bills page and are never stored in transaction templates.</p>`;
+    <p class="hint">Tip: use Manage templates when the same change needs to be made to several shortcuts at once. Recurring schedules stay on the Bills page.</p>`;
 
   const categorySelect=document.getElementById("sTplCategory");
   if(categorySelect) categorySelect.value = fields.categoryId ? (tpl.categoryId || "unassigned") : ignore;
@@ -8084,7 +8056,7 @@ function simpleTemplate(id=null, familyTitle=""){
       transferToAccountId:transferChoice!==ignore?transferChoice:(tpl.transferToAccountId||""), linkedDebtId:linkedDebtChoice!==ignore?linkedDebtChoice:(tpl.linkedDebtId||""),
       notes:document.getElementById("sTplNotes")?.value || tpl.notes || "", fields:nextFields,
       isDefault:!!document.getElementById("sTplDefault")?.checked, archived:false,
-      source:id?(tpl.source||"manual"):"manual", createdAt:tpl.createdAt || new Date().toISOString()
+      source:"manual", createdAt:tpl.createdAt || new Date().toISOString()
     }, {legacySafe:false});
     if(id){
       const existing=data.settings.transactionTemplates.find(t=>t.id===id);
@@ -8108,6 +8080,132 @@ function exactTemplateDuplicateGroups(){
   });
   return [...groups.values()].filter(items=>items.length>1);
 }
+const templateManagerState={query:"",filter:"active",familyKey:"",selected:new Set()};
+function templateManagerAutofillSummary(t){
+  const f=normalizeTemplateFields(t?.fields);
+  const bits=[];
+  if(f.categoryId){const c=categoryById(t.categoryId||"unassigned");bits.push(`${c.emoji||""} ${c.name||"Unassigned"}`.trim());}
+  if(f.status) bits.push(t.status==="cleared"?"Cleared":"Planned");
+  if(f.type) bits.push(txTypeLabel(t.type));
+  if(f.accountId && t.accountId) bits.push(accountById(t.accountId)?.name || "Cash account");
+  if(f.debtAccountId) bits.push(t.debtAccountId ? (debtById(t.debtAccountId)?.name || "Card/debt") : "Clear card/debt");
+  if(f.transferToAccountId) bits.push(t.transferToAccountId ? `To ${accountById(t.transferToAccountId)?.name || "cash"}` : "Clear transfer destination");
+  if(f.linkedDebtId) bits.push(t.linkedDebtId ? `Pay ${debtById(t.linkedDebtId)?.name || "debt"}` : "Clear payment debt");
+  if(f.notes && t.notes) bits.push("Saved note");
+  return bits.length ? bits.join(" • ") : "Title only";
+}
+function templateManagerVisibleTemplates(){
+  const q=templateKey(templateManagerState.query);
+  return normalizeTransactionTemplates().filter(t=>{
+    if(templateManagerState.familyKey && templateKey(t.title)!==templateManagerState.familyKey) return false;
+    if(templateManagerState.filter==="active" && t.archived) return false;
+    if(templateManagerState.filter==="archived" && !t.archived) return false;
+    if(templateManagerState.filter==="unused" && templateUsageStats(t).count!==0) return false;
+    if(q){
+      const c=categoryById(t.categoryId||"unassigned");
+      const hay=[t.title,templateVariantLabel(t),templateManagerAutofillSummary(t),c?.name,t.source].join(" ").toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  }).sort((a,b)=>String(a.title||"").localeCompare(String(b.title||"")) || Number(b.isDefault)-Number(a.isDefault) || templateVariantLabel(a).localeCompare(templateVariantLabel(b)));
+}
+function templateBulkFieldChoices(field){
+  const off={value:"__off__",label:"Don't autofill this field"};
+  if(field==="status") return [off,{value:"planned",label:"Planned"},{value:"cleared",label:"Cleared"}];
+  if(field==="type") return [off,{value:"expense",label:"Expense"},{value:"income",label:"Income"},{value:"paycheck",label:"Paycheck"},{value:"transfer",label:"Transfer / Payment"}];
+  if(field==="categoryId") return [off,...sortedCategories().map(c=>({value:c.id,label:`${c.emoji||""} ${c.name}`.trim()}))];
+  if(field==="accountId") return [off,...orderedAccounts().map(a=>({value:a.id,label:`${a.emoji||"💵"} ${a.name}`}))];
+  if(field==="debtAccountId") return [off,{value:"",label:"None / clear card or debt"},...data.debts.map(d=>({value:d.id,label:`${d.emoji||"💳"} ${d.company} • ${d.name}`}))];
+  if(field==="transferToAccountId") return [off,{value:"",label:"None / clear destination"},...orderedAccounts().map(a=>({value:a.id,label:`${a.emoji||"💵"} ${a.name}`}))];
+  if(field==="linkedDebtId") return [off,{value:"",label:"None / clear payment debt"},...data.debts.map(d=>({value:d.id,label:`${d.emoji||"💳"} ${d.company} • ${d.name}`}))];
+  return [off];
+}
+function updateTemplateBulkValueOptions(){
+  const field=document.getElementById("templateBulkField")?.value || "status";
+  const valueEl=document.getElementById("templateBulkValue");
+  if(!valueEl) return;
+  const previous=valueEl.value;
+  const choices=templateBulkFieldChoices(field);
+  valueEl.innerHTML=choices.map(c=>`<option value="${escapeAttr(c.value)}">${escapeAttr(c.label)}</option>`).join("");
+  if(choices.some(c=>String(c.value)===String(previous))) valueEl.value=previous;
+}
+function templateManagerSaveAndRefresh(){
+  normalizeTransactionTemplates();
+  const validIds=new Set(data.settings.transactionTemplates.map(t=>t.id));
+  templateManagerState.selected=new Set([...templateManagerState.selected].filter(id=>validIds.has(id)));
+  saveData();
+  renderTemplateCleanup();
+}
+function selectedTemplateManagerItems(){
+  const ids=templateManagerState.selected;
+  return normalizeTransactionTemplates().filter(t=>ids.has(t.id));
+}
+function applyTemplateBulkEdit(){
+  const selected=selectedTemplateManagerItems();
+  if(!selected.length){alert("Select at least one template first.");return;}
+  const field=document.getElementById("templateBulkField")?.value || "status";
+  const value=document.getElementById("templateBulkValue")?.value ?? "__off__";
+  selected.forEach(t=>{
+    const fields=normalizeTemplateFields(t.fields);
+    if(value==="__off__") fields[field]=false;
+    else {fields[field]=true;t[field]=value;}
+    t.fields=fields;
+    t.source="manual";
+  });
+  templateManagerSaveAndRefresh();
+}
+function simplifySelectedTemplates(){
+  const selected=selectedTemplateManagerItems();
+  if(!selected.length){alert("Select at least one template first.");return;}
+  selected.forEach(t=>{t.fields=normalizeTemplateFields({...AUTO_TEMPLATE_FIELDS});t.source="manual";});
+  templateManagerSaveAndRefresh();
+}
+function mergeSelectedTemplates(){
+  const selected=selectedTemplateManagerItems();
+  if(selected.length<2){alert("Select at least two templates to merge.");return;}
+  const keys=[...new Set(selected.map(t=>templateKey(t.title)))];
+  if(keys.length!==1){alert("Only options with the same transaction title can be merged. Filter to one title, then select the versions you want to combine.");return;}
+  const ranked=[...selected].sort((a,b)=>Number(b.isDefault)-Number(a.isDefault) || templateUsageStats(b).count-templateUsageStats(a).count || templateVariantLabel(a).localeCompare(templateVariantLabel(b)));
+  const menu=ranked.map((t,i)=>`${i+1}. ${templateVariantLabel(t)}${t.isDefault?' (Default)':''}`).join("\n");
+  const answer=prompt(`Which version should be kept?\n\n${menu}\n\nEnter a number from 1 to ${ranked.length}.`,"1");
+  if(answer===null) return;
+  const idx=Number(answer)-1;
+  if(!Number.isInteger(idx)||idx<0||idx>=ranked.length){alert("Choose a valid version number.");return;}
+  const target=ranked[idx];
+  if(!confirm(`Merge ${selected.length} options into “${templateVariantLabel(target)}”? The kept option's autofill settings will win. Saved transactions are not changed.`)) return;
+  const remove=new Set(selected.filter(t=>t.id!==target.id).map(t=>t.id));
+  data.settings.transactionTemplates=data.settings.transactionTemplates.filter(t=>!remove.has(t.id));
+  remove.forEach(id=>templateManagerState.selected.delete(id));
+  target.archived=false;
+  target.isDefault=true;
+  target.source="manual";
+  data.settings.transactionTemplates.forEach(t=>{if(t.id!==target.id&&templateKey(t.title)===keys[0])t.isDefault=false;});
+  templateManagerState.selected=new Set([target.id]);
+  templateManagerSaveAndRefresh();
+}
+function archiveSelectedTemplates(){
+  const selected=selectedTemplateManagerItems();
+  if(!selected.length){alert("Select at least one template first.");return;}
+  selected.forEach(t=>{t.archived=true;t.isDefault=false;});
+  templateManagerState.selected.clear();
+  templateManagerSaveAndRefresh();
+}
+function restoreSelectedTemplates(){
+  const selected=selectedTemplateManagerItems();
+  if(!selected.length){alert("Select at least one template first.");return;}
+  selected.forEach(t=>{t.archived=false;});
+  templateManagerState.selected.clear();
+  templateManagerSaveAndRefresh();
+}
+function deleteSelectedTemplates(){
+  const selected=selectedTemplateManagerItems();
+  if(!selected.length){alert("Select at least one template first.");return;}
+  if(!confirm(`Delete ${selected.length} selected template${selected.length===1?'':'s'}? Saved transactions will not be changed.`)) return;
+  const remove=new Set(selected.map(t=>t.id));
+  data.settings.transactionTemplates=data.settings.transactionTemplates.filter(t=>!remove.has(t.id));
+  remove.forEach(id=>templateManagerState.selected.delete(id));
+  templateManagerSaveAndRefresh();
+}
 function mergeExactTemplateDuplicates(){
   const groups=exactTemplateDuplicateGroups();
   if(!groups.length){alert("No exact duplicate templates were found.");return;}
@@ -8116,80 +8214,97 @@ function mergeExactTemplateDuplicates(){
     keep.archived=items.every(t=>t.archived);
     keep.isDefault=items.some(t=>t.isDefault)&&!keep.archived;
     const ids=new Set(items.filter(t=>t.id!==keep.id).map(t=>t.id));
+    ids.forEach(id=>templateManagerState.selected.delete(id));
     data.settings.transactionTemplates=data.settings.transactionTemplates.filter(t=>!ids.has(t.id));
   });
-  normalizeTransactionTemplates(); saveData(); renderTemplateCleanup();
-}
-function templateCleanupFamilySection(familyKey){
-  return [...document.querySelectorAll("[data-template-cleanup-family]")].find(el=>el.dataset.templateCleanupFamily===familyKey) || null;
-}
-function selectedTemplateCleanupIds(familyKey){
-  const section=templateCleanupFamilySection(familyKey);
-  return section ? [...section.querySelectorAll("input[data-template-cleanup-select]:checked")].map(el=>el.value) : [];
-}
-function mergeSelectedTemplateVariants(familyKey){
-  const ids=selectedTemplateCleanupIds(familyKey);
-  if(ids.length<2){alert("Select at least two variants to merge.");return;}
-  const targetId=templateCleanupFamilySection(familyKey)?.querySelector("[data-template-merge-target]")?.value || ids[0];
-  if(!ids.includes(targetId)){alert("Choose one of the selected variants as the version to keep.");return;}
-  const target=data.settings.transactionTemplates.find(t=>t.id===targetId);
-  if(!target)return;
-  if(!confirm(`Merge ${ids.length} variants into “${templateVariantLabel(target)}”? The kept variant's field choices and routing will win.`))return;
-  const remove=new Set(ids.filter(id=>id!==targetId));
-  data.settings.transactionTemplates=data.settings.transactionTemplates.filter(t=>!remove.has(t.id));
-  target.archived=false; target.isDefault=true;
-  data.settings.transactionTemplates.forEach(t=>{if(t.id!==target.id&&templateKey(t.title)===familyKey)t.isDefault=false;});
-  normalizeTransactionTemplates(); saveData(); renderTemplateCleanup();
-}
-function archiveSelectedTemplateVariants(familyKey){
-  const ids=selectedTemplateCleanupIds(familyKey); if(!ids.length){alert("Select at least one variant.");return;}
-  data.settings.transactionTemplates.forEach(t=>{if(ids.includes(t.id)){t.archived=true;t.isDefault=false;}});
-  normalizeTransactionTemplates();saveData();renderTemplateCleanup();
-}
-function deleteSelectedTemplateVariants(familyKey){
-  const ids=selectedTemplateCleanupIds(familyKey); if(!ids.length){alert("Select at least one variant.");return;}
-  if(!confirm(`Delete ${ids.length} selected template variant${ids.length===1?'':'s'}? Transactions will not be deleted.`))return;
-  const remove=new Set(ids); data.settings.transactionTemplates=data.settings.transactionTemplates.filter(t=>!remove.has(t.id));
-  normalizeTransactionTemplates();saveData();renderTemplateCleanup();
+  templateManagerSaveAndRefresh();
 }
 function renderTemplateCleanup(){
   const summary=document.getElementById("templateCleanupSummary");
   const content=document.getElementById("templateCleanupContent");
   if(!summary||!content)return;
-  const families=transactionTemplateFamilies({includeArchived:true});
   const templates=normalizeTransactionTemplates();
+  const families=transactionTemplateFamilies({includeArchived:true});
   const exact=exactTemplateDuplicateGroups();
   const unused=templates.filter(t=>templateUsageStats(t).count===0).length;
   const duplicateCount=exact.reduce((n,g)=>n+g.length-1,0);
-  summary.innerHTML=`<span><b>${families.length}</b> families</span><span><b>${templates.filter(t=>!t.archived).length}</b> active options</span><span><b>${duplicateCount}</b> exact duplicates</span><span><b>${unused}</b> unused</span>`;
-  content.innerHTML=families.map(family=>`<details class="cleanup-family" data-template-cleanup-family="${escapeAttr(family.key)}">
-    <summary class="cleanup-family-summary"><span><b>${escapeAttr(family.title)}</b><small>${family.templates.length} option${family.templates.length===1?'':'s'}</small></span><span>Review</span></summary>
-    <div class="cleanup-family-body">
-      <p class="hint">Select only the versions you intentionally want to combine, archive, or delete.</p>
-      <div class="cleanup-variant-list">${family.templates.map(t=>{const u=templateUsageStats(t);return `<label class="cleanup-variant-row"><input type="checkbox" data-template-cleanup-select value="${t.id}"><span><b>${escapeAttr(templateVariantLabel(t))}</b><small>${escapeAttr(templateFieldSummary(t))} • ${u.count} use${u.count===1?'':'s'}${t.archived?' • Archived':''}${t.isDefault?' • Default':''}</small></span><button type="button" class="ghost small" data-template-cleanup-edit="${t.id}">Edit</button></label>`;}).join("")}</div>
-      <div class="cleanup-family-actions">
-        <label>Merge into<select data-template-merge-target>${family.templates.map(t=>`<option value="${t.id}">${escapeAttr(templateVariantLabel(t))}</option>`).join("")}</select></label>
-        <div class="inline-actions"><button type="button" class="ghost small" data-template-cleanup-action="merge">Merge selected</button><button type="button" class="ghost small" data-template-cleanup-action="archive">Archive selected</button><button type="button" class="danger ghost small" data-template-cleanup-action="delete">Delete selected</button></div>
+  const activeCount=templates.filter(t=>!t.archived).length;
+  summary.innerHTML=`<span><b>${families.length}</b> titles</span><span><b>${activeCount}</b> active</span><span><b>${templates.length-activeCount}</b> archived</span><span><b>${unused}</b> unused</span><span><b>${duplicateCount}</b> exact duplicates</span>`;
+
+  const familyFilter=document.getElementById("templateManagerFamilyFilter");
+  if(familyFilter){
+    if(templateManagerState.familyKey){
+      const family=families.find(f=>f.key===templateManagerState.familyKey);
+      familyFilter.hidden=false;
+      familyFilter.innerHTML=`<span>Showing <b>${escapeAttr(family?.title||templateManagerState.familyKey)}</b></span><button type="button" class="ghost tiny" id="clearTemplateFamilyFilter">Show all templates</button>`;
+      document.getElementById("clearTemplateFamilyFilter")?.addEventListener("click",()=>{templateManagerState.familyKey="";templateManagerState.selected.clear();renderTemplateCleanup();});
+    } else {familyFilter.hidden=true;familyFilter.innerHTML="";}
+  }
+
+  const visible=templateManagerVisibleTemplates();
+  const selectedCount=templateManagerState.selected.size;
+  const exactIds=new Set(exact.flatMap(group=>group.map(t=>t.id)));
+  content.innerHTML=visible.length ? visible.map(t=>{
+    const usage=templateUsageStats(t);
+    const optionLabel=String(t.variantLabel||"").trim();
+    return `<div class="template-manager-row ${t.archived?'archived':''} ${templateManagerState.selected.has(t.id)?'selected':''}">
+      <label class="template-manager-check" aria-label="Select ${escapeAttr(t.title)}"><input type="checkbox" data-template-manager-select value="${t.id}" ${templateManagerState.selected.has(t.id)?'checked':''}></label>
+      <div class="template-manager-main">
+        <div class="template-manager-title"><b>${escapeAttr(t.title)}</b>${optionLabel?`<span>${escapeAttr(optionLabel)}</span>`:""}${t.isDefault&&!t.archived?'<span class="template-badge default">Default</span>':''}${t.archived?'<span class="template-badge archived">Archived</span>':''}${exactIds.has(t.id)?'<span class="template-badge duplicate">Duplicate</span>':''}</div>
+        <small>${escapeAttr(templateManagerAutofillSummary(t))}</small>
+        <small class="template-manager-usage">${usage.count} use${usage.count===1?'':'s'} • ${templateLastUsedLabel(usage.lastDate)} • ${t.source==='auto'?'Learned automatically':'Custom'}</small>
       </div>
-    </div>
-  </details>`).join("") || `<div class="empty">No transaction templates yet.</div>`;
-  content.querySelectorAll("[data-template-cleanup-edit]").forEach(btn=>btn.onclick=()=>{document.getElementById("templateCleanupModal")?.close();simpleTemplate(btn.dataset.templateCleanupEdit);});
-  content.querySelectorAll("[data-template-cleanup-action]").forEach(btn=>btn.onclick=()=>{
-    const familyKey=btn.closest("[data-template-cleanup-family]")?.dataset.templateCleanupFamily || "";
-    if(btn.dataset.templateCleanupAction==="merge")mergeSelectedTemplateVariants(familyKey);
-    if(btn.dataset.templateCleanupAction==="archive")archiveSelectedTemplateVariants(familyKey);
-    if(btn.dataset.templateCleanupAction==="delete")deleteSelectedTemplateVariants(familyKey);
-  });
+      <button type="button" class="ghost small" data-template-manager-edit="${t.id}">Edit</button>
+    </div>`;
+  }).join("") : `<div class="empty">No templates match this view.</div>`;
+
+
+  const search=document.getElementById("templateManagerSearch");
+  const filter=document.getElementById("templateManagerFilter");
+  const selectAll=document.getElementById("templateManagerSelectAll");
+  const bulkCount=document.getElementById("templateBulkCount");
+  const bulkBar=document.getElementById("templateBulkBar");
+  if(search){search.value=templateManagerState.query;search.oninput=()=>{templateManagerState.query=search.value;templateManagerState.selected.clear();renderTemplateCleanup();};}
+  if(filter){filter.value=templateManagerState.filter;filter.onchange=()=>{templateManagerState.filter=filter.value;templateManagerState.selected.clear();renderTemplateCleanup();};}
+  if(selectAll){
+    selectAll.checked=!!visible.length && visible.every(t=>templateManagerState.selected.has(t.id));
+    selectAll.indeterminate=visible.some(t=>templateManagerState.selected.has(t.id)) && !selectAll.checked;
+    selectAll.onchange=()=>{visible.forEach(t=>selectAll.checked?templateManagerState.selected.add(t.id):templateManagerState.selected.delete(t.id));renderTemplateCleanup();};
+  }
+  if(bulkCount) bulkCount.textContent=`${selectedCount} selected`;
+  if(bulkBar) bulkBar.classList.toggle("active",selectedCount>0);
+  ["applyTemplateBulkEdit","simplifySelectedTemplates","mergeSelectedTemplates","archiveSelectedTemplates","restoreSelectedTemplates","deleteSelectedTemplates"].forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=!selectedCount;});
+
+  updateTemplateBulkValueOptions();
+  const fieldEl=document.getElementById("templateBulkField");
+  if(fieldEl) fieldEl.onchange=updateTemplateBulkValueOptions;
+  const applyBtn=document.getElementById("applyTemplateBulkEdit"); if(applyBtn) applyBtn.onclick=applyTemplateBulkEdit;
+  const simplifyBtn=document.getElementById("simplifySelectedTemplates"); if(simplifyBtn) simplifyBtn.onclick=simplifySelectedTemplates;
+  const mergeSelectedBtn=document.getElementById("mergeSelectedTemplates"); if(mergeSelectedBtn) mergeSelectedBtn.onclick=mergeSelectedTemplates;
+  const archiveBtn=document.getElementById("archiveSelectedTemplates"); if(archiveBtn) archiveBtn.onclick=archiveSelectedTemplates;
+  const restoreBtn=document.getElementById("restoreSelectedTemplates"); if(restoreBtn) restoreBtn.onclick=restoreSelectedTemplates;
+  const deleteBtn=document.getElementById("deleteSelectedTemplates"); if(deleteBtn) deleteBtn.onclick=deleteSelectedTemplates;
+  const mergeBtn=document.getElementById("mergeExactTemplatesBtn"); if(mergeBtn){mergeBtn.disabled=!duplicateCount;mergeBtn.onclick=mergeExactTemplateDuplicates;}
+
+  content.querySelectorAll("[data-template-manager-select]").forEach(input=>input.onchange=()=>{input.checked?templateManagerState.selected.add(input.value):templateManagerState.selected.delete(input.value);renderTemplateCleanup();});
+  content.querySelectorAll("[data-template-manager-edit]").forEach(btn=>btn.onclick=()=>{document.getElementById("templateCleanupModal")?.close();simpleTemplate(btn.dataset.templateManagerEdit);});
 }
-function openTemplateCleanup(){
+function openTemplateCleanup(familyKey=""){
+  templateManagerState.query="";
+  templateManagerState.filter="active";
+  templateManagerState.familyKey=familyKey||"";
+  templateManagerState.selected.clear();
   renderTemplateCleanup();
   document.getElementById("templateCleanupModal")?.showModal();
 }
 window.openTemplateCleanup=openTemplateCleanup;
 window.mergeExactTemplateDuplicates=mergeExactTemplateDuplicates;
-window.mergeSelectedTemplateVariants=mergeSelectedTemplateVariants;
-window.archiveSelectedTemplateVariants=archiveSelectedTemplateVariants;
-window.deleteSelectedTemplateVariants=deleteSelectedTemplateVariants;
+window.applyTemplateBulkEdit=applyTemplateBulkEdit;
+window.simplifySelectedTemplates=simplifySelectedTemplates;
+window.mergeSelectedTemplates=mergeSelectedTemplates;
+window.archiveSelectedTemplates=archiveSelectedTemplates;
+window.restoreSelectedTemplates=restoreSelectedTemplates;
+window.deleteSelectedTemplates=deleteSelectedTemplates;
 
 
 function renderPaycheckSettings(){
@@ -8409,9 +8524,8 @@ function renderSettings(){
   const templateCount = document.getElementById("settingsTemplateCount");
   if(templateCount){
     const families=transactionTemplateFamilies({includeArchived:false});
-    const active=(data.settings?.transactionTemplates||[]).filter(t=>!normalizeTransactionTemplate(t).archived).length;
-    templateCount.textContent = `${families.length} / ${active}`;
-    templateCount.title = "families / active variants";
+    templateCount.textContent = `${families.length}`;
+    templateCount.title = "active template titles";
   }
 
   renderRecentChanges();
