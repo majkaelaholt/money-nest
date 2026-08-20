@@ -1,5 +1,8 @@
 # Money Nest
 
+## v2-266
+- Calendar cleared-only balance now appears only on today's date. It always shows on today, even when cleared and projected balances are identical; all other calendar days show only the projected balance.
+
 ## v2-265
 - Added a subtle cleared-only balance beneath each Calendar day’s projected balance when planned transactions make the two totals differ. The main balance remains the existing projected end-of-day amount; the smaller `✓` amount reflects only cleared activity through that day.
 - Cleared-only calendar balances use the same visible account/transfer perspective as the existing Calendar and respect the selected Calendar account filter. Days where projected and cleared balances are identical do not repeat the same number.
@@ -149,7 +152,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-265`
+Current version: `money-nest-v2-266`
 
 ## Important Notes
 

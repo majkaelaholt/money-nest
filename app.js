@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-265";
+const APP_VERSION = "2-266";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -5575,7 +5575,7 @@ function renderCalendar(){
     if(isHighestBalance) dayClasses.push("highest-balance-day");
     if(isToday) dayClasses.push("today-day");
 
-    const showClearedBalance = Math.abs(Number(day.clearedTotal || 0) - Number(day.projectedTotal || 0)) >= 0.005;
+    const showClearedBalance = isToday;
     html += `<div class="${dayClasses.join(" ")}" data-day="${day.iso}" tabindex="0">
       <div class="day-top"><span class="day-num">${day.date.getDate()}</span><span class="day-balance-stack"><span class="day-balance">${money(day.projectedTotal)}</span>${showClearedBalance ? `<span class="day-cleared-balance" title="Cleared-only balance" aria-label="Cleared-only balance ${money(day.clearedTotal)}">✓ ${money(day.clearedTotal)}</span>` : ""}</span></div>
       ${visibleTx.map(tx=>renderChip(tx)).join("")}
