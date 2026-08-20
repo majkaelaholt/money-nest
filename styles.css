@@ -6660,7 +6660,7 @@ button.budget-review-row:hover,button.budget-review-row:focus-visible{
 .template-manager-head .eyebrow{margin:0 0 2px}
 .template-manager-controls{
   display:grid;
-  grid-template-columns:minmax(230px,1.3fr) minmax(120px,.45fr) auto auto auto;
+  grid-template-columns:minmax(220px,1.25fr) minmax(110px,.42fr) minmax(150px,.55fr) auto auto auto;
   gap:8px;
   align-items:end;
   padding:10px;
@@ -7191,3 +7191,12 @@ button.budget-review-row:hover,button.budget-review-row:focus-visible{
 .bill-health-finding b,.bill-detail-health-ok b{font-size:11px}.bill-health-finding small,.bill-detail-health-ok small{font-size:10px;line-height:1.35;color:var(--muted)}
 @media(max-width:760px){.bill-health-summary{align-items:flex-start;flex-direction:column;gap:8px;padding:10px 11px}.bill-health-actions{width:100%;justify-content:space-between}.bill-health-chips{justify-content:flex-start}.bill-group-head{padding-left:2px;padding-right:2px}}
 @media(max-width:520px){.bill-health-actions{align-items:flex-start;flex-direction:column}}
+
+
+/* v2-261: field-use filter in Template Manager. */
+#templateManagerFieldFilter{min-width:0}
+@media(max-width:1050px) and (min-width:901px){
+  .template-manager-controls{grid-template-columns:minmax(220px,1.2fr) minmax(120px,.45fr) minmax(150px,.55fr) auto}
+  .template-manager-controls #mergeExactTemplatesBtn{grid-column:auto}
+  .template-select-all{grid-column:auto}
+}

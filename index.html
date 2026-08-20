@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <title>Money Nest</title>
-  <link rel="stylesheet" href="styles.css?v=2-260"/>
+  <link rel="stylesheet" href="styles.css?v=2-261"/>
 
   <link rel="icon" href="favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
@@ -767,6 +767,9 @@
       <div class="template-manager-controls">
         <label class="template-manager-search">Search<input id="templateManagerSearch" type="search" placeholder="Title, option, category, account…"></label>
         <label>Show<select id="templateManagerFilter"><option value="active">Active</option><option value="all">All</option><option value="archived">Archived</option><option value="unused">Unused</option></select></label>
+        <label>Uses field<select id="templateManagerFieldFilter">
+          <option value="any">Any</option><option value="extra">Any extra autofill</option><option value="notes">Notes</option><option value="status">Status</option><option value="type">Type</option><option value="accountId">Cash account</option><option value="debtAccountId">Card/debt used</option><option value="transferToAccountId">Transfer destination</option><option value="linkedDebtId">Payment debt</option><option value="categoryId">Category</option>
+        </select></label>
         <label class="checkbox-row template-hide-recurring"><input id="templateManagerHideRecurring" type="checkbox"> Hide recurring-linked</label>
         <label class="checkbox-row template-select-all"><input id="templateManagerSelectAll" type="checkbox"> Select all shown</label>
         <button type="button" class="ghost small" id="mergeExactTemplatesBtn">Merge exact duplicates</button>
@@ -889,7 +892,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=2-260"></script>
+  <script src="app.js?v=2-261"></script>
   <dialog id="globalSearchModal" class="global-search-modal">
     <div class="global-search-shell">
       <div class="modal-head"><div><h3>🔎 Search Money Nest</h3><p class="hint">Transactions, merchants, categories, accounts, amounts, and dates.</p></div><button class="icon-btn" onclick="document.getElementById('globalSearchModal').close()">×</button></div>

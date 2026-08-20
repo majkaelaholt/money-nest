@@ -1,5 +1,11 @@
 # Money Nest
 
+## v2-261
+- Added a `Uses field` filter to Manage Templates so cleanup can isolate shortcuts that actively autofill Notes, Status, Type, Cash account, Card/debt, Transfer destination, Payment debt, Category, or any extra autofill field.
+- Field filtering follows the template's application flags rather than dormant legacy values; Notes and Cash account require a real saved value, while routing fields still count when intentionally configured to clear a routing value.
+- The selected field filter is preserved when editing a template and returning to Manage Templates, alongside the existing search/filter/scroll context.
+- No template/transaction schema, JSON/CSV format, Supabase behavior, recurring-bill data, or financial calculation changes. Schema remains 225.
+
 ## v2-260
 - Fixed Edit Template so intentionally clearing the Saved note persists as blank instead of restoring the template's previous note. A blank note also disables note autofill because there is no saved note to apply.
 - Clarified and reinforced the separation between transaction templates and recurring Bills series. A recurring-linked template is only detected for reference/display; editing or deleting the template changes only `settings.transactionTemplates` and never edits the matching recurring bill. Recurring bill notes, amounts, schedules, accounts, and routing remain editable only through Bills → Edit Series.
@@ -119,7 +125,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-260`
+Current version: `money-nest-v2-261`
 
 ## Important Notes
 

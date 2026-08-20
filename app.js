@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-260";
+const APP_VERSION = "2-261";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -8141,7 +8141,7 @@ function exactTemplateDuplicateGroups(){
   });
   return [...groups.values()].filter(items=>items.length>1);
 }
-const templateManagerState={query:"",filter:"active",familyKey:"",hideRecurring:false,selected:new Set(),scrollTop:0};
+const templateManagerState={query:"",filter:"active",fieldFilter:"any",familyKey:"",hideRecurring:false,selected:new Set(),scrollTop:0};
 function templateRecurringMatches(t){
   const fields=normalizeTemplateFields(t?.fields);
   const titleKey=templateKey(t?.title);
@@ -8171,6 +8171,17 @@ function templateRecurringInfo(t){
   const state=active ? "Recurring" : (tx.billArchived ? "Recurring archived" : "Recurring ended");
   return {tx,state,active,count:matches.length,description:recurrenceDescription(tx)};
 }
+function templateUsesFilteredField(t, field){
+  if(!field || field==="any") return true;
+  const f=normalizeTemplateFields(t?.fields);
+  if(field==="extra") return ["notes","type","status","accountId","debtAccountId","transferToAccountId","linkedDebtId"].some(key=>templateUsesFilteredField(t,key));
+  if(!f[field]) return false;
+  // Notes and cash accounts only count when they have an actual value to apply.
+  // Routing fields can intentionally apply an empty value to clear that routing field.
+  if(field==="notes") return !!String(t?.notes||"").trim();
+  if(field==="accountId") return !!String(t?.accountId||"").trim();
+  return true;
+}
 function templateManagerAutofillSummary(t){
   const f=normalizeTemplateFields(t?.fields);
   const bits=[];
@@ -8191,6 +8202,7 @@ function templateManagerVisibleTemplates(){
     if(templateManagerState.filter==="active" && t.archived) return false;
     if(templateManagerState.filter==="archived" && !t.archived) return false;
     if(templateManagerState.filter==="unused" && templateUsageStats(t).count!==0) return false;
+    if(!templateUsesFilteredField(t,templateManagerState.fieldFilter)) return false;
     const recurringInfo=templateRecurringInfo(t);
     if(templateManagerState.hideRecurring && recurringInfo) return false;
     if(q){
@@ -8371,12 +8383,14 @@ function renderTemplateCleanup(){
 
   const search=document.getElementById("templateManagerSearch");
   const filter=document.getElementById("templateManagerFilter");
+  const fieldFilter=document.getElementById("templateManagerFieldFilter");
   const hideRecurring=document.getElementById("templateManagerHideRecurring");
   const selectAll=document.getElementById("templateManagerSelectAll");
   const bulkCount=document.getElementById("templateBulkCount");
   const bulkBar=document.getElementById("templateBulkBar");
   if(search){search.value=templateManagerState.query;search.oninput=()=>{templateManagerState.query=search.value;templateManagerState.selected.clear();renderTemplateCleanup();};}
   if(filter){filter.value=templateManagerState.filter;filter.onchange=()=>{templateManagerState.filter=filter.value;templateManagerState.selected.clear();renderTemplateCleanup();};}
+  if(fieldFilter){fieldFilter.value=templateManagerState.fieldFilter;fieldFilter.onchange=()=>{templateManagerState.fieldFilter=fieldFilter.value;templateManagerState.selected.clear();renderTemplateCleanup();};}
   if(hideRecurring){hideRecurring.checked=!!templateManagerState.hideRecurring;hideRecurring.onchange=()=>{templateManagerState.hideRecurring=hideRecurring.checked;templateManagerState.selected.clear();renderTemplateCleanup();};}
   if(selectAll){
     selectAll.checked=!!visible.length && visible.every(t=>templateManagerState.selected.has(t.id));
@@ -8411,6 +8425,7 @@ function openTemplateCleanup(familyKey=""){
   const requestedFamily = typeof familyKey === "string" ? familyKey : "";
   templateManagerState.query="";
   templateManagerState.filter="active";
+  templateManagerState.fieldFilter="any";
   templateManagerState.familyKey=requestedFamily||"";
   templateManagerState.hideRecurring=false;
   templateManagerState.selected.clear();
@@ -13121,3 +13136,5 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 
 // v2-260: Template notes can be intentionally cleared; template edits remain shortcut-only and never mutate recurring Bills series.
 // v2-259: Bills Recurring Health flags conservative review signals and groups active series into Needs review, Coming up, and Later.
+
+// v2-261: Template Manager can filter by the fields a shortcut actively autofills.
