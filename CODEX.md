@@ -1,5 +1,12 @@
 # CODEX
 
+## v2-262
+- Appearance app surfaces now have three distinct roles: `app.panel` = Main panels, `app.panelSecondary` = Secondary/nested panels, and the existing `app.panel2` = Soft/innermost panels. Preserve `panel2` semantics for backward compatibility; do not rename or repurpose it.
+- Older palette data may omit `panelSecondary`. `paletteSecondaryPanelColor()` / palette snapshot merging derives a safe midpoint from Main + Soft until the user saves an explicit Secondary value. Palette/reset-default JSON remains backward compatible and schema stays 225.
+- Use Main panels for outer cards/modals, Secondary panels for nested section containers, and Soft panels for rows/items/controls inside those containers. Exceptions may be intentional when a screen has only two nesting levels (for example Add/Edit Transaction uses Main outer + Soft options).
+- Quick Actions specifically uses Secondary for the container and Soft for recent-place/search items.
+- No financial, transaction, template, recurring, JSON/CSV, or Supabase behavior changed.
+
 ## v2-261
 - Manage Templates includes a `Uses field` view filter driven by normalized template application flags. Preserve this filter in `templateManagerState` across edit/save/cancel return flows.
 - `templateUsesFilteredField()` treats dormant values as not in use. Notes require an active notes flag plus nonblank note; Cash account requires an active account flag plus an account ID; routing fields may count with an empty saved value because an active routing field can intentionally clear that destination/debt.
@@ -121,7 +128,7 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-261`
+Latest known version: `money-nest-v2-262`
 
 Before editing, always inspect `README.md` and confirm the current version in the repository. If `README.md` shows a different version, continue from the repo version and mention the mismatch in your summary.
 
@@ -257,7 +264,7 @@ Example README note:
 ### v2-200
 - Banking is excluded from budgeting. Savings transfers net contributions by direction.
 
-- Current version: money-nest-v2-261. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
+- Current version: money-nest-v2-262. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
 
 
 ### v2-205

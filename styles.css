@@ -1,5 +1,5 @@
 :root{
-  --bg:#f5efe6; --panel:#fffaf3; --panel-2:#f1e3d0; --ink:#2e2a24;
+  --bg:#f5efe6; --panel:#fffaf3; --panel-secondary:#f8efe2; --panel-2:#f1e3d0; --soft-panel:#f1e3d0; --ink:#2e2a24;
   --muted:#766b5d; --line:#dfd0bd; --accent:#8c6f4d; --accent-2:#b7835a;
   --green:#59745a; --red:#a34f45; --yellow:#b87f21; --blue:#647c8f;
   --shadow:0 18px 45px rgba(73,55,34,.10); --radius:22px;
@@ -7200,3 +7200,92 @@ button.budget-review-row:hover,button.budget-review-row:focus-visible{
   .template-manager-controls #mergeExactTemplatesBtn{grid-column:auto}
   .template-select-all{grid-column:auto}
 }
+
+
+/* v2-262: three-level palette surface hierarchy. Main panels are outer containers,
+   secondary panels are nested section containers, and soft panels are the innermost rows/controls. */
+.settings-master-body>details.panel,
+.settings-tools-panel,
+.side-card.recent-card,
+.template-manager-controls,
+.template-bulk-bar,
+.template-manager-family-filter,
+.bill-controls-disclosure,
+.archived-bills-section,
+.transaction-detail-section{
+  background:var(--panel-secondary) !important;
+}
+
+/* Innermost items should visibly separate from the section that contains them. */
+.custom-palette-grid label,
+.palette-choice,
+.bulk-category-option,
+.recent-card .recent-place,
+.recent-card .sidebar-search-btn,
+.template-manager-row,
+.template-library-row,
+.cleanup-variant-row,
+.cleanup-family,
+.cleanup-summary-grid article,
+.category-cleanup-row,
+.version-save-indicator article,
+.transaction-detail-summary article,
+.global-search-row,
+.bill-detail-row,
+.row,
+.account-card,
+.debt-company,
+.category-row,
+.bill-card{
+  background:var(--soft-panel) !important;
+}
+
+.recent-card .recent-place:hover,
+.recent-card .sidebar-search-btn:hover,
+.template-manager-row:hover,
+.template-library-row:hover{
+  background:color-mix(in srgb,var(--soft-panel) 84%,var(--accent) 16%) !important;
+}
+
+/* Transaction modal: outer dialog uses Main panels; its choices/disclosures use Soft panels. */
+#transactionModal .transaction-modal-card{background:var(--panel) !important}
+#transactionModal .form-details,
+#transactionModal .auto-paycheck-box{
+  background:var(--soft-panel) !important;
+}
+#transactionModal input,
+#transactionModal select,
+#transactionModal textarea{
+  background:color-mix(in srgb,var(--soft-panel) 72%,var(--panel)) !important;
+}
+
+/* Settings nested content gets a clear main > secondary > soft visual ladder. */
+.settings-master-body>details.panel .subpanel,
+.settings-master-body>details.panel .settings-default-grid>*,
+.settings-master-body>details.panel .version-save-indicator article,
+.settings-master-body>details.panel .health-summary-grid article{
+  background:var(--soft-panel) !important;
+}
+.settings-master-body>details.panel .summary-pill,
+.bill-group-head span,
+.bill-health-chip,
+.bill-health-icon{
+  background:var(--soft-panel) !important;
+}
+
+/* Keep generic inner/filter containers one step below their parent panel. */
+.bill-filters,
+.recurring-management-strip,
+.recurrence-box,
+.bill-health-summary,
+.bill-detail-health,
+.mobile-horizon-tabs,
+.mobile-cushions{
+  background:var(--panel-secondary) !important;
+}
+
+/* Palette editor itself demonstrates the hierarchy it controls. */
+#appearancePalettePanel .palette-choice-grid,
+#appearancePalettePanel .palette-editor-head,
+#appearancePalettePanel .palette-actions,
+#appearancePalettePanel .palette-reset-note{position:relative}

@@ -1,5 +1,12 @@
 # Money Nest
 
+## v2-262
+- Added a third editable app-surface color, `Secondary panels`, so Appearance now has a deliberate three-level hierarchy: Main panels for outer cards/modals, Secondary panels for nested section containers, and Soft panels for the innermost rows/items.
+- Preserved the existing `panel2`/Soft panels setting for backward compatibility. Older palettes/backups with no Secondary panels value derive a midpoint from their saved Main + Soft colors, so existing palette edits remain safe and immediately gain a usable middle surface.
+- Applied the hierarchy to the places where nesting is most visible: Settings master/inner cards, Quick Actions and recent-place/search items, Template Manager controls/rows, Bills nested controls, transaction-detail sections, and Add/Edit Transaction. Transaction modals remain Main panels with their disclosure/options and field surfaces using Soft panels as requested.
+- Quick Actions now uses Secondary panels for its container and Soft panels for recent places/search. Palette reset defaults include the new Secondary panels value while older saved reset defaults remain compatible.
+- No financial data, transaction/template schema, JSON/CSV format, Supabase behavior, or calculations changed. Schema remains 225.
+
 ## v2-261
 - Added a `Uses field` filter to Manage Templates so cleanup can isolate shortcuts that actively autofill Notes, Status, Type, Cash account, Card/debt, Transfer destination, Payment debt, Category, or any extra autofill field.
 - Field filtering follows the template's application flags rather than dormant legacy values; Notes and Cash account require a real saved value, while routing fields still count when intentionally configured to clear a routing value.
@@ -125,7 +132,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-261`
+Current version: `money-nest-v2-262`
 
 ## Important Notes
 
