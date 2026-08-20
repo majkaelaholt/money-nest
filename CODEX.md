@@ -161,7 +161,12 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-270`
+Latest known version: `money-nest-v2-271`
+
+### v2-271 palette surface rules
+- Budgets hierarchy: parent Budget Review / Monthly Budget Targets panels = Main; Quick Views, summary/insight/review/list containers = Secondary; controls, metrics, inner chart/list surfaces, and budget rows = Soft.
+- Accounts hierarchy: Cash Accounts / Debts parent panels = Main; account-list, utilization, debt-tools, and debt-type containers = Secondary; account rows, company/list interiors, utilization contents, and debt rows = Soft.
+- Keep list rows readable as one grouped Soft surface when appropriate instead of forcing a separate colored card around every row.
 
 ### v2-270 palette surface rules
 - `App background` (`--bg`) controls the page/workspace backdrop. Do not mix `Main panels` into the body background; this is what keeps strongly colored Main cards distinct from the page.

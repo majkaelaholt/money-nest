@@ -1,5 +1,13 @@
 # Money Nest
 
+## v2-271
+
+### Budgets + Accounts palette hierarchy
+- Budgets now use **Main panels** for the two parent cards, **Secondary panels** for Quick Views / summary / insights / review sections / budget-list containers, and **Soft panels** for controls, summary tiles, insight cards, chart/list interiors, and individual monthly budget rows.
+- Accounts now use **Main panels** for the Cash Accounts and Debts parent cards, **Secondary panels** for account lists, Credit Utilization, Debt Tools, and debt-type groups, and **Soft panels** for the actual account rows, utilization contents, company/list interiors, and debt-account rows.
+- Hover states are derived from the relevant Soft + Secondary roles instead of introducing another unrelated surface color.
+- This is a visual-only palette-role correction. No budget math, account/debt calculations, saved-data shape, JSON/CSV compatibility, Supabase behavior, or schema version changed. Schema remains 225.
+
 ## v2-270
 
 ### Palette hierarchy cleanup
