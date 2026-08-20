@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-269";
+const APP_VERSION = "2-270";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -2976,7 +2976,8 @@ function applyMoneyNestPalette(){
   const secondaryPanel=paletteSecondaryPanelColor(app);
   const vars={"--bg":app.bg,"--panel":app.panel,"--panel-secondary":secondaryPanel,"--panel-2":app.panel2,"--soft-panel":app.panel2,"--ink":app.ink,"--muted":app.muted,"--line":app.line,"--accent":app.accent,"--accent-2":app.accent2,"--accent-soft":app.panel2};
   Object.entries(vars).forEach(([k,v])=>v&&root.style.setProperty(k,v));
-  document.body.style.background=`linear-gradient(135deg, ${app.panel}, ${app.bg})`;
+  const pageBgStart=blendPaletteHex(app.bg||MONEY_NEST_PALETTES.legacy.app.bg,"#ffffff",.10);
+  document.body.style.background=`linear-gradient(135deg, ${pageBgStart}, ${app.bg||MONEY_NEST_PALETTES.legacy.app.bg})`;
 }
 const DEFAULT_PALETTE_ROLE_LABELS={light1:"Bills",light2:"Essentials",medium1:"Everyday 1",medium2:"Everyday 2",dark1:"Flexible spending",dark2:"Flexible 2",accent1:"Accent 1",accent2:"Accent 2"};
 function paletteRoleLabel(role,paletteId=data?.settings?.appearance?.paletteId){

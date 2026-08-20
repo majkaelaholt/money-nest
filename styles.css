@@ -7711,3 +7711,81 @@ button.budget-review-row:hover,button.budget-review-row:focus-visible{
     background:var(--soft-panel) !important;
   }
 }
+
+/* v2-270: Settings/Bills palette hierarchy + page background isolation.
+   App background now colors the page backdrop; Main panels no longer tint the backdrop gradient. */
+body{
+  background:linear-gradient(135deg,color-mix(in srgb,var(--bg) 90%,white 10%),var(--bg));
+}
+
+/* SETTINGS
+   Master groups = Main, nested setting cards = Secondary, controls/inner cards = Soft. */
+#settings .settings-overview,
+#settings .settings-master-group{
+  background:var(--panel) !important;
+}
+#settings .settings-master-body > details.panel,
+#settings .settings-tools-panel{
+  background:var(--panel-secondary) !important;
+}
+#settings .settings-emoji,
+#settings .summary-pill,
+#settings .version-save-indicator article,
+#settings .backup-health-indicator article,
+#settings .paycheck-profile-card,
+#settings .cloud-sync-panel .cloud-status-card,
+#settings .subpanel,
+#settings .settings-default-grid > *,
+#settings .category-row,
+#settings .template-library-row,
+#settings .template-manager-row,
+#settings .change-row,
+#settings .palette-choice,
+#settings .custom-palette-grid label{
+  background:var(--soft-panel) !important;
+}
+#settings input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+#settings select,
+#settings textarea,
+#settings .check-dropdown-btn{
+  background:var(--soft-panel) !important;
+  color:var(--ink);
+}
+#settings .ghost:not(.danger),
+#settings .file-label{
+  background:var(--soft-panel) !important;
+}
+#settings .settings-collapse-body{
+  background:transparent;
+}
+
+/* BILLS
+   Page card = Main, recurring-health/filter containers = Secondary, filters/rows/chips = Soft. */
+#bills > .panel{
+  background:var(--panel) !important;
+}
+#bills .bill-health-summary,
+#bills .bill-controls-disclosure,
+#bills .archived-bills-section,
+#bills .bill-detail-health{
+  background:var(--panel-secondary) !important;
+}
+#bills .bill-filters select,
+#bills .bill-filters .check-dropdown-btn,
+#bills .bill-health-chip,
+#bills .bill-health-icon,
+#bills .bill-group-head span,
+#bills .bill-active-list,
+#bills .archived-bills-list,
+#bills .bill-card{
+  background:var(--soft-panel) !important;
+}
+#bills .bill-card:hover{
+  background:color-mix(in srgb,var(--soft-panel) 86%,var(--panel-secondary) 14%) !important;
+}
+#bills .ghost{
+  background:var(--soft-panel) !important;
+}
+#bills .bill-filters{
+  background:transparent !important;
+}

@@ -1,5 +1,13 @@
 # Money Nest
 
+## v2-270
+
+### Palette hierarchy cleanup
+- App background now controls the page backdrop directly. The page gradient is derived only from **App background** instead of blending **Main panels** into the page, so strongly colored cards stay visually separate from the workspace behind them.
+- Settings now consistently uses **Main panels** for the four parent groups, **Secondary panels** for nested setting cards, and **Soft panels** for fields, status cards, paycheck cards, template/category rows, palette swatches, and ordinary ghost controls.
+- Bills now consistently uses **Main panels** for the page card, **Secondary panels** for Recurring Health / Filters / archived containers, and **Soft panels** for filter controls, health chips, bill lists, and bill rows.
+- This is a visual-only palette-role correction. No financial calculations, transaction/recurring behavior, saved-data shape, JSON/CSV compatibility, Supabase behavior, or schema version changed. Schema remains 225.
+
 ## v2-269
 
 ### Dashboard palette hierarchy
