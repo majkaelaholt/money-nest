@@ -1,6 +1,14 @@
 # Money Nest
 
-## v2-268
+## v2-269
+
+### Dashboard palette hierarchy
+- Dashboard now follows the same three-level palette surface system as the rest of Money Nest.
+- Major Dashboard cards use **Main panels**.
+- Nested/highlight sections use **Secondary panels**.
+- Inner metric tiles, transaction/account lists, counters, and review content use **Soft panels**.
+- This is a visual-only change; Dashboard calculations and alert logic are unchanged.
+
 - Made Add/Edit Transaction use the palette surface roles literally: the outer transaction modal uses `Main panels`, disclosure/helper sections such as Payment / routing, Repeat, Linked transactions, Notes, and the compact amount calculator use `Secondary panels`, and transaction inputs/selects/textareas use `Soft panels`.
 - Removed the previous blended transaction-input color so extreme/custom palettes now map directly to the selected panel colors on desktop and iPhone quick entry.
 - No transaction, palette-storage, JSON/CSV, Supabase, or schema behavior changed. Schema remains 225.
@@ -161,7 +169,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-268`
+Current version: `money-nest-v2-269`
 
 ## Important Notes
 

@@ -7618,3 +7618,96 @@ button.budget-review-row:hover,button.budget-review-row:focus-visible{
     background:var(--panel-secondary) !important;
   }
 }
+
+/* v2-269: dashboard palette hierarchy — major cards / nested sections / inner content */
+#dashboard #summaryCards.dashboard-metric-strip{
+  background:var(--panel-secondary) !important;
+  gap:1px !important;
+  border-color:var(--line) !important;
+}
+#dashboard .dashboard-metric{
+  background:var(--soft-panel) !important;
+  border-right:0 !important;
+}
+#dashboard .dashboard-metric-icon{
+  background:var(--panel-secondary) !important;
+}
+#dashboard .dashboard-metric.has-alert .dashboard-metric-icon{
+  background:color-mix(in srgb,var(--yellow) 28%,var(--soft-panel)) !important;
+}
+
+/* Major Dashboard cards use Main panels. */
+#dashboard .dashboard-safe-panel,
+#dashboard .dashboard-upcoming-panel,
+#dashboard .dashboard-review-panel,
+#dashboard .dashboard-action-center-panel{
+  background:var(--panel) !important;
+}
+#dashboard .dashboard-safe-panel{
+  background:var(--panel) !important;
+}
+
+/* Safe-to-spend: highlighted account is Secondary; remaining account rows sit on Soft. */
+#dashboard .dashboard-safe-hero{
+  background:var(--panel-secondary) !important;
+}
+#dashboard .dashboard-safe-hero:hover{
+  background:color-mix(in srgb,var(--panel-secondary) 88%,var(--soft-panel)) !important;
+}
+#dashboard .dashboard-safe-list > .dashboard-flat-list,
+#dashboard .dashboard-upcoming-list > .dashboard-flat-list{
+  margin-top:6px;
+  padding:0 10px;
+  border:1px solid color-mix(in srgb,var(--line) 82%,transparent);
+  border-radius:14px;
+  background:var(--soft-panel) !important;
+  overflow:hidden;
+}
+#dashboard .dashboard-list-row:hover{
+  background:color-mix(in srgb,var(--panel-secondary) 38%,var(--soft-panel)) !important;
+}
+
+/* Needs Review: the expanded work area is Secondary, with Soft counters/findings inside. */
+#dashboard .dashboard-review-panel > .settings-collapse-body{
+  margin-top:10px;
+  padding:12px;
+  border:1px solid color-mix(in srgb,var(--line) 82%,transparent);
+  border-radius:15px;
+  background:var(--panel-secondary) !important;
+}
+#dashboard .dashboard-review-panel .review-summary article,
+#dashboard .dashboard-review-panel .review-item,
+#dashboard .dashboard-review-panel .empty{
+  background:var(--soft-panel) !important;
+}
+
+/* Action Center: disclosure headers are Secondary; opened contents are Soft. */
+#dashboard .dashboard-action-groups{
+  border:1px solid color-mix(in srgb,var(--line) 82%,transparent);
+  border-radius:15px;
+  background:var(--panel-secondary) !important;
+  overflow:hidden;
+}
+#dashboard .dashboard-action-group{
+  background:transparent !important;
+}
+#dashboard .dashboard-action-count{
+  background:var(--soft-panel) !important;
+}
+#dashboard .dashboard-action-body{
+  padding:0 10px 10px;
+  background:var(--soft-panel) !important;
+}
+#dashboard .dashboard-action-body .empty{
+  background:transparent !important;
+}
+#dashboard .dashboard-action-row:hover{
+  background:color-mix(in srgb,var(--panel-secondary) 38%,var(--soft-panel)) !important;
+}
+
+/* Keep the compact phone glance on the same surface hierarchy. */
+@media(max-width:700px){
+  html:not(.money-nest-ipad) #dashboard .mobile-quick-review button{
+    background:var(--soft-panel) !important;
+  }
+}
