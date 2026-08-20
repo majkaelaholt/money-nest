@@ -1,5 +1,17 @@
 # CODEX
 
+## v2-258
+- Appearance now supports optional per-palette reset baselines in `settings.appearance.paletteResetDefaults`. Missing baselines must always fall back to the existing built-in palette defaults; do not require a migration or schema bump.
+- `Set current as reset default` saves the on-screen palette state and makes it the future Reset target for only the active palette. `Use built-in reset default` deletes only that saved baseline and must not alter the currently active colors.
+- `Reset this palette` resets colors/app palette values only; preserve editable palette-role labels as before. Reset baselines are preference data and remain covered by normal JSON/cloud backup behavior.
+- Appearance color inputs use full-bleed native swatches without the browser's white inset. Schema remains 225.
+
+## v2-257
+- Template Manager is the return destination when `simpleTemplate()` is opened from a manager row. Preserve manager query/filter/family/hide-recurring state and scroll position across Save, Cancel, Delete, and close; do not route back to Settings.
+- `templateRecurringInfo()` / `templateRecurringMatches()` are presentation helpers only. They identify recurring-linked shortcuts by exact normalized title plus any template-applied category/account/routing fields. Do not persist a new recurring flag on templates.
+- Template Manager includes a runtime-only `Hide recurring-linked` filter and Recurring badges/details. Recurrence configuration continues to live exclusively in Bills.
+- Schema remains 225; no JSON/CSV/Supabase/template payload migration is introduced.
+
 ## v2-256
 - Transaction modal visual correction only: keep the progressive-disclosure structure from v2-250+, but use compact desktop proportions closer to the earlier Money Nest form.
 - Desktop `#transactionModal` must remain viewport-bounded and vertically scrollable through `.transaction-modal-card`; long recurring/paycheck/loan edits must never become unreachable below the viewport.
@@ -92,7 +104,7 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-256`
+Latest known version: `money-nest-v2-258`
 
 Before editing, always inspect `README.md` and confirm the current version in the repository. If `README.md` shows a different version, continue from the repo version and mention the mismatch in your summary.
 
@@ -228,7 +240,7 @@ Example README note:
 ### v2-200
 - Banking is excluded from budgeting. Savings transfers net contributions by direction.
 
-- Current version: money-nest-v2-256. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
+- Current version: money-nest-v2-258. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
 
 
 ### v2-205

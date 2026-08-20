@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-256";
+const APP_VERSION = "2-258";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -2918,6 +2918,8 @@ function normalizePaletteSettings(d){
   a.customPaletteOriginalV222 = true;
   a.customPalette.name="Custom";
   a.paletteOverrides ||= {};
+  // v2-258: optional per-palette user reset baselines. Missing values safely fall back to built-ins.
+  a.paletteResetDefaults ||= {};
   (d.categories||[]).forEach(c=>{
     c.legacyColor ||= c.color || "#8c6f4d";
     c.paletteRole ||= defaultCategoryPaletteRole(c);
@@ -2960,6 +2962,42 @@ function paletteRoleLabel(role,paletteId=data?.settings?.appearance?.paletteId){
   const slot=({light1:"Light 1",light2:"Light 2",medium1:"Medium 1",medium2:"Medium 2",dark1:"Dark 1",dark2:"Dark 2",accent1:"Accent 1",accent2:"Accent 2"})[role]||role;
   return `${slot} • ${name}`;
 }
+function paletteSnapshot(p,name){
+  const fallback=MONEY_NEST_PALETTES.legacy;
+  return {
+    name:name||p?.name||"Palette",
+    roles:{...fallback.roles,...(p?.roles||{})},
+    app:{...fallback.app,...(p?.app||{})}
+  };
+}
+function builtInPaletteResetDefault(id){
+  if(id==="custom") return paletteSnapshot(MONEY_NEST_PALETTES.legacy,"Custom");
+  const base=MONEY_NEST_PALETTES[id]||MONEY_NEST_PALETTES.legacy;
+  return paletteSnapshot(base,base.name||"Palette");
+}
+function paletteResetDefaultForId(id){
+  const a=data?.settings?.appearance||{};
+  const saved=a.paletteResetDefaults?.[id];
+  return saved ? paletteSnapshot(saved,id==="custom"?"Custom":(MONEY_NEST_PALETTES[id]?.name||saved.name||"Palette")) : builtInPaletteResetDefault(id);
+}
+function readActivePaletteEditor(){
+  const a=data.settings.appearance;
+  const edited={name:a.paletteId==="custom"?"Custom":(MONEY_NEST_PALETTES[a.paletteId]?.name||"Adjusted"),roles:{},app:{}};
+  document.querySelectorAll('[data-palette-role]').forEach(i=>edited.roles[i.dataset.paletteRole]=i.value);
+  document.querySelectorAll('[data-palette-app]').forEach(i=>edited.app[i.dataset.paletteApp]=i.value);
+  const labels={};
+  document.querySelectorAll('[data-palette-label]').forEach(i=>labels[i.dataset.paletteLabel]=i.value.trim()||DEFAULT_PALETTE_ROLE_LABELS[i.dataset.paletteLabel]);
+  return {edited:paletteSnapshot(edited,edited.name),labels};
+}
+function saveActivePaletteEditorState(){
+  const a=data.settings.appearance; normalizePaletteSettings(data);
+  const {edited,labels}=readActivePaletteEditor();
+  a.paletteRoleLabels ||= {}; a.paletteRoleLabels[a.paletteId]=labels;
+  if(a.paletteId==="custom") a.customPalette=edited;
+  else a.paletteOverrides[a.paletteId]=edited;
+  return edited;
+}
+
 function renderAppearanceSettings(){
   const el=document.getElementById("appearancePalettePanel"); if(!el)return;
   normalizePaletteSettings(data); const a=data.settings.appearance, p=activePalette();
@@ -2969,24 +3007,34 @@ function renderAppearanceSettings(){
   <p class="hint">Each preset uses a broader family of coordinated colors, while category roles preserve the difference between bills, essentials, flexible spending, and accents.</p>
   <div class="palette-editor-head"><div><b>Adjust ${selectedName}</b><small>Changes are saved with this preset and included in JSON/cloud backups.</small></div></div>
   <div class="custom-palette-grid">${CATEGORY_PALETTE_ROLES.map(r=>`<label class="palette-role-editor"><span class="palette-slot-title">${paletteRoleLabel(r)}</span><input type="text" class="palette-role-name" data-palette-label="${r}" value="${escapeAttr(a.paletteRoleLabels?.[a.paletteId]?.[r]||DEFAULT_PALETTE_ROLE_LABELS[r]||r)}" aria-label="Label for ${r}"><input type="color" data-palette-role="${r}" value="${p.roles?.[r]||'#8c6f4d'}" aria-label="Color for ${r}"></label>`).join('')}<label class="palette-app-editor"><span>App accent</span><input type="color" data-palette-app="accent" value="${p.app?.accent||'#8c6f4d'}"></label><label class="palette-app-editor"><span>Secondary accent</span><input type="color" data-palette-app="accent2" value="${p.app?.accent2||'#b7835a'}"></label><label class="palette-app-editor"><span>App background</span><input type="color" data-palette-app="bg" value="${p.app?.bg||'#f5efe6'}"></label><label class="palette-app-editor"><span>Main panels</span><input type="color" data-palette-app="panel" value="${p.app?.panel||'#fffaf3'}"></label><label class="palette-app-editor"><span>Soft panels</span><input type="color" data-palette-app="panel2" value="${p.app?.panel2||'#f1e3d0'}"></label><label class="palette-app-editor"><span>Borders</span><input type="color" data-palette-app="line" value="${p.app?.line||'#dfd0bd'}"></label><label class="palette-app-editor"><span>Main text</span><input type="color" data-palette-app="ink" value="${p.app?.ink||'#2e2a24'}"></label><label class="palette-app-editor"><span>Muted text</span><input type="color" data-palette-app="muted" value="${p.app?.muted||'#766b5d'}"></label></div>
-  <div class="inline-actions"><button type="button" class="primary small" onclick="saveActiveMoneyNestPalette()">Save palette changes</button><button type="button" class="ghost small" onclick="resetActiveMoneyNestPalette()">Reset this palette</button></div>`;
+  <div class="inline-actions palette-actions"><button type="button" class="primary small" onclick="saveActiveMoneyNestPalette()">Save palette changes</button><button type="button" class="ghost small" onclick="setActiveMoneyNestPaletteResetDefault()">Set current as reset default</button><button type="button" class="ghost small" onclick="resetActiveMoneyNestPalette()">Reset this palette</button>${a.paletteResetDefaults?.[a.paletteId]?`<button type="button" class="ghost small" onclick="useBuiltInMoneyNestPaletteResetDefault()">Use built-in reset default</button>`:""}</div>
+  <p class="hint palette-reset-note">Reset this palette will return to ${a.paletteResetDefaults?.[a.paletteId]?"your saved reset default":"the built-in default"}. Role labels are kept when colors are reset.</p>`;
 }
 window.selectMoneyNestPalette=id=>{data.settings.appearance.paletteId=id;applyMoneyNestPalette();saveData();renderAppearanceSettings();};
 window.saveActiveMoneyNestPalette=()=>{
+  saveActivePaletteEditorState();
+  applyMoneyNestPalette();saveData();renderAppearanceSettings();
+};
+window.setActiveMoneyNestPaletteResetDefault=()=>{
   const a=data.settings.appearance; normalizePaletteSettings(data);
-  const edited={name:a.paletteId==="custom"?"Custom":(MONEY_NEST_PALETTES[a.paletteId]?.name||"Adjusted"),roles:{},app:{}};
-  document.querySelectorAll('[data-palette-role]').forEach(i=>edited.roles[i.dataset.paletteRole]=i.value);
-  document.querySelectorAll('[data-palette-app]').forEach(i=>edited.app[i.dataset.paletteApp]=i.value);
-  a.paletteRoleLabels ||= {}; a.paletteRoleLabels[a.paletteId] = {}; document.querySelectorAll('[data-palette-label]').forEach(i=>a.paletteRoleLabels[a.paletteId][i.dataset.paletteLabel]=i.value.trim()||DEFAULT_PALETTE_ROLE_LABELS[i.dataset.paletteLabel]);
-  if(a.paletteId==="custom") a.customPalette=edited;
-  else a.paletteOverrides[a.paletteId]=edited;
+  const edited=saveActivePaletteEditorState();
+  a.paletteResetDefaults ||= {};
+  a.paletteResetDefaults[a.paletteId]=paletteSnapshot(edited,edited.name);
   applyMoneyNestPalette();saveData();renderAppearanceSettings();
 };
 window.resetActiveMoneyNestPalette=()=>{
   const a=data.settings.appearance; normalizePaletteSettings(data);
-  if(a.paletteId==="custom") a.customPalette={...JSON.parse(JSON.stringify(MONEY_NEST_PALETTES.legacy)),name:"Custom"};
+  const hasSavedReset=!!a.paletteResetDefaults?.[a.paletteId];
+  const reset=paletteResetDefaultForId(a.paletteId);
+  if(a.paletteId==="custom") a.customPalette=paletteSnapshot(reset,"Custom");
+  else if(hasSavedReset) a.paletteOverrides[a.paletteId]=paletteSnapshot(reset,MONEY_NEST_PALETTES[a.paletteId]?.name||reset.name||"Adjusted");
   else delete a.paletteOverrides[a.paletteId];
   applyMoneyNestPalette();saveData();renderAppearanceSettings();
+};
+window.useBuiltInMoneyNestPaletteResetDefault=()=>{
+  const a=data.settings.appearance; normalizePaletteSettings(data);
+  if(a.paletteResetDefaults) delete a.paletteResetDefaults[a.paletteId];
+  saveData();renderAppearanceSettings();
 };
 window.saveCustomMoneyNestPalette=window.saveActiveMoneyNestPalette;
 
@@ -7975,9 +8023,10 @@ function deleteTemplate(id){
   saveData();
   if(document.getElementById("templateCleanupModal")?.open) renderTemplateCleanup();
 }
-function simpleTemplate(id=null, familyTitle=""){
+function simpleTemplate(id=null, familyTitle="", options={}){
   data.settings ||= {};
   normalizeTransactionTemplates();
+  simpleAfterClose = options?.returnToTemplateManager ? reopenTemplateManagerPreservingState : null;
   const tpl = id ? normalizeTransactionTemplate(data.settings.transactionTemplates.find(t=>t.id===id)) : normalizeTransactionTemplate({title:familyTitle,source:"manual",createdAt:new Date().toISOString()}, {legacySafe:false});
   const fields = normalizeTemplateFields(id ? tpl.fields : AUTO_TEMPLATE_FIELDS);
   const ignore = "__ignore__";
@@ -7991,6 +8040,7 @@ function simpleTemplate(id=null, familyTitle=""){
       <b>Start simple.</b>
       <span>Title + category are the normal shortcut. Advanced autofill is only for fields you intentionally want this template to change.</span>
     </div>
+    ${id && templateRecurringInfo(tpl) ? `<div class="template-recurring-note"><span class="template-badge recurring">Recurring</span><span>Matches ${escapeAttr(templateRecurringInfo(tpl).description)} in Bills. The recurrence itself is managed on the Bills page.</span></div>` : ""}
     <div class="two-col">
       <label>Transaction title<input id="sTplTitle" value="${escapeAttr(tpl?.title || familyTitle || "")}" placeholder="Gas" required></label>
       <label>Option label, optional<input id="sTplVariantLabel" value="${escapeAttr(tpl?.variantLabel || "")}" placeholder="Joint card, Mak debit…"></label>
@@ -8085,7 +8135,36 @@ function exactTemplateDuplicateGroups(){
   });
   return [...groups.values()].filter(items=>items.length>1);
 }
-const templateManagerState={query:"",filter:"active",familyKey:"",selected:new Set()};
+const templateManagerState={query:"",filter:"active",familyKey:"",hideRecurring:false,selected:new Set(),scrollTop:0};
+function templateRecurringMatches(t){
+  const fields=normalizeTemplateFields(t?.fields);
+  const titleKey=templateKey(t?.title);
+  if(!titleKey) return [];
+  return (data.transactions || []).filter(tx=>{
+    if(!isRecurring(tx) || templateKey(tx.title)!==titleKey) return false;
+    if(fields.categoryId && String(tx.categoryId||"unassigned")!==String(t.categoryId||"unassigned")) return false;
+    if(fields.accountId && String(tx.accountId||"")!==String(t.accountId||"")) return false;
+    if(fields.debtAccountId && String(tx.debtAccountId||"")!==String(t.debtAccountId||"")) return false;
+    if(fields.transferToAccountId && String(tx.transferToAccountId||"")!==String(t.transferToAccountId||"")) return false;
+    if(fields.linkedDebtId && String(tx.linkedDebtId||"")!==String(t.linkedDebtId||"")) return false;
+    return true;
+  });
+}
+function templateRecurringInfo(t){
+  const matches=templateRecurringMatches(t);
+  if(!matches.length) return null;
+  const today=todayISO();
+  const ranked=[...matches].sort((a,b)=>{
+    const aActive=!a.billArchived && (!a.recurrenceUntil || a.recurrenceUntil>=today) ? 1 : 0;
+    const bActive=!b.billArchived && (!b.recurrenceUntil || b.recurrenceUntil>=today) ? 1 : 0;
+    if(aActive!==bActive) return bActive-aActive;
+    return String(b.date||"").localeCompare(String(a.date||""));
+  });
+  const tx=ranked[0];
+  const active=!tx.billArchived && (!tx.recurrenceUntil || tx.recurrenceUntil>=today);
+  const state=active ? "Recurring" : (tx.billArchived ? "Recurring archived" : "Recurring ended");
+  return {tx,state,active,count:matches.length,description:recurrenceDescription(tx)};
+}
 function templateManagerAutofillSummary(t){
   const f=normalizeTemplateFields(t?.fields);
   const bits=[];
@@ -8106,9 +8185,11 @@ function templateManagerVisibleTemplates(){
     if(templateManagerState.filter==="active" && t.archived) return false;
     if(templateManagerState.filter==="archived" && !t.archived) return false;
     if(templateManagerState.filter==="unused" && templateUsageStats(t).count!==0) return false;
+    const recurringInfo=templateRecurringInfo(t);
+    if(templateManagerState.hideRecurring && recurringInfo) return false;
     if(q){
       const c=categoryById(t.categoryId||"unassigned");
-      const hay=[t.title,templateVariantLabel(t),templateManagerAutofillSummary(t),c?.name,t.source].join(" ").toLowerCase();
+      const hay=[t.title,templateVariantLabel(t),templateManagerAutofillSummary(t),c?.name,t.source,recurringInfo?.state,recurringInfo?.description].join(" ").toLowerCase();
       if(!hay.includes(q)) return false;
     }
     return true;
@@ -8224,6 +8305,22 @@ function mergeExactTemplateDuplicates(){
   });
   templateManagerSaveAndRefresh();
 }
+function templateManagerScrollElement(){
+  return document.querySelector("#templateCleanupModal .template-manager-card");
+}
+function captureTemplateManagerContext(){
+  const scroller=templateManagerScrollElement();
+  templateManagerState.scrollTop=scroller ? scroller.scrollTop : 0;
+}
+function reopenTemplateManagerPreservingState(){
+  renderTemplateCleanup();
+  const modal=document.getElementById("templateCleanupModal");
+  if(modal && !modal.open) modal.showModal();
+  requestAnimationFrame(()=>{
+    const scroller=templateManagerScrollElement();
+    if(scroller) scroller.scrollTop=templateManagerState.scrollTop || 0;
+  });
+}
 function renderTemplateCleanup(){
   const summary=document.getElementById("templateCleanupSummary");
   const content=document.getElementById("templateCleanupContent");
@@ -8252,11 +8349,13 @@ function renderTemplateCleanup(){
   content.innerHTML=visible.length ? visible.map(t=>{
     const usage=templateUsageStats(t);
     const optionLabel=String(t.variantLabel||"").trim();
+    const recurringInfo=templateRecurringInfo(t);
     return `<div class="template-manager-row ${t.archived?'archived':''} ${templateManagerState.selected.has(t.id)?'selected':''}">
       <label class="template-manager-check" aria-label="Select ${escapeAttr(t.title)}"><input type="checkbox" data-template-manager-select value="${t.id}" ${templateManagerState.selected.has(t.id)?'checked':''}></label>
       <div class="template-manager-main">
-        <div class="template-manager-title"><b>${escapeAttr(t.title)}</b>${optionLabel?`<span>${escapeAttr(optionLabel)}</span>`:""}${t.isDefault&&!t.archived?'<span class="template-badge default">Default</span>':''}${t.archived?'<span class="template-badge archived">Archived</span>':''}${exactIds.has(t.id)?'<span class="template-badge duplicate">Duplicate</span>':''}</div>
+        <div class="template-manager-title"><b>${escapeAttr(t.title)}</b>${optionLabel?`<span>${escapeAttr(optionLabel)}</span>`:""}${t.isDefault&&!t.archived?'<span class="template-badge default">Default</span>':''}${t.archived?'<span class="template-badge archived">Archived</span>':''}${recurringInfo?`<span class="template-badge recurring" title="${escapeAttr(recurringInfo.description)}">Recurring</span>`:''}${exactIds.has(t.id)?'<span class="template-badge duplicate">Duplicate</span>':''}</div>
         <small>${escapeAttr(templateManagerAutofillSummary(t))}</small>
+        ${recurringInfo?`<small class="template-manager-recurring">↻ ${escapeAttr(recurringInfo.description)} • Managed in Bills</small>`:""}
         <small class="template-manager-usage">${usage.count} use${usage.count===1?'':'s'} • ${templateLastUsedLabel(usage.lastDate)} • ${t.source==='auto'?'Learned automatically':'Custom'}</small>
       </div>
       <button type="button" class="ghost small" data-template-manager-edit="${t.id}">Edit</button>
@@ -8266,11 +8365,13 @@ function renderTemplateCleanup(){
 
   const search=document.getElementById("templateManagerSearch");
   const filter=document.getElementById("templateManagerFilter");
+  const hideRecurring=document.getElementById("templateManagerHideRecurring");
   const selectAll=document.getElementById("templateManagerSelectAll");
   const bulkCount=document.getElementById("templateBulkCount");
   const bulkBar=document.getElementById("templateBulkBar");
   if(search){search.value=templateManagerState.query;search.oninput=()=>{templateManagerState.query=search.value;templateManagerState.selected.clear();renderTemplateCleanup();};}
   if(filter){filter.value=templateManagerState.filter;filter.onchange=()=>{templateManagerState.filter=filter.value;templateManagerState.selected.clear();renderTemplateCleanup();};}
+  if(hideRecurring){hideRecurring.checked=!!templateManagerState.hideRecurring;hideRecurring.onchange=()=>{templateManagerState.hideRecurring=hideRecurring.checked;templateManagerState.selected.clear();renderTemplateCleanup();};}
   if(selectAll){
     selectAll.checked=!!visible.length && visible.every(t=>templateManagerState.selected.has(t.id));
     selectAll.indeterminate=visible.some(t=>templateManagerState.selected.has(t.id)) && !selectAll.checked;
@@ -8292,7 +8393,11 @@ function renderTemplateCleanup(){
   const mergeBtn=document.getElementById("mergeExactTemplatesBtn"); if(mergeBtn){mergeBtn.disabled=!duplicateCount;mergeBtn.onclick=mergeExactTemplateDuplicates;}
 
   content.querySelectorAll("[data-template-manager-select]").forEach(input=>input.onchange=()=>{input.checked?templateManagerState.selected.add(input.value):templateManagerState.selected.delete(input.value);renderTemplateCleanup();});
-  content.querySelectorAll("[data-template-manager-edit]").forEach(btn=>btn.onclick=()=>{document.getElementById("templateCleanupModal")?.close();simpleTemplate(btn.dataset.templateManagerEdit);});
+  content.querySelectorAll("[data-template-manager-edit]").forEach(btn=>btn.onclick=()=>{
+    captureTemplateManagerContext();
+    document.getElementById("templateCleanupModal")?.close();
+    simpleTemplate(btn.dataset.templateManagerEdit,"",{returnToTemplateManager:true});
+  });
 }
 function openTemplateCleanup(familyKey=""){
   // Event handlers may pass a PointerEvent/MouseEvent as the first argument. Only
@@ -8301,7 +8406,9 @@ function openTemplateCleanup(familyKey=""){
   templateManagerState.query="";
   templateManagerState.filter="active";
   templateManagerState.familyKey=requestedFamily||"";
+  templateManagerState.hideRecurring=false;
   templateManagerState.selected.clear();
+  templateManagerState.scrollTop=0;
   renderTemplateCleanup();
   document.getElementById("templateCleanupModal")?.showModal();
 }
@@ -9629,7 +9736,13 @@ window.openTransaction = (id=null, defaults={})=>{
 };
 
 const simpleModal = document.getElementById("simpleModal");
-let simpleSubmit = null, simpleDelete = null;
+let simpleSubmit = null, simpleDelete = null, simpleAfterClose = null;
+function runSimpleAfterClose(){
+  const callback=simpleAfterClose;
+  simpleAfterClose=null;
+  if(callback) requestAnimationFrame(callback);
+}
+simpleModal.addEventListener("close",runSimpleAfterClose);
 closeSimple.onclick = ()=>simpleModal.close();
 cancelSimple.onclick = ()=>simpleModal.close();
 simpleForm.onsubmit = e => {
@@ -12870,3 +12983,7 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 // v2-248: Calendar drag/drop now moves cleared recurring occurrences by keeping their occurrence-override date in sync with the recurrence date override.
 
 // v2-249: Dashboard past-planned alerts now wait more than 7 days; credit-card payment statuses are derived automatically from statement/minimum due plus linked planned, cleared, or active recurring payments.
+
+// v2-257: Template edits return to the preserved manager view; recurring-linked shortcuts can be identified and hidden without persisting new template fields.
+
+// v2-258: Palette reset baselines can be user-defined per palette; color swatches are full-bleed via CSS.

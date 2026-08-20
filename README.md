@@ -1,5 +1,16 @@
 # Money Nest
 
+## v2-258
+- Added per-palette user-defined reset defaults in Appearance. `Set current as reset default` saves the current palette colors as that palette's reset baseline; `Reset this palette` returns to the saved baseline when present, otherwise the built-in default. `Use built-in reset default` removes the custom baseline without changing the current colors.
+- Palette reset baselines are optional Appearance preferences included automatically in JSON/cloud backups. Older data with no reset baseline safely falls back to the built-in palette; schema remains 225.
+- Removed the browser-native white inset around Appearance color pickers so palette swatches render full-bleed inside their existing border.
+
+## v2-257
+- Template edits launched from Manage Templates now return to the Template Manager after Save, Cancel, Delete, or close instead of dropping back to Settings. Search text, Active/Archived/Unused filter, family filter, recurring filter, and scroll position are preserved.
+- Added a `Hide recurring-linked` Template Manager filter. It hides shortcuts that match a recurring Bills series by title plus any template-applied category/account/routing fields.
+- Recurring-linked templates now show a Recurring badge and recurrence description in Manage Templates, and Edit Template explains when the shortcut matches a Bills recurrence. Recurrence rules themselves remain managed only in Bills.
+- No template/transaction schema, JSON/CSV, Supabase, recurring schedule behavior, or saved financial records changed. Schema remains 225.
+
 ## v2-256
 - Restored the Add/Edit Transaction dialog to a more compact desktop scale while keeping the newer progressive-disclosure layout. Fields, disclosure rows, action buttons, and the paycheck auto-calc row use tighter spacing instead of oversized card/button proportions.
 - Fixed long transaction edits that could extend below the viewport without scrolling. The desktop transaction dialog now has a viewport-bounded scroll container, so recurring/paycheck/loan fields and Save/Cancel remain reachable.
@@ -97,7 +108,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-256`
+Current version: `money-nest-v2-258`
 
 ## Important Notes
 

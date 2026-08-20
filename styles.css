@@ -6660,7 +6660,7 @@ button.budget-review-row:hover,button.budget-review-row:focus-visible{
 .template-manager-head .eyebrow{margin:0 0 2px}
 .template-manager-controls{
   display:grid;
-  grid-template-columns:minmax(230px,1.3fr) minmax(120px,.45fr) auto auto;
+  grid-template-columns:minmax(230px,1.3fr) minmax(120px,.45fr) auto auto auto;
   gap:8px;
   align-items:end;
   padding:10px;
@@ -7145,3 +7145,27 @@ button.budget-review-row:hover,button.budget-review-row:focus-visible{
     border-radius:12px;
   }
 }
+
+/* v2-257: preserve Template Manager context through edits and identify recurring-linked shortcuts. */
+.template-hide-recurring{align-self:center;white-space:nowrap;min-height:42px;display:flex;align-items:center;gap:7px;padding:0 4px;font-size:12px}
+.template-hide-recurring input{width:auto!important;height:auto!important;min-height:0!important;margin:0}
+.template-badge.recurring{background:color-mix(in srgb,var(--accent) 12%,var(--panel));color:var(--accent)}
+.template-manager-recurring{font-size:10px!important;color:var(--accent)!important;font-weight:750}
+.template-recurring-note{display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border:1px solid color-mix(in srgb,var(--accent) 20%,var(--line));border-radius:11px;background:color-mix(in srgb,var(--accent) 6%,var(--panel));font-size:11px;line-height:1.35;color:var(--muted)}
+.template-recurring-note .template-badge{flex:0 0 auto;margin-top:1px}
+@media(max-width:900px){.template-manager-controls{grid-template-columns:1fr 1fr}.template-manager-search{grid-column:1/-1}.template-manager-controls #mergeExactTemplatesBtn{grid-column:1/-1}}
+@media(max-width:700px){.template-manager-controls{grid-template-columns:1fr}.template-manager-search,.template-manager-controls #mergeExactTemplatesBtn{grid-column:auto}}
+
+
+
+/* v2-258: palette reset-default controls + full-bleed color swatches */
+.custom-palette-grid input[type="color"]{
+  padding:0 !important;
+  background:transparent !important;
+  overflow:hidden;
+}
+.custom-palette-grid input[type="color"]::-webkit-color-swatch-wrapper{padding:0}
+.custom-palette-grid input[type="color"]::-webkit-color-swatch{border:0;border-radius:8px}
+.custom-palette-grid input[type="color"]::-moz-color-swatch{border:0;border-radius:8px}
+.palette-actions{align-items:center;flex-wrap:wrap}
+.palette-reset-note{margin:8px 0 0}
