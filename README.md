@@ -1,5 +1,16 @@
 # Money Nest
 
+## v2-260
+- Fixed Edit Template so intentionally clearing the Saved note persists as blank instead of restoring the template's previous note. A blank note also disables note autofill because there is no saved note to apply.
+- Clarified and reinforced the separation between transaction templates and recurring Bills series. A recurring-linked template is only detected for reference/display; editing or deleting the template changes only `settings.transactionTemplates` and never edits the matching recurring bill. Recurring bill notes, amounts, schedules, accounts, and routing remain editable only through Bills → Edit Series.
+- No transaction/recurring/template schema, JSON/CSV format, Supabase behavior, or financial calculation changes. Schema remains 225.
+
+## v2-259
+- Added computed Recurring Health to Bills. Active recurring series are checked conservatively for uncleared planned occurrences more than 7 days overdue, a likely stale amount estimate when the two newest cleared payments agree with each other but materially differ from the saved series amount, and possible duplicate active series with the same title/route/schedule/category/amount. Findings are review-only and never change financial data automatically.
+- Added a compact Recurring Health summary with issue counts and a Show review only toggle. Each Bill Details screen now explains any health findings for that specific series.
+- Reorganized active recurring items into Needs review, Coming up (through the next 7 days, including recent bank-clearing grace-period items), and Later sections. Ended/Archived remains separately collapsed.
+- No transaction/recurring schema, JSON/CSV format, Supabase behavior, or financial calculation changes. Schema remains 225.
+
 ## v2-258
 - Added per-palette user-defined reset defaults in Appearance. `Set current as reset default` saves the current palette colors as that palette's reset baseline; `Reset this palette` returns to the saved baseline when present, otherwise the built-in default. `Use built-in reset default` removes the custom baseline without changing the current colors.
 - Palette reset baselines are optional Appearance preferences included automatically in JSON/cloud backups. Older data with no reset baseline safely falls back to the built-in palette; schema remains 225.
@@ -108,7 +119,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-258`
+Current version: `money-nest-v2-260`
 
 ## Important Notes
 

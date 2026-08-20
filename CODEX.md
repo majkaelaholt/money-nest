@@ -1,5 +1,16 @@
 # CODEX
 
+## v2-260
+- Template notes must support an intentional blank. In `simpleTemplate()`, never use the previous saved note as a fallback when the Saved note textarea exists but has been cleared. A blank saved note should also leave `fields.notes` disabled because template application does not use a blank note to clear transaction notes.
+- Transaction templates and recurring Bills series are separate records. `templateRecurringInfo()` / `templateRecurringMatches()` are reference-only presentation helpers. Editing, deleting, archiving, bulk-editing, or simplifying a transaction template must never mutate `data.transactions` or any recurring series/occurrence. Recurring bill note/amount/schedule/account/routing changes belong only to Bills → Edit Series.
+- No schema/JSON/CSV/Supabase changes; schema remains 225.
+
+## v2-259
+- Bills now includes computed Recurring Health. Keep these checks conservative and review-only: >7-day past-planned occurrences, two consecutive stable cleared amounts that materially differ from the saved series estimate, and possible exact-route/schedule duplicate recurring series. Never auto-edit/archive/merge a series because of a health finding.
+- Active Bills are organized into Needs review, Coming up, and Later. The health-only toggle is UI state only; no schema field is saved. Bill Details shows the same computed findings.
+- Preserve the existing 7-day grace principle for uncleared planned activity. Preserve same-title/different-schedule recurring series as valid independent series; duplicate health requires the same core route/schedule plus amount.
+- No JSON/CSV/Supabase/schema changes; schema remains 225.
+
 ## v2-258
 - Appearance now supports optional per-palette reset baselines in `settings.appearance.paletteResetDefaults`. Missing baselines must always fall back to the existing built-in palette defaults; do not require a migration or schema bump.
 - `Set current as reset default` saves the on-screen palette state and makes it the future Reset target for only the active palette. `Use built-in reset default` deletes only that saved baseline and must not alter the currently active colors.
@@ -104,7 +115,7 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-258`
+Latest known version: `money-nest-v2-260`
 
 Before editing, always inspect `README.md` and confirm the current version in the repository. If `README.md` shows a different version, continue from the repo version and mention the mismatch in your summary.
 
@@ -240,7 +251,7 @@ Example README note:
 ### v2-200
 - Banking is excluded from budgeting. Savings transfers net contributions by direction.
 
-- Current version: money-nest-v2-258. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
+- Current version: money-nest-v2-260. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
 
 
 ### v2-205

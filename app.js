@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-258";
+const APP_VERSION = "2-260";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -2829,6 +2829,7 @@ let suppressRecentTracking = false;
 loadRecentPlaces();
 let billFilters = {...defaultUiPrefs.billFilters, ...(uiPrefs.billFilters || {})};
 if(!Array.isArray(billFilters.categories)) billFilters.categories = [billFilters.category || "all"];
+let billHealthReviewOnly = false;
 let transactionFilterDefaults = {...defaultUiPrefs.transactionFilterDefaults, ...(uiPrefs.transactionFilterDefaults || {})};
 let transactionFilters = {...defaultUiPrefs.transactionFilters, ...(uiPrefs.transactionFilters || {})};
 let calendarDensity = "comfortable";
@@ -8040,7 +8041,7 @@ function simpleTemplate(id=null, familyTitle="", options={}){
       <b>Start simple.</b>
       <span>Title + category are the normal shortcut. Advanced autofill is only for fields you intentionally want this template to change.</span>
     </div>
-    ${id && templateRecurringInfo(tpl) ? `<div class="template-recurring-note"><span class="template-badge recurring">Recurring</span><span>Matches ${escapeAttr(templateRecurringInfo(tpl).description)} in Bills. The recurrence itself is managed on the Bills page.</span></div>` : ""}
+    ${id && templateRecurringInfo(tpl) ? `<div class="template-recurring-note"><span class="template-badge recurring">Recurring match</span><span>Matches ${escapeAttr(templateRecurringInfo(tpl).description)} in Bills. This shortcut is separate from the recurring bill: editing or deleting this template never changes the bill's note, amount, schedule, account, or routing. Use Bills → Edit Series to change the recurring bill.</span></div>` : ""}
     <div class="two-col">
       <label>Transaction title<input id="sTplTitle" value="${escapeAttr(tpl?.title || familyTitle || "")}" placeholder="Gas" required></label>
       <label>Option label, optional<input id="sTplVariantLabel" value="${escapeAttr(tpl?.variantLabel || "")}" placeholder="Joint card, Mak debit…"></label>
@@ -8093,9 +8094,12 @@ function simpleTemplate(id=null, familyTitle="", options={}){
     const readChoice=id=>document.getElementById(id)?.value ?? ignore;
     const categoryChoice=readChoice("sTplCategory"), typeChoice=readChoice("sTplType"), statusChoice=readChoice("sTplStatus");
     const accountChoice=readChoice("sTplAccount"), debtAccountChoice=readChoice("sTplDebtAccount"), transferChoice=readChoice("sTplTransferTo"), linkedDebtChoice=readChoice("sTplLinkedDebt");
+    const savedNoteValue = document.getElementById("sTplNotes")?.value ?? "";
     const nextFields = normalizeTemplateFields({
       categoryId: categoryChoice !== ignore,
-      notes: !!document.getElementById("sTplApplyNotes")?.checked,
+      // A blank saved note means “no note”. Do not keep the notes autofill flag
+      // enabled with an empty value, and never fall back to the template's old note.
+      notes: !!document.getElementById("sTplApplyNotes")?.checked && savedNoteValue.trim() !== "",
       type: typeChoice !== ignore,
       status: statusChoice !== ignore,
       accountId: accountChoice !== ignore,
@@ -8109,7 +8113,9 @@ function simpleTemplate(id=null, familyTitle="", options={}){
       type:typeChoice!==ignore?typeChoice:(tpl.type||"expense"), status:statusChoice!==ignore?statusChoice:(tpl.status||"planned"),
       accountId:accountChoice!==ignore?accountChoice:(tpl.accountId||""), debtAccountId:debtAccountChoice!==ignore?debtAccountChoice:(tpl.debtAccountId||""),
       transferToAccountId:transferChoice!==ignore?transferChoice:(tpl.transferToAccountId||""), linkedDebtId:linkedDebtChoice!==ignore?linkedDebtChoice:(tpl.linkedDebtId||""),
-      notes:document.getElementById("sTplNotes")?.value || tpl.notes || "", fields:nextFields,
+      // Preserve an intentional blank. The old `value || tpl.notes` fallback made
+      // it impossible to remove a saved note from an existing shortcut.
+      notes:savedNoteValue, fields:nextFields,
       isDefault:!!document.getElementById("sTplDefault")?.checked, archived:false,
       source:"manual", createdAt:tpl.createdAt || new Date().toISOString()
     }, {legacySafe:false});
@@ -11576,6 +11582,104 @@ function billSeriesEditOccurrence(baseTx){
   };
 }
 
+
+// v2-259: Recurring Health is computed from existing recurring/payment history.
+// It never changes a series automatically; it only surfaces conservative review signals.
+function recurringBillHealth(baseTx, allSeries=[], expandedRows=null){
+  const canonical = canonicalRecurringSeries(baseTx) || baseTx;
+  const findings = [];
+  if(!canonical || canonical.billArchived || billOccurrenceStatus(canonical) === "ended") return {needsReview:false, findings, overdueCount:0};
+
+  const today = todayISO();
+  const overdueCutoff = toISO(addDays(parseDate(today), -7));
+  const rows = billLinkedTransactions(canonical, expandedRows);
+  const overdue = rows
+    .filter(row => row.status !== "cleared" && String(row.date || "") < overdueCutoff)
+    .sort((a,b)=>String(a.date || "").localeCompare(String(b.date || "")));
+  if(overdue.length){
+    findings.push({
+      kind:"past-planned",
+      label:"Past planned",
+      detail:`${overdue.length} occurrence${overdue.length===1?" is":"s are"} more than 7 days past planned${overdue[0]?.date ? `; oldest ${overdue[0].date}` : ""}.`
+    });
+  }
+
+  // Only flag an amount estimate when the two newest cleared payments agree with
+  // each other but both differ materially from the saved series amount. This
+  // avoids nagging on naturally variable bills from one unusual payment.
+  const baseAmount = Math.abs(Number(canonical.amount || 0));
+  const clearedAmounts = rows
+    .filter(row => row.status === "cleared" && Number.isFinite(Number(row.amount)))
+    .sort((a,b)=>String(b.date || "").localeCompare(String(a.date || "")))
+    .slice(0,2)
+    .map(row => Math.abs(Number(row.amount || 0)));
+  if(baseAmount > 0 && clearedAmounts.length >= 2 && canonical.type !== "paycheck") {
+    const [latest, previous] = clearedAmounts;
+    const material = Math.max(2, baseAmount * 0.08);
+    const recentTolerance = Math.max(1, Math.max(latest, previous) * 0.03);
+    const recentAgree = Math.abs(latest - previous) <= recentTolerance;
+    const bothDiffer = Math.abs(latest - baseAmount) >= material && Math.abs(previous - baseAmount) >= material;
+    if(recentAgree && bothDiffer){
+      const suggested = (latest + previous) / 2;
+      findings.push({
+        kind:"amount-drift",
+        label:"Amount changed",
+        detail:`Recent cleared payments are about ${money(suggested)} while the series estimate is ${money(baseAmount)}.`
+      });
+    }
+  }
+
+  const duplicate = (allSeries || []).find(other => {
+    if(!other || other.id === canonical.id || other.billArchived || billOccurrenceStatus(other) === "ended") return false;
+    const otherCanonical = canonicalRecurringSeries(other) || other;
+    if(otherCanonical.id === canonical.id) return false;
+    return recurringSeriesCoreKey(otherCanonical) === recurringSeriesCoreKey(canonical)
+      && Math.abs(Number(otherCanonical.amount || 0) - Number(canonical.amount || 0)) < 0.01;
+  });
+  if(duplicate){
+    findings.push({
+      kind:"possible-duplicate",
+      label:"Possible duplicate",
+      detail:`Another active series has the same title, route, schedule, category, and amount.`
+    });
+  }
+
+  return {needsReview:findings.length > 0, findings, overdueCount:overdue.length};
+}
+
+function recurringHealthReasonText(health){
+  if(!health?.findings?.length) return "";
+  const first = health.findings[0].label;
+  return health.findings.length > 1 ? `${first} +${health.findings.length-1}` : first;
+}
+
+function renderBillHealthSummary(rows){
+  const el = document.getElementById("billHealthSummary");
+  if(!el) return;
+  const active = rows.filter(tx => !tx.billArchived && billOccurrenceStatus(tx) !== "ended");
+  const review = active.filter(tx => tx.recurringHealth?.needsReview);
+  const healthy = Math.max(0, active.length - review.length);
+  const counts = {"past-planned":0,"amount-drift":0,"possible-duplicate":0};
+  review.forEach(tx => tx.recurringHealth?.findings?.forEach(f => { if(f.kind in counts) counts[f.kind] += 1; }));
+  const chips = [
+    counts["past-planned"] ? `<span class="bill-health-chip warn">${counts["past-planned"]} past planned</span>` : "",
+    counts["amount-drift"] ? `<span class="bill-health-chip">${counts["amount-drift"]} amount changed</span>` : "",
+    counts["possible-duplicate"] ? `<span class="bill-health-chip">${counts["possible-duplicate"]} duplicate match${counts["possible-duplicate"]===1?"":"es"}</span>` : ""
+  ].filter(Boolean).join("");
+  el.innerHTML = `<div class="bill-health-main"><span class="bill-health-icon" aria-hidden="true">${review.length ? "⚠" : "✓"}</span><span><b>Recurring health</b><small>${review.length ? `${review.length} need review · ${healthy} look good` : `${healthy} active series checked · no obvious issues`}</small></span></div><div class="bill-health-actions"><div class="bill-health-chips">${chips}</div>${review.length ? `<button type="button" class="ghost small" onclick="toggleBillHealthReviewOnly()">${billHealthReviewOnly ? "Show all" : "Show review only"}</button>` : ""}</div>`;
+}
+
+function toggleBillHealthReviewOnly(){
+  billHealthReviewOnly = !billHealthReviewOnly;
+  renderBills();
+}
+window.toggleBillHealthReviewOnly = toggleBillHealthReviewOnly;
+
+function billGroupHTML(title, rows, className=""){
+  if(!rows.length) return "";
+  return `<section class="bill-group ${className}"><div class="bill-group-head"><b>${title}</b><span>${rows.length}</span></div><div class="bill-active-list">${rows.map(tx=>billCardHTML(tx,false)).join("")}</div></section>`;
+}
+
 function billTransactionRowHTML(tx){
   const account = accountById(tx.accountId);
   const cat = categoryById(tx.categoryId);
@@ -11607,6 +11711,7 @@ function openBillDetails(txId){
   const title = document.getElementById("billDetailTitle");
   const sub = document.getElementById("billDetailSub");
   const summary = document.getElementById("billDetailSummary");
+  const healthEl = document.getElementById("billDetailHealth");
   const list = document.getElementById("billDetailTransactions");
   const editBtn = document.getElementById("editBillSeriesBtn");
   const manageBtn = document.getElementById("billArchiveSeriesBtn");
@@ -11620,6 +11725,13 @@ function openBillDetails(txId){
   title.textContent = `${categoryById(tx.categoryId).emoji} ${tx.title}`;
   sub.textContent = `${recurrenceDescription(tx)} • ${tx.billArchived ? "Archived" : (info.status === "ended" ? "Ended" : `Next ${displayedNextDate}`)}`;
   summary.innerHTML = `<div class="bill-detail-stat"><span>Cleared history</span><strong>${cleared.length}</strong></div><div class="bill-detail-stat"><span>Upcoming / planned</span><strong>${planned.length}</strong></div><div class="bill-detail-stat"><span>Typical amount</span><strong>${money(tx.amount)}</strong></div>`;
+  if(healthEl){
+    const activeSeries = dedupeRecurringBillRows((data.transactions || []).filter(isRecurring));
+    const health = recurringBillHealth(tx, activeSeries);
+    healthEl.innerHTML = health.findings.length
+      ? `<div class="bill-detail-health-head"><b>Recurring health</b><span>${health.findings.length} to review</span></div>${health.findings.map(f=>`<div class="bill-health-finding"><span>⚠</span><div><b>${escapeAttr(f.label)}</b><small>${escapeAttr(f.detail)}</small></div></div>`).join("")}`
+      : `<div class="bill-detail-health-ok"><span>✓</span><div><b>Recurring health looks good</b><small>No obvious missed occurrences, stale amount estimate, or duplicate series found.</small></div></div>`;
+  }
   list.innerHTML = rows.length
     ? `<div class="bill-detail-list-head"><h4>Transactions associated with this bill</h4><span>${rows.length} shown</span></div><div class="bill-detail-list">${rows.map(billTransactionRowHTML).join("")}</div><p class="hint bill-detail-horizon">Includes saved history and generated occurrences through the next 12 months.</p>`
     : `<div class="empty">No linked transactions were found for this bill.</div>`;
@@ -11662,7 +11774,7 @@ function billCardHTML(tx, archivedSection=false){
     </div>
     <div class="bill-card-schedule">
       <b>${dateLabel}</b>
-      <span>${recurrenceDescription(tx)}</span>
+      <span>${recurrenceDescription(tx)}${tx.recurringHealth?.needsReview ? ` • ⚠ ${escapeAttr(recurringHealthReasonText(tx.recurringHealth))}` : ""}</span>
     </div>
     <div class="bill-card-status">${billStatusBadge(tx)}</div>
     <div class="amount bill-amount ${(tx.type==='income'||tx.type==='paycheck')?'good':'bad'}">${(tx.type==='income'||tx.type==='paycheck')?'+':'-'}${money(tx.amount)}</div>
@@ -11694,6 +11806,11 @@ function renderBills(){
       .filter(tx => tx.nextDate);
 
     recurring = dedupeRecurringBillRows(recurring);
+    const allHealthSeries = dedupeRecurringBillRows((data.transactions || []).filter(tx => {
+      try{ return isRecurring(tx); } catch(err){ return false; }
+    }).filter(tx => !(data.transactions || []).some(nextTx => recurringSeriesIsSplitPredecessor(tx, nextTx))));
+    recurring = recurring.map(tx => ({...tx, recurringHealth:recurringBillHealth(tx, allHealthSeries, sharedExpandedBillRows)}));
+    renderBillHealthSummary(recurring);
 
     const sortBills = rows => rows.sort((a,b)=>{
       if((billFilters.sort || "date") === "amount-desc") return Number(b.amount || 0) - Number(a.amount || 0);
@@ -11704,18 +11821,32 @@ function renderBills(){
     });
 
     const archived = sortBills(recurring.filter(tx => tx.billArchived || billOccurrenceStatus(tx) === "ended"));
-    const active = sortBills(recurring.filter(tx => !tx.billArchived && billOccurrenceStatus(tx) !== "ended"));
+    const allActive = sortBills(recurring.filter(tx => !tx.billArchived && billOccurrenceStatus(tx) !== "ended"));
+    const active = billHealthReviewOnly ? allActive.filter(tx => tx.recurringHealth?.needsReview) : allActive;
 
     if(!list) return;
     if(!active.length && !archived.length){
-      list.innerHTML = `<div class="empty">No recurring transactions match those filters.</div>`;
+      list.innerHTML = billHealthReviewOnly
+        ? `<div class="empty">Nothing in the current filters needs recurring-health review. <button type="button" class="ghost small" onclick="toggleBillHealthReviewOnly()">Show all</button></div>`
+        : `<div class="empty">No recurring transactions match those filters.</div>`;
       return;
     }
 
-    const activeHTML = active.length
-      ? `<div class="bill-list-summary"><span><b>${active.length}</b> active recurring item${active.length===1?"":"s"}</span><small>Tap a row for history and series actions.</small></div><div class="bill-active-list">${active.map(tx=>billCardHTML(tx,false)).join("")}</div>`
-      : `<div class="empty compact">No active recurring bills match these filters.</div>`;
-    const archivedHTML = archived.length
+    let activeHTML = "";
+    if(active.length){
+      const reviewRows = active.filter(tx => tx.recurringHealth?.needsReview);
+      const normalRows = active.filter(tx => !tx.recurringHealth?.needsReview);
+      const soonCutoff = toISO(addDays(parseDate(todayISO()), 7));
+      const comingUp = normalRows.filter(tx => String(tx.nextDate || "") <= soonCutoff);
+      const later = normalRows.filter(tx => String(tx.nextDate || "") > soonCutoff);
+      activeHTML = `<div class="bill-list-summary"><span><b>${active.length}</b> ${billHealthReviewOnly ? "recurring item" : "active recurring item"}${active.length===1?"":"s"}${billHealthReviewOnly ? " needing review" : ""}</span><small>Tap a row for history, health details, and series actions.</small></div>`
+        + billGroupHTML("Needs review", reviewRows, "bill-group-review")
+        + (billHealthReviewOnly ? "" : billGroupHTML("Coming up", comingUp, "bill-group-coming"))
+        + (billHealthReviewOnly ? "" : billGroupHTML("Later", later, "bill-group-later"));
+    } else {
+      activeHTML = `<div class="empty compact">No active recurring bills match these filters.</div>`;
+    }
+    const archivedHTML = (!billHealthReviewOnly && archived.length)
       ? `<details class="archived-bills-section"><summary><span>Ended / Archived bills</span><span class="pill">${archived.length}</span></summary><div class="archived-bills-list">${archived.map(tx=>billCardHTML(tx,true)).join("")}</div></details>`
       : "";
 
@@ -12846,7 +12977,7 @@ applyMoneyNestPalette();
 
 // v2-223 recurring management shortcut.
 window.setBillFilterPreset=function(mode){
-  if(mode==='active'){ billFilters.account='all'; billFilters.type='all'; billFilters.recurrence='all'; billFilters.categories=[]; saveUiPrefs(); renderBills(); }
+  if(mode==='active'){ billFilters.account='all'; billFilters.type='all'; billFilters.recurrence='all'; billFilters.categories=[]; billHealthReviewOnly=false; saveUiPrefs(); renderBills(); }
 };
 
 
@@ -12987,3 +13118,6 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 // v2-257: Template edits return to the preserved manager view; recurring-linked shortcuts can be identified and hidden without persisting new template fields.
 
 // v2-258: Palette reset baselines can be user-defined per palette; color swatches are full-bleed via CSS.
+
+// v2-260: Template notes can be intentionally cleared; template edits remain shortcut-only and never mutate recurring Bills series.
+// v2-259: Bills Recurring Health flags conservative review signals and groups active series into Needs review, Coming up, and Later.
