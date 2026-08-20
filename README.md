@@ -1,5 +1,14 @@
 # Money Nest
 
+## v2-268
+- Made Add/Edit Transaction use the palette surface roles literally: the outer transaction modal uses `Main panels`, disclosure/helper sections such as Payment / routing, Repeat, Linked transactions, Notes, and the compact amount calculator use `Secondary panels`, and transaction inputs/selects/textareas use `Soft panels`.
+- Removed the previous blended transaction-input color so extreme/custom palettes now map directly to the selected panel colors on desktop and iPhone quick entry.
+- No transaction, palette-storage, JSON/CSV, Supabase, or schema behavior changed. Schema remains 225.
+
+## v2-267
+- Fixed Add/Edit Transaction date-field sizing so the native date control now matches the Amount field height on desktop instead of inheriting the older 44px date-only override. Mobile keeps the same height as its neighboring quick-entry controls, and iPad remains on its existing touch-sized field height.
+- No transaction, date, JSON/CSV, Supabase, or schema behavior changed. Schema remains 225.
+
 ## v2-266
 - Calendar cleared-only balance now appears only on today's date. It always shows on today, even when cleared and projected balances are identical; all other calendar days show only the projected balance.
 
@@ -152,7 +161,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-266`
+Current version: `money-nest-v2-268`
 
 ## Important Notes
 
