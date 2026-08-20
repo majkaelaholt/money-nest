@@ -7789,3 +7789,126 @@ body{
 #bills .bill-filters{
   background:transparent !important;
 }
+
+/* v2-272: targeted Accounts/Budgets separation + desktop Calendar polish.
+   Built from the preferred v2-270 baseline; avoid the broad v2-271 surface remap. */
+
+/* ACCOUNTS — keep the connected-list look, but give the actual records a clear surface
+   that does not disappear into their parent panel. */
+#accounts .account-list{
+  background:var(--soft-panel) !important;
+}
+#accounts .account-card{
+  background:transparent !important;
+}
+#accounts .account-card:hover{
+  background:color-mix(in srgb,var(--soft-panel) 82%,var(--panel-secondary) 18%) !important;
+}
+
+/* Credit utilization: the summary stays a nested section; Mak/Ty are the inner cards. */
+#accounts .credit-util-summary{
+  background:var(--panel-secondary) !important;
+}
+#accounts .utilization-grid{
+  gap:8px;
+  border:0;
+  border-radius:0;
+  overflow:visible;
+  background:transparent !important;
+}
+#accounts .utilization-card,
+#accounts .utilization-card:last-child{
+  background:var(--soft-panel) !important;
+  border:1px solid color-mix(in srgb,var(--line) 82%,transparent) !important;
+  border-radius:13px !important;
+}
+
+/* Debt groups: company/dropdown header = Secondary; the accounts opened beneath it = Soft.
+   Rows stay flat/connected inside that Soft list rather than becoming individual cards. */
+#accounts .debt-company{
+  background:var(--panel-secondary) !important;
+  border:1px solid color-mix(in srgb,var(--line) 76%,transparent);
+  border-radius:12px;
+  padding-left:10px;
+  padding-right:10px;
+}
+#accounts .debt-cards.open{
+  background:var(--soft-panel) !important;
+}
+#accounts .debt-account-card{
+  background:transparent !important;
+}
+#accounts .debt-account-card:hover{
+  background:color-mix(in srgb,var(--soft-panel) 82%,var(--panel-secondary) 18%) !important;
+}
+
+/* BUDGETS — keep the v2-270 flat section layout, but place the actual data/list areas
+   on a Soft surface so Spending by Category and Budget Performance do not melt into Main. */
+#budgets .spending-pie-wrap,
+#budgets .budget-review-list,
+#budgets #budgetList{
+  background:var(--soft-panel) !important;
+  border:1px solid color-mix(in srgb,var(--line) 76%,transparent);
+  border-radius:14px;
+  overflow:hidden;
+}
+#budgets .spending-pie-wrap{
+  padding:10px 12px !important;
+}
+#budgets .spending-legend-row,
+#budgets button.budget-review-row,
+#budgets .budget-set-row{
+  background:transparent !important;
+}
+#budgets .spending-legend-row:hover,
+#budgets .spending-legend-row:focus-visible,
+#budgets button.budget-review-row:hover,
+#budgets button.budget-review-row:focus-visible,
+#budgets .budget-set-row:hover,
+#budgets .budget-set-row:focus-visible{
+  background:color-mix(in srgb,var(--soft-panel) 82%,var(--panel-secondary) 18%) !important;
+}
+#budgets #budgetList{
+  gap:0;
+}
+
+/* Calendar has overflow-visible for transaction popovers, so its square child backgrounds
+   used to visibly cover the parent's rounded corners. Round the edge cells themselves. */
+#calendarGrid > .day-head:first-child{
+  border-top-left-radius:calc(var(--radius) - 2px);
+}
+#calendarGrid > .day-head:nth-child(7){
+  border-top-right-radius:calc(var(--radius) - 2px);
+}
+#calendarGrid > .day:nth-last-child(7){
+  border-bottom-left-radius:calc(var(--radius) - 2px);
+}
+#calendarGrid > .day:last-child{
+  border-bottom-right-radius:calc(var(--radius) - 2px);
+}
+
+/* Desktop Calendar already fits the viewport. Remove the otherwise-useless few pixels of
+   document scrolling while leaving tablet/mobile behavior unchanged. */
+@media(min-width:981px){
+  body.money-nest-view-calendar{
+    height:100vh;
+    overflow:hidden;
+  }
+  body.money-nest-view-calendar .app-shell{
+    height:100vh;
+    min-height:0;
+  }
+  body.money-nest-view-calendar .main{
+    height:100vh;
+    min-height:0;
+  }
+  body.money-nest-view-calendar .topbar{
+    display:none !important;
+    margin:0 !important;
+    padding:0 !important;
+  }
+  body.money-nest-view-calendar #calendar.view.active{
+    height:100% !important;
+    min-height:0;
+  }
+}

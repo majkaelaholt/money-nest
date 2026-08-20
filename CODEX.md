@@ -161,7 +161,13 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-270`
+Latest known version: `money-nest-v2-272`
+
+### v2-272 targeted surface rules
+- This version intentionally starts from v2-270; do not reintroduce the rejected broad v2-271 Budgets/Accounts remap.
+- Accounts: connected cash-account list surface = Soft; Credit Utilization container = Secondary and each owner card = Soft; debt company header = Secondary and its opened debt-account list = Soft. Keep rows flat/connected.
+- Budgets: preserve the v2-270 flat sections. Only the actual Spending by Category content, Budget Performance list, and Monthly Budget Targets list get a Soft backing surface; do not box every row into a separate card.
+- Desktop Calendar should fill the viewport without a few pixels of document scrolling. Because calendar overflow must remain visible for popovers, round edge cells directly instead of restoring `overflow:hidden` on the grid.
 
 ### v2-270 palette surface rules
 - `App background` (`--bg`) controls the page/workspace backdrop. Do not mix `Main panels` into the body background; this is what keeps strongly colored Main cards distinct from the page.

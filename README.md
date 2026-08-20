@@ -1,5 +1,17 @@
 # Money Nest
 
+## v2-272
+
+### Targeted Accounts, Budgets, and Calendar polish
+- Built from the preferred **v2-270** baseline; the rejected v2-271 Budgets/Accounts palette overhaul is intentionally not carried forward.
+- Cash-account records now sit on one connected **Soft panels** list surface instead of visually blending into the Main account panel.
+- Credit Utilization keeps its nested section surface while each owner (Mak/Ty) now has a distinct **Soft panels** inner card, so the existing border is visually meaningful.
+- Debt company/dropdown headers use **Secondary panels** while the opened debt-account list uses **Soft panels**; individual debt rows remain flat and connected.
+- Budget Review keeps its v2-270 flat layout, but Spending by Category, How You Did vs Budget, and Monthly Budget Targets now place their existing flat rows/content on a **Soft panels** surface rather than the Main panel color.
+- Fixed Calendar rounded corners without disabling transaction overflow/popovers by rounding the grid's edge cells themselves.
+- Desktop Calendar no longer has the tiny unnecessary page scroll when the calendar already fits the viewport. Tablet/iPhone scrolling behavior is unchanged.
+- Visual-only changes. No account/budget/calendar calculations, data formats, schema, JSON/CSV compatibility, or Supabase behavior changed. Schema remains 225.
+
 ## v2-270
 
 ### Palette hierarchy cleanup
