@@ -7483,3 +7483,82 @@ button.budget-review-row:hover,button.budget-review-row:focus-visible{
   gap:4px;
   align-content:start;
 }
+
+/* v2-264: transaction polish — exact paired widths, no amount spinners, direct edit actions. */
+#transactionModal .tx-amount-date-grid{
+  grid-template-columns:calc(50% - 4px) calc(50% - 4px);
+}
+#transactionModal .tx-amount-date-grid > *,
+#transactionModal .tx-amount-input-wrap,
+#transactionModal .tx-amount-input-wrap input,
+#transactionModal .tx-date-field,
+#transactionModal .tx-date-field input{
+  min-width:0;
+  width:100%;
+}
+#transactionModal #txAmount{
+  appearance:textfield;
+  -moz-appearance:textfield;
+}
+#transactionModal #txAmount::-webkit-outer-spin-button,
+#transactionModal #txAmount::-webkit-inner-spin-button{
+  -webkit-appearance:none;
+  margin:0;
+}
+#transactionModal .transaction-modal-actions{
+  flex-wrap:wrap;
+}
+#transactionModal .transaction-modal-actions .tx-edit-action{
+  min-height:34px;
+}
+#transactionModal .transaction-modal-actions #deleteTxBtn{
+  margin-right:0;
+}
+@media(max-width:700px){
+  html:not(.money-nest-ipad) #transactionModal .tx-amount-date-grid{
+    grid-template-columns:calc(50% - 3.5px) calc(50% - 3.5px)!important;
+  }
+  #transactionModal.mobile-transaction-edit .transaction-modal-actions{
+    justify-content:flex-end;
+  }
+  #transactionModal.mobile-transaction-edit .transaction-action-spacer{
+    display:none;
+  }
+  #transactionModal.mobile-transaction-edit .transaction-modal-actions .tx-edit-action{
+    flex:0 0 auto;
+    min-height:34px;
+    padding:7px 10px;
+    font-size:11px;
+  }
+}
+
+/* v2-265: calendar projected balance + subtle cleared-only balance when they differ. */
+#calendarGrid .day-balance-stack{
+  display:grid;
+  justify-items:end;
+  gap:1px;
+  min-width:0;
+  text-align:right;
+}
+#calendarGrid .day-cleared-balance{
+  color:var(--muted);
+  font-size:9px;
+  font-weight:750;
+  line-height:1.05;
+  white-space:nowrap;
+  opacity:.8;
+}
+#calendarGrid .day.other .day-cleared-balance{
+  opacity:.55;
+}
+@media(max-width:700px){
+  #calendarGrid .day-balance-stack{
+    max-width:64%;
+  }
+  #calendarGrid .day-balance-stack .day-balance{
+    max-width:none!important;
+  }
+  #calendarGrid .day-cleared-balance{
+    font-size:9px;
+  }
+}

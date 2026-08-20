@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-263";
+const APP_VERSION = "2-265";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -5529,6 +5529,9 @@ function renderCalendar(){
   let runningCalendarBalance = calendarFilter==="all"
     ? checkingAccounts.reduce((s,a)=>s+accountBalance(a.id,true,priorISO),0)
     : accountBalance(calendarFilter,true,priorISO);
+  let runningCalendarClearedBalance = calendarFilter==="all"
+    ? checkingAccounts.reduce((s,a)=>s+accountBalance(a.id,false,priorISO),0)
+    : accountBalance(calendarFilter,false,priorISO);
 
   const calendarDays = [];
   let cursor = new Date(first);
@@ -5540,9 +5543,14 @@ function renderCalendar(){
     // shown on the calendar. This prevents recurring transfer/paycheck display from
     // disagreeing with the day balance.
     const dayDelta = dayTx.reduce((sum,tx)=>sum + (Number(tx.calendarAmountSign || 0) * Number(tx.amount || 0)), 0);
+    const clearedDayDelta = dayTx
+      .filter(tx => tx.status === "cleared")
+      .reduce((sum,tx)=>sum + (Number(tx.calendarAmountSign || 0) * Number(tx.amount || 0)), 0);
     runningCalendarBalance += dayDelta;
+    runningCalendarClearedBalance += clearedDayDelta;
     const projectedTotal = runningCalendarBalance;
-    calendarDays.push({date:new Date(cursor), iso, dayTx, projectedTotal});
+    const clearedTotal = runningCalendarClearedBalance;
+    calendarDays.push({date:new Date(cursor), iso, dayTx, projectedTotal, clearedTotal});
     cursor.setDate(cursor.getDate()+1);
   }
 
@@ -5567,8 +5575,9 @@ function renderCalendar(){
     if(isHighestBalance) dayClasses.push("highest-balance-day");
     if(isToday) dayClasses.push("today-day");
 
+    const showClearedBalance = Math.abs(Number(day.clearedTotal || 0) - Number(day.projectedTotal || 0)) >= 0.005;
     html += `<div class="${dayClasses.join(" ")}" data-day="${day.iso}" tabindex="0">
-      <div class="day-top"><span class="day-num">${day.date.getDate()}</span><span class="day-balance">${money(day.projectedTotal)}</span></div>
+      <div class="day-top"><span class="day-num">${day.date.getDate()}</span><span class="day-balance-stack"><span class="day-balance">${money(day.projectedTotal)}</span>${showClearedBalance ? `<span class="day-cleared-balance" title="Cleared-only balance" aria-label="Cleared-only balance ${money(day.clearedTotal)}">✓ ${money(day.clearedTotal)}</span>` : ""}</span></div>
       ${visibleTx.map(tx=>renderChip(tx)).join("")}
       ${hiddenCount ? `<button type="button" class="more-chip more-badge" onclick="event.stopPropagation(); openDayModal('${day.iso}')">+${hiddenCount} more</button>
         <div class="day-hover-list">
@@ -7854,11 +7863,21 @@ function cleanTemplateFromTx(tx){
     createdAt:new Date().toISOString()
   }, {legacySafe:false});
 }
-function rememberTransactionTemplate(tx){
-  if(!tx || !tx.title || !String(tx.title).trim()) return;
+function transactionCanBecomeTemplate(tx){
+  if(!tx || !tx.title || !String(tx.title).trim()) return false;
   // Recurring schedules belong to Bills. Their generated/edited occurrences
   // should not create another template variant every time they are saved.
-  if(isRecurring(tx) || tx.wasRecurringOccurrence || tx.recurringSourceId || tx.recurrenceSourceId) return;
+  return !(isRecurring(tx) || tx.wasRecurringOccurrence || tx.recurringSourceId || tx.recurrenceSourceId);
+}
+function hasActiveTransactionTemplateFamily(title){
+  const key = templateKey(title);
+  if(!key) return false;
+  data.settings ||= {};
+  normalizeTransactionTemplates();
+  return (data.settings.transactionTemplates || []).some(t=>!t.archived && templateKey(t.title) === key);
+}
+function rememberTransactionTemplate(tx){
+  if(!transactionCanBecomeTemplate(tx)) return;
   data.settings ||= {};
   normalizeTransactionTemplates();
 
@@ -9680,6 +9699,16 @@ document.getElementById("transactionForm").onsubmit = async (e)=>{
     formTx.loanBalanceAdjustment = existing.loanBalanceAdjustment || 0;
   }
 
+  // Existing template families may continue learning lightweight variants. A
+  // brand-new title family is opt-in so one-off/temporary transactions do not
+  // silently create template clutter. This never affects whether the transaction saves.
+  const templateEligible = transactionCanBecomeTemplate(formTx);
+  const templateFamilyExists = templateEligible && hasActiveTransactionTemplateFamily(formTx.title);
+  let shouldRememberTemplate = templateEligible && templateFamilyExists;
+  if(templateEligible && !templateFamilyExists){
+    shouldRememberTemplate = confirm(`Save “${String(formTx.title || "").trim()}” as a transaction template for future use?\n\nCancel saves only this transaction.`);
+  }
+
   const isRecurringEdit = !!existing && isRecurring(existing);
   const editingBillSeries = !!billSeriesEditId && existing?.id === billSeriesEditId;
   const scope = isRecurringEdit ? (editingBillSeries ? "future" : await askRecurringScope("save")) : "future";
@@ -9696,7 +9725,7 @@ document.getElementById("transactionForm").onsubmit = async (e)=>{
     data.transactions.push(formTx);
   }
 
-  rememberTransactionTemplate(formTx);
+  if(shouldRememberTemplate) rememberTransactionTemplate(formTx);
   billSeriesEditId = "";
   txModal.close();
   saveData();
@@ -9801,8 +9830,6 @@ window.openTransaction = (id=null, defaults={})=>{
   if(linksDetails) linksDetails.open = !!txLinkDraftIds.length;
   const notesDetails=document.getElementById("txNotesDetails");
   if(notesDetails) notesDetails.open = false;
-  const moreActions=document.getElementById("txMoreActions");
-  if(moreActions){ moreActions.style.display = tx ? "block" : "none"; moreActions.open = false; }
   updateTransactionDisclosureSummaries();
   txModal.classList.toggle("mobile-quick-add", moneyNestIsPhone() && !tx);
   txModal.classList.toggle("mobile-transaction-edit", moneyNestIsPhone() && !!tx);

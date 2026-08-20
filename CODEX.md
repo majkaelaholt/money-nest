@@ -1,5 +1,16 @@
 # CODEX
 
+## v2-265
+- Calendar day headers may show two balances: the existing primary projected end-of-day balance and a smaller muted cleared-only balance (`✓`) when the values differ. The cleared balance must be calculated with the same calendar account perspective/filter and only `status === "cleared"` activity.
+- Do not replace or reinterpret the primary Calendar balance; lowest/highest day highlighting continues to use the projected balance. Suppress the secondary cleared amount when it equals the projected amount to avoid duplicate visual noise.
+- No schema/data-shape changes; schema remains 225.
+
+## v2-264
+- New transaction-template title families are opt-in. Before `rememberTransactionTemplate()` creates the first active family for a title, transaction save asks whether the user wants that shortcut saved. Declining must never block or undo the financial transaction save. Existing active title families may continue lightweight auto-learning/variant behavior. Recurring series/occurrences remain excluded.
+- Add/Edit Transaction keeps Amount and Date as equal-width paired fields and suppresses native number spinners on Amount.
+- Edit-only actions (Delete, Duplicate, Create card payment when eligible) are direct footer buttons; do not reintroduce a redundant More actions disclosure while the footer has room.
+- No schema/data-shape changes; schema remains 225.
+
 ## v2-263
 - Add/Edit Transaction uses a compact UI order: Title, Category, Amount/Date, Type/Account. Keep the stored transaction `status` field exactly as before; `#txCleared` is UI-only and synchronizes to the hidden `#txStatus` select (`checked = cleared`, unchecked = planned) so backups, CSVs, templates, recurring logic, and older data stay compatible.
 - The Amount calculator is a compact helper opened from the `−/+` button inside the Amount field. It must not alter transaction data until Use/Enter is applied; applying sets Amount and closes the helper.
@@ -134,7 +145,7 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-263`
+Latest known version: `money-nest-v2-265`
 
 Before editing, always inspect `README.md` and confirm the current version in the repository. If `README.md` shows a different version, continue from the repo version and mention the mismatch in your summary.
 
@@ -270,7 +281,7 @@ Example README note:
 ### v2-200
 - Banking is excluded from budgeting. Savings transfers net contributions by direction.
 
-- Current version: money-nest-v2-263. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
+- Current version: money-nest-v2-265. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
 
 
 ### v2-205

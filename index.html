@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <title>Money Nest</title>
-  <link rel="stylesheet" href="styles.css?v=2-263"/>
+  <link rel="stylesheet" href="styles.css?v=2-265"/>
 
   <link rel="icon" href="favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
@@ -573,7 +573,7 @@
               <button type="button" class="amount-calc-toggle" onclick="toggleAmountCalculator()" aria-label="Open amount calculator" title="Amount calculator">−/+</button>
             </div>
           </div>
-          <label>Date
+          <label class="tx-date-field tx-field-block">Date
             <input id="txDate" required type="date"/>
           </label>
         </div>
@@ -733,14 +733,9 @@
       </details>
 
       <div class="modal-actions transaction-modal-actions">
-        <details class="tx-more-actions" id="txMoreActions">
-          <summary>More actions</summary>
-          <div class="tx-more-actions-menu">
-            <button type="button" class="ghost" id="createCardPaymentTxBtn" style="display:none">💸 Create card payment</button>
-            <button type="button" class="ghost" id="duplicateTxBtn">Duplicate</button>
-            <button type="button" class="danger ghost" id="deleteTxBtn">Delete</button>
-          </div>
-        </details>
+        <button type="button" class="danger ghost tx-edit-action" id="deleteTxBtn">Delete</button>
+        <button type="button" class="ghost tx-edit-action" id="duplicateTxBtn">Duplicate</button>
+        <button type="button" class="ghost tx-edit-action" id="createCardPaymentTxBtn" style="display:none">💸 Create card payment</button>
         <span class="transaction-action-spacer"></span>
         <button type="button" class="ghost" id="cancelTxBtn">Cancel</button>
         <button class="primary" id="saveTxBtn">Save</button>
@@ -890,7 +885,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=2-263"></script>
+  <script src="app.js?v=2-265"></script>
   <dialog id="globalSearchModal" class="global-search-modal">
     <div class="global-search-shell">
       <div class="modal-head"><div><h3>🔎 Search Money Nest</h3><p class="hint">Transactions, merchants, categories, accounts, amounts, and dates.</p></div><button class="icon-btn" onclick="document.getElementById('globalSearchModal').close()">×</button></div>

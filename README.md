@@ -1,5 +1,16 @@
 # Money Nest
 
+## v2-265
+- Added a subtle cleared-only balance beneath each Calendar day’s projected balance when planned transactions make the two totals differ. The main balance remains the existing projected end-of-day amount; the smaller `✓` amount reflects only cleared activity through that day.
+- Cleared-only calendar balances use the same visible account/transfer perspective as the existing Calendar and respect the selected Calendar account filter. Days where projected and cleared balances are identical do not repeat the same number.
+- No transaction, balance, recurring, JSON/CSV, Supabase, or schema behavior changed. Schema remains 225.
+
+## v2-264
+- Polished Add/Edit Transaction so Amount and Date use explicitly equal paired widths, and removed the browser spinner arrows from the Amount number field.
+- Replaced the edit-only `More actions` menu with direct footer buttons for Delete, Duplicate, and Create card payment when those actions are available; Cancel and Save remain in the same footer row.
+- Changed automatic template learning for brand-new title families: when a saved transaction does not match an active template title family, Money Nest asks whether to save it as a template. Declining saves only the transaction. Existing template families may still learn/update their lightweight title+category variants normally, while recurring series remain excluded from transaction-template learning.
+- No transaction/template schema, JSON/CSV format, recurring behavior, Supabase behavior, or financial calculations changed. Schema remains 225.
+
 ## v2-263
 - Reworked Add/Edit Transaction back toward the slimmer pre-overhaul proportions while keeping progressive disclosure for routing, repeat, links, notes, and edit-only actions.
 - Reordered the common transaction fields to Title, Category, Amount/Date, then Type/Account. Replaced the visible Status dropdown with a compact `Cleared` checkbox beside Title; unchecked continues to mean Planned and the existing saved `status` field remains unchanged for compatibility.
@@ -138,7 +149,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-263`
+Current version: `money-nest-v2-265`
 
 ## Important Notes
 
