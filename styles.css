@@ -7289,3 +7289,197 @@ button.budget-review-row:hover,button.budget-review-row:focus-visible{
 #appearancePalettePanel .palette-editor-head,
 #appearancePalettePanel .palette-actions,
 #appearancePalettePanel .palette-reset-note{position:relative}
+
+/* v2-263: return Add/Edit Transaction to a slimmer, older-style form while keeping progressive disclosure. */
+#transactionModal .transaction-modal-head{
+  margin-bottom:0;
+}
+#transactionModal .transaction-modal-head h3{
+  margin:0;
+}
+#transactionModal .tx-primary-section{
+  gap:8px;
+}
+#transactionModal .tx-title-field{
+  display:grid;
+  gap:4px;
+  min-width:0;
+}
+#transactionModal .tx-title-label-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  min-height:18px;
+}
+#transactionModal .tx-title-label-row>label:first-child,
+#transactionModal .tx-category-field,
+#transactionModal .tx-amount-field>label,
+#transactionModal .tx-amount-date-grid>label,
+#transactionModal .tx-type-account-grid>label{
+  font-size:11.5px;
+  line-height:1.2;
+  font-weight:850;
+  color:var(--muted);
+  gap:4px;
+}
+#transactionModal .tx-cleared-toggle{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  color:var(--muted);
+  font-size:11px;
+  font-weight:850;
+  cursor:pointer;
+  user-select:none;
+}
+#transactionModal .tx-cleared-toggle input{
+  width:auto!important;
+  height:auto!important;
+  min-height:0!important;
+  margin:0;
+  padding:0;
+  accent-color:var(--accent);
+}
+#transactionModal #txStatus[hidden]{display:none!important}
+#transactionModal .tx-amount-date-grid,
+#transactionModal .tx-type-account-grid{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  gap:8px;
+  align-items:start;
+}
+#transactionModal .tx-field-block{
+  display:grid;
+  gap:4px;
+  min-width:0;
+}
+#transactionModal .tx-amount-input-wrap{
+  position:relative;
+  min-width:0;
+}
+#transactionModal .tx-amount-input-wrap input{
+  padding-right:54px!important;
+}
+#transactionModal .tx-amount-input-wrap .amount-calc-toggle{
+  position:absolute;
+  right:5px;
+  top:50%;
+  transform:translateY(-50%);
+  width:42px;
+  min-width:42px;
+  height:27px;
+  min-height:27px;
+  margin:0;
+  padding:0;
+  border:1px solid color-mix(in srgb,var(--line) 82%,transparent);
+  border-radius:9px;
+  background:color-mix(in srgb,var(--panel) 72%,var(--soft-panel));
+  color:var(--accent);
+  box-shadow:none;
+  font-size:10px;
+  line-height:1;
+  font-weight:950;
+}
+#transactionModal .tx-amount-input-wrap .amount-calc-toggle:hover,
+#transactionModal .tx-amount-input-wrap .amount-calc-toggle:focus-visible{
+  background:color-mix(in srgb,var(--accent) 10%,var(--soft-panel));
+}
+#transactionModal .amount-calculator-panel{
+  margin:-1px 0 0;
+  padding:6px;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:6px;
+  align-items:center;
+  border:1px solid color-mix(in srgb,var(--line) 82%,transparent);
+  border-radius:10px;
+  background:var(--soft-panel)!important;
+}
+#transactionModal .amount-calculator-panel[hidden]{display:none!important}
+#transactionModal .amount-calculator-panel input{
+  min-height:34px!important;
+  height:34px!important;
+  padding:6px 9px!important;
+  border-radius:8px!important;
+  font-size:11.5px!important;
+}
+#transactionModal .amount-calculator-panel button{
+  min-height:34px;
+  height:34px;
+  padding:6px 10px;
+  font-size:11px;
+}
+
+@media (min-width:701px){
+  html:not(.money-nest-ipad) #transactionModal{
+    width:min(600px,calc(100vw - 24px));
+    max-width:600px;
+  }
+  html:not(.money-nest-ipad) #transactionModal .transaction-modal-card{
+    padding:14px 15px;
+    gap:7px;
+    border-radius:19px;
+  }
+  html:not(.money-nest-ipad) #transactionModal .transaction-modal-head h3{
+    font-size:19px;
+  }
+  html:not(.money-nest-ipad) #transactionModal .tx-primary-section input:not([type="checkbox"]),
+  html:not(.money-nest-ipad) #transactionModal .tx-primary-section select{
+    min-height:38px;
+    height:38px;
+    padding:7px 9px;
+    border-radius:10px;
+    font-size:12.5px;
+  }
+  html:not(.money-nest-ipad) #transactionModal .tx-title-field input{
+    font-size:13.5px;
+  }
+  html:not(.money-nest-ipad) #transactionModal .tx-amount-field input{
+    font-size:16px;
+  }
+  html:not(.money-nest-ipad) #transactionModal .form-details>summary{
+    padding:7px 9px;
+    font-size:11.5px;
+  }
+  html:not(.money-nest-ipad) #transactionModal .form-details>summary>small{
+    font-size:9px;
+  }
+  html:not(.money-nest-ipad) #transactionModal .details-inner{
+    padding:0 9px 9px;
+    gap:7px;
+  }
+}
+
+@media(max-width:700px){
+  html:not(.money-nest-ipad) #transactionModal .tx-amount-date-grid,
+  html:not(.money-nest-ipad) #transactionModal .tx-type-account-grid{
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+    gap:7px!important;
+  }
+  html:not(.money-nest-ipad) #transactionModal .tx-title-label-row{
+    min-height:20px;
+  }
+  html:not(.money-nest-ipad) #transactionModal .tx-cleared-toggle{
+    font-size:11px;
+  }
+  html:not(.money-nest-ipad) #transactionModal .tx-amount-input-wrap .amount-calc-toggle{
+    right:5px;
+    width:40px;
+    min-width:40px;
+    height:28px;
+    min-height:28px;
+    padding:0!important;
+    font-size:10px!important;
+  }
+  html:not(.money-nest-ipad) #transactionModal .amount-calculator-panel{
+    padding:6px;
+    gap:6px;
+  }
+}
+#transactionModal .tx-amount-date-grid>label,
+#transactionModal .tx-amount-date-grid>.tx-field-block{
+  grid-template-rows:auto auto;
+  gap:4px;
+  align-content:start;
+}

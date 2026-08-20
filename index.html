@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <title>Money Nest</title>
-  <link rel="stylesheet" href="styles.css?v=2-262"/>
+  <link rel="stylesheet" href="styles.css?v=2-263"/>
 
   <link rel="icon" href="favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
@@ -545,22 +545,33 @@
   <dialog id="transactionModal">
     <form method="dialog" class="modal-card transaction-modal-card" id="transactionForm">
       <div class="panel-head transaction-modal-head">
-        <div><p class="eyebrow">Transaction</p><h3 id="modalTitle">Add transaction</h3></div>
+        <h3 id="modalTitle">Add transaction</h3>
         <button type="button" class="icon-btn" id="closeModal">×</button>
       </div>
 
       <input type="hidden" id="txId"/>
 
       <section class="form-section tx-primary-section">
-        <label class="template-title-wrap tx-title-field">Title
+        <div class="template-title-wrap tx-title-field">
+          <div class="tx-title-label-row">
+            <label for="txTitle">Title</label>
+            <label class="tx-cleared-toggle" for="txCleared"><input id="txCleared" type="checkbox"/> Cleared</label>
+          </div>
           <input id="txTitle" required autocomplete="off" placeholder="What was it?"/>
           <div id="txTemplateSuggestions" class="template-suggestions"></div>
+        </div>
+
+        <label class="tx-category-field">Category
+          <select id="txCategory"></select>
         </label>
 
         <div class="tx-amount-date-grid">
           <div class="tx-amount-field tx-field-block">
-            <div class="tx-field-label-row"><label for="txAmount">Amount</label><button type="button" class="ghost tiny amount-calc-toggle" onclick="toggleAmountCalculator()">🧮 Calculator</button></div>
-            <input id="txAmount" required type="number" step="0.01" placeholder="0.00" inputmode="decimal"/>
+            <label for="txAmount">Amount</label>
+            <div class="tx-amount-input-wrap">
+              <input id="txAmount" required type="number" step="0.01" placeholder="0.00" inputmode="decimal"/>
+              <button type="button" class="amount-calc-toggle" onclick="toggleAmountCalculator()" aria-label="Open amount calculator" title="Amount calculator">−/+</button>
+            </div>
           </div>
           <label>Date
             <input id="txDate" required type="date"/>
@@ -568,26 +579,11 @@
         </div>
 
         <div id="txAmountCalcPanel" class="amount-calculator-panel" hidden>
-          <label>Amount calculator
-            <input id="txAmountCalcExpression" type="text" inputmode="decimal" placeholder="e.g. 34.20 + 1.99 + 0.87"/>
-          </label>
-          <div class="inline-actions">
-            <button type="button" class="primary tiny" onclick="calculateTransactionAmount()">Use result</button>
-            <button type="button" class="ghost tiny" onclick="clearAmountCalculator()">Clear</button>
-          </div>
-          <p class="hint">Use +, -, ×, ÷, *, /, and parentheses.</p>
+          <input id="txAmountCalcExpression" type="text" inputmode="decimal" aria-label="Amount calculation" placeholder="34.20 + 1.99"/>
+          <button type="button" class="primary tiny" onclick="calculateTransactionAmount()">Use</button>
         </div>
 
-        <div class="tx-account-category-grid">
-          <label>Account
-            <select id="txAccount"></select>
-          </label>
-          <label>Category
-            <select id="txCategory"></select>
-          </label>
-        </div>
-
-        <div class="tx-type-status-grid">
+        <div class="tx-type-account-grid">
           <label>Type
             <select id="txType">
               <option value="expense">Expense</option>
@@ -596,13 +592,15 @@
               <option value="transfer">Transfer / Payment</option>
             </select>
           </label>
-          <label>Status
-            <select id="txStatus">
-              <option value="planned">Planned</option>
-              <option value="cleared">Cleared</option>
-            </select>
+          <label>Account
+            <select id="txAccount"></select>
           </label>
         </div>
+
+        <select id="txStatus" hidden aria-hidden="true" tabindex="-1">
+          <option value="planned">Planned</option>
+          <option value="cleared">Cleared</option>
+        </select>
 
         <label class="checkbox auto-paycheck-box" id="autoPaycheckLabel">
           <input id="txAutoPaycheck" type="checkbox">
@@ -892,7 +890,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=2-262"></script>
+  <script src="app.js?v=2-263"></script>
   <dialog id="globalSearchModal" class="global-search-modal">
     <div class="global-search-shell">
       <div class="modal-head"><div><h3>🔎 Search Money Nest</h3><p class="hint">Transactions, merchants, categories, accounts, amounts, and dates.</p></div><button class="icon-btn" onclick="document.getElementById('globalSearchModal').close()">×</button></div>

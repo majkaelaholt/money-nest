@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-262";
+const APP_VERSION = "2-263";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -9384,13 +9384,29 @@ window.clearAmountCalculator = ()=>{
 window.calculateTransactionAmount = ()=>{
   try{
     const input = document.getElementById("txAmountCalcExpression");
+    const panel = document.getElementById("txAmountCalcPanel");
     const result = safeAmountExpressionValue(input?.value || "");
     txAmount.value = result.toFixed(2);
+    if(input) input.value = "";
+    if(panel) panel.hidden = true;
     updateTransactionFormUI();
+    txAmount.focus();
   } catch(err){
     alert(`Calculator error: ${err.message || err}`);
   }
 };
+
+function syncTransactionClearedControl(){
+  const checkbox = document.getElementById("txCleared");
+  const status = document.getElementById("txStatus");
+  if(checkbox && status) checkbox.checked = status.value === "cleared";
+}
+function syncTransactionStatusFromCleared(){
+  const checkbox = document.getElementById("txCleared");
+  const status = document.getElementById("txStatus");
+  if(!checkbox || !status) return;
+  status.value = checkbox.checked ? "cleared" : "planned";
+}
 
 function updateTransactionDisclosureSummaries(){
   const routingSummary=document.getElementById("txRoutingSummary");
@@ -9413,6 +9429,7 @@ function updateTransactionDisclosureSummaries(){
 }
 
 function updateTransactionFormUI(){
+  syncTransactionClearedControl();
   const type = txType.value;
 
   if(type === "paycheck" && (!txCategory.value || txCategory.value === "unassigned")){
@@ -9524,6 +9541,21 @@ if(txTitleTemplateEl){
   }, 180));
 }
 document.getElementById("txNotes")?.addEventListener("input", updateTransactionDisclosureSummaries);
+document.getElementById("txCleared")?.addEventListener("change", ()=>{
+  syncTransactionStatusFromCleared();
+  updateTransactionFormUI();
+});
+document.getElementById("txAmountCalcExpression")?.addEventListener("keydown", e=>{
+  if(e.key === "Enter"){
+    e.preventDefault();
+    calculateTransactionAmount();
+  } else if(e.key === "Escape"){
+    e.preventDefault();
+    const panel = document.getElementById("txAmountCalcPanel");
+    if(panel) panel.hidden = true;
+    txAmount.focus();
+  }
+});
 
 if(document.getElementById("txAutoPaycheck")){
   txAutoPaycheck.addEventListener("change", ()=>{

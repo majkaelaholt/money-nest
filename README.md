@@ -1,5 +1,11 @@
 # Money Nest
 
+## v2-263
+- Reworked Add/Edit Transaction back toward the slimmer pre-overhaul proportions while keeping progressive disclosure for routing, repeat, links, notes, and edit-only actions.
+- Reordered the common transaction fields to Title, Category, Amount/Date, then Type/Account. Replaced the visible Status dropdown with a compact `Cleared` checkbox beside Title; unchecked continues to mean Planned and the existing saved `status` field remains unchanged for compatibility.
+- Replaced the wordy Calculator control with a small `−/+` button inside the Amount field. The calculator is now a single compact expression row; Enter or Use applies the result, closes the helper, and returns focus to Amount.
+- Kept iPhone quick-entry behavior and existing transaction/template/recurring logic intact. No JSON/CSV/Supabase/schema changes; schema remains 225.
+
 ## v2-262
 - Added a third editable app-surface color, `Secondary panels`, so Appearance now has a deliberate three-level hierarchy: Main panels for outer cards/modals, Secondary panels for nested section containers, and Soft panels for the innermost rows/items.
 - Preserved the existing `panel2`/Soft panels setting for backward compatibility. Older palettes/backups with no Secondary panels value derive a midpoint from their saved Main + Soft colors, so existing palette edits remain safe and immediately gain a usable middle surface.
@@ -132,7 +138,7 @@
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-262`
+Current version: `money-nest-v2-263`
 
 ## Important Notes
 
