@@ -1,5 +1,13 @@
 # Money Nest
 
+## v2-273
+
+### Adaptive desktop Calendar viewport
+- Desktop Calendar no longer hard-locks the document to `overflow:hidden`. It still has no page scroll when the Calendar naturally fits, but shorter browser viewports can scroll normally instead of clipping the top or bottom.
+- Calendar now uses dynamic viewport height (`100dvh`) for its desktop shell so it adapts better to different laptop/browser heights.
+- Entering Calendar on desktop resets the document to the top, preventing a scroll position preserved from a longer page (such as Bills or Settings) from opening Calendar partially off-screen.
+- iPad/iPhone Calendar scrolling behavior is unchanged. No calendar calculations, transactions, data formats, schema, JSON/CSV compatibility, or Supabase behavior changed. Schema remains 225.
+
 ## v2-272
 
 ### Targeted Accounts, Budgets, and Calendar polish

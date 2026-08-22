@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-272";
+const APP_VERSION = "2-273";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -4729,6 +4729,11 @@ function setView(view){
     const titleEl = document.getElementById("viewTitle");
     if(titleEl) titleEl.textContent = titles[view] || view[0].toUpperCase()+view.slice(1);
     render();
+    // Desktop Calendar can follow a long page. Reset its document position so a browser
+    // that preserved the previous page scroll never opens Calendar clipped off-screen.
+    if(view === "calendar" && window.innerWidth > 980){
+      requestAnimationFrame(()=>window.scrollTo({top:0,left:0,behavior:"auto"}));
+    }
     trackRecentPlace(view);
   } catch(err){
     console.error("View render failed:", view, err);

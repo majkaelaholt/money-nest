@@ -7887,20 +7887,23 @@ body{
   border-bottom-right-radius:calc(var(--radius) - 2px);
 }
 
-/* Desktop Calendar already fits the viewport. Remove the otherwise-useless few pixels of
-   document scrolling while leaving tablet/mobile behavior unchanged. */
+/* v2-273: adaptive desktop Calendar height. Keep the no-scroll look when the Calendar
+   naturally fits, but never lock a shorter viewport at a preserved scroll position or clip
+   content. The document can grow/scroll only when the Calendar actually needs the room. */
 @media(min-width:981px){
   body.money-nest-view-calendar{
-    height:100vh;
-    overflow:hidden;
+    min-height:100dvh;
+    height:auto;
+    overflow-x:hidden;
+    overflow-y:auto;
   }
   body.money-nest-view-calendar .app-shell{
-    height:100vh;
-    min-height:0;
+    min-height:100dvh;
+    height:auto;
   }
   body.money-nest-view-calendar .main{
-    height:100vh;
-    min-height:0;
+    min-height:100dvh;
+    height:auto;
   }
   body.money-nest-view-calendar .topbar{
     display:none !important;
@@ -7908,7 +7911,7 @@ body{
     padding:0 !important;
   }
   body.money-nest-view-calendar #calendar.view.active{
-    height:100% !important;
+    height:auto !important;
     min-height:0;
   }
 }

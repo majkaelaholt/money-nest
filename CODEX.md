@@ -161,7 +161,12 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-272`
+Latest known version: `money-nest-v2-273`
+
+### v2-273 adaptive desktop Calendar rule
+- Do not hard-lock the desktop Calendar page with `overflow:hidden`. Keep the page scroll-free when the calendar naturally fits, but allow normal document scrolling on shorter desktop/laptop viewports.
+- When entering Calendar on desktop, reset the document scroll position to the top so scroll preserved from a longer page cannot clip the calendar.
+- Preserve iPad/iPhone Calendar scrolling behavior.
 
 ### v2-272 targeted surface rules
 - This version intentionally starts from v2-270; do not reintroduce the rejected broad v2-271 Budgets/Accounts remap.
