@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-273";
+const APP_VERSION = "2-274";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -9687,6 +9687,14 @@ if(document.getElementById("clearRecentBtn")) clearRecentBtn.onclick = ()=>{
 };
 document.getElementById("closeModal").onclick = () => { billSeriesEditId = ""; txModal.close(); };
 document.getElementById("cancelTxBtn").onclick = () => { billSeriesEditId = ""; txModal.close(); };
+// v2-274: Search remains open behind a transaction editor. When the editor closes,
+// refresh the same query in place so saving/editing never forces the user to restart Search.
+txModal.addEventListener("close", ()=>{
+  const searchModal = document.getElementById("globalSearchModal");
+  if(!searchModal?.open) return;
+  const searchInput = document.getElementById("globalSearchInput");
+  renderGlobalSearch(searchInput?.value || "");
+});
 document.getElementById("transactionForm").onsubmit = async (e)=>{
   e.preventDefault();
   const id = document.getElementById("txId").value || uid();
@@ -10202,17 +10210,29 @@ function createCardPaymentForCharge(id, meta={}){
     const checkbox = document.getElementById("cardPayCreateIou");
     const fields = document.getElementById("cardPayIouFields");
     const payAccount = document.getElementById("cardPayAccount");
+    const iouFrom = document.getElementById("cardPayIouFrom");
     const iouTo = document.getElementById("cardPayIouTo");
+    const iouDate = document.getElementById("cardPayIouDate");
     const iouTitle = document.getElementById("cardPayIouTitle");
     const syncIouTo = ()=>{
       if(iouTo && payAccount) iouTo.value = payAccount.value;
       const acct = accountById(payAccount?.value || "");
       if(iouTitle) iouTitle.value = `Pay back ${acct?.name || "cash account"}`;
     };
+    const syncIouRepaymentDate = ()=>{
+      if(iouDate && iouFrom?.value) iouDate.value = nextPaycheckDate(iouFrom.value);
+    };
     if(checkbox && fields){
-      checkbox.onchange = ()=>{ fields.style.display = checkbox.checked ? "block" : "none"; if(checkbox.checked) syncIouTo(); };
+      checkbox.onchange = ()=>{
+        fields.style.display = checkbox.checked ? "block" : "none";
+        if(checkbox.checked){
+          syncIouTo();
+          syncIouRepaymentDate();
+        }
+      };
     }
     if(payAccount) payAccount.onchange = syncIouTo;
+    if(iouFrom) iouFrom.onchange = syncIouRepaymentDate;
   },0);
 
   simpleSubmit = ()=>{
@@ -12857,7 +12877,7 @@ function renderGlobalSearch(query=''){
  const el=document.getElementById('globalSearchResults'); if(!el)return; const q=String(query).trim().toLowerCase();
  if(!q){el.innerHTML='<div class="empty-state">Start typing to search all saved transactions.</div>';return;}
  const rows=expandedTransactions(toISO(addMonths(new Date(),24))).filter(tx=>{const a=accountById(tx.accountId),c=categoryById(tx.categoryId);return [tx.title,tx.notes,tx.date,tx.amount,a?.name,c?.name,tx.status,tx.type].some(v=>String(v??'').toLowerCase().includes(q));}).slice(0,80);
- el.innerHTML=rows.length?rows.map(tx=>{const a=accountById(tx.accountId),c=categoryById(tx.categoryId);return `<button class="global-search-row" onclick="document.getElementById('globalSearchModal').close();openTransaction('${tx.originalId||tx.id}',{generated:${!!tx.generated},occurrenceOriginalDate:'${tx.originalDate||tx.date}',occurrenceDate:'${tx.date}'})"><span><b>${escapeAttr(tx.title||'Untitled')}</b><small>${tx.date} • ${a?.name||'Unknown account'} • ${c?.name||'Unassigned'} • ${tx.status}</small></span><strong>${money(tx.amount)}</strong></button>`}).join(''):'<div class="empty-state">No matches.</div>';
+ el.innerHTML=rows.length?rows.map(tx=>{const a=accountById(tx.accountId),c=categoryById(tx.categoryId);return `<button class="global-search-row" onclick="openTransaction('${tx.originalId||tx.id}',{generated:${!!tx.generated},occurrenceOriginalDate:'${tx.originalDate||tx.date}',occurrenceDate:'${tx.date}'})"><span><b>${escapeAttr(tx.title||'Untitled')}</b><small>${tx.date} • ${a?.name||'Unknown account'} • ${c?.name||'Unassigned'} • ${tx.status}</small></span><strong>${money(tx.amount)}</strong></button>`}).join(''):'<div class="empty-state">No matches.</div>';
 }
 window.renderGlobalSearch=renderGlobalSearch;
 function healthScan(){
@@ -13230,3 +13250,5 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 // v2-259: Bills Recurring Health flags conservative review signals and groups active series into Needs review, Coming up, and Later.
 
 // v2-261: Template Manager can filter by the fields a shortcut actively autofills.
+
+// v2-274: IOU repayment dates follow the selected paying-later account paycheck; Search stays open behind transaction edits.

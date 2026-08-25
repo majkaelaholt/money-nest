@@ -161,7 +161,13 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-273`
+Latest known version: `money-nest-v2-274`
+
+### v2-274 card-payment IOU, Search return, and dialog surface rules
+- In Create Card Payment, `cardPayIouDate` must recalculate with `nextPaycheckDate(cardPayIouFrom.value)` whenever the **From / paying later** account changes. The IOU date belongs to the account that will reimburse the paying account; do not assume Mak's paycheck.
+- Global Search must remain open when a search result opens the transaction editor. Closing/saving the editor should reveal the same query/results and refresh them in place.
+- Keep desktop/read-only dialog chrome visually rounded by removing UA dialog padding/box-shadow. Preserve `.modal-card` shadows and the dedicated `.global-search-modal` shadow.
+- No schema/data-shape changes; schema remains 225.
 
 ### v2-273 adaptive desktop Calendar rule
 - Do not hard-lock the desktop Calendar page with `overflow:hidden`. Keep the page scroll-free when the calendar naturally fits, but allow normal document scrolling on shorter desktop/laptop viewports.

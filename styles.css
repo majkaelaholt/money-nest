@@ -7915,3 +7915,10 @@ body{
     min-height:0;
   }
 }
+
+
+/* v2-274: remove the browser dialog's transparent rectangular padding/halo around
+   rounded read-only/detail cards. Inner .modal-card elements keep the intended shadow;
+   Search is itself the visible dialog surface, so preserve its dedicated shadow. */
+dialog{padding:0}
+dialog:not(.global-search-modal){box-shadow:none}

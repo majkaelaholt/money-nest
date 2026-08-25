@@ -1,5 +1,12 @@
 # Money Nest
 
+## v2-274
+
+- Card-payment IOU repayment dates now follow the selected **From / paying later** cash account. Changing that account immediately recalculates the repayment date from that account's next planned paycheck (for example, Ty Checking follows Ty's weekly Wednesday paycheck series).
+- Global Search now stays open behind transaction editing. Closing or saving the transaction returns to the same query/results instead of closing Search and forcing a restart; results refresh after the editor closes.
+- Removed the browser dialog's transparent rectangular padding/halo around rounded read-only/detail modals. Modal-card shadows remain intact and Search keeps its dedicated dialog shadow.
+- No financial calculations, transaction fields, JSON/CSV formats, recurring behavior, Supabase behavior, or schema fields changed. Schema remains 225.
+
 ## v2-273
 
 ### Adaptive desktop Calendar viewport
