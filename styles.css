@@ -4400,35 +4400,6 @@ button:disabled{
   }
 }
 
-.budget-set-row{
-  align-items:center;
-}
-.budget-set-row .budget-target-main{
-  display:grid;
-  gap:4px;
-}
-.budget-set-meta{
-  display:flex;
-  flex-wrap:wrap;
-  gap:6px 12px;
-  color:var(--muted);
-  font-size:13px;
-}
-.budget-set-meta b{
-  color:var(--ink);
-}
-@media(max-width:700px){
-  .budget-set-row{
-    grid-template-columns:1fr auto !important;
-    gap:8px !important;
-  }
-  .budget-set-meta{
-    display:grid;
-    gap:3px;
-    font-size:12px;
-  }
-}
-
 
 /* v2-186: mobile date input, forecast/safe-to-spend polish */
 @media(max-width:700px){
@@ -5673,34 +5644,6 @@ button.budget-review-row:hover,button.budget-review-row:focus-visible{
   background:color-mix(in srgb,var(--panel-2) 48%,transparent)!important;
   outline:0;
 }
-#budgetList{gap:0}
-.budget-set-row{
-  display:grid!important;
-  grid-template-columns:minmax(0,1fr) auto!important;
-  gap:16px!important;
-  padding:12px 4px!important;
-  border:0!important;
-  border-top:1px solid color-mix(in srgb,var(--line) 70%,transparent)!important;
-  border-radius:0!important;
-  background:transparent!important;
-}
-.budget-set-row:first-child{border-top:0!important}
-.budget-set-row:hover,.budget-set-row:focus-visible{background:color-mix(in srgb,var(--panel-2) 48%,transparent)!important;outline:0}
-.budget-set-row .budget-target-main{min-width:0;gap:4px}
-.budget-set-meta{gap:4px 12px;font-size:11px}
-.budget-target-side{
-  display:grid;
-  grid-template-columns:auto 14px;
-  grid-template-rows:auto auto;
-  column-gap:10px;
-  align-items:center;
-  justify-items:end;
-  align-self:center;
-  min-width:96px;
-}
-.budget-target-side strong{grid-column:1;font-size:16px;white-space:nowrap}
-.budget-target-side small{grid-column:1;color:var(--muted);font-size:10px;font-weight:750}
-.budget-row-chevron{grid-column:2;grid-row:1 / span 2;font-size:22px;color:var(--muted);line-height:1}
 
 @media(max-width:1100px){
   .bill-filters{grid-template-columns:repeat(3,minmax(0,1fr))}
@@ -5730,9 +5673,6 @@ button.budget-review-row:hover,button.budget-review-row:focus-visible{
   .bill-filters{grid-template-columns:1fr}
   .bill-card-status .status-toggle{font-size:10px;padding:4px 6px}
   .bill-card-schedule b,.bill-card-schedule span{white-space:normal}
-  .budget-set-row{gap:10px!important;padding:11px 2px!important}
-  .budget-target-side{min-width:82px}
-  .budget-target-side strong{font-size:14px}
 }
 .budget-review-section .spending-pie-wrap{grid-template-columns:minmax(230px,290px) minmax(0,1fr);gap:22px;align-items:center;padding:0 4px}
 .budget-review-section .spending-pie{max-width:290px;justify-self:center}
@@ -7820,8 +7760,7 @@ body{
 /* BUDGETS — keep the v2-270 flat section layout, but place the actual data/list areas
    on a Soft surface so Spending by Category and Budget Performance do not melt into Main. */
 #budgets .spending-pie-wrap,
-#budgets .budget-review-list,
-#budgets #budgetList{
+#budgets .budget-review-list{
   background:var(--soft-panel) !important;
   border:1px solid color-mix(in srgb,var(--line) 76%,transparent);
   border-radius:14px;
@@ -7831,20 +7770,14 @@ body{
   padding:10px 12px !important;
 }
 #budgets .spending-legend-row,
-#budgets button.budget-review-row,
-#budgets .budget-set-row{
+#budgets button.budget-review-row{
   background:transparent !important;
 }
 #budgets .spending-legend-row:hover,
 #budgets .spending-legend-row:focus-visible,
 #budgets button.budget-review-row:hover,
-#budgets button.budget-review-row:focus-visible,
-#budgets .budget-set-row:hover,
-#budgets .budget-set-row:focus-visible{
+#budgets button.budget-review-row:focus-visible{
   background:color-mix(in srgb,var(--soft-panel) 82%,var(--panel-secondary) 18%) !important;
-}
-#budgets #budgetList{
-  gap:0;
 }
 
 /* Calendar has overflow-visible for transaction popovers, so its square child backgrounds
@@ -7897,3 +7830,31 @@ body{
    Search is itself the visible dialog surface, so preserve its dedicated shadow. */
 dialog{padding:0}
 dialog:not(.global-search-modal){box-shadow:none}
+
+/* v2-277: keep Budgets as one review surface. Target configuration lives in a dedicated
+   Budget Manager so the page no longer repeats every budget in a second full list. */
+.budget-manager-modal{width:min(760px,calc(100vw - 28px));max-width:760px}
+.budget-manager-card{width:100%;max-width:none;display:grid;gap:14px}
+.budget-manager-toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--panel-secondary)}
+.budget-manager-toolbar>div{display:grid;gap:2px;min-width:0}
+.budget-manager-toolbar small{color:var(--muted);font-size:11px;line-height:1.35}
+.budget-manager-list{display:grid;gap:0;border:1px solid var(--line);border-radius:14px;background:var(--soft-panel);overflow:hidden;max-height:min(62dvh,620px);overflow-y:auto}
+.budget-manager-row{width:100%;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center;padding:12px 14px;border:0;border-bottom:1px solid color-mix(in srgb,var(--line) 72%,transparent);background:transparent;color:var(--ink);text-align:left;font:inherit;cursor:pointer}
+.budget-manager-row:last-child{border-bottom:0}
+.budget-manager-row:hover,.budget-manager-row:focus-visible{background:color-mix(in srgb,var(--soft-panel) 82%,var(--panel-secondary) 18%);outline:0}
+.budget-manager-main{display:grid;gap:4px;min-width:0}
+.budget-manager-main small{color:var(--muted);font-size:11px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.budget-manager-side{display:grid;grid-template-columns:auto 14px;grid-template-rows:auto auto;column-gap:10px;align-items:center;justify-items:end;min-width:112px}
+.budget-manager-side strong{grid-column:1;font-size:16px;white-space:nowrap}
+.budget-manager-side small{grid-column:1;color:var(--muted);font-size:10px;font-weight:800;white-space:nowrap}
+.budget-manager-side>span{grid-column:2;grid-row:1 / span 2;font-size:22px;color:var(--muted);line-height:1}
+@media(max-width:700px){
+  #budgets>.budget-review-panel>.panel-head{align-items:flex-start}
+  #budgets #editBudgetsBtn{white-space:nowrap}
+  .budget-manager-modal{width:calc(100vw - 16px)}
+  .budget-manager-card{gap:10px}
+  .budget-manager-toolbar{align-items:flex-start;padding:10px;flex-wrap:wrap}
+  .budget-manager-toolbar .primary{width:100%}
+  .budget-manager-row{grid-template-columns:minmax(0,1fr) auto;padding:11px 10px;gap:10px}
+  .budget-manager-side{min-width:94px}
+}

@@ -161,7 +161,21 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-275`
+Latest known version: `money-nest-v2-277`
+
+### v2-277 budget review/editor rules
+- Budgets page has one primary review surface. Do not restore a second full **Monthly Budget Targets** list unless explicitly requested.
+- **How you did vs budget** is the on-page performance list; configuration belongs behind **Edit budgets** in `budgetManagerModal`.
+- Budget Manager may add/edit/delete targets through the existing `simpleBudget()` editor. Closing that editor should return to the still-open/refreshed manager when launched from the manager.
+- Do not add transaction-level budget assignment. Budget membership continues to use categories + included cash accounts, with v2-276 `spendingType` only changing Bills/Extra Budget Quick View classification.
+- Preserve budget JSON/CSV fields, calculations, and schema 225.
+
+### v2-276 budget spending-view override rules
+- Budgets may store optional `spendingType`: `auto`, `bills`, or `extra`. Missing/invalid values normalize to `auto` for backward compatibility.
+- `auto` preserves recurring-series detection. `bills` and `extra` only override classification inside Budget Quick Views; they must not mutate transactions, recurring rules, or the Bills page.
+- Transaction classification may use matching budget overrides. When multiple explicit overrides match, prefer the most specific budget (fewer categories, then narrower account scope/fewer accounts). If equally specific matches conflict, fall back to automatic recurring detection.
+- Preserve `spendingType` in budget CSV export/import while accepting old CSVs with no such column. JSON backups remain naturally backward compatible.
+- Schema remains 225.
 
 ### v2-275 maintenance/privacy cleanup rules
 - Do not re-embed personal financial/sample records in `app.js` or ship historical import-balance notes. Fresh installs use an empty starter dataset with generic categories.

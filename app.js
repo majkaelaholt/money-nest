@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-275";
+const APP_VERSION = "2-277";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -331,7 +331,7 @@ function maybeQueueCloudAutoSave(){
 
 // v2.80: compatibility shim for browsers that do not expose element IDs as global variables.
 (function bindDomIdGlobals(){
-  const ids = ['accountDetail', 'accountDetailContent', 'accountList', 'accounts', 'addAccountBtn', 'addBillBtn', 'addBudgetBtn', 'addCategoryBtn', 'addDayTransactionBtn', 'addDebtBtn', 'autoPaycheckHint', 'autoPaycheckLabel', 'backupBtn', 'financialPictureBtn', 'extendedFinancialPictureBtn', 'billAccountFilter', 'billCategoryFilter', 'billRecurrenceFilter', 'billSort', 'billTypeFilter', 'bills', 'billsList', 'budgetList', 'budgetReview', 'bulkEditCategoriesBtn', 'budgets', 'calendar', 'calendarAccountFilter', 'calendarCategoryHighlight', 'calendarCategoryHighlightDropdown', 'calendarCategoryHighlightBtn', 'calendarCategoryHighlightMenu', 'calendarGrid', 'cancelDayModal', 'cancelSimple', 'cancelTxBtn', 'categoryList', 'clearRecentBtn', 'closeDayModal', 'closeModal', 'closeSimple', 'csvExportBtn', 'csvImportInput', 'ctxDelete', 'ctxDuplicate', 'ctxEdit', 'ctxCreateCardPayment', 'ctxMarkReimbursed', 'ctxToggleCleared', 'ctxUseCardInstead', 'dashboard', 'dayModal', 'dayModalSub', 'dayModalTitle', 'dayModalTransactions', 'debtDetail', 'debtDetailContent', 'debtGroups', 'debtSnapshot', 'debts', 'deleteSimpleBtn', 'deleteTxBtn', 'duplicateTxBtn', 'importInput', 'modalTitle', 'monthLabel', 'nextMonth', 'prevMonth', 'quickAddBtn', 'recentPlacesList', 'recentChangesList', 'undoLastChangeBtn', 'clearChangeHistoryBtn', 'recurrenceDetails', 'repeatIntervalUnitLabel', 'safeSpendList', 'saveTxBtn', 'settings', 'settingsClearAllBtn', 'simpleFields', 'simpleForm', 'simpleModal', 'simpleTitle', 'summaryCards', 'todayBtn', 'transactionForm', 'transactionModal', 'txAccount', 'txAmount', 'txAutoPaycheck', 'txCategory', 'txContextMenu', 'txDate', 'txDebt', 'txDebtAccount', 'txLoanBreakdownWrap', 'txLoanPrincipal', 'txLoanInterest', 'txLoanFees', 'txLoanBreakdownHint', 'txDeleteAll', 'txDeleteOne', 'txDeleteScopeWrap', 'txId', 'txNotes', 'txRepeatInterval', 'txRepeatIntervalUnit', 'txRepeatOrdinal', 'txRepeatRule', 'txRepeatWeekday', 'txSaveScopeHint', 'txSaveScopeWrap', 'txScopeFuture', 'txScopeOne', 'txStatus', 'txTitle', 'txTransferTo', 'txType', 'txWeekendHandling', 'upcomingList', 'viewTitle', 'settingsPaycheckCount', 'paycheckProfileList', 'makHourlyRate', 'makHoursPerWorkday', 'makDeductionPercent', 'makFixedDeduction', 'tyHourlyRate', 'tyDefaultHours', 'tyDeductionPercent', 'tyFixedDeduction', 'paycheckHoursWrap', 'txPaycheckHoursOverride', 'billCategoryDropdown', 'billCategoryDropdownBtn', 'billCategoryDropdownMenu'];
+  const ids = ['accountDetail', 'accountDetailContent', 'accountList', 'accounts', 'addAccountBtn', 'addBillBtn', 'addBudgetBtn', 'addCategoryBtn', 'addDayTransactionBtn', 'addDebtBtn', 'autoPaycheckHint', 'autoPaycheckLabel', 'backupBtn', 'financialPictureBtn', 'extendedFinancialPictureBtn', 'billAccountFilter', 'billCategoryFilter', 'billRecurrenceFilter', 'billSort', 'billTypeFilter', 'bills', 'billsList', 'budgetReview', 'bulkEditCategoriesBtn', 'budgets', 'calendar', 'calendarAccountFilter', 'calendarCategoryHighlight', 'calendarCategoryHighlightDropdown', 'calendarCategoryHighlightBtn', 'calendarCategoryHighlightMenu', 'calendarGrid', 'cancelDayModal', 'cancelSimple', 'cancelTxBtn', 'categoryList', 'clearRecentBtn', 'closeDayModal', 'closeModal', 'closeSimple', 'csvExportBtn', 'csvImportInput', 'ctxDelete', 'ctxDuplicate', 'ctxEdit', 'ctxCreateCardPayment', 'ctxMarkReimbursed', 'ctxToggleCleared', 'ctxUseCardInstead', 'dashboard', 'dayModal', 'dayModalSub', 'dayModalTitle', 'dayModalTransactions', 'debtDetail', 'debtDetailContent', 'debtGroups', 'debtSnapshot', 'debts', 'deleteSimpleBtn', 'deleteTxBtn', 'duplicateTxBtn', 'importInput', 'modalTitle', 'monthLabel', 'nextMonth', 'prevMonth', 'quickAddBtn', 'recentPlacesList', 'recentChangesList', 'undoLastChangeBtn', 'clearChangeHistoryBtn', 'recurrenceDetails', 'repeatIntervalUnitLabel', 'safeSpendList', 'saveTxBtn', 'settings', 'settingsClearAllBtn', 'simpleFields', 'simpleForm', 'simpleModal', 'simpleTitle', 'summaryCards', 'todayBtn', 'transactionForm', 'transactionModal', 'txAccount', 'txAmount', 'txAutoPaycheck', 'txCategory', 'txContextMenu', 'txDate', 'txDebt', 'txDebtAccount', 'txLoanBreakdownWrap', 'txLoanPrincipal', 'txLoanInterest', 'txLoanFees', 'txLoanBreakdownHint', 'txDeleteAll', 'txDeleteOne', 'txDeleteScopeWrap', 'txId', 'txNotes', 'txRepeatInterval', 'txRepeatIntervalUnit', 'txRepeatOrdinal', 'txRepeatRule', 'txRepeatWeekday', 'txSaveScopeHint', 'txSaveScopeWrap', 'txScopeFuture', 'txScopeOne', 'txStatus', 'txTitle', 'txTransferTo', 'txType', 'txWeekendHandling', 'upcomingList', 'viewTitle', 'settingsPaycheckCount', 'paycheckProfileList', 'makHourlyRate', 'makHoursPerWorkday', 'makDeductionPercent', 'makFixedDeduction', 'tyHourlyRate', 'tyDefaultHours', 'tyDeductionPercent', 'tyFixedDeduction', 'paycheckHoursWrap', 'txPaycheckHoursOverride', 'billCategoryDropdown', 'billCategoryDropdownBtn', 'billCategoryDropdownMenu'];
   ids.forEach(id=>{
     if(!/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(id)) return;
     try{
@@ -859,6 +859,7 @@ function normalizeData(raw){
     if(!b.categoryIds.length && b.categoryId) b.categoryIds = [b.categoryId];
     b.categoryIds = b.categoryIds.filter(id => id && !isBudgetExcludedCategory(id));
     b.categoryId = b.categoryIds[0] || b.categoryId || ""; // legacy fallback for older versions
+    b.spendingType = ["auto","bills","extra"].includes(b.spendingType) ? b.spendingType : "auto";
     const legacyAccountId = b.accountId || "";
     const requestedScope = ["single","all","selected"].includes(b.accountScope) ? b.accountScope : (legacyAccountId ? "single" : "all");
     b.accountScope = requestedScope;
@@ -3938,12 +3939,52 @@ function transactionBelongsToRecurringBill(tx){
     return false;
   }
 }
+function normalizedBudgetSpendingType(budget){
+  return ["bills","extra"].includes(budget?.spendingType) ? budget.spendingType : "auto";
+}
+function budgetOverrideSpecificity(budget){
+  const categoryCount = Math.max(1, budgetCategoryIds(budget).length);
+  const scope = budget?.accountScope || (budget?.accountId ? "single" : "all");
+  const accountCount = scope === "all" ? 999 : Math.max(1, budgetScopeAccountIds(budget).length);
+  const scopeRank = scope === "single" ? 3 : (scope === "selected" ? 2 : 1);
+  // Narrow category/account scopes should beat broad grouping budgets.
+  return {categoryCount, scopeRank, accountCount};
+}
+function compareBudgetOverrideSpecificity(a,b){
+  const sa=budgetOverrideSpecificity(a), sb=budgetOverrideSpecificity(b);
+  if(sa.categoryCount !== sb.categoryCount) return sa.categoryCount - sb.categoryCount;
+  if(sa.scopeRank !== sb.scopeRank) return sb.scopeRank - sa.scopeRank;
+  if(sa.accountCount !== sb.accountCount) return sa.accountCount - sb.accountCount;
+  return 0;
+}
+function budgetSpendingTypeOverrideForTransaction(tx){
+  if(!tx) return "auto";
+  const matches=(data.budgets || []).filter(b=>
+    normalizedBudgetSpendingType(b) !== "auto" &&
+    budgetCategoryIds(b).length &&
+    txMatchesBudgetCategories(tx,b) &&
+    txMatchesBudgetScope(tx,b)
+  );
+  if(!matches.length) return "auto";
+  matches.sort(compareBudgetOverrideSpecificity);
+  const best=matches[0];
+  const tied=matches.filter(b=>compareBudgetOverrideSpecificity(b,best)===0);
+  const types=[...new Set(tied.map(normalizedBudgetSpendingType))];
+  // If two equally-specific budgets explicitly disagree, fall back to automatic
+  // recurring detection instead of silently choosing one.
+  return types.length === 1 ? types[0] : "auto";
+}
+function transactionBudgetSpendingType(tx){
+  const override=budgetSpendingTypeOverrideForTransaction(tx);
+  if(override !== "auto") return override;
+  return transactionBelongsToRecurringBill(tx) ? "bills" : "extra";
+}
 function budgetIncludesTransaction(tx, includeRecurringBills=budgetReviewIncludeRecurringBills){
   if(!isBudgetReviewOutflow(tx)) return false;
-  const recurring = transactionBelongsToRecurringBill(tx);
-  if(budgetReviewMode === "extra" && recurring) return false;
-  if(budgetReviewMode === "bills" && !recurring) return false;
-  if(!includeRecurringBills && recurring) return false;
+  const spendingType = transactionBudgetSpendingType(tx);
+  if(budgetReviewMode === "extra" && spendingType !== "extra") return false;
+  if(budgetReviewMode === "bills" && spendingType !== "bills") return false;
+  if(!includeRecurringBills && spendingType === "bills") return false;
   return true;
 }
 function budgetCategoryIds(budget){
@@ -4099,21 +4140,6 @@ function budgetActualSpent(budget, monthRange, reviewAccountIds=null){
     .reduce((sum, tx)=>sum + budgetTransactionAmount(tx), 0);
 }
 
-function budgetAverageMonthlySpent(budget, months=6){
-  const selectedStart = parseDate(`${budgetReviewMonth}-01`);
-  const values = [];
-  for(let i=months-1; i>=0; i--){
-    const month = toISO(addMonths(selectedStart, -i)).slice(0,7);
-    values.push(budgetActualSpent(budget, budgetMonthRange(month)));
-  }
-  const active = values.filter(v => Math.abs(Number(v || 0)) > 0.005);
-  const divisor = active.length || values.length || 1;
-  return {
-    average: values.reduce((sum,v)=>sum+Number(v||0),0) / divisor,
-    months: values.length,
-    activeMonths: active.length
-  };
-}
 function budgetReviewStats(monthValue=budgetReviewMonth, accountIds=budgetReviewAccountIds){
   const range = budgetMonthRange(monthValue);
   const monthTx = expandedTransactions(range.end).filter(tx => tx.date >= range.start && tx.date <= range.end);
@@ -4221,7 +4247,7 @@ function budgetMonthComparison(){
 function explainBudgetTotals(){
  const stats=budgetReviewStats(); const comp=budgetMonthComparison(); const modal=document.getElementById('budgetDetailModal'); const content=document.getElementById('budgetDetailContent');
  document.getElementById('budgetDetailTitle').textContent='🧮 Why these totals?'; document.getElementById('budgetDetailSub').textContent=`${stats.range.label} • ${budgetReviewAccountLabel()}`;
- content.innerHTML=`<section class="budget-insight-card"><h4>Spending includes</h4><p>Cleared cash-account expenses and categorized cash transfers, excluding Banking. Savings transfers are netted by direction.</p><h4>Current filters</h4><p><b>View:</b> ${budgetReviewMode==='extra'?'Extra spending only':budgetReviewMode==='bills'?'Recurring bills only':'All spending'}<br><b>Account:</b> ${budgetReviewAccountLabel()}</p><h4>Counted activity</h4><p>${stats.expenses.length} transactions total ${money(stats.totalSpent)}. Income is displayed separately and does not reduce spending totals.</p></section>`;
+ content.innerHTML=`<section class="budget-insight-card"><h4>Spending includes</h4><p>Cleared cash-account expenses and categorized cash transfers, excluding Banking. Savings transfers are netted by direction.</p><h4>Current filters</h4><p><b>View:</b> ${budgetReviewMode==='extra'?'Extra spending only':budgetReviewMode==='bills'?'Bills only (recurring + budget overrides)':'All spending'}<br><b>Account:</b> ${budgetReviewAccountLabel()}</p><h4>Counted activity</h4><p>${stats.expenses.length} transactions total ${money(stats.totalSpent)}. Income is displayed separately and does not reduce spending totals.</p></section>`;
  if(!modal.open)modal.showModal();
 }
 window.explainBudgetTotals=explainBudgetTotals;
@@ -4292,7 +4318,7 @@ function renderBudgetReview(){
       </div>
       <div class="amount ${r.left < -0.005 ? "bad" : "good"}">${status}</div>
     </button>`;
-  }).join("") || `<div class="empty-state">Add budgets below to compare targets against real spending.</div>`;
+  }).join("") || `<div class="empty-state">Add a budget to compare monthly targets against real spending.</div>`;
 
   const trendBars = trend.map(t=>`<div class="trend-bar-item" title="${t.label}: ${money(t.spent)}">
       <span class="trend-bar" style="height:${Math.max(6, Math.round((t.spent / maxTrend) * 100))}%"></span>
@@ -4331,28 +4357,47 @@ function renderBudgetReview(){
       <p class="budget-section-note">Cleared spending for the selected view. ${pieGroup.note}</p>
     </section>
     <section class="budget-review-section budget-performance-section">
-      <div class="budget-section-head"><div><div class="section-kicker">Budget performance</div><h4>How you did vs budget</h4></div><small>Tap a budget for details</small></div>
+      <div class="budget-section-head"><div><div class="section-kicker">Budget performance</div><h4>How you did vs budget</h4></div><small>Tap a budget for spending details</small></div>
       <div class="budget-review-list">${budgetRows}</div>
     </section>`;
 }
 function renderBudgets(){
   renderBudgetReview();
-  const monthRange = budgetMonthRange(budgetReviewMonth);
-  document.getElementById("budgetList").innerHTML = (data.budgets || []).filter(b=>budgetCategoryIds(b).length).sort(compareBudgetsByTitle).map(b=>{
-    const spent = budgetActualSpent(b, monthRange);
-    const avg = budgetAverageMonthlySpent(b, 6);
-    const cat = budgetCategoryLabel(b);
-    const avgLabel = avg.activeMonths ? `${money(avg.average)} avg/month over ${avg.activeMonths} active month${avg.activeMonths === 1 ? "" : "s"}` : "No spending history yet";
-    return `<div class="row budget-target-row budget-set-row" role="button" tabindex="0" onclick="simpleBudget('${b.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();simpleBudget('${b.id}');}">
-      <div class="budget-target-main">
-        <div class="budget-category-title"><span class="cat-preview" style="background:${hexToSoft(cat.color)}">${cat.emoji} ${cat.text}</span></div>
-        <div class="budget-account-sub">${escapeAttr(budgetScopeLabel(b))}</div>
-        <div class="budget-set-meta"><span>${avgLabel}</span><span>${money(spent)} spent in ${monthRange.label}</span></div>
-      </div>
-      <div class="budget-target-side"><strong>${money(b.amount)}</strong><small>monthly</small><span class="budget-row-chevron" aria-hidden="true">›</span></div>
-    </div>`;
+}
+function budgetManagerCategoryText(budget){
+  const ids = budgetCategoryIds(budget);
+  if(!ids.length) return "No categories";
+  const labels = ids.map(id=>{
+    const cat=categoryById(id);
+    return cat ? `${cat.emoji || "🏷️"} ${cat.name}` : "Unknown category";
+  });
+  if(labels.length <= 3) return labels.join(" • ");
+  return `${labels.slice(0,3).join(" • ")} +${labels.length-3} more`;
+}
+function renderBudgetManager(){
+  const list=document.getElementById("budgetManagerList");
+  if(!list) return;
+  const budgets=(data.budgets || []).filter(b=>budgetCategoryIds(b).length).sort(compareBudgetsByTitle);
+  list.innerHTML=budgets.map(b=>{
+    const cat=budgetCategoryLabel(b);
+    const spendingType=normalizedBudgetSpendingType(b);
+    const spendingLabel=spendingType==="bills" ? "🧾 Bills" : spendingType==="extra" ? "✨ Extra spending" : "↻ Auto";
+    return `<button type="button" class="budget-manager-row" onclick="simpleBudget('${b.id}', {}, {returnToBudgetManager:true})">
+      <span class="budget-manager-main">
+        <span class="budget-category-title"><span class="cat-preview" style="background:${hexToSoft(cat.color)}">${cat.emoji} ${escapeAttr(cat.text)}</span></span>
+        <small>${escapeAttr(budgetScopeLabel(b))}</small>
+        <small>${escapeAttr(budgetManagerCategoryText(b))}</small>
+      </span>
+      <span class="budget-manager-side"><strong>${money(b.amount)}</strong><small>${spendingLabel}</small><span aria-hidden="true">›</span></span>
+    </button>`;
   }).join("") || `<div class="empty-state">No budgets yet. Add one to start tracking monthly targets.</div>`;
 }
+window.openBudgetManager=()=>{
+  const modal=document.getElementById("budgetManagerModal");
+  if(!modal) return;
+  renderBudgetManager();
+  if(!modal.open) modal.showModal();
+};
 
 
 function budgetBreakdown(items, keyFn, labelFn){
@@ -7431,9 +7476,23 @@ window.simpleAccount = (id=null)=>{
 };
 
 
-addBudgetBtn.onclick = () => simpleBudget();
+const editBudgetsBtn=document.getElementById("editBudgetsBtn");
+const budgetManagerModal=document.getElementById("budgetManagerModal");
+const closeBudgetManagerBtn=document.getElementById("closeBudgetManagerBtn");
+const closeBudgetManagerFooterBtn=document.getElementById("closeBudgetManagerFooterBtn");
+if(editBudgetsBtn) editBudgetsBtn.onclick = () => window.openBudgetManager();
+if(closeBudgetManagerBtn) closeBudgetManagerBtn.onclick = () => budgetManagerModal?.close();
+if(closeBudgetManagerFooterBtn) closeBudgetManagerFooterBtn.onclick = () => budgetManagerModal?.close();
+if(addBudgetBtn) addBudgetBtn.onclick = () => simpleBudget(null, {}, {returnToBudgetManager:!!budgetManagerModal?.open});
 addBillBtn.onclick = () => openTransaction(null, { recurrence:{type:"monthly", interval:1} });
-window.simpleBudget = (id=null, preset={})=>{
+window.simpleBudget = (id=null, preset={}, options={})=>{
+  if(options?.returnToBudgetManager){
+    simpleAfterClose=()=>{
+      renderBudgetManager();
+      if(budgetManagerModal && !budgetManagerModal.open) budgetManagerModal.showModal();
+    };
+  }
+
   const b = id ? data.budgets.find(x=>x.id===id) : null;
   const allAccountIds = orderedAccounts().map(a=>a.id);
   let initialIds = b ? budgetScopeAccountIds(b) : (preset.accountId && preset.accountId !== "all" ? [preset.accountId] : allAccountIds);
@@ -7454,6 +7513,14 @@ window.simpleBudget = (id=null, preset={})=>{
       ${sortedCategories().filter(c=>!isBudgetExcludedCategory(c.id)).map(c=>`<label class="budget-account-check"><input type="checkbox" name="sBudgetCategoryIds" value="${c.id}"> <span>${c.emoji} ${c.name}</span></label>`).join("")}
       <p class="hint">Select one category or combine several categories under one monthly budget.</p>
     </div>
+    <label>Spending view
+      <select id="sBudgetSpendingType">
+        <option value="auto" ${(b?.spendingType || "auto")==="auto"?"selected":""}>Auto — recurring decides</option>
+        <option value="bills" ${b?.spendingType==="bills"?"selected":""}>Bills</option>
+        <option value="extra" ${b?.spendingType==="extra"?"selected":""}>Extra spending</option>
+      </select>
+      <span class="hint">Controls where matching transactions appear in Budget Quick Views only. It does not change the transaction, recurring series, or Bills page.</span>
+    </label>
     <label>Monthly amount<input id="sAmount" type="number" step="0.01" value="${b?.amount ?? ""}" required></label>`;
   setTimeout(()=>{
     document.querySelectorAll('input[name="sBudgetAccountIds"]').forEach(input=>{ input.checked = initialIds.includes(input.value); });
@@ -7481,6 +7548,7 @@ window.simpleBudget = (id=null, preset={})=>{
     target.accountIds = scope === "all" ? [] : accountIds;
     target.categoryIds = categoryIds;
     target.categoryId = categoryIds[0]; // legacy fallback for older app versions
+    target.spendingType = ["bills","extra"].includes(document.getElementById("sBudgetSpendingType")?.value) ? document.getElementById("sBudgetSpendingType").value : "auto";
     target.amount = Number(sAmount.value);
     target.period = target.period || "monthly";
     target.notes = target.notes || "";
@@ -9898,10 +9966,10 @@ function exportEditableCSVs(){
     frozenLocked:!!d.frozenLocked, notes:d.notes || ""
   }));
 
-  const budgetHeaders = ["id","name","emoji","accountScope","accountId","accountIdsJSON","categoryId","categoryIdsJSON","amount","period","notes"];
+  const budgetHeaders = ["id","name","emoji","accountScope","accountId","accountIdsJSON","categoryId","categoryIdsJSON","spendingType","amount","period","notes"];
   const budgetRows = (data.budgets || []).map(b=>({
     id:b.id, name:b.name || "", emoji:b.emoji || "", accountScope:b.accountScope || (b.accountId ? "single" : "all"), accountId:b.accountId || "",
-    accountIdsJSON:JSON.stringify(budgetScopeAccountIds(b)), categoryId:budgetCategoryIds(b)[0] || b.categoryId || "", categoryIdsJSON:JSON.stringify(budgetCategoryIds(b)), amount:b.amount ?? "",
+    accountIdsJSON:JSON.stringify(budgetScopeAccountIds(b)), categoryId:budgetCategoryIds(b)[0] || b.categoryId || "", categoryIdsJSON:JSON.stringify(budgetCategoryIds(b)), spendingType:normalizedBudgetSpendingType(b), amount:b.amount ?? "",
     period:b.period || "monthly", notes:b.notes || ""
   }));
 
@@ -10005,7 +10073,7 @@ function importEditedCSV(file){
         categoryIds = [...new Set(categoryIds.filter(id=>id && !isBudgetExcludedCategory(id)))];
         return {
           id: row.id || uid(), name: row.name || "", emoji: row.emoji || "", accountScope, accountId: accountScope === "all" ? "" : (accountId || accountIds[0] || ""), accountIds,
-          categoryId: categoryIds[0] || row.categoryId || "", categoryIds, amount: Number(row.amount || 0), period: row.period || "monthly", notes: row.notes || ""
+          categoryId: categoryIds[0] || row.categoryId || "", categoryIds, spendingType:["bills","extra"].includes(row.spendingType) ? row.spendingType : "auto", amount: Number(row.amount || 0), period: row.period || "monthly", notes: row.notes || ""
         };
       });
       saveData();
@@ -10593,7 +10661,7 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 // v2-233: Bills page cards use the earliest actual linked planned occurrence for their Next date, matching bill details.
 
 // v2-234: Budgets support an optional custom emoji, preserved in JSON and budget CSV import/export.
-// v2-235: Monthly Budget Targets and Budget Performance are sorted alphabetically by displayed budget title.
+// v2-235: Budget performance rows are sorted alphabetically by displayed budget title.
 // v2-237: Recurring series identity now includes its schedule, so same-title bills on different dates/rules remain separate and safe to edit/delete.
 // v2-236: Bill series editing starts from the earliest uncleared linked occurrence, preserving cleared history and updating that occurrence forward.
 

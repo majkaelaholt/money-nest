@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <title>Money Nest</title>
-  <link rel="stylesheet" href="styles.css?v=2-275"/>
+  <link rel="stylesheet" href="styles.css?v=2-277"/>
 
   <link rel="icon" href="favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
@@ -169,19 +169,9 @@
               <h3>Budget review</h3>
               <p class="hint">See how the month went, what went over budget, and where the money actually went.</p>
             </div>
+            <button class="ghost small" id="editBudgetsBtn" type="button">Edit budgets</button>
           </div>
           <div id="budgetPresetBar" class="budget-preset-bar"></div><div id="budgetReview" class="budget-review"></div>
-        </div>
-
-        <div class="panel">
-          <div class="panel-head">
-            <div>
-              <h3>Monthly budget targets</h3>
-              <p class="hint">Set budgets for one account, all accounts, or a custom group of accounts.</p>
-            </div>
-            <button class="primary small" id="addBudgetBtn">+ Budget</button>
-          </div>
-          <div id="budgetList" class="budget-list"></div>
         </div>
       </section>
 
@@ -796,6 +786,24 @@
 
 
 
+  <dialog id="budgetManagerModal" class="budget-manager-modal">
+    <div class="modal-card budget-manager-card">
+      <div class="panel-head">
+        <div>
+          <h3>Edit budgets</h3>
+          <p class="hint">Create and maintain monthly targets here. Budget Review stays focused on how the month is going.</p>
+        </div>
+        <button type="button" class="icon-btn" id="closeBudgetManagerBtn">×</button>
+      </div>
+      <div class="budget-manager-toolbar">
+        <div><b>Monthly targets</b><small>Tap a budget to change its amount, categories, accounts, or spending view.</small></div>
+        <button class="primary small" id="addBudgetBtn" type="button">+ Budget</button>
+      </div>
+      <div id="budgetManagerList" class="budget-manager-list"></div>
+      <div class="modal-actions"><button type="button" class="ghost" id="closeBudgetManagerFooterBtn">Close</button></div>
+    </div>
+  </dialog>
+
   <dialog id="budgetDetailModal" class="budget-detail-modal">
     <div class="modal-card budget-detail-card">
       <div class="panel-head">
@@ -858,7 +866,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=2-275"></script>
+  <script src="app.js?v=2-277"></script>
   <dialog id="globalSearchModal" class="global-search-modal">
     <div class="global-search-shell">
       <div class="modal-head"><div><h3>🔎 Search Money Nest</h3><p class="hint">Transactions, merchants, categories, accounts, amounts, and dates.</p></div><button class="icon-btn" onclick="document.getElementById('globalSearchModal').close()">×</button></div>

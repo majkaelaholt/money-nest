@@ -1,5 +1,25 @@
 # Money Nest
 
+## v2-277
+
+### Budget review + editor cleanup
+- Removed the separate **Monthly Budget Targets** card from the Budgets page so every budget is not listed twice.
+- **How you did vs budget** remains the single on-page performance list, with spending, target usage, progress, and remaining/over-budget amount.
+- Added **Edit budgets** to Budget Review. It opens a dedicated Budget Manager for adding, editing, or deleting targets without mixing setup controls into the monthly review.
+- Budget Manager shows each target's amount, account scope, included categories, and **Auto / Bills / Extra spending** view; tapping a row opens the existing budget editor and returns to the manager when closed.
+- No transaction-level budget assignment was added. Existing category/account matching and v2-276 spending-view override rules remain unchanged.
+- No existing budget/category data, calculations, JSON/CSV compatibility, Supabase behavior, or schema fields changed. Schema remains 225.
+
+## v2-276
+
+### Budget spending-view overrides
+- Added an optional **Spending view** setting to each budget: **Auto**, **Bills**, or **Extra spending**.
+- **Auto** preserves the existing behavior: transactions recognized as recurring belong to Bills; other cleared budget outflows belong to Extra spending.
+- **Bills** / **Extra spending** override only the Budget Quick View classification for transactions matching that budget's categories and included accounts. They do not change transaction data, recurring-series identity, or the Bills page.
+- When a transaction matches multiple budgets, the most specific explicit override wins: fewer categories first, then narrower account scope. Equally specific conflicting overrides fall back to Auto recurring detection instead of silently choosing one.
+- This supports card-backed/category-preserving purchases such as One Pay groceries: a dedicated Groceries budget can be marked **Bills** even though the cleared cash transaction itself is not recurring.
+- Budget CSV export/import now includes optional `spendingType`; older budget CSVs and older JSON backups default safely to **Auto**. Schema remains 225.
+
 ## v2-275
 
 ### Maintenance & privacy cleanup
