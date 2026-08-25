@@ -1,5 +1,16 @@
 # Money Nest
 
+## v2-275
+
+### Maintenance & privacy cleanup
+- Removed the large embedded real/sample Money Nest dataset from `app.js`. A fresh install now starts with empty accounts/debts/budgets/transactions plus the generic starter category list instead of bundled personal financial records.
+- Removed **Reset sample data** from Settings. **Clear everything**, JSON backup/import, CSV import/export, and cloud sync remain unchanged.
+- Removed the unused historical `README-import-notes.txt` file, which contained old import assumptions and starting-balance details and was not used by the app.
+- Retired the unused transaction-to-transaction linking UI and link-manager/detail modal. Current data showed no transaction-to-transaction links in use. Legacy `linkedTransactionIds` fields remain preserved through normalization, transaction edits, JSON backups, and CSV import/export for backward compatibility.
+- Removed the retired Calendar Density preference, render wrapper, and Compact/Detailed CSS. Calendar keeps the existing v2-220 comfortable layout and current adaptive viewport behavior.
+- Removed verified-dead helper functions left from older Forecast, Budget, Template, Bills/recurrence, and schema-banner iterations.
+- Loan forecast settings/calculation behavior were intentionally left unchanged. No financial calculations or schema fields changed; schema remains 225.
+
 ## v2-274
 
 - Card-payment IOU repayment dates now follow the selected **From / paying later** cash account. Changing that account immediately recalculates the repayment date from that account's next planned paycheck (for example, Ty Checking follows Ty's weekly Wednesday paycheck series).

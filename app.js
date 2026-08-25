@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-274";
+const APP_VERSION = "2-275";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -331,7 +331,7 @@ function maybeQueueCloudAutoSave(){
 
 // v2.80: compatibility shim for browsers that do not expose element IDs as global variables.
 (function bindDomIdGlobals(){
-  const ids = ['accountDetail', 'accountDetailContent', 'accountList', 'accounts', 'addAccountBtn', 'addBillBtn', 'addBudgetBtn', 'addCategoryBtn', 'addDayTransactionBtn', 'addDebtBtn', 'autoPaycheckHint', 'autoPaycheckLabel', 'backupBtn', 'financialPictureBtn', 'extendedFinancialPictureBtn', 'billAccountFilter', 'billCategoryFilter', 'billRecurrenceFilter', 'billSort', 'billTypeFilter', 'bills', 'billsList', 'budgetList', 'budgetReview', 'bulkEditCategoriesBtn', 'budgets', 'calendar', 'calendarAccountFilter', 'calendarCategoryHighlight', 'calendarCategoryHighlightDropdown', 'calendarCategoryHighlightBtn', 'calendarCategoryHighlightMenu', 'calendarGrid', 'cancelDayModal', 'cancelSimple', 'cancelTxBtn', 'categoryList', 'clearRecentBtn', 'closeDayModal', 'closeModal', 'closeSimple', 'csvExportBtn', 'csvImportInput', 'ctxDelete', 'ctxDuplicate', 'ctxEdit', 'ctxCreateCardPayment', 'ctxMarkReimbursed', 'ctxToggleCleared', 'ctxUseCardInstead', 'dashboard', 'dayModal', 'dayModalSub', 'dayModalTitle', 'dayModalTransactions', 'debtDetail', 'debtDetailContent', 'debtGroups', 'debtSnapshot', 'debts', 'deleteSimpleBtn', 'deleteTxBtn', 'duplicateTxBtn', 'importInput', 'modalTitle', 'monthLabel', 'nextMonth', 'prevMonth', 'quickAddBtn', 'recentPlacesList', 'recentChangesList', 'undoLastChangeBtn', 'clearChangeHistoryBtn', 'recurrenceDetails', 'repeatIntervalUnitLabel', 'safeSpendList', 'saveTxBtn', 'settings', 'settingsClearAllBtn', 'settingsSampleResetBtn', 'simpleFields', 'simpleForm', 'simpleModal', 'simpleTitle', 'summaryCards', 'todayBtn', 'transactionForm', 'transactionModal', 'txAccount', 'txAmount', 'txAutoPaycheck', 'txCategory', 'txContextMenu', 'txDate', 'txDebt', 'txDebtAccount', 'txLoanBreakdownWrap', 'txLoanPrincipal', 'txLoanInterest', 'txLoanFees', 'txLoanBreakdownHint', 'txDeleteAll', 'txDeleteOne', 'txDeleteScopeWrap', 'txId', 'txNotes', 'txRepeatInterval', 'txRepeatIntervalUnit', 'txRepeatOrdinal', 'txRepeatRule', 'txRepeatWeekday', 'txSaveScopeHint', 'txSaveScopeWrap', 'txScopeFuture', 'txScopeOne', 'txStatus', 'txTitle', 'txTransferTo', 'txType', 'txWeekendHandling', 'upcomingList', 'viewTitle', 'settingsPaycheckCount', 'paycheckProfileList', 'makHourlyRate', 'makHoursPerWorkday', 'makDeductionPercent', 'makFixedDeduction', 'tyHourlyRate', 'tyDefaultHours', 'tyDeductionPercent', 'tyFixedDeduction', 'paycheckHoursWrap', 'txPaycheckHoursOverride', 'billCategoryDropdown', 'billCategoryDropdownBtn', 'billCategoryDropdownMenu'];
+  const ids = ['accountDetail', 'accountDetailContent', 'accountList', 'accounts', 'addAccountBtn', 'addBillBtn', 'addBudgetBtn', 'addCategoryBtn', 'addDayTransactionBtn', 'addDebtBtn', 'autoPaycheckHint', 'autoPaycheckLabel', 'backupBtn', 'financialPictureBtn', 'extendedFinancialPictureBtn', 'billAccountFilter', 'billCategoryFilter', 'billRecurrenceFilter', 'billSort', 'billTypeFilter', 'bills', 'billsList', 'budgetList', 'budgetReview', 'bulkEditCategoriesBtn', 'budgets', 'calendar', 'calendarAccountFilter', 'calendarCategoryHighlight', 'calendarCategoryHighlightDropdown', 'calendarCategoryHighlightBtn', 'calendarCategoryHighlightMenu', 'calendarGrid', 'cancelDayModal', 'cancelSimple', 'cancelTxBtn', 'categoryList', 'clearRecentBtn', 'closeDayModal', 'closeModal', 'closeSimple', 'csvExportBtn', 'csvImportInput', 'ctxDelete', 'ctxDuplicate', 'ctxEdit', 'ctxCreateCardPayment', 'ctxMarkReimbursed', 'ctxToggleCleared', 'ctxUseCardInstead', 'dashboard', 'dayModal', 'dayModalSub', 'dayModalTitle', 'dayModalTransactions', 'debtDetail', 'debtDetailContent', 'debtGroups', 'debtSnapshot', 'debts', 'deleteSimpleBtn', 'deleteTxBtn', 'duplicateTxBtn', 'importInput', 'modalTitle', 'monthLabel', 'nextMonth', 'prevMonth', 'quickAddBtn', 'recentPlacesList', 'recentChangesList', 'undoLastChangeBtn', 'clearChangeHistoryBtn', 'recurrenceDetails', 'repeatIntervalUnitLabel', 'safeSpendList', 'saveTxBtn', 'settings', 'settingsClearAllBtn', 'simpleFields', 'simpleForm', 'simpleModal', 'simpleTitle', 'summaryCards', 'todayBtn', 'transactionForm', 'transactionModal', 'txAccount', 'txAmount', 'txAutoPaycheck', 'txCategory', 'txContextMenu', 'txDate', 'txDebt', 'txDebtAccount', 'txLoanBreakdownWrap', 'txLoanPrincipal', 'txLoanInterest', 'txLoanFees', 'txLoanBreakdownHint', 'txDeleteAll', 'txDeleteOne', 'txDeleteScopeWrap', 'txId', 'txNotes', 'txRepeatInterval', 'txRepeatIntervalUnit', 'txRepeatOrdinal', 'txRepeatRule', 'txRepeatWeekday', 'txSaveScopeHint', 'txSaveScopeWrap', 'txScopeFuture', 'txScopeOne', 'txStatus', 'txTitle', 'txTransferTo', 'txType', 'txWeekendHandling', 'upcomingList', 'viewTitle', 'settingsPaycheckCount', 'paycheckProfileList', 'makHourlyRate', 'makHoursPerWorkday', 'makDeductionPercent', 'makFixedDeduction', 'tyHourlyRate', 'tyDefaultHours', 'tyDeductionPercent', 'tyFixedDeduction', 'paycheckHoursWrap', 'txPaycheckHoursOverride', 'billCategoryDropdown', 'billCategoryDropdownBtn', 'billCategoryDropdownMenu'];
   ids.forEach(id=>{
     if(!/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(id)) return;
     try{
@@ -405,2347 +405,17 @@ function weekdayName(n){ return ["Sunday","Monday","Tuesday","Wednesday","Thursd
 function ordinalName(n){ return String(n) === "-1" ? "last" : ({1:"1st",2:"2nd",3:"3rd",4:"4th"}[Number(n)] || `${n}th`); }
 function isRecurring(tx){ return tx?.recurrence?.type && tx.recurrence.type !== "none" || tx.repeat; }
 
-const sampleData = {
-  "settings": {
-    "buffer": 50,
-    "importNotes": {
-      "source": "CalendarBudgetData (1).csv + debt screenshots",
-      "ignoredAccount": "After-Move Budget",
-      "irregularRecurringGroupsKeptAsPlannedOccurrences": [
-        {
-          "title": "Grocery 💳",
-          "count": 46
-        },
-        {
-          "title": "Leesa",
-          "count": 22
-        },
-        {
-          "title": "Mak to Joint",
-          "count": 11
-        },
-        {
-          "title": "AccessOne",
-          "count": 12
-        },
-        {
-          "title": "LendingClub",
-          "count": 12
-        },
-        {
-          "title": "Mak Paycheck",
-          "count": 17
-        },
-        {
-          "title": "Gas",
-          "count": 21
-        },
-        {
-          "title": "Mak Car",
-          "count": 11
-        },
-        {
-          "title": "AT&T",
-          "count": 12
-        },
-        {
-          "title": "StateFarm",
-          "count": 12
-        },
-        {
-          "title": "Auto Life Insurance",
-          "count": 12
-        },
-        {
-          "title": "ChatGPT Plus",
-          "count": 12
-        },
-        {
-          "title": "Dental Insurance",
-          "count": 12
-        },
-        {
-          "title": "Apple Music",
-          "count": 12
-        },
-        {
-          "title": "Mak to Joint",
-          "count": 11
-        }
-      ]
-    },
-    "openDebtTypes": [],
-    "openDebtCompanies": [],
-    "debtTypeLabels": {
-      "Credit Card": "Credit Cards",
-      "Loan": "Loans",
-      "Medical": "Medical",
-      "Buy Now, Pay Later": "Buy Now, Pay Later",
-      "Klarna": "Buy Now, Pay Later"
-    }
-  },
-  "categories": [
-    {
-      "id": "banking",
-      "name": "Banking",
-      "emoji": "↔️",
-      "color": "#b28d4a"
-    },
-    {
-      "id": "car",
-      "name": "Car",
-      "emoji": "🚗",
-      "color": "#7c8ea3"
-    },
-    {
-      "id": "credit-card-payment",
-      "name": "Credit Card Payment",
-      "emoji": "💳",
-      "color": "#e36b5d"
-    },
-    {
-      "id": "food",
-      "name": "Food",
-      "emoji": "🍔",
-      "color": "#e6a15d"
-    },
-    {
-      "id": "gas",
-      "name": "Gas",
-      "emoji": "⛽",
-      "color": "#7fa2d6"
-    },
-    {
-      "id": "groceries",
-      "name": "Groceries",
-      "emoji": "🛒",
-      "color": "#c9cf52"
-    },
-    {
-      "id": "household",
-      "name": "Household",
-      "emoji": "🏠",
-      "color": "#9c7f63"
-    },
-    {
-      "id": "income",
-      "name": "Income",
-      "emoji": "💰",
-      "color": "#59745a"
-    },
-    {
-      "id": "insurance",
-      "name": "Insurance",
-      "emoji": "🛡️",
-      "color": "#8aa36f"
-    },
-    {
-      "id": "klarna",
-      "name": "Klarna",
-      "emoji": "🩷",
-      "color": "#f09aa5"
-    },
-    {
-      "id": "loan-payment",
-      "name": "Loan Payment",
-      "emoji": "📄",
-      "color": "#d4625b"
-    },
-    {
-      "id": "medical",
-      "name": "Medical",
-      "emoji": "🩺",
-      "color": "#b978d6"
-    },
-    {
-      "id": "phone",
-      "name": "Phone",
-      "emoji": "📱",
-      "color": "#85a7c7"
-    },
-    {
-      "id": "rent",
-      "name": "Rent",
-      "emoji": "🏡",
-      "color": "#b98362"
-    },
-    {
-      "id": "savings",
-      "name": "Savings",
-      "emoji": "🏦",
-      "color": "#4f8b66"
-    },
-    {
-      "id": "subscription",
-      "name": "Subscription",
-      "emoji": "🔁",
-      "color": "#e5d48c"
-    },
-    {
-      "id": "unassigned",
-      "name": "Unassigned",
-      "emoji": "▫️",
-      "color": "#d4c5b4"
-    },
-    {
-      "id": "utilities",
-      "name": "Utilities",
-      "emoji": "🔌",
-      "color": "#6fa6a0"
-    }
-  ],
-  "accounts": [
-    {
-      "id": "mak-checking",
-      "name": "Mak Checking",
-      "type": "cash",
-      "owner": "Mak",
-      "startingBalance": 309.11,
-      "paycheckAccount": true,
-      "emoji": "💵",
-      "color": "#8c6f4d",
-      "order": 0
-    },
-    {
-      "id": "ty-checking",
-      "name": "Ty Checking",
-      "type": "cash",
-      "owner": "Ty",
-      "startingBalance": 44.57,
-      "paycheckAccount": true,
-      "emoji": "💵",
-      "color": "#8c6f4d",
-      "order": 1
-    },
-    {
-      "id": "joint-checking",
-      "name": "Joint Checking",
-      "type": "cash",
-      "owner": "Joint",
-      "startingBalance": 179.31,
-      "paycheckAccount": false,
-      "emoji": "🤝",
-      "color": "#8c6f4d",
-      "order": 2
-    },
-    {
-      "id": "savings",
-      "name": "Savings",
-      "type": "cash",
-      "owner": "Joint",
-      "startingBalance": 0.0,
-      "paycheckAccount": false,
-      "emoji": "🌱",
-      "color": "#218f50",
-      "order": 3,
-      "goalName": "",
-      "goalAmount": 0
-    }
-  ],
-  "debts": [
-    {
-      "id": "klarna-amazon",
-      "type": "Buy Now, Pay Later",
-      "company": "Klarna",
-      "name": "Amazon Klarna",
-      "owner": "Mak",
-      "balance": 165.7,
-      "apr": 0,
-      "limit": null,
-      "minDue": 55.23,
-      "dueDate": "2026-06-11",
-      "order": 0
-    },
-    {
-      "id": "klarna-ring",
-      "type": "Buy Now, Pay Later",
-      "company": "Klarna",
-      "name": "Ring Klarna",
-      "owner": "Ty",
-      "balance": 46.88,
-      "apr": 0,
-      "limit": null,
-      "minDue": 46.88,
-      "dueDate": "2026-06-11",
-      "order": 1
-    },
-    {
-      "id": "klarna-ulta",
-      "type": "Buy Now, Pay Later",
-      "company": "Klarna",
-      "name": "Ulta Klarna",
-      "owner": "Mak",
-      "balance": 89.67,
-      "apr": 0,
-      "limit": null,
-      "minDue": 52.06,
-      "dueDate": "2026-06-06",
-      "order": 2
-    },
-    {
-      "id": "ty-avant5286",
-      "type": "Credit Card",
-      "company": "Avant",
-      "name": "Ty Avant5286",
-      "owner": "Ty",
-      "balance": 371.16,
-      "apr": 35.99,
-      "limit": 1000.0,
-      "dueDate": "2026-06-01",
-      "minDue": 25.0,
-      "paymentStatus": "autopay",
-      "statementDate": "2026-05-05",
-      "statementBalance": 396.16,
-      "order": 3,
-      "manualExtra": 0.0,
-      "notes": "$25 every 1st",
-      "emoji": "💳",
-      "color": "#e36b5d"
-    },
-    {
-      "id": "mak-quicksilver6597",
-      "type": "Credit Card",
-      "company": "Capital One",
-      "name": "Mak Quicksilver6597",
-      "owner": "Mak",
-      "balance": 116.52,
-      "apr": 30.24,
-      "limit": 800.0,
-      "dueDate": "2026-06-02",
-      "minDue": 25.0,
-      "paymentStatus": "autopay",
-      "statementDate": "2026-05-08",
-      "statementBalance": 141.52,
-      "order": 4,
-      "manualExtra": 0.0,
-      "notes": "$35 every 2nd",
-      "emoji": "💳",
-      "color": "#e36b5d"
-    },
-    {
-      "id": "mak-quicksilver9246",
-      "type": "Credit Card",
-      "company": "Capital One",
-      "name": "Mak Quicksilver9246",
-      "owner": "Mak",
-      "balance": 237.6,
-      "apr": 28.24,
-      "limit": 500.0,
-      "dueDate": "2026-06-02",
-      "minDue": 25.0,
-      "paymentStatus": "autopay",
-      "statementDate": "2026-05-08",
-      "statementBalance": 82.6,
-      "order": 5,
-      "manualExtra": 0.0,
-      "notes": "$35 every 2nd",
-      "emoji": "💳",
-      "color": "#e36b5d"
-    },
-    {
-      "id": "mak-savor9707",
-      "type": "Credit Card",
-      "company": "Capital One",
-      "name": "Mak Savor9707",
-      "owner": "Mak",
-      "balance": 0.0,
-      "apr": 28.24,
-      "limit": 300.0,
-      "dueDate": "2026-06-14",
-      "minDue": 21.73,
-      "paymentStatus": "paid",
-      "statementDate": "2026-05-20",
-      "statementBalance": 21.73,
-      "order": 6,
-      "manualExtra": 0.0,
-      "notes": "",
-      "emoji": "💳",
-      "color": "#e36b5d"
-    },
-    {
-      "id": "ty-playstation6229",
-      "type": "Credit Card",
-      "company": "PlayStation",
-      "name": "Ty PlayStation6229",
-      "owner": "Ty",
-      "balance": 2613.6,
-      "apr": 28.49,
-      "limit": 3950.0,
-      "dueDate": "2026-06-07",
-      "minDue": 30.0,
-      "paymentStatus": "autopay",
-      "statementDate": "2026-05-13",
-      "statementBalance": 1486.92,
-      "order": 7,
-      "manualExtra": 0.0,
-      "notes": "$50 every 7th",
-      "emoji": "💳",
-      "color": "#e36b5d"
-    },
-    {
-      "id": "ty-quicksilver4899",
-      "type": "Credit Card",
-      "company": "Capital One",
-      "name": "Ty Quicksilver4899",
-      "owner": "Ty",
-      "balance": 125.93,
-      "apr": 28.24,
-      "limit": 300.0,
-      "dueDate": "2026-06-02",
-      "minDue": 25.0,
-      "paymentStatus": "autopay",
-      "statementDate": "2026-05-07",
-      "statementBalance": 134.3,
-      "order": 8,
-      "manualExtra": 15.0,
-      "notes": "$35 every 2nd",
-      "emoji": "💳",
-      "color": "#e36b5d"
-    },
-    {
-      "id": "ty-quicksilver5070",
-      "type": "Credit Card",
-      "company": "Capital One",
-      "name": "Ty Quicksilver5070",
-      "owner": "Ty",
-      "balance": 285.17,
-      "apr": 28.24,
-      "limit": 300.0,
-      "dueDate": "2026-06-09",
-      "minDue": 28.0,
-      "paymentStatus": "autopay",
-      "statementDate": "2026-05-15",
-      "statementBalance": 83.7,
-      "order": 9,
-      "manualExtra": 0.0,
-      "notes": "$35 every 9th",
-      "emoji": "💳",
-      "color": "#e36b5d"
-    },
-    {
-      "id": "ty-clarity3384",
-      "type": "Credit Card",
-      "company": "Clarity",
-      "name": "Ty Clarity3384",
-      "owner": "Ty",
-      "balance": 976.84,
-      "apr": 13.5,
-      "limit": 1000.0,
-      "dueDate": "2026-05-28",
-      "minDue": 25.0,
-      "paymentStatus": "autopay",
-      "statementDate": "2026-04-30",
-      "statementBalance": 987.88,
-      "order": 10,
-      "manualExtra": 0.0,
-      "notes": "$25 every 28th",
-      "emoji": "💳",
-      "color": "#e36b5d"
-    },
-    {
-      "id": "ty-creditone2367",
-      "type": "Credit Card",
-      "company": "CreditOne",
-      "name": "Ty CreditOne2367",
-      "owner": "Ty",
-      "balance": 1031.98,
-      "apr": 29.74,
-      "limit": 3000.0,
-      "dueDate": "2026-06-14",
-      "minDue": 48.0,
-      "paymentStatus": "autopay",
-      "statementDate": "2026-05-18",
-      "statementBalance": 948.99,
-      "order": 11,
-      "manualExtra": 0.0,
-      "notes": "$50 every 14th",
-      "emoji": "💳",
-      "color": "#e36b5d"
-    },
-    {
-      "id": "ty-creditone5247",
-      "type": "Credit Card",
-      "company": "CreditOne",
-      "name": "Ty CreditOne5247",
-      "owner": "Ty",
-      "balance": 493.34,
-      "apr": 27.49,
-      "limit": 1050.0,
-      "dueDate": "2026-06-14",
-      "minDue": 30.0,
-      "paymentStatus": "autopay",
-      "statementDate": "2026-05-18",
-      "statementBalance": 493.34,
-      "order": 12,
-      "manualExtra": 0.0,
-      "notes": "$35 every 14th",
-      "emoji": "💳",
-      "color": "#e36b5d"
-    },
-    {
-      "id": "mak-discover8627",
-      "type": "Credit Card",
-      "company": "Discover",
-      "name": "Mak Discover8627",
-      "owner": "Mak",
-      "balance": 354.74,
-      "apr": 26.49,
-      "limit": 500.0,
-      "dueDate": "2026-06-13",
-      "minDue": 0.0,
-      "paymentStatus": "autopay",
-      "statementDate": "2026-04-17",
-      "statementBalance": 0.0,
-      "order": 13,
-      "manualExtra": 0.0,
-      "notes": "$30 every 13th",
-      "emoji": "💳",
-      "color": "#e36b5d"
-    },
-    {
-      "id": "les-schwab100962814",
-      "type": "Credit Card",
-      "company": "Les Schwab",
-      "name": "Les Schwab100962814",
-      "owner": "Mak",
-      "balance": 655.2,
-      "apr": 18.0,
-      "limit": 2450.0,
-      "dueDate": "2026-06-15",
-      "minDue": 25.0,
-      "paymentStatus": "autopay",
-      "statementDate": "2026-05-31",
-      "statementBalance": 191.97,
-      "order": 14,
-      "manualExtra": 0.0,
-      "notes": "$100 every 15th",
-      "emoji": "💳",
-      "color": "#e36b5d"
-    },
-    {
-      "id": "mak-macu5979",
-      "type": "Credit Card",
-      "company": "MACU",
-      "name": "Mak MACU5979",
-      "owner": "Mak",
-      "balance": 1446.22,
-      "apr": 15.49,
-      "limit": 1500.0,
-      "dueDate": "2026-06-30",
-      "minDue": 36.0,
-      "paymentStatus": "autopay",
-      "statementDate": "2026-05-31",
-      "statementBalance": 958.91,
-      "order": 15,
-      "manualExtra": 0.0,
-      "notes": "$50 every 15th",
-      "emoji": "💳",
-      "color": "#e36b5d"
-    },
-    {
-      "id": "one-pay-walmart",
-      "type": "Credit Card",
-      "company": "One Pay",
-      "name": "One Pay (Walmart)",
-      "owner": "Mak",
-      "balance": 0.0,
-      "apr": 30.74,
-      "limit": 500.0,
-      "dueDate": "2026-05-28",
-      "minDue": 30.0,
-      "paymentStatus": "paid",
-      "statementDate": "2026-05-05",
-      "statementBalance": 184.6,
-      "order": 16,
-      "manualExtra": 0.0,
-      "notes": "",
-      "emoji": "💳",
-      "color": "#e36b5d"
-    },
-    {
-      "id": "target9751",
-      "type": "Credit Card",
-      "company": "Target",
-      "name": "Target9751",
-      "owner": "Ty",
-      "balance": 0.0,
-      "apr": 26.4,
-      "limit": 300.0,
-      "dueDate": "2026-06-10",
-      "minDue": 29.0,
-      "paymentStatus": "paid",
-      "statementDate": "2026-05-13",
-      "statementBalance": 37.05,
-      "order": 17,
-      "manualExtra": 0.0,
-      "notes": "",
-      "emoji": "💳",
-      "color": "#e36b5d"
-    },
-    {
-      "id": "mak-auto-loan",
-      "type": "Loan",
-      "company": "Auto Loan",
-      "name": "Mak Auto Loan",
-      "owner": "Mak",
-      "balance": 6463.64,
-      "apr": 8.74,
-      "limit": null,
-      "minDue": 222.0,
-      "dueDate": "2026-06-22",
-      "order": 18,
-      "startingBalance": 9360.5,
-      "manualExtra": 0,
-      "totalMonthlyPayment": 222.0,
-      "monthsToPayoffStarting": 50.6,
-      "monthsToPayoffCurrent": 32.8,
-      "payoffDate": "2029-03",
-      "emoji": "🚗",
-      "color": "#5469b8"
-    },
-    {
-      "id": "ty-auto-loan",
-      "type": "Loan",
-      "company": "Auto Loan",
-      "name": "Ty Auto Loan",
-      "owner": "Ty",
-      "balance": 11780.0,
-      "apr": 6.74,
-      "limit": null,
-      "minDue": 276.0,
-      "dueDate": "2026-06-03",
-      "order": 19,
-      "startingBalance": 15161.64,
-      "manualExtra": 0,
-      "totalMonthlyPayment": 276.0,
-      "monthsToPayoffStarting": 65.9,
-      "monthsToPayoffCurrent": 48.9,
-      "payoffDate": "2030-07",
-      "emoji": "🚗",
-      "color": "#5469b8"
-    },
-    {
-      "id": "lendingclub",
-      "type": "Loan",
-      "company": "LendingClub",
-      "name": "LendingClub",
-      "owner": "Joint",
-      "balance": 5461.73,
-      "apr": 18.49,
-      "limit": null,
-      "minDue": 391.26,
-      "dueDate": "2026-06-11",
-      "order": 20,
-      "startingBalance": 7800.0,
-      "manualExtra": 0,
-      "totalMonthlyPayment": 391.26,
-      "monthsToPayoffStarting": 24.0,
-      "monthsToPayoffCurrent": 15.8,
-      "payoffDate": "2027-10",
-      "emoji": "📄",
-      "color": "#8c6f4d"
-    },
-    {
-      "id": "mak-accessone",
-      "type": "Medical",
-      "company": "AccessOne",
-      "name": "Mak AccessOne",
-      "owner": "Mak",
-      "balance": 6075.58,
-      "apr": 0.0,
-      "limit": null,
-      "minDue": 216.99,
-      "emoji": "🩺",
-      "color": "#8936ff",
-      "dueDate": "2026-06-10",
-      "order": 21,
-      "startingBalance": 7811.5,
-      "manualExtra": 0,
-      "totalMonthlyPayment": 216.99,
-      "monthsToPayoffStarting": 36.0,
-      "monthsToPayoffCurrent": 28.0,
-      "payoffDate": "2028-10"
-    },
-    {
-      "id": "west-valley-medical-center",
-      "type": "Medical",
-      "company": "West Valley Medical Center",
-      "name": "West Valley Medical Center",
-      "owner": "Mak",
-      "balance": 153.33,
-      "apr": 0,
-      "limit": null,
-      "dueDate": "2026-06-25",
-      "minDue": 76.67,
-      "paymentStatus": "not-set",
-      "statementDate": "",
-      "statementBalance": 153.33,
-      "emoji": "🩺",
-      "color": "#8936ff",
-      "order": 22
-    }
-  ],
-  "budgets": [],
-  "transactions": [
-    {
-      "id": "tx-2026-06-01-albertons-joint-checking",
-      "title": "Albertons",
-      "amount": 9.49,
-      "date": "2026-06-01",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "joint-checking",
-      "categoryId": "ty-spending",
-      "recurrence": {
-        "type": "none",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "autoMakPaycheck": false,
-      "notes": "",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "tx-2026-06-01-health-insurance-mak-checking",
-      "title": "Health Insurance",
-      "amount": 273.04,
-      "date": "2026-06-01",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "mak-checking",
-      "categoryId": "insurance",
-      "recurrence": {
-        "type": "nth-weekday",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "autoMakPaycheck": false,
-      "notes": "monthly on the 1st",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "tx-2026-06-01-mcdonalds-ty-checking",
-      "title": "McDonalds",
-      "amount": 5.15,
-      "date": "2026-06-01",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "ty-checking",
-      "categoryId": "food",
-      "recurrence": {
-        "type": "none",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "autoMakPaycheck": false,
-      "notes": "",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "tx-2026-06-01-shell-joint-checking",
-      "title": "Shell",
-      "amount": 24.53,
-      "date": "2026-06-01",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "joint-checking",
-      "categoryId": "food",
-      "recurrence": {
-        "type": "none",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "autoMakPaycheck": false,
-      "notes": "",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "tx-2026-06-01-storage-joint-checking",
-      "title": "Storage",
-      "amount": 85.0,
-      "date": "2026-06-01",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "joint-checking",
-      "categoryId": "utilities",
-      "recurrence": {
-        "type": "nth-weekday",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "autoMakPaycheck": false,
-      "notes": "monthly on the 1st",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "tx-2026-06-02-albertsons-ty-checking",
-      "title": "Albertsons",
-      "amount": 4.01,
-      "date": "2026-06-02",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "ty-checking",
-      "categoryId": "food",
-      "recurrence": {
-        "type": "none",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "autoMakPaycheck": false,
-      "notes": "",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "tx-2026-06-02-burlington-joint-checking",
-      "title": "Burlington",
-      "amount": 37.09,
-      "date": "2026-06-02",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "joint-checking",
-      "categoryId": "shopping",
-      "recurrence": {
-        "type": "none",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "autoMakPaycheck": false,
-      "notes": "",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "tx-2026-06-02-from-savings-savings-to-joint",
-      "title": "From Savings",
-      "amount": 28.1,
-      "date": "2026-06-02",
-      "type": "transfer",
-      "status": "planned",
-      "accountId": "savings",
-      "transferToAccountId": "joint-checking",
-      "categoryId": "transfer",
-      "recurrence": {
-        "type": "none",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "notes": "",
-      "debtAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {},
-      "autoMakPaycheck": false
-    },
-    {
-      "id": "tx-2026-06-02-middleton-smiles-mak-checking",
-      "title": "Middleton Smiles",
-      "amount": 30.0,
-      "date": "2026-06-02",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "mak-checking",
-      "categoryId": "medical",
-      "recurrence": {
-        "type": "none",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "autoMakPaycheck": false,
-      "notes": "",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "tx-2026-06-02-netflix-joint-checking",
-      "title": "Netflix",
-      "amount": 8.99,
-      "date": "2026-06-02",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "joint-checking",
-      "categoryId": "subscription",
-      "recurrence": {
-        "type": "nth-weekday",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "autoMakPaycheck": false,
-      "notes": "monthly on the 2nd",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "tx-2026-06-02-pokemon-ty-checking",
-      "title": "Pokemon",
-      "amount": 28.56,
-      "date": "2026-06-02",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "ty-checking",
-      "categoryId": "shopping",
-      "recurrence": {
-        "type": "none",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "autoMakPaycheck": false,
-      "notes": "",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "debtpay-2026-06-02-ty-avant-joint-checking-ty-avant5286",
-      "title": "Ty Avant",
-      "amount": 25.0,
-      "date": "2026-06-02",
-      "type": "transfer",
-      "status": "planned",
-      "accountId": "joint-checking",
-      "categoryId": "credit-card-payment",
-      "linkedDebtId": "ty-avant5286",
-      "recurrence": {
-        "type": "nth-weekday",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "notes": "monthly on the 1st",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "repeat": false,
-      "dateOverrides": {},
-      "autoMakPaycheck": false
-    },
-    {
-      "id": "debtpay-2026-06-03-ty-car-partial-ty-checking-ty-auto-loan",
-      "title": "Ty Car (partial)",
-      "amount": 70.0,
-      "date": "2026-06-03",
-      "type": "transfer",
-      "status": "planned",
-      "accountId": "ty-checking",
-      "categoryId": "loan-payment",
-      "linkedDebtId": "ty-auto-loan",
-      "recurrence": {
-        "type": "weekly",
-        "interval": 1,
-        "weekday": 3,
-        "weekendHandling": "none"
-      },
-      "notes": "weekly on Wednesdays",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "repeat": false,
-      "dateOverrides": {},
-      "autoMakPaycheck": false
-    },
-    {
-      "id": "tx-2026-06-03-ty-paycheck-ty-checking",
-      "title": "Ty Paycheck",
-      "amount": 556.84,
-      "date": "2026-06-03",
-      "type": "paycheck",
-      "status": "planned",
-      "accountId": "ty-checking",
-      "categoryId": "paycheck",
-      "recurrence": {
-        "type": "weekly",
-        "interval": 1,
-        "weekday": 3,
-        "weekendHandling": "none"
-      },
-      "autoMakPaycheck": false,
-      "notes": "weekly on Wednesdays",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "tx-2026-06-03-ty-to-joint-ty-checking-joint",
-      "title": "Ty to Joint",
-      "amount": 400.0,
-      "date": "2026-06-03",
-      "type": "transfer",
-      "status": "planned",
-      "accountId": "ty-checking",
-      "transferToAccountId": "joint-checking",
-      "categoryId": "transfer",
-      "recurrence": {
-        "type": "weekly",
-        "interval": 1,
-        "weekday": 3,
-        "weekendHandling": "none"
-      },
-      "notes": "weekly on Wednesdays",
-      "debtAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {},
-      "autoMakPaycheck": false
-    },
-    {
-      "id": "tx-2026-06-04-internet-joint-checking",
-      "title": "Internet",
-      "amount": 135.84,
-      "date": "2026-06-04",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "joint-checking",
-      "categoryId": "utilities",
-      "recurrence": {
-        "type": "nth-weekday",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "autoMakPaycheck": false,
-      "notes": "monthly on the 4th",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "tx-2026-06-05-leesa-joint-checking",
-      "title": "Leesa",
-      "amount": 460.0,
-      "date": "2026-06-05",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "joint-checking",
-      "categoryId": "rent",
-      "recurrence": {
-        "type": "monthly",
-        "interval": 1,
-        "weekendHandling": "previous-friday"
-      },
-      "autoMakPaycheck": false,
-      "notes": "7th & 22nd, move weekend to Friday",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "debtpay-2026-06-06-ulta-5-6-mak-checking-klarna-ulta",
-      "title": "Ulta (5/6)",
-      "amount": 52.06,
-      "date": "2026-06-06",
-      "type": "transfer",
-      "status": "planned",
-      "accountId": "mak-checking",
-      "categoryId": "klarna",
-      "linkedDebtId": "klarna-ulta",
-      "recurrence": {
-        "type": "none",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "notes": "due August 22",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "repeat": false,
-      "dateOverrides": {},
-      "autoMakPaycheck": false
-    },
-    {
-      "id": "tx-2026-06-07-gas-mak-checking",
-      "title": "Gas",
-      "amount": 150.0,
-      "date": "2026-06-07",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "mak-checking",
-      "categoryId": "gas",
-      "recurrence": {
-        "type": "nth-weekday",
-        "interval": 1,
-        "weekendHandling": "previous-friday"
-      },
-      "autoMakPaycheck": false,
-      "notes": "monthly on the 7th, move weekend to Friday",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "tx-2026-06-07-grocery-joint-checking",
-      "title": "Grocery",
-      "amount": 150.0,
-      "date": "2026-06-07",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "joint-checking",
-      "categoryId": "groceries",
-      "recurrence": {
-        "type": "weekly",
-        "interval": 1,
-        "weekday": 0,
-        "weekendHandling": "none"
-      },
-      "autoMakPaycheck": false,
-      "notes": "weekly on Sunday",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "tx-2026-06-07-mak-paycheck-mak-checking",
-      "title": "Mak Paycheck",
-      "amount": 1560,
-      "date": "2026-06-07",
-      "type": "paycheck",
-      "status": "planned",
-      "accountId": "mak-checking",
-      "categoryId": "paycheck",
-      "recurrence": {
-        "type": "monthly",
-        "interval": 1,
-        "weekendHandling": "previous-friday"
-      },
-      "autoMakPaycheck": true,
-      "notes": "monthly on the 7th, move weekend to Friday",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "tx-2026-06-07-mak-to-joint-mak-checking-joint",
-      "title": "Mak to Joint",
-      "amount": 1100.0,
-      "date": "2026-06-07",
-      "type": "transfer",
-      "status": "planned",
-      "accountId": "mak-checking",
-      "transferToAccountId": "joint-checking",
-      "categoryId": "transfer",
-      "recurrence": {
-        "type": "nth-weekday",
-        "interval": 1,
-        "weekendHandling": "previous-friday"
-      },
-      "notes": "monthly on the 7th, move weekend to Friday",
-      "debtAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {},
-      "autoMakPaycheck": false
-    },
-    {
-      "id": "tx-2026-06-07-oakley-kibble-joint-checking",
-      "title": "Oakley Kibble",
-      "amount": 40.0,
-      "date": "2026-06-07",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "joint-checking",
-      "categoryId": "groceries",
-      "recurrence": {
-        "type": "nth-weekday",
-        "interval": 1,
-        "weekday": 0,
-        "ordinal": 1,
-        "weekendHandling": "none"
-      },
-      "autoMakPaycheck": false,
-      "notes": "monthly, on the first Sunday",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "debtpay-2026-06-07-ty-playstation-card-joint-checking-ty-playstation62",
-      "title": "Ty Playstation Card",
-      "amount": 50.0,
-      "date": "2026-06-07",
-      "type": "transfer",
-      "status": "planned",
-      "accountId": "joint-checking",
-      "categoryId": "credit-card-payment",
-      "linkedDebtId": "ty-playstation6229",
-      "recurrence": {
-        "type": "nth-weekday",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "notes": "monthly on the 7th",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "repeat": false,
-      "dateOverrides": {},
-      "autoMakPaycheck": false
-    },
-    {
-      "id": "tx-2026-06-08-amazon-prime-joint-checking",
-      "title": "Amazon Prime",
-      "amount": 15.89,
-      "date": "2026-06-08",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "joint-checking",
-      "categoryId": "subscription",
-      "recurrence": {
-        "type": "nth-weekday",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "autoMakPaycheck": false,
-      "notes": "monthly on the 8th",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "tx-2026-06-09-audible-mak-checking",
-      "title": "Audible",
-      "amount": 15.85,
-      "date": "2026-06-09",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "mak-checking",
-      "categoryId": "subscription",
-      "recurrence": {
-        "type": "nth-weekday",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "autoMakPaycheck": false,
-      "notes": "monthly on the 9th",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "debtpay-2026-06-09-ty-quicksilver5070-joint-checking-ty-quicksilver507",
-      "title": "Ty Quicksilver5070",
-      "amount": 35.0,
-      "date": "2026-06-09",
-      "type": "transfer",
-      "status": "planned",
-      "accountId": "joint-checking",
-      "categoryId": "credit-card-payment",
-      "linkedDebtId": "ty-quicksilver5070",
-      "recurrence": {
-        "type": "nth-weekday",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "notes": "monthly on the 9th",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "repeat": false,
-      "dateOverrides": {},
-      "autoMakPaycheck": false
-    },
-    {
-      "id": "debtpay-2026-06-10-accessone-mak-checking-mak-accessone",
-      "title": "AccessOne",
-      "amount": 216.99,
-      "date": "2026-06-10",
-      "type": "transfer",
-      "status": "planned",
-      "accountId": "mak-checking",
-      "categoryId": "medical",
-      "linkedDebtId": "mak-accessone",
-      "recurrence": {
-        "type": "nth-weekday",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "notes": "monthly on the 10th",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "repeat": false,
-      "dateOverrides": {},
-      "autoMakPaycheck": false
-    },
-    {
-      "id": "tx-2026-06-10-gas-ty-checking",
-      "title": "Gas",
-      "amount": 55.0,
-      "date": "2026-06-10",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "ty-checking",
-      "categoryId": "gas",
-      "recurrence": {
-        "type": "weekly",
-        "interval": 1,
-        "weekday": 3,
-        "weekendHandling": "none"
-      },
-      "autoMakPaycheck": false,
-      "notes": "weekly on Wednesdays",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "debtpay-2026-06-11-amazon-2-4-joint-checking-klarna-amazon",
-      "title": "Amazon (2/4)",
-      "amount": 55.23,
-      "date": "2026-06-11",
-      "type": "transfer",
-      "status": "planned",
-      "accountId": "joint-checking",
-      "categoryId": "klarna",
-      "linkedDebtId": "klarna-amazon",
-      "recurrence": {
-        "type": "none",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "notes": "due June 14",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "repeat": false,
-      "dateOverrides": {},
-      "autoMakPaycheck": false
-    },
-    {
-      "id": "debtpay-2026-06-11-lendingclub-joint-checking-lendingclub",
-      "title": "LendingClub",
-      "amount": 391.26,
-      "date": "2026-06-11",
-      "type": "transfer",
-      "status": "planned",
-      "accountId": "joint-checking",
-      "categoryId": "loan-payment",
-      "linkedDebtId": "lendingclub",
-      "recurrence": {
-        "type": "nth-weekday",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "notes": "monthly on the 11th",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "repeat": false,
-      "dateOverrides": {},
-      "autoMakPaycheck": false
-    },
-    {
-      "id": "debtpay-2026-06-11-ring-3-3-ty-checking-klarna-ring",
-      "title": "Ring (3/3)",
-      "amount": 46.88,
-      "date": "2026-06-11",
-      "type": "transfer",
-      "status": "planned",
-      "accountId": "ty-checking",
-      "categoryId": "klarna",
-      "linkedDebtId": "klarna-ring",
-      "recurrence": {
-        "type": "none",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "notes": "due july 4",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "repeat": false,
-      "dateOverrides": {},
-      "autoMakPaycheck": false
-    },
-    {
-      "id": "debtpay-2026-06-13-mak-discover8627-joint-checking-mak-discover8627",
-      "title": "Mak Discover8627",
-      "amount": 30.0,
-      "date": "2026-06-13",
-      "type": "transfer",
-      "status": "planned",
-      "accountId": "joint-checking",
-      "categoryId": "credit-card-payment",
-      "linkedDebtId": "mak-discover8627",
-      "recurrence": {
-        "type": "monthly",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "notes": "$30 every 13th",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "repeat": false,
-      "dateOverrides": {},
-      "autoMakPaycheck": false
-    },
-    {
-      "id": "tx-2026-06-14-ticktick-mak-checking",
-      "title": "TickTick",
-      "amount": 4.03,
-      "date": "2026-06-14",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "mak-checking",
-      "categoryId": "subscription",
-      "recurrence": {
-        "type": "nth-weekday",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "autoMakPaycheck": false,
-      "notes": "monthly on the 14th. $4.03",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "debtpay-2026-06-14-ty-creditone2367-joint-checking-ty-creditone2367",
-      "title": "Ty CreditOne2367",
-      "amount": 50.0,
-      "date": "2026-06-14",
-      "type": "transfer",
-      "status": "planned",
-      "accountId": "joint-checking",
-      "categoryId": "credit-card-payment",
-      "linkedDebtId": "ty-creditone2367",
-      "recurrence": {
-        "type": "nth-weekday",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "notes": "monthly on the 14th",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "repeat": false,
-      "dateOverrides": {},
-      "autoMakPaycheck": false
-    },
-    {
-      "id": "debtpay-2026-06-14-ty-creditone5247-joint-checking-ty-creditone5247",
-      "title": "Ty CreditOne5247",
-      "amount": 35.0,
-      "date": "2026-06-14",
-      "type": "transfer",
-      "status": "planned",
-      "accountId": "joint-checking",
-      "categoryId": "credit-card-payment",
-      "linkedDebtId": "ty-creditone5247",
-      "recurrence": {
-        "type": "nth-weekday",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "notes": "monthly on the 14th",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "repeat": false,
-      "dateOverrides": {},
-      "autoMakPaycheck": false
-    },
-    {
-      "id": "tx-2026-06-14-xbox-game-pass-joint-checking",
-      "title": "Xbox Game Pass",
-      "amount": 31.79,
-      "date": "2026-06-14",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "joint-checking",
-      "categoryId": "subscription",
-      "recurrence": {
-        "type": "nth-weekday",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "autoMakPaycheck": false,
-      "notes": "monthly on the 14th",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "debtpay-2026-06-15-les-schwab-joint-checking-les-schwab100962814",
-      "title": "Les Schwab",
-      "amount": 100.0,
-      "date": "2026-06-15",
-      "type": "transfer",
-      "status": "planned",
-      "accountId": "joint-checking",
-      "categoryId": "car",
-      "linkedDebtId": "les-schwab100962814",
-      "recurrence": {
-        "type": "nth-weekday",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "notes": "monthly on the 15th",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "repeat": false,
-      "dateOverrides": {},
-      "autoMakPaycheck": false
-    },
-    {
-      "id": "debtpay-2026-06-15-mak-macu-card-joint-checking-mak-macu5979",
-      "title": "Mak MACU Card",
-      "amount": 50.0,
-      "date": "2026-06-15",
-      "type": "transfer",
-      "status": "planned",
-      "accountId": "joint-checking",
-      "categoryId": "credit-card-payment",
-      "linkedDebtId": "mak-macu5979",
-      "recurrence": {
-        "type": "nth-weekday",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "notes": "monthly on the 15th, due the 15th",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "repeat": false,
-      "dateOverrides": {},
-      "autoMakPaycheck": false
-    },
-    {
-      "id": "tx-2026-06-16-walmart-joint-checking",
-      "title": "Walmart+",
-      "amount": 6.47,
-      "date": "2026-06-16",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "joint-checking",
-      "categoryId": "subscription",
-      "recurrence": {
-        "type": "nth-weekday",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "autoMakPaycheck": false,
-      "notes": "monthly on the 16th",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "tx-2026-06-16-youtube-premium-mak-checking",
-      "title": "YouTube Premium",
-      "amount": 8.99,
-      "date": "2026-06-16",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "mak-checking",
-      "categoryId": "subscription",
-      "recurrence": {
-        "type": "nth-weekday",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "autoMakPaycheck": false,
-      "notes": "monthly on the 16th",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "tx-2026-06-17-mak-planet-fitness-joint-checking",
-      "title": "Mak Planet Fitness",
-      "amount": 21.23,
-      "date": "2026-06-17",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "joint-checking",
-      "categoryId": "utilities",
-      "recurrence": {
-        "type": "nth-weekday",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "autoMakPaycheck": false,
-      "notes": "monthly on the 17th",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "tx-2026-06-17-mak-planet-fitness-annual-fee-joint-checking",
-      "title": "Mak Planet Fitness Annual Fee",
-      "amount": 51.94,
-      "date": "2026-06-17",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "joint-checking",
-      "categoryId": "utilities",
-      "recurrence": {
-        "type": "yearly",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "autoMakPaycheck": false,
-      "notes": "annual",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "tx-2026-06-17-ty-planet-fitness-joint-checking",
-      "title": "Ty Planet Fitness",
-      "amount": 26.25,
-      "date": "2026-06-17",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "joint-checking",
-      "categoryId": "utilities",
-      "recurrence": {
-        "type": "nth-weekday",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "autoMakPaycheck": false,
-      "notes": "monthly on the 17th",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "tx-2026-06-18-kindle-unlimited-mak-checking",
-      "title": "Kindle Unlimited",
-      "amount": 12.71,
-      "date": "2026-06-18",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "mak-checking",
-      "categoryId": "subscription",
-      "recurrence": {
-        "type": "nth-weekday",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "autoMakPaycheck": false,
-      "notes": "monthly on the 18th",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "tx-2026-06-22-gas-mak-checking",
-      "title": "Gas",
-      "amount": 150.0,
-      "date": "2026-06-22",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "mak-checking",
-      "categoryId": "gas",
-      "recurrence": {
-        "type": "nth-weekday",
-        "interval": 1,
-        "weekendHandling": "previous-friday"
-      },
-      "autoMakPaycheck": false,
-      "notes": "monthly on the 22nd, move weekend to Friday",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "tx-2026-06-22-leesa-joint-checking-second",
-      "title": "Leesa",
-      "amount": 460.0,
-      "date": "2026-06-22",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "joint-checking",
-      "categoryId": "rent",
-      "recurrence": {
-        "type": "monthly",
-        "interval": 1,
-        "weekendHandling": "previous-friday"
-      },
-      "notes": "Second monthly rent payment from 7th & 22nd rule",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {},
-      "autoMakPaycheck": false
-    },
-    {
-      "id": "debtpay-2026-06-22-mak-car-mak-checking-mak-auto-loan",
-      "title": "Mak Car",
-      "amount": 225.0,
-      "date": "2026-06-22",
-      "type": "transfer",
-      "status": "planned",
-      "accountId": "mak-checking",
-      "categoryId": "loan-payment",
-      "linkedDebtId": "mak-auto-loan",
-      "recurrence": {
-        "type": "nth-weekday",
-        "interval": 1,
-        "weekendHandling": "previous-friday"
-      },
-      "notes": "monthly on the 22nd, move weekend to Friday",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "repeat": false,
-      "dateOverrides": {},
-      "autoMakPaycheck": false
-    },
-    {
-      "id": "tx-2026-06-22-mak-paycheck-mak-checking",
-      "title": "Mak Paycheck",
-      "amount": 1700,
-      "date": "2026-06-22",
-      "type": "paycheck",
-      "status": "planned",
-      "accountId": "mak-checking",
-      "categoryId": "paycheck",
-      "recurrence": {
-        "type": "monthly",
-        "interval": 1,
-        "weekendHandling": "previous-friday"
-      },
-      "autoMakPaycheck": true,
-      "notes": "monthly on the 22nd, move weekend to Friday",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "tx-2026-06-22-mak-to-joint-mak-checking-joint",
-      "title": "Mak to Joint",
-      "amount": 700.0,
-      "date": "2026-06-22",
-      "type": "transfer",
-      "status": "planned",
-      "accountId": "mak-checking",
-      "transferToAccountId": "joint-checking",
-      "categoryId": "transfer",
-      "recurrence": {
-        "type": "nth-weekday",
-        "interval": 1,
-        "weekendHandling": "previous-friday"
-      },
-      "notes": "monthly on the 22nd, move weekend to Friday",
-      "debtAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {},
-      "autoMakPaycheck": false
-    },
-    {
-      "id": "tx-2026-06-24-nexus-mods-mak-checking",
-      "title": "Nexus Mods",
-      "amount": 8.99,
-      "date": "2026-06-24",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "mak-checking",
-      "categoryId": "subscription",
-      "recurrence": {
-        "type": "nth-weekday",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "autoMakPaycheck": false,
-      "notes": "monthly on the 24th",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "debtpay-2026-06-24-ulta-6-6-mak-checking-klarna-ulta",
-      "title": "Ulta (6/6)",
-      "amount": 37.61,
-      "date": "2026-06-24",
-      "type": "transfer",
-      "status": "planned",
-      "accountId": "mak-checking",
-      "categoryId": "klarna",
-      "linkedDebtId": "klarna-ulta",
-      "recurrence": {
-        "type": "none",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "notes": "due September 22",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "repeat": false,
-      "dateOverrides": {},
-      "autoMakPaycheck": false
-    },
-    {
-      "id": "tx-2026-06-24-icloud-mak-checking",
-      "title": "iCloud+",
-      "amount": 2.99,
-      "date": "2026-06-24",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "mak-checking",
-      "categoryId": "subscription",
-      "recurrence": {
-        "type": "nth-weekday",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "autoMakPaycheck": false,
-      "notes": "monthly on the 24th",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "tx-2026-06-25-at-t-joint-checking",
-      "title": "AT&T",
-      "amount": 195.02,
-      "date": "2026-06-25",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "joint-checking",
-      "categoryId": "phone",
-      "recurrence": {
-        "type": "nth-weekday",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "autoMakPaycheck": false,
-      "notes": "monthly on the 25th",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "tx-2026-06-25-amazon-subscribe-save-mak-checking",
-      "title": "Amazon Subscribe & Save",
-      "amount": 50.0,
-      "date": "2026-06-25",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "mak-checking",
-      "categoryId": "household",
-      "recurrence": {
-        "type": "none",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "autoMakPaycheck": false,
-      "notes": "monthly on the 25th",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "tx-2026-06-25-amazon-subscribe-save-joint-checking",
-      "title": "Amazon Subscribe & Save",
-      "amount": 36.87,
-      "date": "2026-06-25",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "joint-checking",
-      "categoryId": "household",
-      "recurrence": {
-        "type": "none",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "autoMakPaycheck": false,
-      "notes": "",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "tx-2026-06-25-auto-life-insurance-mak-checking",
-      "title": "Auto Life Insurance",
-      "amount": 15.4,
-      "date": "2026-06-25",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "mak-checking",
-      "categoryId": "insurance",
-      "recurrence": {
-        "type": "nth-weekday",
-        "interval": 1,
-        "weekendHandling": "next-monday"
-      },
-      "autoMakPaycheck": false,
-      "notes": "monthly on the 25th, move weekend to Monday",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "tx-2026-06-25-statefarm-joint-checking",
-      "title": "StateFarm",
-      "amount": 300.97,
-      "date": "2026-06-25",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "joint-checking",
-      "categoryId": "insurance",
-      "recurrence": {
-        "type": "nth-weekday",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "autoMakPaycheck": false,
-      "notes": "monthly on the 25th",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "debtpay-2026-06-25-west-valley-medical-center-2-3-mak-checking-west-va",
-      "title": "West Valley Medical Center (2/3)",
-      "amount": 76.67,
-      "date": "2026-06-25",
-      "type": "transfer",
-      "status": "planned",
-      "accountId": "mak-checking",
-      "categoryId": "medical",
-      "linkedDebtId": "west-valley-medical-center",
-      "recurrence": {
-        "type": "none",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "notes": "",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "repeat": false,
-      "dateOverrides": {},
-      "autoMakPaycheck": false
-    },
-    {
-      "id": "tx-2026-06-26-my-bee-balm-mak-checking",
-      "title": "My Bee Balm",
-      "amount": 10.0,
-      "date": "2026-06-26",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "mak-checking",
-      "categoryId": "subscription",
-      "recurrence": {
-        "type": "nth-weekday",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "autoMakPaycheck": false,
-      "notes": "monthly on the 26th",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "debtpay-2026-06-28-ty-clarity-card-joint-checking-ty-clarity3384",
-      "title": "Ty Clarity Card",
-      "amount": 25.0,
-      "date": "2026-06-28",
-      "type": "transfer",
-      "status": "planned",
-      "accountId": "joint-checking",
-      "categoryId": "credit-card-payment",
-      "linkedDebtId": "ty-clarity3384",
-      "recurrence": {
-        "type": "nth-weekday",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "notes": "monthly on the 28th",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "repeat": false,
-      "dateOverrides": {},
-      "autoMakPaycheck": false
-    },
-    {
-      "id": "tx-2026-06-29-chatgpt-plus-mak-checking",
-      "title": "ChatGPT Plus",
-      "amount": 20.0,
-      "date": "2026-06-29",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "mak-checking",
-      "categoryId": "subscription",
-      "recurrence": {
-        "type": "nth-weekday",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "autoMakPaycheck": false,
-      "notes": "monthly on the 29th",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "tx-2026-06-29-dental-insurance-mak-checking",
-      "title": "Dental Insurance",
-      "amount": 38.27,
-      "date": "2026-06-29",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "mak-checking",
-      "categoryId": "insurance",
-      "recurrence": {
-        "type": "nth-weekday",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "autoMakPaycheck": false,
-      "notes": "monthly on the 29th",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "tx-2026-06-30-apple-music-mak-checking",
-      "title": "Apple Music",
-      "amount": 16.99,
-      "date": "2026-06-30",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "mak-checking",
-      "categoryId": "subscription",
-      "recurrence": {
-        "type": "nth-weekday",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "autoMakPaycheck": false,
-      "notes": "monthly on the 30th",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "debtpay-2026-07-02-mak-quicksilver6597-joint-checking-mak-quicksilver6",
-      "title": "Mak Quicksilver6597",
-      "amount": 35.0,
-      "date": "2026-07-02",
-      "type": "transfer",
-      "status": "planned",
-      "accountId": "joint-checking",
-      "categoryId": "credit-card-payment",
-      "linkedDebtId": "mak-quicksilver6597",
-      "recurrence": {
-        "type": "nth-weekday",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "notes": "monthly on the 2nd",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "repeat": false,
-      "dateOverrides": {},
-      "autoMakPaycheck": false
-    },
-    {
-      "id": "debtpay-2026-07-02-mak-quicksilver9246-joint-checking-mak-quicksilver9",
-      "title": "Mak Quicksilver9246",
-      "amount": 35.0,
-      "date": "2026-07-02",
-      "type": "transfer",
-      "status": "planned",
-      "accountId": "joint-checking",
-      "categoryId": "credit-card-payment",
-      "linkedDebtId": "mak-quicksilver9246",
-      "recurrence": {
-        "type": "nth-weekday",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "notes": "monthly on the 2nd",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "repeat": false,
-      "dateOverrides": {},
-      "autoMakPaycheck": false
-    },
-    {
-      "id": "debtpay-2026-07-02-ty-quicksilver4899-joint-checking-ty-quicksilver489",
-      "title": "Ty Quicksilver4899",
-      "amount": 35.0,
-      "date": "2026-07-02",
-      "type": "transfer",
-      "status": "planned",
-      "accountId": "joint-checking",
-      "categoryId": "credit-card-payment",
-      "linkedDebtId": "ty-quicksilver4899",
-      "recurrence": {
-        "type": "nth-weekday",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "notes": "monthly on the 2nd",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "repeat": false,
-      "dateOverrides": {},
-      "autoMakPaycheck": false
-    },
-    {
-      "id": "debtpay-2026-07-08-amazon-3-4-mak-checking-klarna-amazon",
-      "title": "Amazon (3/4)",
-      "amount": 55.23,
-      "date": "2026-07-08",
-      "type": "transfer",
-      "status": "planned",
-      "accountId": "mak-checking",
-      "categoryId": "klarna",
-      "linkedDebtId": "klarna-amazon",
-      "recurrence": {
-        "type": "none",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "notes": "due July 14",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "repeat": false,
-      "dateOverrides": {},
-      "autoMakPaycheck": false
-    },
-    {
-      "id": "debtpay-2026-07-23-amazon-4-4-mak-checking-klarna-amazon",
-      "title": "Amazon (4/4)",
-      "amount": 55.24,
-      "date": "2026-07-23",
-      "type": "transfer",
-      "status": "planned",
-      "accountId": "mak-checking",
-      "categoryId": "klarna",
-      "linkedDebtId": "klarna-amazon",
-      "recurrence": {
-        "type": "none",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "notes": "due August 14",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "repeat": false,
-      "dateOverrides": {},
-      "autoMakPaycheck": false
-    },
-    {
-      "id": "debtpay-2026-07-25-west-valley-medical-center-3-3-mak-checking-west-va",
-      "title": "West Valley Medical Center (3/3)",
-      "amount": 76.66,
-      "date": "2026-07-25",
-      "type": "transfer",
-      "status": "planned",
-      "accountId": "mak-checking",
-      "categoryId": "medical",
-      "linkedDebtId": "west-valley-medical-center",
-      "recurrence": {
-        "type": "none",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "notes": "",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "repeat": false,
-      "dateOverrides": {},
-      "autoMakPaycheck": false
-    },
-    {
-      "id": "tx-2026-09-20-calenderbudget-mak-checking",
-      "title": "CalenderBudget",
-      "amount": 64.99,
-      "date": "2026-09-20",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "mak-checking",
-      "categoryId": "subscription",
-      "recurrence": {
-        "type": "yearly",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "autoMakPaycheck": false,
-      "notes": "annual",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "tx-2026-09-22-aarp-membership-joint-checking",
-      "title": "AARP Membership",
-      "amount": 20.0,
-      "date": "2026-09-22",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "joint-checking",
-      "categoryId": "utilities",
-      "recurrence": {
-        "type": "yearly",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "autoMakPaycheck": false,
-      "notes": "annual",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "tx-2026-11-02-ty-planet-fitness-annual-fee-joint-checking",
-      "title": "Ty Planet Fitness Annual Fee",
-      "amount": 51.94,
-      "date": "2026-11-02",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "joint-checking",
-      "categoryId": "utilities",
-      "recurrence": {
-        "type": "yearly",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "autoMakPaycheck": false,
-      "notes": "annual",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "tx-2027-02-13-bearable-mak-checking",
-      "title": "Bearable",
-      "amount": 34.99,
-      "date": "2027-02-13",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "mak-checking",
-      "categoryId": "subscription",
-      "recurrence": {
-        "type": "yearly",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "autoMakPaycheck": false,
-      "notes": "annual",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    },
-    {
-      "id": "tx-2027-04-17-dynamic-lyrics-mak-checking",
-      "title": "Dynamic Lyrics",
-      "amount": 4.99,
-      "date": "2027-04-17",
-      "type": "expense",
-      "status": "planned",
-      "accountId": "mak-checking",
-      "categoryId": "subscription",
-      "recurrence": {
-        "type": "yearly",
-        "interval": 1,
-        "weekendHandling": "none"
-      },
-      "autoMakPaycheck": false,
-      "notes": "annual",
-      "debtAccountId": "",
-      "transferToAccountId": "",
-      "linkedDebtId": "",
-      "repeat": false,
-      "dateOverrides": {}
-    }
-  ]
-};
+function createStarterData(){
+  return {
+    schemaVersion: CURRENT_SCHEMA_VERSION,
+    settings: {buffer:50},
+    accounts: [],
+    debts: [],
+    budgets: [],
+    categories: standardCategories(),
+    transactions: []
+  };
+}
 
 let data;
 const CHANGE_HISTORY_KEY = `${STORAGE_KEY}.changeHistory`;
@@ -2766,8 +436,7 @@ const defaultUiPrefs = {
   accountDetailMode: "bank",
   accountForecastRange: "next-90",
   accountForecastCustomStart: "",
-  accountForecastCustomEnd: "",
-  calendarDensity: "comfortable"
+  accountForecastCustomEnd: ""
 };
 const allowedAccountForecastRanges = new Set(["this-month", "next-paycheck", "next-30", "next-60", "next-90", "custom"]);
 function cleanAccountForecastRange(range){
@@ -2789,7 +458,6 @@ function loadUiPrefs(){
     if(saved.accountForecastRange) prefs.accountForecastRange = cleanAccountForecastRange(saved.accountForecastRange);
     if(saved.accountForecastCustomStart) prefs.accountForecastCustomStart = saved.accountForecastCustomStart;
     if(saved.accountForecastCustomEnd) prefs.accountForecastCustomEnd = saved.accountForecastCustomEnd;
-    if(["compact","comfortable","detailed"].includes(saved.calendarDensity)) prefs.calendarDensity = saved.calendarDensity;
     return prefs;
   } catch(err){
     console.warn("Could not load Money Nest UI preferences", err);
@@ -2807,8 +475,7 @@ function saveUiPrefs(){
       accountDetailMode,
       accountForecastRange,
       accountForecastCustomStart,
-      accountForecastCustomEnd,
-      calendarDensity
+      accountForecastCustomEnd
     }));
   } catch(err){
     console.warn("Could not save Money Nest UI preferences", err);
@@ -2832,7 +499,6 @@ if(!Array.isArray(billFilters.categories)) billFilters.categories = [billFilters
 let billHealthReviewOnly = false;
 let transactionFilterDefaults = {...defaultUiPrefs.transactionFilterDefaults, ...(uiPrefs.transactionFilterDefaults || {})};
 let transactionFilters = {...defaultUiPrefs.transactionFilters, ...(uiPrefs.transactionFilters || {})};
-let calendarDensity = "comfortable";
 let budgetReviewMonth = todayISO().slice(0,7);
 let budgetReviewAccountIds = [];
 let budgetReviewIncludeRecurringBills = true;
@@ -3130,20 +796,21 @@ function defaultLoanForecastHistoryForDebt(debt){
 }
 
 function normalizeData(raw){
-  const incoming = raw || JSON.parse(JSON.stringify(sampleData));
+  const incoming = raw || createStarterData();
+  const fallbackCategories = standardCategories();
   const inferredSchema = Number(incoming.schemaVersion || (incoming.settings?.appearance ? 215 : incoming.settings ? 175 : 100));
   if(inferredSchema < 200) saveLocalMeta({olderSchemaWarning:{from:inferredSchema,to:CURRENT_SCHEMA_VERSION,at:new Date().toISOString()}});
   const d = incoming;
   d.schemaVersion = CURRENT_SCHEMA_VERSION;
-  if(!Array.isArray(d.categories)) d.categories = JSON.parse(JSON.stringify(sampleData.categories));
+  if(!Array.isArray(d.categories)) d.categories = JSON.parse(JSON.stringify(fallbackCategories));
 
   // v1 stored categories as plain strings. v2 stores full category objects.
   if(typeof d.categories[0] === "string"){
     d.categories = d.categories.map((name,i)=>({
       id: slug(name),
       name,
-      emoji: sampleData.categories[i % sampleData.categories.length]?.emoji || "",
-      color: sampleData.categories[i % sampleData.categories.length]?.color || "#8c6f4d"
+      emoji: fallbackCategories[i % fallbackCategories.length]?.emoji || "",
+      color: fallbackCategories[i % fallbackCategories.length]?.color || "#8c6f4d"
     }));
   }
 
@@ -3322,10 +989,11 @@ function loadData(){
     const old = localStorage.getItem("moneyNest.v1");
     if(old) return normalizeData(JSON.parse(old));
   } catch(err){
-    console.warn("Money Nest startup data issue. Loading sample data instead.", err);
+    console.warn("Money Nest startup data issue. Starting with clean local data instead.", err);
   }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(sampleData));
-  return normalizeData(JSON.parse(JSON.stringify(sampleData)));
+  const starter = createStarterData();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(starter));
+  return normalizeData(starter);
 }
 function loadChangeHistory(){
   try{ return JSON.parse(localStorage.getItem(CHANGE_HISTORY_KEY) || "[]"); }
@@ -3672,17 +1340,10 @@ function normalizeCategories(){
   });
   data.categories = [...byId.values()].sort((a,b)=>String(a.name || "").localeCompare(String(b.name || "")));
 }
-function findCategoryId(name){ return data.categories.find(c=>c.name===name)?.id || data.categories[0]?.id || "income"; }
 function accountById(id){ return data.accounts.find(a=>a.id===id); }
 function debtById(id){ return data.debts.find(d=>d.id===id); }
 
 
-function accountVisual(account){
-  return `${account?.emoji || "💵"} ${account?.name || "Account"}`;
-}
-function debtVisual(debt){
-  return `${debt?.emoji || "💳"} ${debt?.name || "Debt"}`;
-}
 function moveWeekendDate(date, handling){
   const d = new Date(date);
   if(!handling || handling === "none") return d;
@@ -3854,10 +1515,6 @@ function applyAutoPaycheckAmount(tx){
   };
 }
 // Backward-compatible helper name used by older UI code.
-function makPaycheckAmountForDate(dateISO){
-  const profile = data.settings?.paycheckProfiles?.Mak || {hourlyRate:24, hoursPerWorkday:8, deductionPercent:18.51, fixedDeduction:0};
-  return estimatePaycheckFromProfile("Mak", profile, dateISO, "");
-}
 
 
 function occurrenceOverrideFor(tx, originalISO){
@@ -4019,11 +1676,6 @@ function pendingReimbursementsToAccount(accountId, throughISO="2999-12-31"){
     .filter(tx => isPendingReimbursementTx(tx) && tx.transferToAccountId === accountId && tx.date <= throughISO)
     .reduce((sum, tx)=>sum + Number(tx.amount || 0), 0);
 }
-function pendingReimbursementsFromAccount(accountId, throughISO="2999-12-31"){
-  return expandedTransactions(throughISO)
-    .filter(tx => isPendingReimbursementTx(tx) && tx.accountId === accountId && tx.date <= throughISO)
-    .reduce((sum, tx)=>sum + Number(tx.amount || 0), 0);
-}
 function txEffectOnCash(tx, accountId, projected=true){
   if(!projected && tx.status !== "cleared") return 0;
 
@@ -4074,9 +1726,6 @@ function debtTransactionCountsForBalance(d, tx){
 }
 function isLoanDebt(d){
   return d?.type === "Loan" || debtTypeLabel(d?.type) === "Loan";
-}
-function isBalanceTrackingDebt(d){
-  return isLoanDebt(d) || isMedicalDebt(d) || isBNPLDebt(d);
 }
 
 function loanPaymentHasManualBreakdown(tx){
@@ -5839,62 +3488,12 @@ function txOccurrenceKey(tx){
 
 
 
-function forecastRangeDates(range){
-  const today = todayISO();
-  const now = parseDate(today);
-
-  if(range === "this-month"){
-    return {start: toISO(startOfMonth(now)), end: toISO(endOfMonth(now)), label:"this month"};
-  }
-
-  if(range === "next-paycheck" && selectedAccountId){
-    const acc = accountById(selectedAccountId);
-    if(acc?.paycheckAccount){
-      const next = nextPaycheckDate(selectedAccountId);
-      return {start: today, end: next, label:`through next uncleared paycheck: ${next}`};
-    }
-  }
-
-  if(range === "next-30"){
-    return {start: today, end: toISO(addDays(now, 30)), label:"next 30 days"};
-  }
-
-  if(range === "next-60"){
-    return {start: today, end: toISO(addDays(now, 60)), label:"next 60 days"};
-  }
-
-  if(range === "next-90"){
-    return {start: today, end: toISO(addDays(now, 90)), label:"next 90 days"};
-  }
-
-  if(range === "custom"){
-    const start = accountForecastCustomStart || today;
-    const fallbackEnd = toISO(addDays(now, 90));
-    let end = accountForecastCustomEnd || fallbackEnd;
-    if(end < start) end = start;
-    return {start, end, label:`custom: ${start} to ${end}`};
-  }
-
-  return {start: today, end: toISO(addDays(now, 90)), label:"next 90 days"};
-}
 
 function forecastWindowTransactions(accountId, untilISO){
   return visibleTransactionsForAccount(accountId, untilISO);
 }
 
-function forecastTxInRange(tx, rangeInfo){
-  if(!tx || !rangeInfo) return false;
-  if(tx.date > rangeInfo.end) return false;
-  // Forecast view should not hide old still-planned items.
-  // A past planned/pending bill is still part of the future cash problem until Mak clears, edits, or deletes it.
-  if(tx.status !== "cleared" && tx.date < todayISO()) return true;
-  return tx.date >= rangeInfo.start && tx.date <= rangeInfo.end;
-}
 
-function forecastVisibleStart(txs, rangeInfo){
-  const dates = txs.map(tx => tx.date).filter(Boolean).sort();
-  return dates[0] || rangeInfo.start;
-}
 
 function setAccountForecastRange(range){
   accountForecastRange = cleanAccountForecastRange(range);
@@ -5920,31 +3519,6 @@ window.setAccountForecastCustomEnd = (value)=>{
   renderAccountDetail();
 };
 
-function renderForecastRangeControl(accountId){
-  accountForecastRange = cleanAccountForecastRange(accountForecastRange);
-  const acc = accountById(accountId);
-  const today = todayISO();
-  const customStart = accountForecastCustomStart || today;
-  const customEnd = accountForecastCustomEnd || toISO(addDays(parseDate(today), 90));
-  const customFields = accountForecastRange === "custom" ? `
-    <div class="forecast-custom-dates">
-      <label>From<input type="date" value="${escapeAttr(customStart)}" onchange="setAccountForecastCustomStart(this.value)"></label>
-      <label>To<input type="date" value="${escapeAttr(customEnd)}" onchange="setAccountForecastCustomEnd(this.value)"></label>
-    </div>` : "";
-  return `<div class="forecast-range-control">
-    <label class="forecast-range-label">Forecast range
-      <select onchange="setAccountForecastRange(this.value)">
-        <option value="this-month" ${accountForecastRange==="this-month"?"selected":""}>This month</option>
-        ${acc?.paycheckAccount ? `<option value="next-paycheck" ${accountForecastRange==="next-paycheck"?"selected":""}>Through next paycheck</option>` : ""}
-        <option value="next-30" ${accountForecastRange==="next-30"?"selected":""}>Next 30 days</option>
-        <option value="next-60" ${accountForecastRange==="next-60"?"selected":""}>Next 60 days</option>
-        <option value="next-90" ${accountForecastRange==="next-90"?"selected":""}>Next 90 days</option>
-        <option value="custom" ${accountForecastRange==="custom"?"selected":""}>Custom dates</option>
-      </select>
-    </label>
-    ${customFields}
-  </div>`;
-}
 
 
 function accountTransactionSortRank(tx, accountId){
@@ -6781,14 +4355,6 @@ function renderBudgets(){
 }
 
 
-function budgetDetailTransactions(budget, monthRange=budgetMonthRange(budgetReviewMonth)){
-  return expandedTransactions(monthRange.end)
-    .filter(tx=>tx.date >= monthRange.start && tx.date <= monthRange.end)
-    .filter(tx=>budgetIncludesTransaction(tx, budgetReviewIncludeRecurringBills))
-    .filter(tx=>txMatchesBudgetCategories(tx, budget))
-    .filter(tx=>txMatchesBudgetScope(tx, budget))
-    .sort((a,b)=>String(b.date).localeCompare(String(a.date)) || String(a.title || "").localeCompare(String(b.title || "")));
-}
 function budgetBreakdown(items, keyFn, labelFn){
   const totals = new Map();
   items.forEach(tx=>{
@@ -7136,10 +4702,6 @@ function debtDueText(d){
 }
 function debtFrozenText(d){
   return d.frozenLocked ? "Frozen/locked" : "Active";
-}
-function debtLeftOver(d){
-  const left = Number(d.statementBalance || 0) - Number(d.minDue || 0) - Number(d.manualExtra || 0);
-  return Math.max(0, left);
 }
 
 
@@ -8008,18 +5570,6 @@ function hideTemplateSuggestions(){
   const box = document.getElementById("txTemplateSuggestions");
   if(box) box.classList.remove("open");
 }
-function deleteTemplateSuggestion(id){
-  data.settings ||= {};
-  data.settings.transactionTemplates ||= [];
-  const before = data.settings.transactionTemplates.length;
-  data.settings.transactionTemplates = data.settings.transactionTemplates.filter(t=>t.id !== id);
-  if(data.settings.transactionTemplates.length !== before){
-    normalizeTransactionTemplates();
-    saveData();
-    renderTemplateSuggestions();
-    renderTransactionTemplates();
-  }
-}
 function templateFamilyUsageStats(family){
   const matching = (data.transactions || []).filter(tx=>templateKey(tx.title)===family.key);
   const dates = matching.map(tx=>String(tx.date||"")).filter(Boolean).sort();
@@ -8048,24 +5598,6 @@ function renderTransactionTemplates(){
     </button>`;
   }).join("");
   list.querySelectorAll("[data-template-manage-family]").forEach(btn=>btn.onclick=()=>openTemplateCleanup(btn.dataset.templateManageFamily || ""));
-}
-function setDefaultTemplate(id){
-  normalizeTransactionTemplates();
-  const target=data.settings.transactionTemplates.find(t=>t.id===id);
-  if(!target) return;
-  const key=templateKey(target.title);
-  data.settings.transactionTemplates.forEach(t=>{if(templateKey(t.title)===key)t.isDefault=t.id===id;});
-  target.archived=false;
-  saveData();
-}
-function toggleTemplateArchived(id){
-  normalizeTransactionTemplates();
-  const target=data.settings.transactionTemplates.find(t=>t.id===id);
-  if(!target) return;
-  target.archived=!target.archived;
-  if(target.archived) target.isDefault=false;
-  normalizeTransactionTemplates();
-  saveData();
 }
 function deleteTemplate(id){
   if(!confirm("Delete this transaction template? This does not delete any transactions.")) return;
@@ -8862,18 +6394,6 @@ function askRecurringScope(mode){
 }
 
 
-function transactionSeriesSignature(tx){
-  return [
-    String(tx.title || "").trim().toLowerCase(),
-    String(tx.accountId || ""),
-    String(tx.debtAccountId || ""),
-    String(tx.transferToAccountId || ""),
-    String(tx.linkedDebtId || ""),
-    String(tx.categoryId || ""),
-    String(tx.type || ""),
-    Number(tx.amount || 0).toFixed(2)
-  ].join("|");
-}
 
 function recurringScheduleSignature(tx){
   const r = tx?.recurrence || (tx?.repeat ? {type:"monthly", interval:1} : {type:"none", interval:1});
@@ -9449,8 +6969,6 @@ function updateTransactionDisclosureSummaries(){
   }
   const notesSummary=document.getElementById("txNotesSummary");
   if(notesSummary) notesSummary.textContent = String(document.getElementById("txNotes")?.value || "").trim() ? "Added" : "Optional";
-  const linksSummary=document.getElementById("txLinksSummary");
-  if(linksSummary) linksSummary.textContent = txLinkDraftIds.length ? `${txLinkDraftIds.length} linked` : "None";
 }
 
 function updateTransactionFormUI(){
@@ -9617,7 +7135,7 @@ function transactionPayloadFromForm(id){
     repeat: false,
     notes: txNotes.value,
     dateOverrides: {},
-    linkedTransactionIds: [...txLinkDraftIds]
+    linkedTransactionIds: [...txPreservedLinkedTransactionIds]
   };
 
   const calc = autoPaycheck && tempTx.type === "paycheck" ? paycheckAmountForTransaction(tempTx, tempTx.date) : null;
@@ -9630,26 +7148,6 @@ function transactionPayloadFromForm(id){
   };
 }
 
-function makeOneTimeFromSeriesEdit(baseTx, formTx, occurrenceOriginalDate, occurrenceDate){
-  const one = {
-    ...formTx,
-    id: uid(),
-    recurrence: {type:"none", interval:1, weekendHandling:"none"},
-    repeat: false,
-    generated:false,
-    originalId:"",
-    originalDate:"",
-    overrideFrom:"",
-    recurringSourceId: baseTx.id,
-    wasRecurringOccurrence:true,
-    dateOverrides:{},
-    notes: formTx.notes || baseTx.notes || ""
-  };
-
-  // Mark the original occurrence as skipped by moving it way outside visible planning.
-  deleteRecurringOccurrence(baseTx, occurrenceOriginalDate || baseTx.date, occurrenceDate || occurrenceOriginalDate || baseTx.date);
-  return one;
-}
 
 function updateSeriesFromDate(baseTx, formTx, occurrenceOriginalDate){
   const cutoffISO = occurrenceOriginalDate || baseTx.date;
@@ -9812,8 +7310,7 @@ window.openTransaction = (id=null, defaults={})=>{
   if(document.getElementById("txPaycheckHoursOverride")) txPaycheckHoursOverride.value = tx?.paycheckHoursOverride ?? defaults.paycheckHoursOverride ?? "";
   setRecurrenceForm(tx?.recurrence || (tx?.repeat ? {type:"monthly", interval:1} : defaults.recurrence) || {type:"none", interval:1}, occurrenceDate);
   txNotes.value = tx?.notes || defaults.notes || "";
-  txLinkDraftIds = Array.isArray(tx?.linkedTransactionIds) ? [...tx.linkedTransactionIds] : (Array.isArray(defaults.linkedTransactionIds) ? [...defaults.linkedTransactionIds] : []);
-  renderTxLinkedList();
+  txPreservedLinkedTransactionIds = Array.isArray(tx?.linkedTransactionIds) ? [...tx.linkedTransactionIds] : (Array.isArray(defaults.linkedTransactionIds) ? [...defaults.linkedTransactionIds] : []);
   const calcPanel = document.getElementById("txAmountCalcPanel");
   const calcInput = document.getElementById("txAmountCalcExpression");
   if(calcPanel) calcPanel.hidden = true;
@@ -9840,8 +7337,6 @@ window.openTransaction = (id=null, defaults={})=>{
   if(routingDetails) routingDetails.open = txType.value === "transfer" || !!txDebtAccount.value || !!txTransferTo.value || !!txDebt.value;
   const repeatDetails=document.getElementById("txRepeatDetails");
   if(repeatDetails) repeatDetails.open = !!tx && isRecurringEdit;
-  const linksDetails=document.getElementById("txLinksDetails");
-  if(linksDetails) linksDetails.open = !!txLinkDraftIds.length;
   const notesDetails=document.getElementById("txNotesDetails");
   if(notesDetails) notesDetails.open = false;
   updateTransactionDisclosureSummaries();
@@ -11387,10 +8882,6 @@ function billOccurrenceInfo(tx){
     return {date: tx?.date || todayISO(), originalDate: tx?.date || todayISO(), status: tx?.status === "cleared" ? "cleared" : "due", handled: tx?.status === "cleared"};
   }
 }
-function billFutureOccurrenceDate(tx){
-  const info = billOccurrenceInfo(tx);
-  return info.date >= todayISO() ? info.date : "";
-}
 function latestBillOccurrenceDate(tx){
   try{
     const todayISOValue = todayISO();
@@ -11419,9 +8910,6 @@ function latestBillOccurrenceDate(tx){
   }
 }
 
-function billOccurrenceDisplayDate(tx){
-  return billOccurrenceInfo(tx).date || tx?.date || todayISO();
-}
 
 function billOccurrenceStatus(tx){
   return tx.billInfo?.status || billOccurrenceInfo(tx).status || "planned";
@@ -11434,34 +8922,6 @@ function billStatusBadge(tx){
   return `<span class="status-toggle ${cssStatus} bill-status-badge" title="${title}">${label}</span>`;
 }
 
-function nextOccurrenceDate(tx){
-  try{
-    const today = parseDate(todayISO());
-    const start = parseDate(tx.date);
-    const horizon = parseDate(toISO(addMonths(new Date(), 24)));
-
-    let cursor = new Date(Math.max(start.getTime(), addDays(today, -7).getTime()));
-    cursor = parseDate(toISO(cursor));
-
-    while(cursor <= horizon){
-      if(recurrenceOccursOn(tx, cursor, start)){
-        const originalISO = toISO(cursor);
-        const moved = occurrenceDateFor(tx, cursor);
-        if(moved === "9999-12-31" || tx.dateOverrides?.[originalISO] === "9999-12-31"){
-          cursor = addDays(cursor, 1);
-          continue;
-        }
-        if(moved >= todayISO()) return moved;
-      }
-      cursor = addDays(cursor, 1);
-    }
-
-    return tx.date || todayISO();
-  } catch(err){
-    console.warn("Could not calculate next occurrence for", tx?.title, err);
-    return tx?.date || todayISO();
-  }
-}
 
 function billAccountLabel(tx){
   if(tx.accountId) return accountById(tx.accountId)?.name || "Unknown account";
@@ -12152,7 +9612,6 @@ addDayTransactionBtn.onclick = ()=>{
   openTransaction(null, defaults);
 };
 
-if(document.getElementById("settingsSampleResetBtn")) settingsSampleResetBtn.onclick = ()=>{ if(confirm("Reset to sample data? This replaces your current local Money Nest data.")){ localStorage.removeItem("moneyNest.v1"); localStorage.removeItem("moneyNest.v2"); localStorage.removeItem("moneyNest.v2.7.imported"); localStorage.removeItem("moneyNest.v2.10.fixed"); localStorage.setItem(STORAGE_KEY, JSON.stringify(sampleData)); localStorage.removeItem(UI_PREFS_KEY); data = loadData(); setView("dashboard"); } };
 
 document.getElementById("closeDayModal").onclick = function(){ document.getElementById("dayModal").close(); };
 document.getElementById("cancelDayModal").onclick = function(){ document.getElementById("dayModal").close(); };
@@ -12983,45 +10442,10 @@ renderMoneyNestHealthCenter=function(){
 // v2-212: Combined Cash Accounts and Debts into one Accounts page while preserving all existing data models and detail views.
 
 
-// v2-214: transaction linking, Needs Review inbox, calendar density, and backup health.
-let txLinkDraftIds = [];
-function txByAnyId(id){ return (data.transactions || []).find(t=>String(t.id)===String(id)); }
-function transactionLinkLabel(tx){
-  const acct = accountById(tx.accountId)?.name || debtById(tx.debtAccountId || tx.linkedDebtId)?.name || "Unknown account";
-  const cat = categoryById(tx.categoryId)?.name || "Unassigned";
-  return `${tx.date || "No date"} • ${acct} • ${cat} • ${money(tx.amount || 0)}`;
-}
-function renderTxLinkedList(){
-  const el=document.getElementById('txLinkedList'); if(!el)return;
-  const rows=txLinkDraftIds.map(txByAnyId).filter(Boolean);
-  el.innerHTML=rows.length ? rows.map(tx=>`<div class="linked-tx-row"><span><b>${escapeAttr(tx.title||'Untitled')}</b><small>${escapeAttr(transactionLinkLabel(tx))}</small></span><button type="button" class="ghost small" onclick="removeDraftTransactionLink('${tx.id}')">Remove</button></div>`).join('') : '<div class="empty">No linked transactions yet.</div>';
-  const summary=document.getElementById('txLinksSummary'); if(summary) summary.textContent=rows.length?`${rows.length} linked`:'None';
-}
-window.removeDraftTransactionLink=id=>{txLinkDraftIds=txLinkDraftIds.filter(x=>x!==id);renderTxLinkedList();};
-function candidateTransactionText(tx){ return [tx.title,tx.date,tx.amount,accountById(tx.accountId)?.name,categoryById(tx.categoryId)?.name,debtById(tx.debtAccountId||tx.linkedDebtId)?.name].filter(Boolean).join(' ').toLowerCase(); }
-function renderTxLinkCandidates(){
-  const el=document.getElementById('txLinkCandidates'); if(!el)return;
-  const q=(document.getElementById('txLinkSearch')?.value||'').trim().toLowerCase();
-  const currentId=document.getElementById('txId')?.value||'';
-  const rows=(data.transactions||[]).filter(tx=>tx.id!==currentId && !isRecurring(tx) && (!q || candidateTransactionText(tx).includes(q))).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))).slice(0,100);
-  el.innerHTML=rows.length?rows.map(tx=>`<label class="link-candidate"><input type="checkbox" value="${tx.id}" ${txLinkDraftIds.includes(tx.id)?'checked':''}><span><b>${escapeAttr(tx.title||'Untitled')}</b><small>${escapeAttr(transactionLinkLabel(tx))}</small></span><b>${money(tx.amount||0)}</b></label>`).join(''):'<div class="empty">No matching saved transactions.</div>';
-}
-function openTxLinkManager(){ const d=document.getElementById('txLinkModal'); if(!d)return; document.getElementById('txLinkSearch').value=''; renderTxLinkCandidates(); d.showModal(); }
-function closeTxLinkManager(){document.getElementById('txLinkModal')?.close();}
-document.getElementById('manageTxLinksBtn')?.addEventListener('click',openTxLinkManager);
-document.getElementById('closeTxLinkModal')?.addEventListener('click',closeTxLinkManager);
-document.getElementById('cancelTxLinks')?.addEventListener('click',closeTxLinkManager);
-document.getElementById('txLinkSearch')?.addEventListener('input',renderTxLinkCandidates);
-document.getElementById('saveTxLinks')?.addEventListener('click',()=>{
-  txLinkDraftIds=[...document.querySelectorAll('#txLinkCandidates input:checked')].map(x=>x.value);
-  renderTxLinkedList(); closeTxLinkManager();
-});
-function reconcileTransactionLinks(){
-  const valid=new Set((data.transactions||[]).map(t=>String(t.id)));
-  (data.transactions||[]).forEach(tx=>{tx.linkedTransactionIds=[...new Set((tx.linkedTransactionIds||[]).filter(id=>valid.has(String(id))&&String(id)!==String(tx.id)).map(String))];});
-  (data.transactions||[]).forEach(tx=>tx.linkedTransactionIds.forEach(id=>{const other=txByAnyId(id);if(other&&!other.linkedTransactionIds.includes(tx.id))other.linkedTransactionIds.push(tx.id);}));
-}
-const _saveData214=saveData; saveData=function(){reconcileTransactionLinks();_saveData214();};
+// v2-214 legacy area: Needs Review inbox and backup health remain; transaction linking/density were retired in v2-275.
+// Legacy transaction-to-transaction links are no longer editable in the UI.
+// Keep any IDs from older backups/CSVs intact when a transaction is edited.
+let txPreservedLinkedTransactionIds = [];
 
 const REVIEW_DISMISSALS_KEY=`${STORAGE_KEY}.reviewDismissals`;
 function getReviewDismissals(){try{return new Set(JSON.parse(localStorage.getItem(REVIEW_DISMISSALS_KEY)||'[]'));}catch(e){return new Set();}}
@@ -13067,13 +10491,6 @@ window.renderNeedsReview=function(){
 };
 const _render214=render; render=function(){_render214();renderNeedsReview();};
 
-function applyCalendarDensity(){
-  const grid=document.getElementById('calendarGrid');if(!grid)return;
-  grid.classList.remove('density-compact','density-comfortable','density-detailed');grid.classList.add(`density-${calendarDensity}`);
-  const sel=document.getElementById('calendarDensity');if(sel)sel.value=calendarDensity;
-}
-const _renderCalendar214=renderCalendar;renderCalendar=function(){_renderCalendar214();applyCalendarDensity();};
-
 
 function backupHealthData(){
   const meta=loadLocalMeta(), cloud=loadCloudConfig();
@@ -13088,17 +10505,16 @@ window.renderBackupHealthIndicator=function(){
 };
 const _renderSettings214=renderSettings;renderSettings=function(){_renderSettings214();renderBackupHealthIndicator();};
 
-// Ensure old backups get normalized and links become reciprocal without changing totals.
-reconcileTransactionLinks();
+// Render the Dashboard review inbox after startup normalization.
 renderNeedsReview();
 
-// v2-215: Calendar density now changes visible transaction count and sizing; Needs Review and Smart Cleanup are unified on Dashboard.
+// v2-215 legacy area: Needs Review and Smart Cleanup are unified on Dashboard.
 
 // v2-216: palette rendering hook.
 const _render216=render; render=function(){applyMoneyNestPalette();_render216();};
 applyMoneyNestPalette();
 
-// v2-220: Calendar density control removed; calendar uses the original comfortable layout.
+// v2-220: Calendar uses the original comfortable layout.
 // v2-222: Search moved to the sidebar card; Original migrated into editable Custom and removed as a separate choice.
 
 
@@ -13139,30 +10555,8 @@ function organizeSettingsIntoFourSections(){
 const _renderSettings223=renderSettings; renderSettings=function(){_renderSettings223();renderVersionSaveIndicator();organizeSettingsIntoFourSections();};
 
 
-// v2-223 unified transaction detail: every existing transaction opens one review screen first.
+// Existing transactions open the edit form directly.
 const openTransactionEditor = window.openTransaction;
-let transactionDetailContext=null;
-function transactionDetailResolved(id,defaults={}){
-  const base=data.transactions.find(t=>String(t.id)===String(id)); if(!base)return null;
-  const originalDate=defaults.occurrenceOriginalDate||defaults.originalDate||base.date;
-  const date=defaults.occurrenceDate||defaults.date||base.date;
-  const tx=isRecurring(base)?transactionForOccurrenceForm(base,originalDate,date):base;
-  return {base,tx,defaults:{...defaults,occurrenceOriginalDate:originalDate,occurrenceDate:date}};
-}
-function openTransactionDetail(id,defaults={}){
-  const ctx=transactionDetailResolved(id,defaults); if(!ctx)return openTransactionEditor(id,defaults);
-  transactionDetailContext=ctx;
-  const {base,tx}=ctx, account=accountById(tx.accountId), category=categoryById(tx.categoryId), debt=debtById(tx.debtAccountId||tx.linkedDebtId);
-  const linked=(base.linkedTransactionIds||[]).map(x=>data.transactions.find(t=>String(t.id)===String(x))).filter(Boolean);
-  document.getElementById('transactionDetailTitle').textContent=tx.title||'Untitled transaction';
-  document.getElementById('transactionDetailSub').textContent=`${tx.date||''} • ${tx.status==='cleared'?'Cleared':'Planned'}`;
-  document.getElementById('transactionDetailBody').innerHTML=`<div class="transaction-detail-summary"><article><span>Amount</span><b>${money(tx.amount||0)}</b></article><article><span>Account</span><b>${account?.emoji||'💵'} ${escapeAttr(account?.name||'Unknown account')}</b></article><article><span>Category</span><b>${category?.emoji||''} ${escapeAttr(category?.name||'Unassigned')}</b></article><article><span>Type</span><b>${escapeAttr(tx.type||'expense')}</b></article></div>${debt?`<div class="transaction-detail-section"><b>Related account/debt</b><p>${escapeAttr(debt.name||debt.company||'Debt')}</p></div>`:''}${isRecurring(base)?`<div class="transaction-detail-section"><b>Recurring source</b><p>${escapeAttr(recurrenceDescription(base))}</p></div>`:''}${tx.notes?`<div class="transaction-detail-section"><b>Notes</b><p>${escapeAttr(tx.notes)}</p></div>`:''}<div class="transaction-detail-section"><b>Linked transactions</b>${linked.length?linked.map(l=>`<button type="button" class="linked-detail-row" onclick="openTransactionDetail('${l.id}')"><span>${escapeAttr(l.title||'Untitled')}<small>${l.date} • ${transactionAccountText(l)}</small></span><strong>${money(l.amount||0)}</strong></button>`).join(''):'<p class="hint">No linked transactions.</p>'}</div>`;
-  document.getElementById('transactionDetailEditBtn').onclick=()=>{document.getElementById('transactionDetailModal').close();openTransactionEditor(base.id,ctx.defaults);};
-  document.getElementById('transactionDetailDuplicateBtn').onclick=()=>{document.getElementById('transactionDetailModal').close();duplicateTransaction(base.id);};
-  document.getElementById('transactionDetailModal').showModal();
-}
-window.openTransactionDetail=openTransactionDetail;
-// v2-228: restore direct editing when an existing transaction is selected.
 window.openTransaction=(id=null,defaults={})=>openTransactionEditor(id,defaults);
 // Bill series editing is an explicit edit action, so bypass the review screen.
 const _openBillSeriesEditor223=openBillSeriesEditor; openBillSeriesEditor=function(txId){
@@ -13172,31 +10566,6 @@ const _openBillSeriesEditor223=openBillSeriesEditor; openBillSeriesEditor=functi
 };
 
 
-function showOlderSchemaWarning(){
-  const meta=loadLocalMeta();
-  const w=meta.olderSchemaWarning;
-  if(!w) return;
-  const signature=`${w.from}->${w.to}`;
-  if(meta.olderSchemaWarningDismissed===signature) return;
-  if(sessionStorage.getItem('moneyNest.schemaWarned')){
-    // Migrate the old session-only acknowledgement into the persistent v2-253
-    // acknowledgement so someone who already saw this notice is not asked again.
-    saveLocalMeta({olderSchemaWarningDismissed:signature});
-    return;
-  }
-  sessionStorage.setItem('moneyNest.schemaWarned','1');
-  const bar=document.createElement('div');
-  bar.className='schema-upgrade-banner';
-  bar.innerHTML=`<span><b>Money Nest upgraded older saved data.</b> Schema ${w.from} → ${w.to}. Make a fresh JSON backup when convenient.</span><button type="button" class="icon-btn" aria-label="Dismiss older schema notice">×</button>`;
-  bar.querySelector('button').onclick=()=>{
-    // v2-253: remember dismissal for this specific schema jump so the same
-    // startup normalization warning does not reappear every browser session.
-    // A future schema jump gets a different signature and may warn again.
-    saveLocalMeta({olderSchemaWarningDismissed:signature});
-    bar.remove();
-  };
-  document.body.prepend(bar);
-}
 // v2-253: older-schema information remains in Settings/Data & Backup; do not interrupt startup with a banner.
 
 // v2-229: Data & Backup is the first grouped Settings card below the Settings Map.

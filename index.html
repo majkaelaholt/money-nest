@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <title>Money Nest</title>
-  <link rel="stylesheet" href="styles.css?v=2-274"/>
+  <link rel="stylesheet" href="styles.css?v=2-275"/>
 
   <link rel="icon" href="favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
@@ -308,7 +308,6 @@
                   📥 Import edited CSV
                   <input id="csvImportInput" type="file" accept=".csv,text/csv"/>
                 </label>
-                <button id="settingsSampleResetBtn" class="ghost">🧪 Reset sample data</button>
                 <button id="settingsClearAllBtn" class="danger ghost">🧨 Clear everything</button>
               </div>
             </div>
@@ -714,15 +713,6 @@
         </div>
       </details>
 
-      <details class="form-details" id="txLinksDetails">
-        <summary><span>Linked transactions</span><small id="txLinksSummary">None</small></summary>
-        <div class="details-inner">
-          <p class="hint">Connect related records such as a purchase and card payment, reimbursement pair, or transfer pair.</p>
-          <div id="txLinkedList" class="linked-transaction-list"></div>
-          <button type="button" class="ghost small" id="manageTxLinksBtn">Manage links</button>
-        </div>
-      </details>
-
       <details class="form-details" id="txNotesDetails">
         <summary><span>Notes</span><small id="txNotesSummary">Optional</small></summary>
         <div class="details-inner">
@@ -741,15 +731,6 @@
         <button class="primary" id="saveTxBtn">Save</button>
       </div>
     </form>
-  </dialog>
-
-  <dialog id="txLinkModal">
-    <div class="modal-card link-modal-card">
-      <div class="panel-head"><div><h3>Link transactions</h3><p class="hint">Select related saved transactions.</p></div><button type="button" class="icon-btn" id="closeTxLinkModal">×</button></div>
-      <input id="txLinkSearch" placeholder="Search title, account, category, date, or amount">
-      <div id="txLinkCandidates" class="link-candidate-list"></div>
-      <div class="modal-actions"><button type="button" class="ghost" id="cancelTxLinks">Cancel</button><button type="button" class="primary" id="saveTxLinks">Save links</button></div>
-    </div>
   </dialog>
 
 
@@ -867,14 +848,6 @@
     </div>
   </dialog>
 
-  <dialog id="transactionDetailModal" class="transaction-detail-modal">
-    <div class="modal-card transaction-detail-card">
-      <div class="panel-head"><div><p class="eyebrow">Transaction</p><h3 id="transactionDetailTitle">Transaction details</h3><p class="hint" id="transactionDetailSub"></p></div><button type="button" class="icon-btn" onclick="document.getElementById('transactionDetailModal').close()">×</button></div>
-      <div id="transactionDetailBody"></div>
-      <div class="modal-actions"><button type="button" class="ghost" onclick="document.getElementById('transactionDetailModal').close()">Close</button><button type="button" class="ghost" id="transactionDetailDuplicateBtn">Duplicate</button><button type="button" class="primary" id="transactionDetailEditBtn">Edit transaction</button></div>
-    </div>
-  </dialog>
-
   <div id="txContextMenu" class="context-menu">
     <button id="ctxToggleCleared">✓ Mark cleared/planned</button>
     <button id="ctxUseCardInstead">💳 Use card instead</button>
@@ -885,7 +858,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=2-274"></script>
+  <script src="app.js?v=2-275"></script>
   <dialog id="globalSearchModal" class="global-search-modal">
     <div class="global-search-shell">
       <div class="modal-head"><div><h3>🔎 Search Money Nest</h3><p class="hint">Transactions, merchants, categories, accounts, amounts, and dates.</p></div><button class="icon-btn" onclick="document.getElementById('globalSearchModal').close()">×</button></div>

@@ -161,7 +161,15 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-274`
+Latest known version: `money-nest-v2-275`
+
+### v2-275 maintenance/privacy cleanup rules
+- Do not re-embed personal financial/sample records in `app.js` or ship historical import-balance notes. Fresh installs use an empty starter dataset with generic categories.
+- **Reset sample data** is retired. Preserve **Clear everything**, JSON backup/import, CSV compatibility, and manual-first Supabase sync.
+- Transaction-to-transaction linking UI is retired because current user data had no such links. Preserve legacy `linkedTransactionIds` values in normalized data, transaction edits, JSON, and CSV so older backups remain safe; do not silently strip the field.
+- Calendar Density is retired. Keep the single comfortable calendar layout and the adaptive desktop viewport behavior; do not restore Compact/Detailed controls or preferences unless explicitly requested.
+- Remove helper functions only when static/reference checks confirm they are uncalled.
+- Loan forecast settings and calculations were explicitly excluded from this cleanup and must remain unchanged. Schema remains 225.
 
 ### v2-274 card-payment IOU, Search return, and dialog surface rules
 - In Create Card Payment, `cardPayIouDate` must recalculate with `nextPaycheckDate(cardPayIouFrom.value)` whenever the **From / paying later** account changes. The IOU date belongs to the account that will reimburse the paying account; do not assume Mak's paycheck.
