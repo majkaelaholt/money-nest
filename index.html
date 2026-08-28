@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <title>Money Nest</title>
-  <link rel="stylesheet" href="styles.css?v=2-279"/>
+  <link rel="stylesheet" href="styles.css?v=2-280"/>
 
   <link rel="icon" href="favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
@@ -28,8 +28,7 @@
 
       <nav class="nav">
         <button class="nav-btn active" data-view="dashboard" aria-label="Dashboard"><span class="nav-emoji" aria-hidden="true">🏠</span><span class="nav-text">Dashboard</span><span class="mobile-nav-text">Home</span><span id="reviewNavBadge" class="nav-count" hidden>0</span></button>
-        <button class="nav-btn desktop-calendar-nav" data-view="calendar" aria-label="Calendar"><span class="nav-emoji" aria-hidden="true">🗓️</span><span class="nav-text">Calendar</span></button>
-        <button class="nav-btn mobile-only-nav" data-view="future" aria-label="Future"><span class="nav-emoji" aria-hidden="true">🔮</span><span class="mobile-nav-text">Future</span></button>
+        <button class="nav-btn desktop-calendar-nav" data-view="calendar" aria-label="Calendar"><span class="nav-emoji" aria-hidden="true">🗓️</span><span class="nav-text">Calendar</span><span class="mobile-nav-text">Calendar</span></button>
         <button class="nav-btn" data-view="accounts" aria-label="Accounts"><span class="nav-emoji" aria-hidden="true">💳</span><span class="nav-text">Accounts</span><span class="mobile-nav-text">Accounts</span></button>
         <button class="nav-btn desktop-secondary-nav" data-view="budgets" aria-label="Budgets"><span class="nav-emoji" aria-hidden="true">📊</span><span class="nav-text">Budgets</span></button>
         <button class="nav-btn desktop-secondary-nav" data-view="bills" aria-label="Bills"><span class="nav-emoji" aria-hidden="true">🧾</span><span class="nav-text">Bills</span></button>
@@ -128,6 +127,7 @@
           </label>
         </div>
 
+        <section id="mobileCalendarBalances" class="mobile-calendar-balances" aria-label="Account balances"></section>
         <div class="calendar" id="calendarGrid"></div>
       </section>
 
@@ -866,7 +866,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=2-279"></script>
+  <script src="app.js?v=2-280"></script>
   <dialog id="globalSearchModal" class="global-search-modal">
     <div class="global-search-shell">
       <div class="modal-head"><div><h3>🔎 Search Money Nest</h3><p class="hint">Transactions, merchants, categories, accounts, amounts, and dates.</p></div><button class="icon-btn" onclick="document.getElementById('globalSearchModal').close()">×</button></div>

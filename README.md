@@ -1,5 +1,15 @@
 # Money Nest
 
+## v2-280
+
+### iPhone Calendar-first overhaul
+- Reworked the phone-only navigation around actual daily use: **Calendar, Home, Accounts, More**. The dedicated **Future** tab is removed from the iPhone dock; desktop/iPad navigation is unchanged.
+- iPhone now opens to **Calendar** by default, including after a backup/cloud load or Clear Everything. Desktop/iPad still open to Dashboard.
+- Added a horizontally scrollable account-balance strip above the iPhone Calendar. Checking cards show current balance plus Safe to Spend; Savings shows current balance plus goal context. Tapping a checking card switches the Calendar account filter; tapping Savings opens that account.
+- The floating **+ Transaction** button now inherits the selected Calendar account on iPhone when one specific checking account is being viewed. Day-level Add Transaction already keeps the selected date/account behavior.
+- Rebuilt the iPhone Home dashboard around **all cash accounts**, showing current balance and Safe to Spend/goal context for each instead of centering the page on one lowest account. Quick actions are now Transaction, Transfer, and Search, with Calendar replacing Future links.
+- No desktop/iPad layout, account calculations, Safe to Spend logic, transaction data, JSON/CSV compatibility, Supabase behavior, or schema fields changed. Schema remains 225.
+
 ## v2-279
 
 ### Cloud Sync controls render immediately

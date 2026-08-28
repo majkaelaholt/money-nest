@@ -161,8 +161,17 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-279`
+Latest known version: `money-nest-v2-280`
 
+
+
+### v2-280 iPhone Calendar-first layout
+- Phone-only dock is Calendar, Home, Accounts, More; Future is intentionally no longer a phone tab. Desktop/iPad navigation must remain unchanged.
+- Phone startup/default landing is Calendar. Desktop/iPad startup remains Dashboard.
+- Phone Calendar includes a horizontally scrollable account snapshot strip. Checking cards may switch the Calendar account filter; Savings opens account detail because Savings is not part of the checking-only Calendar projection.
+- Phone Home shows all cash accounts with current balance and Safe to Spend/goal context. Do not regress it to a single-account hero.
+- Phone quick-add should inherit a specific selected Calendar checking account when appropriate.
+- Do not change Safe to Spend calculations or Calendar balance math when adjusting this UI.
 
 ### v2-279 Cloud Sync immediate render
 - Render the Cloud Sync settings form from local configuration before awaiting Supabase auth/network state.

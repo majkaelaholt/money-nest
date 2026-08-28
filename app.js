@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-279";
+const APP_VERSION = "2-280";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -10,6 +10,9 @@ document.documentElement.classList.toggle("money-nest-ipad", MONEY_NEST_IS_IPAD)
 document.documentElement.classList.toggle("money-nest-touch", MONEY_NEST_HAS_TOUCH);
 function moneyNestIsPhone(){
   return !MONEY_NEST_IS_IPAD && !!window.matchMedia?.("(max-width: 700px)").matches;
+}
+function moneyNestDefaultView(){
+  return moneyNestIsPhone() ? "calendar" : "dashboard";
 }
 let mobileFutureAccountId = "";
 let mobileFutureHorizonDays = 30;
@@ -328,8 +331,8 @@ window.cloudLoadNow = async()=>{
     saveCloudConfig({lastCloudLoad: new Date().toISOString()});
     markCloudSeen(row.updated_at);
     saveLocalMeta({lastLocalChange: row.updated_at || new Date().toISOString()});
-    currentView = "dashboard";
-    setView("dashboard");
+    currentView = moneyNestDefaultView();
+    setView(currentView);
     await renderCloudSyncSettings();
     alert("Loaded Money Nest data from Supabase.");
   } catch(err){ suppressChangeHistory = false; alert(`Cloud load failed: ${err.message || err}`); }
@@ -2391,7 +2394,7 @@ function setView(view){
     const navView = ["accountDetail","debtDetail"].includes(view) ? "accounts" : view;
     document.querySelectorAll(".nav-btn").forEach(b=>b.classList.toggle("active", b.dataset.view===navView));
     const mobileMore=document.getElementById("mobileMoreNavBtn");
-    if(mobileMore) mobileMore.classList.toggle("active", ["calendar","budgets","bills","settings"].includes(view));
+    if(mobileMore) mobileMore.classList.toggle("active", ["budgets","bills","settings"].includes(view));
     const titles = {accountDetail: accountById(selectedAccountId)?.name || "Account", debtDetail: debtById(selectedDebtId)?.name || "Debt"};
     const titleEl = document.getElementById("viewTitle");
     if(titleEl) titleEl.textContent = titles[view] || view[0].toUpperCase()+view.slice(1);
@@ -2815,33 +2818,65 @@ function updateMobileWhatIf(){
   result.innerHTML=`<span>After spending <b>${money(amount)}</b> from ${escapeAttr(account.name)} on ${escapeAttr(mobileFriendlyDate(date))}:</span><strong>${money(floor.amount)}</strong><small>lowest projected balance on ${escapeAttr(mobileFriendlyDate(floor.date))} • ${money(Math.max(0,currentFloor.amount-floor.amount))} less cushion</small>`;
 }
 window.updateMobileWhatIf=updateMobileWhatIf;
-function renderMobileHome({attention=[],cashSafe=[],lowestSafe=null}={}){
+function mobileDashboardAccounts(){
+  return orderedAccounts();
+}
+function mobileAccountSnapshot(account){
+  const actual=accountBalance(account.id,false,todayISO());
+  if(isSavingsAccount(account)){
+    const remaining=savingsGoalRemaining(account);
+    const progress=savingsGoalProgress(account);
+    return {
+      actual,
+      label: remaining === null ? "Savings" : `${money(remaining)} left to ${account.goalName || "goal"}`,
+      secondary: progress === null ? "Savings" : `${progress}% of goal`,
+      level:"good"
+    };
+  }
+  const safe=safeToSpend(account);
+  return {
+    actual,
+    label:`Safe ${money(safe.amount)}`,
+    secondary:safe.label,
+    level:safe.amount>75?"good":safe.amount>0?"warn":"bad"
+  };
+}
+function mobileDefaultTransactionAccount(){
+  const accounts=mobileDashboardAccounts();
+  if(currentView === "calendar" && calendarFilter !== "all" && accountById(calendarFilter)) return accountById(calendarFilter);
+  return accounts.find(a=>a.id === "joint-checking") || accounts.find(a=>a.paycheckAccount) || accounts[0] || null;
+}
+function renderMobileHome({attention=[]}={}){
   const el=document.getElementById("mobileHome");
   if(!el) return;
-  const accounts=mobileCashAccounts();
-  const defaultAccount=lowestSafe?.a || accounts[0] || null;
+  const accounts=mobileDashboardAccounts();
+  const defaultAccount=mobileDefaultTransactionAccount();
   const upcoming=expandedTransactions(toISO(addDays(parseDate(todayISO()),14)))
     .filter(tx=>tx.date>=todayISO() && tx.status!=="cleared")
     .sort((a,b)=>a.date.localeCompare(b.date) || String(a.title||"").localeCompare(String(b.title||"")))
     .slice(0,4);
-  const safeChips=cashSafe.map(({a,s})=>`<button type="button" class="mobile-safe-chip" onclick="setMobileFutureAccount('${a.id}');setView('future')"><span>${a.emoji||"💵"} ${escapeAttr(a.name)}</span><b class="${s.amount>75?'good':s.amount>0?'warn':'bad'}">${money(s.amount)}</b></button>`).join("");
+  const accountRows=accounts.map(a=>{
+    const snap=mobileAccountSnapshot(a);
+    return `<button type="button" class="mobile-account-row" onclick="openAccountDetail('${a.id}', 'dashboard')">
+      <span class="mobile-account-main"><b>${a.emoji||"💵"} ${escapeAttr(a.name)}</b><small>${escapeAttr(snap.secondary)}</small></span>
+      <span class="mobile-account-values"><strong>${money(snap.actual)}</strong><small class="${snap.level}">${escapeAttr(snap.label)}</small></span>
+      <span class="mobile-account-arrow">›</span>
+    </button>`;
+  }).join("");
   el.innerHTML=`
-    <section class="mobile-home-hero ${lowestSafe?.s.amount<=0?'has-alert':''}">
-      <div class="mobile-home-hero-top"><span><small>SAFE TO SPEND</small><b>${lowestSafe?.a ? `${lowestSafe.a.emoji||"💵"} ${escapeAttr(lowestSafe.a.name)}` : "No cash account"}</b></span><button type="button" class="mobile-text-btn" onclick="setView('future')">View future →</button></div>
-      <strong class="mobile-safe-amount ${lowestSafe?.s.amount>75?'good':lowestSafe?.s.amount>0?'warn':'bad'}">${lowestSafe?money(lowestSafe.s.amount):'—'}</strong>
-      <p>${lowestSafe ? escapeAttr(lowestSafe.s.label) : 'Add a cash account to start forecasting.'}</p>
-      ${safeChips ? `<div class="mobile-safe-chips">${safeChips}</div>` : ""}
+    <section class="mobile-account-overview">
+      <div class="mobile-home-section-head"><div><small>CASH ACCOUNTS</small><h3>Your money</h3></div><button type="button" class="mobile-text-btn" onclick="setView('accounts')">Accounts</button></div>
+      <div class="mobile-account-list">${accountRows || '<div class="mobile-home-empty">Add a cash account to get started.</div>'}</div>
     </section>
 
-    <section class="mobile-home-actions" aria-label="Quick actions">
+    <section class="mobile-home-actions mobile-home-actions-three" aria-label="Quick actions">
       <button type="button" class="primary" onclick="openTransaction(null,{accountId:'${defaultAccount?.id||''}'})"><span>＋</span><b>Transaction</b></button>
       <button type="button" onclick="openTransaction(null,{type:'transfer',accountId:'${defaultAccount?.id||''}'})"><span>↔</span><b>Transfer</b></button>
-      <button type="button" onclick="setView('future')"><span>🔮</span><b>Future</b></button>
       <button type="button" onclick="openGlobalSearch()"><span>⌕</span><b>Search</b></button>
     </section>
 
     <section class="mobile-home-section">
-      <div class="mobile-home-section-head"><div><small>COMING UP</small><h3>Next transactions</h3></div><button type="button" class="mobile-text-btn" onclick="setView('future')">See future</button></div>
+      <div class="mobile-home-section-head"><div><small>COMING UP</small><h3>Next transactions</h3></div><button type="button" class="mobile-text-btn" onclick="setView('calendar')">Calendar</button></div>
       <div class="mobile-home-list">${upcoming.length ? upcoming.map(tx=>{
         const cat=categoryById(tx.categoryId);
         const positive=tx.type==="income"||tx.type==="paycheck"||(tx.type==="transfer"&&tx.transferToAccountId&&!tx.accountId);
@@ -2849,7 +2884,7 @@ function renderMobileHome({attention=[],cashSafe=[],lowestSafe=null}={}){
       }).join("") : '<div class="mobile-home-empty">Nothing planned in the next 14 days.</div>'}</div>
     </section>
 
-    ${attention.length ? `<button type="button" class="mobile-attention-strip" onclick="toggleMobileDashboardDetails()"><span>⚠️</span><span><b>${attention.length} item${attention.length===1?'':'s'} need attention</b><small>Tap to show the full review tools</small></span><span>›</span></button>` : ""}
+    ${attention.length ? `<button type="button" class="mobile-attention-strip" onclick="toggleMobileDashboardDetails()"><span>⚠️</span><span><b>${attention.length} item${attention.length===1?'':'s'} need attention</b><small>Tap to show review tools</small></span><span>›</span></button>` : ""}
   `;
 }
 function toggleMobileDashboardDetails(){
@@ -2959,7 +2994,7 @@ function renderDashboard(){
       quick.innerHTML=`<button onclick="setView('accounts')"><span>Safe to spend</span><b>${lowestSafe?money(lowestSafe.s.amount):'—'}</b><small>${lowestSafe?.a.name||'No cash account'}</small></button><button onclick="setView('bills')"><span>Next bill</span><b>${next?money(next.amount):'—'}</b><small>${next?`${next.title} • ${next.date}`:'Nothing upcoming'}</small></button><button onclick="setView('budgets')"><span>Month spending</span><b>${money(bs.totalSpent)}</b><small>${bs.overBudgetCount} budget(s) over</small></button>`;
     }
 
-    renderMobileHome({attention,cashSafe,lowestSafe});
+    renderMobileHome({attention});
 
     const safeList = cashSafe.filter(({a})=>a.id !== lowestSafe?.a.id).map(({a,s})=>`<button type="button" class="dashboard-list-row dashboard-safe-row" onclick="openAccountDetail('${a.id}', 'dashboard')">
       <span class="dashboard-list-main"><b>${a.emoji || "💵"} ${a.name}</b><small>${s.label}</small></span>
@@ -3164,8 +3199,41 @@ function calendarEntryIsPositive(tx){
   return Number(tx.calendarAmountSign || 0) > 0;
 }
 
+function setMobileCalendarAccount(accountId){
+  const account=accountById(accountId);
+  if(!account) return;
+  if(isSavingsAccount(account)){
+    openAccountDetail(account.id, "calendar");
+    return;
+  }
+  calendarFilter=account.id;
+  const select=document.getElementById("calendarAccountFilter");
+  if(select) select.value=calendarFilter;
+  saveUiPrefs();
+  renderCalendar();
+}
+window.setMobileCalendarAccount=setMobileCalendarAccount;
+function renderMobileCalendarBalances(){
+  const el=document.getElementById("mobileCalendarBalances");
+  if(!el) return;
+  const accounts=orderedAccounts();
+  if(!accounts.length){ el.innerHTML=""; return; }
+  el.innerHTML=accounts.map(a=>{
+    const actual=accountBalance(a.id,false,todayISO());
+    const selected=!isSavingsAccount(a) && calendarFilter===a.id;
+    if(isSavingsAccount(a)){
+      const remaining=savingsGoalRemaining(a);
+      const sub=remaining===null ? "Savings" : `${money(remaining)} to ${a.goalName || "goal"}`;
+      return `<button type="button" class="mobile-calendar-balance-card savings" onclick="setMobileCalendarAccount('${a.id}')"><span>${a.emoji||"🏦"} ${escapeAttr(a.name)}</span><b>${money(actual)}</b><small>${escapeAttr(sub)}</small></button>`;
+    }
+    const safe=safeToSpend(a);
+    const level=safe.amount>75?"good":safe.amount>0?"warn":"bad";
+    return `<button type="button" class="mobile-calendar-balance-card ${selected?'selected':''}" onclick="setMobileCalendarAccount('${a.id}')"><span>${a.emoji||"💵"} ${escapeAttr(a.name)}</span><b>${money(actual)}</b><small class="${level}">Safe ${money(safe.amount)}</small></button>`;
+  }).join("");
+}
 function renderCalendar(){
   renderCalendarFilter();
+  renderMobileCalendarBalances();
   const monthStart = startOfMonth(calendarDate);
   document.getElementById("monthLabel").textContent = monthStart.toLocaleString(undefined,{month:"long", year:"numeric"});
   const first = new Date(monthStart); first.setDate(first.getDate() - first.getDay());
@@ -7250,7 +7318,11 @@ function updateSeriesFromDate(baseTx, formTx, occurrenceOriginalDate){
 }
 
 const txModal = document.getElementById("transactionModal");
-document.getElementById("quickAddBtn").onclick = () => openTransaction();
+document.getElementById("quickAddBtn").onclick = () => {
+  const defaults = {};
+  if(moneyNestIsPhone() && currentView === "calendar" && calendarFilter !== "all") defaults.accountId = calendarFilter;
+  openTransaction(null, defaults);
+};
 if(document.getElementById("clearRecentBtn")) clearRecentBtn.onclick = ()=>{
   recentPlaces = [];
   try{ localStorage.removeItem(`${STORAGE_KEY}.recentPlaces`); } catch(err){}
@@ -10331,7 +10403,8 @@ function clearEverything(){
   });
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   localStorage.removeItem(UI_PREFS_KEY);
-  setView("dashboard");
+  currentView = moneyNestDefaultView();
+  setView(currentView);
   alert("Money Nest has been cleared.");
 }
 
@@ -10384,7 +10457,7 @@ function importBackupJSON(file){
       saveImportedBackupData(data);
       touchLocalMoneyNestData();
       suppressChangeHistory = false;
-      try{ currentView = "dashboard"; setView("dashboard"); }
+      try{ currentView = moneyNestDefaultView(); setView(currentView); }
       catch(renderErr){ console.warn("Backup imported, but dashboard render needed fallback", renderErr); render(); }
       alert("Backup imported.");
     } catch(err){
@@ -10401,16 +10474,17 @@ if(document.getElementById("importInput")) importInput.onchange = (e)=>{ const f
 
 function bootMoneyNest(){
   try{
-    setView(currentView || "dashboard");
+    if(moneyNestIsPhone() && currentView === "dashboard") currentView = "calendar";
+    setView(currentView || moneyNestDefaultView());
   } catch(err){
     console.error("Startup render failed", err);
     try{
-      currentView = "dashboard";
-      document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active", v.id === "dashboard"));
-      document.querySelectorAll(".nav-btn").forEach(b=>b.classList.toggle("active", b.dataset.view === "dashboard"));
+      currentView = moneyNestDefaultView();
+      document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active", v.id === currentView));
+      document.querySelectorAll(".nav-btn").forEach(b=>b.classList.toggle("active", b.dataset.view === currentView));
       const title = document.getElementById("viewTitle");
-      if(title) title.textContent = "Dashboard";
-      renderDashboard();
+      if(title) title.textContent = currentView === "calendar" ? "Calendar" : "Dashboard";
+      if(currentView === "calendar") renderCalendar(); else renderDashboard();
     } catch(innerErr){
       console.error("Fallback dashboard render failed", innerErr);
     }
