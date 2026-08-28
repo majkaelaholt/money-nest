@@ -1,5 +1,13 @@
 # Money Nest
 
+## v2-278
+
+### Transaction template option popover fix
+- Fixed the transaction-title template **options** menu getting trapped inside the compact suggestion list's tiny internal scroll area.
+- Opening **N options** now lets the variant popover escape the outer suggestion scroller on desktop/iPad, so a few variants display at their natural height.
+- The variant list itself only scrolls when there are enough options to exceed a sensible viewport-based maximum height; phone behavior keeps the existing fixed/mobile-friendly treatment.
+- Only one option disclosure can remain open at a time. No template data, matching logic, transaction data, or schema fields changed. Schema remains 225.
+
 ## v2-277
 
 ### Budget review + editor cleanup

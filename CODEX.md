@@ -161,7 +161,14 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-277`
+Latest known version: `money-nest-v2-278`
+
+
+### v2-278 transaction template option popover
+- Keep the normal title autocomplete compact, but do not clip an opened **N options** variant menu inside the outer suggestion list's scroll viewport.
+- Desktop/iPad variant menus may escape the outer suggestion scroller and should only gain their own scrolling when the variant count genuinely exceeds the viewport-based max height.
+- Phone keeps the existing fixed/mobile-friendly variant menu behavior.
+- This is presentation-only; template matching/apply behavior and stored template data remain unchanged.
 
 ### v2-277 budget review/editor rules
 - Budgets page has one primary review surface. Do not restore a second full **Monthly Budget Targets** list unless explicitly requested.

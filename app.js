@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-277";
+const APP_VERSION = "2-278";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -5585,7 +5585,7 @@ function renderTemplateSuggestions(){
 
     const families = matchingTransactionTemplateFamilies(txTitleEl.value);
     if(!families.length){
-      box.classList.remove("open");
+      box.classList.remove("open", "variant-open");
       box.innerHTML = "";
       return;
     }
@@ -5608,12 +5608,23 @@ function renderTemplateSuggestions(){
     }).join("");
 
     box.querySelectorAll("[data-template-id]").forEach(btn=>{ btn.onclick = () => applyTransactionTemplate(btn.dataset.templateId); });
+    box.classList.remove("variant-open");
+    box.querySelectorAll(".template-suggestion-variants").forEach(details=>{
+      details.addEventListener("toggle", ()=>{
+        if(details.open){
+          box.querySelectorAll(".template-suggestion-variants[open]").forEach(other=>{
+            if(other !== details) other.open = false;
+          });
+        }
+        box.classList.toggle("variant-open", !!box.querySelector(".template-suggestion-variants[open]"));
+      });
+    });
     box.classList.add("open");
   } catch(err){ console.warn("Template suggestions could not render", err); }
 }
 function hideTemplateSuggestions(){
   const box = document.getElementById("txTemplateSuggestions");
-  if(box) box.classList.remove("open");
+  if(box) box.classList.remove("open", "variant-open");
 }
 function templateFamilyUsageStats(family){
   const matching = (data.transactions || []).filter(tx=>templateKey(tx.title)===family.key);

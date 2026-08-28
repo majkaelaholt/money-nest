@@ -7858,3 +7858,24 @@ dialog:not(.global-search-modal){box-shadow:none}
   .budget-manager-row{grid-template-columns:minmax(0,1fr) auto;padding:11px 10px;gap:10px}
   .budget-manager-side{min-width:94px}
 }
+
+
+/* v2-278: let transaction template variant menus escape the compact suggestion scroller. */
+.template-suggestions.variant-open{
+  max-height:none;
+  overflow:visible;
+}
+.template-suggestion-variant-menu{
+  max-height:min(360px,45vh);
+  overflow-y:auto;
+  overscroll-behavior:contain;
+}
+@media(max-width:700px){
+  .template-suggestions.variant-open{
+    max-height:34dvh;
+    overflow:auto;
+  }
+  .template-suggestion-variant-menu{
+    max-height:min(52dvh,440px);
+  }
+}
