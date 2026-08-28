@@ -161,8 +161,14 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-278`
+Latest known version: `money-nest-v2-279`
 
+
+### v2-279 Cloud Sync immediate render
+- Render the Cloud Sync settings form from local configuration before awaiting Supabase auth/network state.
+- Treat the summary **Off** text in static HTML as a placeholder only; runtime must replace it immediately from saved cloud mode.
+- Auth refresh may update status/email after render, but must not blank the panel or overwrite in-progress user input.
+- Preserve existing Supabase URL/key defaults, manual/auto/off modes, save/load safety checks, and cloud data shape.
 
 ### v2-278 transaction template option popover
 - Keep the normal title autocomplete compact, but do not clip an opened **N options** variant menu inside the outer suggestion list's scroll viewport.

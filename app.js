@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-278";
+const APP_VERSION = "2-279";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -81,14 +81,14 @@ async function renderCloudSyncSettings(){
   const pill = document.getElementById("cloudSyncSummary");
   if(!wrap) return;
   const config = loadCloudConfig();
-  try{ await getCloudUser(true); } catch(err){ cloudUser = null; }
-  if(pill) pill.textContent = cloudStatusText(config);
-  wrap.innerHTML = `
+  const renderLocalPanel = ()=>{
+    if(pill) pill.textContent = cloudStatusText(config);
+    wrap.innerHTML = `
     <div class="cloud-status-card">
       <div>
         <p class="eyebrow">Status</p>
-        <div class="value small-value">${cloudUser?.email ? "Signed in" : "Not signed in"}</div>
-        <p class="sub">${cloudUser?.email ? cloudUser.email : "Log in before saving/loading cloud data."}</p>
+        <div class="value small-value" id="cloudAuthStatus">${cloudUser?.email ? "Signed in" : "Not signed in"}</div>
+        <p class="sub" id="cloudAuthSub">${cloudUser?.email ? cloudUser.email : "Log in before saving/loading cloud data."}</p>
       </div>
       <div>
         <p class="eyebrow">Last cloud save</p>
@@ -134,7 +134,24 @@ async function renderCloudSyncSettings(){
     </div>
     <p class="hint"><b>Safety:</b> Manual only is safest while testing. Money Nest warns before saving over newer cloud data or loading an older cloud copy over newer local edits. Keep JSON backups as your emergency save file.</p>
   `;
+  };
+
+  // v2-279: render the usable controls immediately. A slow/blocked Supabase auth
+  // check must never leave Cloud Sync looking blank or stuck on the HTML placeholder.
+  renderLocalPanel();
+
+  try{ await getCloudUser(true); } catch(err){ cloudUser = null; }
+  if(!wrap.isConnected) return;
+  if(pill) pill.textContent = cloudStatusText(config);
+  const status = document.getElementById("cloudAuthStatus");
+  const sub = document.getElementById("cloudAuthSub");
+  const email = document.getElementById("cloudEmail");
+  if(status) status.textContent = cloudUser?.email ? "Signed in" : "Not signed in";
+  if(sub) sub.textContent = cloudUser?.email ? cloudUser.email : "Log in before saving/loading cloud data.";
+  // Do not overwrite something the user has already started typing while auth refreshes.
+  if(email && cloudUser?.email && !email.value.trim()) email.value = cloudUser.email;
 }
+
 window.saveCloudSettingsFromForm = ()=>{
   const old = loadCloudConfig();
   const url = document.getElementById("cloudSupabaseUrl")?.value.trim() || "";

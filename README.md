@@ -1,5 +1,13 @@
 # Money Nest
 
+## v2-279
+
+### Cloud Sync controls render immediately
+- Fixed Cloud Sync sometimes appearing blank with the summary pill stuck on the HTML placeholder **Off** when the Supabase auth check was slow, blocked, or unavailable.
+- Cloud Sync controls now render immediately from local configuration; Supabase sign-in status refreshes asynchronously afterward.
+- A slow/failed auth refresh no longer hides the URL/key/mode/login/save/load controls, and the background refresh does not overwrite an email the user has already started typing.
+- No cloud data format, Supabase project configuration, sync safety checks, financial data, or schema fields changed. Schema remains 225.
+
 ## v2-278
 
 ### Transaction template option popover fix
