@@ -161,9 +161,26 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-281`
+Latest known version: `money-nest-v2-283`
 
 
+
+### v2-283 possible recurring-charge detection rules
+
+- Bills may surface **Possible recurring charges** from cleared one-off expenses that are not already represented by a recurring series. Keep this detector conservative: a two-month candidate requires the same normalized title, route/account/category, exact amount, consecutive-month timing, and roughly the same day/month-end position.
+- A candidate must be recent (latest charge within roughly 45 days). 3+ observations may allow only a very small amount drift. Do not broaden this into aggressive merchant-frequency guessing that would flag ordinary food/gas/shopping habits.
+- Suppress a candidate if an active recurring series already represents the same title/route/amount. Archived/ended series may be detected again if charges resume.
+- **Schedule** must create/open a new future planned recurring transaction from the detected pattern; never rewrite cleared historical transactions into a recurring root. Month-end patterns should prefill `last-day-month`, otherwise monthly.
+- **Dismiss** is local UI state keyed to the latest matched charge, so another new matching charge can re-surface the finding. Restore dismissed clears that UI state.
+- Possible recurring candidates belong to Recurring Health review and should remain visible in Show review only. Existing Bills filters should apply using the inferred recurrence type.
+- Preserve schema 225 and existing JSON/CSV/cloud data shapes.
+
+### v2-282 Bills grouping / date-sort rules
+
+- Active Bills page sections are **Monthly bills** then **Non-monthly bills**. Monthly-like recurrence types are `monthly`, `last-day-month`, and `nth-weekday`; all other recurring cadences are non-monthly. Do not restore Coming up/Later bucketing unless explicitly requested.
+- Bills sort has separate **Schedule date** (`billFilters.sort === "date"`) and **Next date** (`"next-date"`) choices. Schedule date is cadence-based and should not jump a monthly bill to next month just because the current occurrence cleared.
+- A recurring series with a past `recurrenceUntil` and no unresolved occurrence must be treated as `ended` even if its latest handled occurrence was cleared. Unresolved past occurrences may still surface as `due`. This prevents stale cleared historical dates from appearing as active “Next” bills.
+- Recurring health remains a row-level warning/summary and review-only filter, not its own active grouping.
 
 ### v2-281 category spending-view override rules
 - Categories may store optional `spendingType`: `auto`, `bills`, or `extra`. Missing/invalid values normalize to `auto` for backward compatibility.

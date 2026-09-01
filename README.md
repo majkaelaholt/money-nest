@@ -1,5 +1,24 @@
 # Money Nest
 
+## v2-283
+
+### Possible recurring-charge detection
+
+- Bills now detects conservative **unscheduled monthly charge patterns** from cleared one-off expenses. A two-month pattern must have the same normalized title, route/account/category, exact amount, and roughly the same monthly position; 3+ observations may tolerate only a small amount drift.
+- Detection ignores transactions that already belong to a recurring series and suppresses matches when an active recurring series already represents the same charge. Recent patterns only are considered so old historic habits do not create permanent warnings.
+- Possible matches appear above the Bills list with **Review**, **Schedule**, and **Dismiss**. Schedule opens a new planned recurring transaction for the predicted next date without rewriting cleared history; month-end patterns prefill Last day of month. Dismissals are local UI state and automatically become a new finding if another matching charge posts later.
+- Recurring Health includes possible recurring-charge counts and Show review only keeps these candidates visible. Bills filters also apply to the inferred candidate cadence.
+- No transaction history, recurrence rules, JSON/CSV formats, cloud sync, schema version, or storage key changed. Schema remains 225.
+
+## v2-282
+
+### Bills: monthly/non-monthly grouping + schedule-date sorting
+
+- Active recurring items are grouped into **Monthly bills** (monthly, last-day-of-month, and nth-weekday schedules) and **Non-monthly bills** instead of Coming up / Later. Recurring-health warnings stay on the rows and the review-only control still works without pulling bills into a separate group.
+- Bills sorting now distinguishes **Schedule date** from **Next date**. Schedule date keeps monthly bills in their recurring day-of-month order even after the current occurrence clears; Next date remains the dynamic upcoming occurrence sort.
+- Fixed ended recurring series whose final occurrence was cleared being left in the active list with a stale historical “Next” date. Fully handled series with a past `recurrenceUntil` now move to Ended / Archived; genuinely unresolved past occurrences can still surface as Due.
+- No recurrence data, cleared history, filters, JSON/CSV formats, cloud sync, schema version, or storage key changed.
+
 ## v2-281
 
 ### Category spending-view overrides

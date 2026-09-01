@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <title>Money Nest</title>
-  <link rel="stylesheet" href="styles.css?v=2-281"/>
+  <link rel="stylesheet" href="styles.css?v=2-283"/>
 
   <link rel="icon" href="favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
@@ -186,6 +186,7 @@
             <button class="primary small" id="addBillBtn">+ Recurring</button>
           </div>
           <div id="billHealthSummary" class="bill-health-summary"></div>
+          <div id="possibleRecurringCharges"></div>
           <details class="bill-controls-disclosure">
             <summary><span><b>Filters & recurring tools</b><small>Filter the list or open the less-used series maintenance tools.</small></span><span class="bill-controls-chevron" aria-hidden="true">⌄</span></summary>
             <div class="bill-controls-body">
@@ -223,7 +224,8 @@
             </label>
             <label>Sort
               <select id="billSort">
-                <option value="date">Next date</option>
+                <option value="date">Schedule date</option>
+                <option value="next-date">Next date</option>
                 <option value="amount-desc">Amount: high to low</option>
                 <option value="amount-asc">Amount: low to high</option>
                 <option value="category">Category</option>
@@ -866,7 +868,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=2-281"></script>
+  <script src="app.js?v=2-283"></script>
   <dialog id="globalSearchModal" class="global-search-modal">
     <div class="global-search-shell">
       <div class="modal-head"><div><h3>🔎 Search Money Nest</h3><p class="hint">Transactions, merchants, categories, accounts, amounts, and dates.</p></div><button class="icon-btn" onclick="document.getElementById('globalSearchModal').close()">×</button></div>

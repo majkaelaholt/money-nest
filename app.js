@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-281";
+const APP_VERSION = "2-283";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -517,6 +517,7 @@ loadRecentPlaces();
 let billFilters = {...defaultUiPrefs.billFilters, ...(uiPrefs.billFilters || {})};
 if(!Array.isArray(billFilters.categories)) billFilters.categories = [billFilters.category || "all"];
 let billHealthReviewOnly = false;
+const POSSIBLE_RECURRING_DISMISSALS_KEY = `${STORAGE_KEY}.possibleRecurringDismissals`;
 let transactionFilterDefaults = {...defaultUiPrefs.transactionFilterDefaults, ...(uiPrefs.transactionFilterDefaults || {})};
 let transactionFilters = {...defaultUiPrefs.transactionFilters, ...(uiPrefs.transactionFilters || {})};
 let budgetReviewMonth = todayISO().slice(0,7);
@@ -9065,12 +9066,17 @@ function billOccurrenceInfo(tx){
     // dragged, moved, or handled by a matching one-off payment.
     if(firstPastDue) return firstPastDue;
     if(firstFuture) return firstFuture;
-    if(latestHandled) return latestHandled;
 
-    const latest = latestBillOccurrenceDate(tx) || tx?.date || todayISOValue;
+    // A series whose recurrenceUntil is already past is ended once every
+    // occurrence through that cutoff has been handled. Previously latestHandled
+    // won first, which left old cleared series masquerading as active "Next"
+    // bills forever. Keep unresolved past occurrences above as Due, but move a
+    // fully handled ended series into Ended / Archived.
+    const latest = latestBillOccurrenceDate(tx) || latestHandled?.date || tx?.date || todayISOValue;
     if(tx.recurrenceUntil && tx.recurrenceUntil < todayISOValue){
       return {date: latest, originalDate: tx.recurrenceUntil || latest, status:"ended", handled:true};
     }
+    if(latestHandled) return latestHandled;
     return {date: latest, originalDate: latest, status: tx.status === "cleared" ? "cleared" : "due", handled: tx.status === "cleared"};
   } catch(err){
     console.warn("Could not calculate bill occurrence info for", tx?.title, err);
@@ -9157,10 +9163,44 @@ function billMatchesFilters(tx){
   normalizeBillCategoriesFilter();
   const categoryMatch = billCategoryFilterIsAll() || billFilters.categories.includes(tx.categoryId);
   const typeMatch = billFilters.type === "all" || tx.type === billFilters.type;
-  const recurrenceType = tx.recurrence?.type || (tx.repeat ? "monthly" : "none");
+  const recurrenceType = billRecurrenceType(tx);
   const recurrenceMatch = billFilters.recurrence === "all" || recurrenceType === billFilters.recurrence;
 
   return accountMatch && categoryMatch && typeMatch && recurrenceMatch;
+}
+
+function billRecurrenceType(tx){
+  return tx?.recurrence?.type || (tx?.repeat ? "monthly" : "none");
+}
+function billIsMonthlySeries(tx){
+  return ["monthly", "last-day-month", "nth-weekday"].includes(billRecurrenceType(tx));
+}
+function billScheduleSortKey(tx){
+  const type = billRecurrenceType(tx);
+  let start;
+  try{ start = parseDate(tx?.date || todayISO()); } catch(err){ start = parseDate(todayISO()); }
+
+  // "Schedule date" is intentionally independent from whether the current
+  // occurrence has already cleared. Monthly bills stay in day-of-month order
+  // instead of jumping to next month as soon as they are paid.
+  if(type === "monthly") return `1-${String(start.getDate()).padStart(2,"0")}`;
+  if(type === "last-day-month") return "1-32";
+  if(type === "nth-weekday") {
+    const r = tx?.recurrence || {};
+    const probe = parseDate(todayISO());
+    const nth = nthWeekdayOfMonth(probe.getFullYear(), probe.getMonth(), r.weekday ?? start.getDay(), r.ordinal || 1);
+    const day = nth ? nth.getDate() : start.getDate();
+    return `1-${String(day).padStart(2,"0")}`;
+  }
+  if(type === "weekly" || type === "biweekly") {
+    const weekday = Number(tx?.recurrence?.weekday ?? start.getDay());
+    const mondayFirst = (weekday + 6) % 7;
+    return `2-${mondayFirst}`;
+  }
+  if(type === "yearly") return `3-${String(start.getMonth()+1).padStart(2,"0")}-${String(start.getDate()).padStart(2,"0")}`;
+  // Every-X-days has no stable calendar slot, so use its anchor date as the
+  // schedule key. This is still distinct from the computed next occurrence.
+  return `4-${tx?.date || "9999-12-31"}`;
 }
 
 function renderBillFilters(){
@@ -9365,6 +9405,208 @@ function billSeriesEditOccurrence(baseTx){
 }
 
 
+// v2-283: detect likely monthly charges that are not already represented by a
+// recurring series. Detection is intentionally conservative: two-month signals
+// require an exact amount match; repeated everyday purchases should not be
+// promoted just because the same merchant was visited a few times.
+function possibleRecurringDismissals(){
+  try{ return new Set(JSON.parse(localStorage.getItem(POSSIBLE_RECURRING_DISMISSALS_KEY) || "[]")); }
+  catch(err){ return new Set(); }
+}
+function possibleRecurringRouteKey(tx){
+  return [
+    String(tx?.type || ""),
+    String(tx?.accountId || ""),
+    String(tx?.debtAccountId || ""),
+    String(tx?.linkedDebtId || ""),
+    String(tx?.transferToAccountId || ""),
+    String(tx?.categoryId || "")
+  ].join("|");
+}
+function transactionHasRecurringLineage(tx){
+  if(!tx) return false;
+  try{ if(isRecurring(tx)) return true; }catch(err){}
+  if(tx.wasRecurringOccurrence || tx.fromRecurringBill) return true;
+  const sourceId = recurringLinkedSourceId(tx) || tx.originalId || tx.recurrenceSourceId || "";
+  if(!sourceId) return false;
+  const source = data.transactions.find(row => row?.id === sourceId);
+  try{ return !!(source && isRecurring(source)); }catch(err){ return false; }
+}
+function possibleRecurringAmountClose(a, b, exact=false){
+  const aa = Math.abs(Number(a || 0));
+  const bb = Math.abs(Number(b || 0));
+  const diff = Math.abs(aa - bb);
+  if(exact) return diff < 0.01;
+  return diff <= Math.max(0.50, Math.max(aa, bb) * 0.03);
+}
+function possibleRecurringSameMonthlyPosition(a, b){
+  const da = parseDate(a);
+  const db = parseDate(b);
+  if(monthDiff(da, db) !== 1) return false;
+  const dayClose = Math.abs(da.getDate() - db.getDate()) <= 3;
+  const aEnd = endOfMonth(da).getDate() - da.getDate();
+  const bEnd = endOfMonth(db).getDate() - db.getDate();
+  return dayClose || (aEnd <= 2 && bEnd <= 2);
+}
+function possibleRecurringActiveSeriesMatches(sample, amount){
+  return (data.transactions || []).some(series => {
+    try{
+      if(!series || !isRecurring(series) || series.billArchived || billOccurrenceStatus(series) === "ended") return false;
+    }catch(err){ return false; }
+    return billLooseTitle(series.title) === billLooseTitle(sample.title)
+      && possibleRecurringRouteKey(series) === possibleRecurringRouteKey(sample)
+      && possibleRecurringAmountClose(series.amount, amount, false);
+  });
+}
+function possibleRecurringNextMonthlyDate(latestISO, recurrenceType){
+  const latest = parseDate(latestISO);
+  const today = todayISO();
+  for(let offset=1; offset<=24; offset++){
+    const target = new Date(latest.getFullYear(), latest.getMonth() + offset, 1, 12);
+    const candidate = recurrenceType === "last-day-month"
+      ? endOfMonth(target)
+      : new Date(target.getFullYear(), target.getMonth(), monthlyTargetDay(latest, target), 12);
+    const iso = toISO(candidate);
+    if(iso >= today) return iso;
+  }
+  return latestISO;
+}
+function possibleRecurringCandidateKey(sample, latest, amount){
+  return [billLooseTitle(sample.title), possibleRecurringRouteKey(sample), Number(amount || 0).toFixed(2), latest.id || latest.date || ""].join("|");
+}
+function detectPossibleRecurringCharges(){
+  const today = parseDate(todayISO());
+  const groups = new Map();
+  (data.transactions || []).forEach(tx => {
+    if(!tx || tx.deleted || tx.status !== "cleared" || tx.type !== "expense") return;
+    if(transactionHasRecurringLineage(tx)) return;
+    if(tx.pendingReimbursement) return;
+    const title = billLooseTitle(tx.title);
+    if(!title) return;
+    const key = `${title}|${possibleRecurringRouteKey(tx)}`;
+    const rows = groups.get(key) || [];
+    rows.push(tx);
+    groups.set(key, rows);
+  });
+
+  const dismissed = possibleRecurringDismissals();
+  const out = [];
+  groups.forEach(rows => {
+    if(rows.length < 2) return;
+    const sorted = [...rows].sort((a,b)=>String(a.date || "").localeCompare(String(b.date || "")));
+    // Work backward from the newest transaction so an old historic pattern does
+    // not keep producing a warning after it has clearly stopped.
+    const latest = sorted[sorted.length - 1];
+    if(!latest?.date) return;
+    const daysSinceLatest = daysBetween(parseDate(latest.date), today);
+    if(daysSinceLatest < 0 || daysSinceLatest > 45) return;
+
+    let sequence = [latest];
+    for(let i=sorted.length - 2; i>=0; i--){
+      const newer = sequence[0];
+      const older = sorted[i];
+      if(!possibleRecurringSameMonthlyPosition(older.date, newer.date)) break;
+      const exactNeeded = sequence.length < 2;
+      if(!possibleRecurringAmountClose(older.amount, latest.amount, exactNeeded)) break;
+      sequence.unshift(older);
+    }
+    if(sequence.length < 2) return;
+
+    // Two sightings are enough only when the amount is identical to the cent.
+    // With 3+ sightings a small amount drift is allowed.
+    if(sequence.length === 2 && !possibleRecurringAmountClose(sequence[0].amount, sequence[1].amount, true)) return;
+    if(sequence.length >= 3){
+      const amounts = sequence.map(row=>Math.abs(Number(row.amount || 0)));
+      const spread = Math.max(...amounts) - Math.min(...amounts);
+      const avg = amounts.reduce((sum,n)=>sum+n,0) / amounts.length;
+      if(spread > Math.max(0.50, avg * 0.03)) return;
+    }
+
+    const allNearMonthEnd = sequence.every(row => {
+      const d = parseDate(row.date);
+      return endOfMonth(d).getDate() - d.getDate() <= 1;
+    });
+    const recurrenceType = allNearMonthEnd ? "last-day-month" : "monthly";
+    const amount = sequence.reduce((sum,row)=>sum+Math.abs(Number(row.amount || 0)),0) / sequence.length;
+    if(possibleRecurringActiveSeriesMatches(latest, amount)) return;
+
+    const nextDate = possibleRecurringNextMonthlyDate(latest.date, recurrenceType);
+    const dismissKey = possibleRecurringCandidateKey(latest, latest, amount);
+    if(dismissed.has(dismissKey)) return;
+    out.push({
+      id: latest.id,
+      latest,
+      rows: sequence,
+      amount,
+      recurrenceType,
+      nextDate,
+      dismissKey,
+      pseudoTx:{...latest, amount, recurrence:{type:recurrenceType, interval:1}}
+    });
+  });
+  return out.sort((a,b)=>String(b.latest?.date || "").localeCompare(String(a.latest?.date || "")));
+}
+function dismissPossibleRecurringCharge(txId){
+  const candidate = detectPossibleRecurringCharges().find(row => row.id === txId);
+  if(!candidate) return;
+  const dismissed = possibleRecurringDismissals();
+  dismissed.add(candidate.dismissKey);
+  try{ localStorage.setItem(POSSIBLE_RECURRING_DISMISSALS_KEY, JSON.stringify([...dismissed])); }catch(err){}
+  renderBills();
+}
+function restorePossibleRecurringCharges(){
+  try{ localStorage.removeItem(POSSIBLE_RECURRING_DISMISSALS_KEY); }catch(err){}
+  renderBills();
+}
+function schedulePossibleRecurringCharge(txId){
+  const candidate = detectPossibleRecurringCharges().find(row => row.id === txId);
+  if(!candidate?.latest) return;
+  const tx = candidate.latest;
+  openTransaction(null,{
+    title:tx.title || "",
+    amount:Number(candidate.amount || tx.amount || 0).toFixed(2),
+    date:candidate.nextDate,
+    type:tx.type || "expense",
+    status:"planned",
+    accountId:tx.accountId || "",
+    debtAccountId:tx.debtAccountId || "",
+    categoryId:tx.categoryId || "",
+    transferToAccountId:tx.transferToAccountId || "",
+    linkedDebtId:tx.linkedDebtId || "",
+    notes:tx.notes || "",
+    recurrence:{type:candidate.recurrenceType, interval:1}
+  });
+  setTimeout(()=>{ const details=document.getElementById("txRepeatDetails"); if(details) details.open=true; updateTransactionDisclosureSummaries(); },0);
+}
+window.dismissPossibleRecurringCharge = dismissPossibleRecurringCharge;
+window.restorePossibleRecurringCharges = restorePossibleRecurringCharges;
+window.schedulePossibleRecurringCharge = schedulePossibleRecurringCharge;
+
+function possibleRecurringChargeCardHTML(candidate){
+  const tx = candidate.latest;
+  const cat = categoryById(tx.categoryId);
+  const account = billAccountLabel(tx);
+  const dates = candidate.rows.map(row=>row.date).join(" · ");
+  const cadence = candidate.recurrenceType === "last-day-month" ? "Looks monthly · month-end" : "Looks monthly";
+  return `<div class="possible-recurring-card" style="--bill-category:${escapeAttr(cat.color)}">
+    <div class="possible-recurring-main"><div class="row-title">${cat.emoji || "🔁"} ${escapeAttr(tx.title || "Untitled")}</div><div class="row-sub">${escapeAttr(account)} • ${escapeAttr(cat.name || "Unassigned")} • ${money(candidate.amount)}</div><small>${candidate.rows.length} cleared charges: ${escapeAttr(dates)}</small></div>
+    <div class="possible-recurring-schedule"><b>${cadence}</b><span>Expected next around ${candidate.nextDate}</span></div>
+    <div class="possible-recurring-actions"><button type="button" class="ghost small" onclick="openTransaction('${tx.id}')">Review</button><button type="button" class="primary small" onclick="schedulePossibleRecurringCharge('${tx.id}')">Schedule</button><button type="button" class="ghost small" onclick="dismissPossibleRecurringCharge('${tx.id}')">Dismiss</button></div>
+  </div>`;
+}
+function renderPossibleRecurringCharges(candidates){
+  const el = document.getElementById("possibleRecurringCharges");
+  if(!el) return;
+  const dismissedCount = possibleRecurringDismissals().size;
+  if(!candidates.length){
+    el.innerHTML = dismissedCount
+      ? `<div class="possible-recurring-dismissed"><span><b>Possible recurring charges</b><small>No active findings in these filters. ${dismissedCount} finding${dismissedCount===1?" is":"s are"} dismissed.</small></span><button type="button" class="ghost small" onclick="restorePossibleRecurringCharges()">Restore dismissed</button></div>`
+      : "";
+    return;
+  }
+  el.innerHTML = `<section class="possible-recurring-section"><div class="possible-recurring-head"><span><b>Possible recurring charges</b><small>Cleared charges repeating monthly that are not scheduled yet. Schedule expected ones; dismiss anything intentional or cancelled.</small></span><div><span class="pill">${candidates.length}</span>${dismissedCount ? `<button type="button" class="ghost small" onclick="restorePossibleRecurringCharges()">Restore dismissed</button>` : ""}</div></div><div class="possible-recurring-list">${candidates.map(possibleRecurringChargeCardHTML).join("")}</div></section>`;
+}
+
 // v2-259: Recurring Health is computed from existing recurring/payment history.
 // It never changes a series automatically; it only surfaces conservative review signals.
 function recurringBillHealth(baseTx, allSeries=[], expandedRows=null){
@@ -9435,20 +9677,23 @@ function recurringHealthReasonText(health){
   return health.findings.length > 1 ? `${first} +${health.findings.length-1}` : first;
 }
 
-function renderBillHealthSummary(rows){
+function renderBillHealthSummary(rows, possibleRecurring=[]){
   const el = document.getElementById("billHealthSummary");
   if(!el) return;
   const active = rows.filter(tx => !tx.billArchived && billOccurrenceStatus(tx) !== "ended");
   const review = active.filter(tx => tx.recurringHealth?.needsReview);
+  const possibleCount = possibleRecurring.length;
+  const reviewTotal = review.length + possibleCount;
   const healthy = Math.max(0, active.length - review.length);
   const counts = {"past-planned":0,"amount-drift":0,"possible-duplicate":0};
   review.forEach(tx => tx.recurringHealth?.findings?.forEach(f => { if(f.kind in counts) counts[f.kind] += 1; }));
   const chips = [
     counts["past-planned"] ? `<span class="bill-health-chip warn">${counts["past-planned"]} past planned</span>` : "",
     counts["amount-drift"] ? `<span class="bill-health-chip">${counts["amount-drift"]} amount changed</span>` : "",
-    counts["possible-duplicate"] ? `<span class="bill-health-chip">${counts["possible-duplicate"]} duplicate match${counts["possible-duplicate"]===1?"":"es"}</span>` : ""
+    counts["possible-duplicate"] ? `<span class="bill-health-chip">${counts["possible-duplicate"]} duplicate match${counts["possible-duplicate"]===1?"":"es"}</span>` : "",
+    possibleCount ? `<span class="bill-health-chip warn">${possibleCount} possible recurring charge${possibleCount===1?"":"s"}</span>` : ""
   ].filter(Boolean).join("");
-  el.innerHTML = `<div class="bill-health-main"><span class="bill-health-icon" aria-hidden="true">${review.length ? "⚠" : "✓"}</span><span><b>Recurring health</b><small>${review.length ? `${review.length} need review · ${healthy} look good` : `${healthy} active series checked · no obvious issues`}</small></span></div><div class="bill-health-actions"><div class="bill-health-chips">${chips}</div>${review.length ? `<button type="button" class="ghost small" onclick="toggleBillHealthReviewOnly()">${billHealthReviewOnly ? "Show all" : "Show review only"}</button>` : ""}</div>`;
+  el.innerHTML = `<div class="bill-health-main"><span class="bill-health-icon" aria-hidden="true">${reviewTotal ? "⚠" : "✓"}</span><span><b>Recurring health</b><small>${reviewTotal ? `${reviewTotal} need review · ${healthy} active series look good` : `${healthy} active series checked · no obvious issues`}</small></span></div><div class="bill-health-actions"><div class="bill-health-chips">${chips}</div>${reviewTotal ? `<button type="button" class="ghost small" onclick="toggleBillHealthReviewOnly()">${billHealthReviewOnly ? "Show all" : "Show review only"}</button>` : ""}</div>`;
 }
 
 function toggleBillHealthReviewOnly(){
@@ -9546,9 +9791,10 @@ function billCardHTML(tx, archivedSection=false){
   const account = billAccountLabel(tx);
   const route = tx.type === "transfer" ? transactionTransferLabel(tx) : `${account}${tx.linkedDebtId ? ` → ${debtById(tx.linkedDebtId)?.name || "debt"}` : ""}`;
   const displayDate = tx.nextDate || tx.billInfo?.date || billOccurrenceInfo(tx).date || tx.date || "—";
+  const occurrenceStatus = billOccurrenceStatus(tx);
   const dateLabel = archivedSection
     ? (tx.billArchivedAt ? `Archived ${tx.billArchivedAt}` : `Ended ${displayDate}`)
-    : `Next ${displayDate}`;
+    : occurrenceStatus === "due" ? `Due ${displayDate}` : `Next ${displayDate}`;
   return `<div class="bill-card ${archivedSection ? "bill-card-archived" : ""}" style="--bill-category:${escapeAttr(cat.color)}" data-tx="${tx.id}" data-original-date="${tx.billInfo?.originalDate || displayDate}" data-occurrence-date="${displayDate}" onclick="openBillDetails('${tx.id}')">
     <div class="bill-card-main">
       <div class="row-title">${cat.emoji} ${tx.title}</div>
@@ -9592,14 +9838,26 @@ function renderBills(){
       try{ return isRecurring(tx); } catch(err){ return false; }
     }).filter(tx => !(data.transactions || []).some(nextTx => recurringSeriesIsSplitPredecessor(tx, nextTx))));
     recurring = recurring.map(tx => ({...tx, recurringHealth:recurringBillHealth(tx, allHealthSeries, sharedExpandedBillRows)}));
-    renderBillHealthSummary(recurring);
+    const possibleRecurring = detectPossibleRecurringCharges().filter(candidate => {
+      try{ return billMatchesFilters(candidate.pseudoTx); }catch(err){ return true; }
+    });
+    renderBillHealthSummary(recurring, possibleRecurring);
+    renderPossibleRecurringCharges(possibleRecurring);
 
     const sortBills = rows => rows.sort((a,b)=>{
-      if((billFilters.sort || "date") === "amount-desc") return Number(b.amount || 0) - Number(a.amount || 0);
-      if((billFilters.sort || "date") === "amount-asc") return Number(a.amount || 0) - Number(b.amount || 0);
-      if((billFilters.sort || "date") === "category") return categoryById(a.categoryId).name.localeCompare(categoryById(b.categoryId).name);
-      if((billFilters.sort || "date") === "account") return billAccountLabel(a).localeCompare(billAccountLabel(b));
-      return String(a.nextDate || "").localeCompare(String(b.nextDate || ""));
+      const sort = billFilters.sort || "date";
+      let cmp = 0;
+      if(sort === "amount-desc") cmp = Number(b.amount || 0) - Number(a.amount || 0);
+      else if(sort === "amount-asc") cmp = Number(a.amount || 0) - Number(b.amount || 0);
+      else if(sort === "category") cmp = categoryById(a.categoryId).name.localeCompare(categoryById(b.categoryId).name);
+      else if(sort === "account") cmp = billAccountLabel(a).localeCompare(billAccountLabel(b));
+      else if(sort === "next-date") cmp = String(a.nextDate || "").localeCompare(String(b.nextDate || ""));
+      else cmp = billScheduleSortKey(a).localeCompare(billScheduleSortKey(b));
+      if(cmp) return cmp;
+      // Stable, useful tie-breakers keep same-day bills predictable.
+      const nextCmp = String(a.nextDate || "").localeCompare(String(b.nextDate || ""));
+      if(nextCmp) return nextCmp;
+      return String(a.title || "").localeCompare(String(b.title || ""));
     });
 
     const archived = sortBills(recurring.filter(tx => tx.billArchived || billOccurrenceStatus(tx) === "ended"));
@@ -9609,22 +9867,18 @@ function renderBills(){
     if(!list) return;
     if(!active.length && !archived.length){
       list.innerHTML = billHealthReviewOnly
-        ? `<div class="empty">Nothing in the current filters needs recurring-health review. <button type="button" class="ghost small" onclick="toggleBillHealthReviewOnly()">Show all</button></div>`
-        : `<div class="empty">No recurring transactions match those filters.</div>`;
+        ? (possibleRecurring.length ? `<div class="empty compact">No existing recurring series need review; possible recurring charges are shown above.</div>` : `<div class="empty">Nothing in the current filters needs recurring-health review. <button type="button" class="ghost small" onclick="toggleBillHealthReviewOnly()">Show all</button></div>`)
+        : (possibleRecurring.length ? `<div class="empty compact">No scheduled recurring transactions match those filters; possible recurring charges are shown above.</div>` : `<div class="empty">No recurring transactions match those filters.</div>`);
       return;
     }
 
     let activeHTML = "";
     if(active.length){
-      const reviewRows = active.filter(tx => tx.recurringHealth?.needsReview);
-      const normalRows = active.filter(tx => !tx.recurringHealth?.needsReview);
-      const soonCutoff = toISO(addDays(parseDate(todayISO()), 7));
-      const comingUp = normalRows.filter(tx => String(tx.nextDate || "") <= soonCutoff);
-      const later = normalRows.filter(tx => String(tx.nextDate || "") > soonCutoff);
-      activeHTML = `<div class="bill-list-summary"><span><b>${active.length}</b> ${billHealthReviewOnly ? "recurring item" : "active recurring item"}${active.length===1?"":"s"}${billHealthReviewOnly ? " needing review" : ""}</span><small>Tap a row for history, health details, and series actions.</small></div>`
-        + billGroupHTML("Needs review", reviewRows, "bill-group-review")
-        + (billHealthReviewOnly ? "" : billGroupHTML("Coming up", comingUp, "bill-group-coming"))
-        + (billHealthReviewOnly ? "" : billGroupHTML("Later", later, "bill-group-later"));
+      const monthlyRows = active.filter(billIsMonthlySeries);
+      const nonMonthlyRows = active.filter(tx => !billIsMonthlySeries(tx));
+      activeHTML = `<div class="bill-list-summary"><span><b>${active.length}</b> ${billHealthReviewOnly ? "recurring item" : "active recurring item"}${active.length===1?"":"s"}${billHealthReviewOnly ? " needing review" : ""}</span><small>Monthly schedules first, then everything that repeats on another cadence. Tap a row for history, health details, and series actions.</small></div>`
+        + billGroupHTML("Monthly bills", monthlyRows, "bill-group-monthly")
+        + billGroupHTML("Non-monthly bills", nonMonthlyRows, "bill-group-nonmonthly");
     } else {
       activeHTML = `<div class="empty compact">No active recurring bills match these filters.</div>`;
     }
@@ -10814,7 +11068,7 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 // v2-258: Palette reset baselines can be user-defined per palette; color swatches are full-bleed via CSS.
 
 // v2-260: Template notes can be intentionally cleared; template edits remain shortcut-only and never mutate recurring Bills series.
-// v2-259: Bills Recurring Health flags conservative review signals and groups active series into Needs review, Coming up, and Later.
+// v2-283: Bills Recurring Health also surfaces conservative unscheduled monthly-charge patterns with Schedule/Dismiss actions.
 
 // v2-261: Template Manager can filter by the fields a shortcut actively autofills.
 
