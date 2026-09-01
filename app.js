@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-283";
+const APP_VERSION = "2-284";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -912,6 +912,12 @@ function normalizeData(raw){
   })).sort((a,b)=>String(a.name || "").localeCompare(String(b.name || "")));
 
   d.settings ||= {buffer:50};
+  // v2-284: reviewed recurring-health findings are synced/backed up with settings.
+  // The review state never changes transactions or recurrence rules; it only
+  // remembers an acknowledged health signal until that signal materially changes.
+  if(!d.settings.recurringHealthReviews || typeof d.settings.recurringHealthReviews !== "object" || Array.isArray(d.settings.recurringHealthReviews)){
+    d.settings.recurringHealthReviews = {};
+  }
   normalizePaletteSettings(d);
   d.settings.transactionTemplates ||= [];
   d.settings.paycheckProfiles ||= {};
@@ -9609,6 +9615,96 @@ function renderPossibleRecurringCharges(candidates){
 
 // v2-259: Recurring Health is computed from existing recurring/payment history.
 // It never changes a series automatically; it only surfaces conservative review signals.
+// v2-284: amount-change findings can be marked reviewed. The acknowledged observed
+// amount becomes the comparison baseline for health only; it does not rewrite the
+// scheduled series amount or any transaction.
+function recurringHealthReviewsStore(){
+  data.settings ||= {};
+  if(!data.settings.recurringHealthReviews || typeof data.settings.recurringHealthReviews !== "object" || Array.isArray(data.settings.recurringHealthReviews)){
+    data.settings.recurringHealthReviews = {};
+  }
+  return data.settings.recurringHealthReviews;
+}
+function recurringHealthSeriesReviews(txOrId){
+  const tx = typeof txOrId === "string" ? data.transactions.find(row=>row.id === txOrId) : txOrId;
+  const canonical = canonicalRecurringSeries(tx) || tx;
+  if(!canonical?.id) return {};
+  return recurringHealthReviewsStore()[canonical.id] || {};
+}
+function recurringHealthReviewedCount(rows=[]){
+  const ids = new Set((rows || []).map(tx=>(canonicalRecurringSeries(tx)||tx)?.id).filter(Boolean));
+  const store = recurringHealthReviewsStore();
+  return [...ids].reduce((sum,id)=>sum + Object.keys(store[id] || {}).length, 0);
+}
+function recurringAmountDriftSnapshot(baseTx, expandedRows=null){
+  const canonical = canonicalRecurringSeries(baseTx) || baseTx;
+  if(!canonical || canonical.type === "paycheck") return null;
+  const baseAmount = Math.abs(Number(canonical.amount || 0));
+  if(!(baseAmount > 0)) return null;
+  const rows = billLinkedTransactions(canonical, expandedRows);
+  const clearedAmounts = rows
+    .filter(row => row.status === "cleared" && Number.isFinite(Number(row.amount)))
+    .sort((a,b)=>String(b.date || "").localeCompare(String(a.date || "")))
+    .slice(0,2)
+    .map(row => ({amount:Math.abs(Number(row.amount || 0)), date:String(row.date || "")}));
+  if(clearedAmounts.length < 2) return null;
+  const latest = clearedAmounts[0].amount;
+  const previous = clearedAmounts[1].amount;
+  const material = Math.max(2, baseAmount * 0.08);
+  const recentTolerance = Math.max(1, Math.max(latest, previous) * 0.03);
+  const recentAgree = Math.abs(latest - previous) <= recentTolerance;
+  const bothDiffer = Math.abs(latest - baseAmount) >= material && Math.abs(previous - baseAmount) >= material;
+  const suggested = (latest + previous) / 2;
+  return {canonical, baseAmount, latest, previous, suggested, recentTolerance, recentAgree, bothDiffer, rows:clearedAmounts};
+}
+function recurringAmountDriftWasReviewed(canonical, snapshot){
+  const review = recurringHealthSeriesReviews(canonical)?.["amount-drift"];
+  if(!review || !Number.isFinite(Number(review.acceptedAmount))) return false;
+  const accepted = Math.abs(Number(review.acceptedAmount));
+  const tolerance = Math.max(1, Math.max(accepted, snapshot.suggested) * 0.03);
+  return Math.abs(snapshot.suggested - accepted) <= tolerance;
+}
+function markRecurringHealthReviewed(txId, kind="amount-drift"){
+  const selected = data.transactions.find(tx=>tx.id === txId);
+  const canonical = canonicalRecurringSeries(selected) || selected;
+  if(!canonical?.id) return;
+  const store = recurringHealthReviewsStore();
+  store[canonical.id] ||= {};
+  if(kind === "amount-drift"){
+    const snapshot = recurringAmountDriftSnapshot(canonical);
+    if(!snapshot || !snapshot.recentAgree || !snapshot.bothDiffer) return;
+    store[canonical.id][kind] = {
+      acceptedAmount:Number(snapshot.suggested.toFixed(2)),
+      reviewedAt:new Date().toISOString()
+    };
+  } else {
+    store[canonical.id][kind] = {reviewedAt:new Date().toISOString()};
+  }
+  const detailModal = document.getElementById("billDetailModal");
+  const reopenDetail = !!detailModal?.open;
+  if(reopenDetail) detailModal.close();
+  saveData();
+  if(reopenDetail) setTimeout(()=>openBillDetails(canonical.id), 0);
+}
+function restoreRecurringHealthReviews(txId=""){
+  const store = recurringHealthReviewsStore();
+  let canonical = null;
+  if(txId){
+    const selected = data.transactions.find(tx=>tx.id === txId);
+    canonical = canonicalRecurringSeries(selected) || selected;
+    if(canonical?.id) delete store[canonical.id];
+  } else {
+    data.settings.recurringHealthReviews = {};
+  }
+  const detailModal = document.getElementById("billDetailModal");
+  const reopenDetail = !!(txId && canonical?.id && detailModal?.open);
+  if(reopenDetail) detailModal.close();
+  saveData();
+  if(reopenDetail) setTimeout(()=>openBillDetails(canonical.id), 0);
+}
+window.markRecurringHealthReviewed = markRecurringHealthReviewed;
+window.restoreRecurringHealthReviews = restoreRecurringHealthReviews;
+
 function recurringBillHealth(baseTx, allSeries=[], expandedRows=null){
   const canonical = canonicalRecurringSeries(baseTx) || baseTx;
   const findings = [];
@@ -9629,28 +9725,17 @@ function recurringBillHealth(baseTx, allSeries=[], expandedRows=null){
   }
 
   // Only flag an amount estimate when the two newest cleared payments agree with
-  // each other but both differ materially from the saved series amount. This
-  // avoids nagging on naturally variable bills from one unusual payment.
-  const baseAmount = Math.abs(Number(canonical.amount || 0));
-  const clearedAmounts = rows
-    .filter(row => row.status === "cleared" && Number.isFinite(Number(row.amount)))
-    .sort((a,b)=>String(b.date || "").localeCompare(String(a.date || "")))
-    .slice(0,2)
-    .map(row => Math.abs(Number(row.amount || 0)));
-  if(baseAmount > 0 && clearedAmounts.length >= 2 && canonical.type !== "paycheck") {
-    const [latest, previous] = clearedAmounts;
-    const material = Math.max(2, baseAmount * 0.08);
-    const recentTolerance = Math.max(1, Math.max(latest, previous) * 0.03);
-    const recentAgree = Math.abs(latest - previous) <= recentTolerance;
-    const bothDiffer = Math.abs(latest - baseAmount) >= material && Math.abs(previous - baseAmount) >= material;
-    if(recentAgree && bothDiffer){
-      const suggested = (latest + previous) / 2;
-      findings.push({
-        kind:"amount-drift",
-        label:"Amount changed",
-        detail:`Recent cleared payments are about ${money(suggested)} while the series estimate is ${money(baseAmount)}.`
-      });
-    }
+  // each other but both differ materially from the saved series amount. A reviewed
+  // observed amount suppresses the same drift, but a later materially different
+  // repeated amount will surface again.
+  const drift = recurringAmountDriftSnapshot(canonical, expandedRows);
+  if(drift?.recentAgree && drift?.bothDiffer && !recurringAmountDriftWasReviewed(canonical, drift)){
+    findings.push({
+      kind:"amount-drift",
+      label:"Amount changed",
+      detail:`Recent cleared payments are about ${money(drift.suggested)} while the series estimate is ${money(drift.baseAmount)}.`,
+      reviewValue:Number(drift.suggested.toFixed(2))
+    });
   }
 
   const duplicate = (allSeries || []).find(other => {
@@ -9687,13 +9772,15 @@ function renderBillHealthSummary(rows, possibleRecurring=[]){
   const healthy = Math.max(0, active.length - review.length);
   const counts = {"past-planned":0,"amount-drift":0,"possible-duplicate":0};
   review.forEach(tx => tx.recurringHealth?.findings?.forEach(f => { if(f.kind in counts) counts[f.kind] += 1; }));
+  const reviewedCount = recurringHealthReviewedCount(active);
   const chips = [
     counts["past-planned"] ? `<span class="bill-health-chip warn">${counts["past-planned"]} past planned</span>` : "",
     counts["amount-drift"] ? `<span class="bill-health-chip">${counts["amount-drift"]} amount changed</span>` : "",
     counts["possible-duplicate"] ? `<span class="bill-health-chip">${counts["possible-duplicate"]} duplicate match${counts["possible-duplicate"]===1?"":"es"}</span>` : "",
-    possibleCount ? `<span class="bill-health-chip warn">${possibleCount} possible recurring charge${possibleCount===1?"":"s"}</span>` : ""
+    possibleCount ? `<span class="bill-health-chip warn">${possibleCount} possible recurring charge${possibleCount===1?"":"s"}</span>` : "",
+    reviewedCount ? `<span class="bill-health-chip ok">${reviewedCount} reviewed</span>` : ""
   ].filter(Boolean).join("");
-  el.innerHTML = `<div class="bill-health-main"><span class="bill-health-icon" aria-hidden="true">${reviewTotal ? "⚠" : "✓"}</span><span><b>Recurring health</b><small>${reviewTotal ? `${reviewTotal} need review · ${healthy} active series look good` : `${healthy} active series checked · no obvious issues`}</small></span></div><div class="bill-health-actions"><div class="bill-health-chips">${chips}</div>${reviewTotal ? `<button type="button" class="ghost small" onclick="toggleBillHealthReviewOnly()">${billHealthReviewOnly ? "Show all" : "Show review only"}</button>` : ""}</div>`;
+  el.innerHTML = `<div class="bill-health-main"><span class="bill-health-icon" aria-hidden="true">${reviewTotal ? "⚠" : "✓"}</span><span><b>Recurring health</b><small>${reviewTotal ? `${reviewTotal} need review · ${healthy} active series look good` : `${healthy} active series checked · no obvious issues`}</small></span></div><div class="bill-health-actions"><div class="bill-health-chips">${chips}</div>${reviewTotal ? `<button type="button" class="ghost small" onclick="toggleBillHealthReviewOnly()">${billHealthReviewOnly ? "Show all" : "Show review only"}</button>` : ""}${reviewedCount ? `<button type="button" class="ghost small" onclick="restoreRecurringHealthReviews()">Restore reviewed</button>` : ""}</div>`;
 }
 
 function toggleBillHealthReviewOnly(){
@@ -9755,9 +9842,12 @@ function openBillDetails(txId){
   if(healthEl){
     const activeSeries = dedupeRecurringBillRows((data.transactions || []).filter(isRecurring));
     const health = recurringBillHealth(tx, activeSeries);
+    const reviewedKinds = Object.keys(recurringHealthSeriesReviews(tx));
+    const findingHTML = health.findings.map(f=>`<div class="bill-health-finding"><span>⚠</span><div><b>${escapeAttr(f.label)}</b><small>${escapeAttr(f.detail)}</small></div>${f.kind === "amount-drift" ? `<button type="button" class="ghost small bill-health-finding-action" onclick="markRecurringHealthReviewed('${tx.id}','amount-drift')">Mark reviewed</button>` : ""}</div>`).join("");
+    const restoreHTML = reviewedKinds.length ? `<div class="bill-health-reviewed-note"><small>${reviewedKinds.length} reviewed warning${reviewedKinds.length===1?" is":"s are"} currently hidden.</small><button type="button" class="ghost small" onclick="restoreRecurringHealthReviews('${tx.id}')">Restore reviewed</button></div>` : "";
     healthEl.innerHTML = health.findings.length
-      ? `<div class="bill-detail-health-head"><b>Recurring health</b><span>${health.findings.length} to review</span></div>${health.findings.map(f=>`<div class="bill-health-finding"><span>⚠</span><div><b>${escapeAttr(f.label)}</b><small>${escapeAttr(f.detail)}</small></div></div>`).join("")}`
-      : `<div class="bill-detail-health-ok"><span>✓</span><div><b>Recurring health looks good</b><small>No obvious missed occurrences, stale amount estimate, or duplicate series found.</small></div></div>`;
+      ? `<div class="bill-detail-health-head"><b>Recurring health</b><span>${health.findings.length} to review</span></div>${findingHTML}${restoreHTML}`
+      : `<div class="bill-detail-health-ok"><span>✓</span><div><b>Recurring health looks good</b><small>${reviewedKinds.length ? "The reviewed amount change is acknowledged; Money Nest will flag a materially different repeated amount later." : "No obvious missed occurrences, stale amount estimate, or duplicate series found."}</small></div></div>${restoreHTML}`;
   }
   list.innerHTML = rows.length
     ? `<div class="bill-detail-list-head"><h4>Transactions associated with this bill</h4><span>${rows.length} shown</span></div><div class="bill-detail-list">${rows.map(billTransactionRowHTML).join("")}</div><p class="hint bill-detail-horizon">Includes saved history and generated occurrences through the next 12 months.</p>`
@@ -9803,6 +9893,7 @@ function billCardHTML(tx, archivedSection=false){
     <div class="bill-card-schedule">
       <b>${dateLabel}</b>
       <span>${recurrenceDescription(tx)}${tx.recurringHealth?.needsReview ? ` • ⚠ ${escapeAttr(recurringHealthReasonText(tx.recurringHealth))}` : ""}</span>
+      ${tx.recurringHealth?.findings?.some(f=>f.kind === "amount-drift") ? `<button type="button" class="ghost small bill-inline-health-review" onclick="event.stopPropagation();markRecurringHealthReviewed('${tx.id}','amount-drift')">Mark reviewed</button>` : ""}
     </div>
     <div class="bill-card-status">${billStatusBadge(tx)}</div>
     <div class="amount bill-amount ${(tx.type==='income'||tx.type==='paycheck')?'good':'bad'}">${(tx.type==='income'||tx.type==='paycheck')?'+':'-'}${money(tx.amount)}</div>
@@ -11068,6 +11159,7 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 // v2-258: Palette reset baselines can be user-defined per palette; color swatches are full-bleed via CSS.
 
 // v2-260: Template notes can be intentionally cleared; template edits remain shortcut-only and never mutate recurring Bills series.
+// v2-284: Recurring Health amount-change findings can be marked reviewed; acknowledged observed amounts stay quiet until a materially different repeated amount appears.
 // v2-283: Bills Recurring Health also surfaces conservative unscheduled monthly-charge patterns with Schedule/Dismiss actions.
 
 // v2-261: Template Manager can filter by the fields a shortcut actively autofills.

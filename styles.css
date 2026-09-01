@@ -7098,6 +7098,8 @@ button.budget-review-row:hover,button.budget-review-row:focus-visible{
 .bill-health-actions{justify-content:flex-end;flex-wrap:wrap}.bill-health-chips{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .bill-health-chip{font-size:10px;font-weight:800;color:var(--muted);padding:4px 7px;border-radius:999px;border:1px solid color-mix(in srgb,var(--line) 82%,transparent);background:color-mix(in srgb,var(--panel) 72%,transparent);white-space:nowrap}
 .bill-health-chip.warn{color:var(--ink);border-color:color-mix(in srgb,#c98939 38%,var(--line));background:color-mix(in srgb,#f5cf91 24%,var(--panel))}
+.bill-health-chip.ok{color:color-mix(in srgb,#47704f 84%,var(--ink));border-color:color-mix(in srgb,#6d9d73 35%,var(--line));background:color-mix(in srgb,#dcead9 42%,var(--panel))}
+.bill-inline-health-review{justify-self:start;width:auto;min-height:24px;padding:3px 8px;margin-top:2px;font-size:9px;line-height:1.1}
 .bill-group{display:grid;gap:7px}.bill-group+.bill-group{margin-top:4px}.bill-group-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 4px 0;color:var(--muted)}
 .bill-group-head b{font-size:11px;text-transform:uppercase;letter-spacing:.06em}.bill-group-head span{font-size:10px;font-weight:850;border:1px solid color-mix(in srgb,var(--line) 78%,transparent);border-radius:999px;padding:2px 7px;background:var(--panel)}
 .bill-group-review .bill-group-head b{color:color-mix(in srgb,#9a5b22 82%,var(--ink))}.bill-group-review .bill-active-list{border-color:color-mix(in srgb,#c98939 34%,var(--line))}
@@ -7105,7 +7107,8 @@ button.budget-review-row:hover,button.budget-review-row:focus-visible{
 .bill-detail-health:empty{display:none}.bill-detail-health-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:4px}.bill-detail-health-head b{font-size:12px}.bill-detail-health-head span{font-size:10px;color:var(--muted);font-weight:800}
 .bill-health-finding,.bill-detail-health-ok{display:flex;gap:9px;align-items:flex-start}.bill-health-finding>span,.bill-detail-health-ok>span{flex:0 0 auto;font-size:12px;line-height:1.5}.bill-health-finding>div,.bill-detail-health-ok>div{display:grid;gap:1px;min-width:0}
 .bill-health-finding b,.bill-detail-health-ok b{font-size:11px}.bill-health-finding small,.bill-detail-health-ok small{font-size:10px;line-height:1.35;color:var(--muted)}
-@media(max-width:760px){.bill-health-summary{align-items:flex-start;flex-direction:column;gap:8px;padding:10px 11px}.bill-health-actions{width:100%;justify-content:space-between}.bill-health-chips{justify-content:flex-start}.bill-group-head{padding-left:2px;padding-right:2px}}
+.bill-health-finding-action{flex:0 0 auto;align-self:center;margin-left:auto}.bill-health-reviewed-note{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:6px;margin-top:2px;border-top:1px solid color-mix(in srgb,var(--line) 70%,transparent)}.bill-health-reviewed-note small{font-size:10px;color:var(--muted)}
+@media(max-width:760px){.bill-health-summary{align-items:flex-start;flex-direction:column;gap:8px;padding:10px 11px}.bill-health-actions{width:100%;justify-content:space-between}.bill-health-chips{justify-content:flex-start}.bill-group-head{padding-left:2px;padding-right:2px}.bill-health-finding{flex-wrap:wrap}.bill-health-finding-action{margin-left:21px}.bill-health-reviewed-note{align-items:flex-start;flex-direction:column}}
 @media(max-width:520px){.bill-health-actions{align-items:flex-start;flex-direction:column}}
 
 

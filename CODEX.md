@@ -161,9 +161,17 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-283`
+Latest known version: `money-nest-v2-284`
 
 
+
+### v2-284 recurring-health reviewed amount rules
+
+- Recurring Health **Amount changed** findings are dismissible via **Mark reviewed**. Store the acknowledgement in `data.settings.recurringHealthReviews`, keyed by canonical recurring-series ID. Keep this state in normal app data so JSON backups and cloud sync preserve it.
+- For `amount-drift`, store the acknowledged observed/recent amount as `acceptedAmount`; do not mutate the recurring series amount, recurrence rule, or cleared history when the user merely marks a warning reviewed.
+- Suppress the same amount-drift warning while repeated cleared payments remain within the same small tolerance of the acknowledged amount. If a materially different amount later repeats strongly enough to satisfy the existing conservative drift detector, surface a new warning.
+- Bills rows and bill detail health should offer the review action for amount-drift. Provide a way to restore reviewed warnings globally and per series.
+- Preserve the existing conservative detector requirements (two newest cleared payments must agree and materially differ from the saved series estimate). Preserve schema 225 and all existing JSON/CSV/cloud compatibility.
 
 ### v2-283 possible recurring-charge detection rules
 

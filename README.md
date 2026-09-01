@@ -1,5 +1,15 @@
 # Money Nest
 
+## v2-284
+
+### Dismissible recurring-health amount changes
+
+- Recurring Health **Amount changed** findings now include **Mark reviewed** directly on the Bills row and inside the bill detail health panel. This lets intentional changes stop appearing as unresolved warnings without editing or deleting transaction history.
+- A reviewed amount stores the acknowledged observed amount in `settings.recurringHealthReviews`. If later cleared payments keep repeating around that reviewed amount, the warning stays quiet; if a materially different amount repeats later, Money Nest can flag the new change again.
+- Marking a warning reviewed does **not** rewrite the recurring series amount or future planned transaction amounts. The existing Edit series workflow remains the place to change the actual scheduled amount when desired.
+- Reviewed warning state is part of normal settings data, so it travels with JSON backups and cloud sync. Bills shows a reviewed-count chip plus **Restore reviewed**, and each bill detail can restore its own reviewed warnings.
+- No transaction history, recurrence rules, budget behavior, CSV formats, schema version, or storage key changed. Schema remains 225.
+
 ## v2-283
 
 ### Possible recurring-charge detection
