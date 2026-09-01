@@ -161,9 +161,15 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-280`
+Latest known version: `money-nest-v2-281`
 
 
+
+### v2-281 category spending-view override rules
+- Categories may store optional `spendingType`: `auto`, `bills`, or `extra`. Missing/invalid values normalize to `auto` for backward compatibility.
+- Budget Quick View classification priority is: explicit matching budget override first, then category override, then recurring-series Auto detection. Do not let a category override defeat an explicit budget override. Preserve v2-276 equal-specificity budget conflicts by falling directly to Auto recurring detection rather than letting a category override resolve the conflict.
+- Category overrides are classification-only. They must not create budget targets, mutate transaction recurrence, or affect the Bills page.
+- Preserve category `spendingType` in editable category CSV export/import while accepting older CSVs with no such column. JSON/cloud backups include the optional field naturally. Schema remains 225.
 
 ### v2-280 iPhone Calendar-first layout
 - Phone-only dock is Calendar, Home, Accounts, More; Future is intentionally no longer a phone tab. Desktop/iPad navigation must remain unchanged.

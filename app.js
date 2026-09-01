@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-280";
+const APP_VERSION = "2-281";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -905,7 +905,10 @@ function normalizeData(raw){
     if(!c || !c.id) return;
     byCategoryId.set(c.id, {...(byCategoryId.get(c.id) || {}), ...c});
   });
-  d.categories = [...byCategoryId.values()].sort((a,b)=>String(a.name || "").localeCompare(String(b.name || "")));
+  d.categories = [...byCategoryId.values()].map(c=>({
+    ...c,
+    spendingType:["bills","extra"].includes(c?.spendingType) ? c.spendingType : "auto"
+  })).sort((a,b)=>String(a.name || "").localeCompare(String(b.name || "")));
 
   d.settings ||= {buffer:50};
   normalizePaletteSettings(d);
@@ -1359,7 +1362,10 @@ function normalizeCategories(){
     if(!c || !c.id) return;
     byId.set(c.id, {...(byId.get(c.id) || {}), ...c});
   });
-  data.categories = [...byId.values()].sort((a,b)=>String(a.name || "").localeCompare(String(b.name || "")));
+  data.categories = [...byId.values()].map(c=>({
+    ...c,
+    spendingType:["bills","extra"].includes(c?.spendingType) ? c.spendingType : "auto"
+  })).sort((a,b)=>String(a.name || "").localeCompare(String(b.name || "")));
 }
 function accountById(id){ return data.accounts.find(a=>a.id===id); }
 function debtById(id){ return data.debts.find(d=>d.id===id); }
@@ -4027,6 +4033,13 @@ function transactionBelongsToRecurringBill(tx){
 function normalizedBudgetSpendingType(budget){
   return ["bills","extra"].includes(budget?.spendingType) ? budget.spendingType : "auto";
 }
+function normalizedCategorySpendingType(category){
+  return ["bills","extra"].includes(category?.spendingType) ? category.spendingType : "auto";
+}
+function categorySpendingTypeOverrideForTransaction(tx){
+  if(!tx?.categoryId) return "auto";
+  return normalizedCategorySpendingType(categoryById(tx.categoryId));
+}
 function budgetOverrideSpecificity(budget){
   const categoryCount = Math.max(1, budgetCategoryIds(budget).length);
   const scope = budget?.accountScope || (budget?.accountId ? "single" : "all");
@@ -4055,13 +4068,17 @@ function budgetSpendingTypeOverrideForTransaction(tx){
   const best=matches[0];
   const tied=matches.filter(b=>compareBudgetOverrideSpecificity(b,best)===0);
   const types=[...new Set(tied.map(normalizedBudgetSpendingType))];
-  // If two equally-specific budgets explicitly disagree, fall back to automatic
-  // recurring detection instead of silently choosing one.
-  return types.length === 1 ? types[0] : "auto";
+  // If two equally-specific budgets explicitly disagree, preserve the v2-276
+  // behavior: use automatic recurring detection instead of silently choosing
+  // either budget or allowing a broader category override to break the tie.
+  return types.length === 1 ? types[0] : "conflict";
 }
 function transactionBudgetSpendingType(tx){
-  const override=budgetSpendingTypeOverrideForTransaction(tx);
-  if(override !== "auto") return override;
+  const budgetOverride=budgetSpendingTypeOverrideForTransaction(tx);
+  if(budgetOverride === "conflict") return transactionBelongsToRecurringBill(tx) ? "bills" : "extra";
+  if(budgetOverride !== "auto") return budgetOverride;
+  const categoryOverride=categorySpendingTypeOverrideForTransaction(tx);
+  if(categoryOverride !== "auto") return categoryOverride;
   return transactionBelongsToRecurringBill(tx) ? "bills" : "extra";
 }
 function budgetIncludesTransaction(tx, includeRecurringBills=budgetReviewIncludeRecurringBills){
@@ -4332,7 +4349,7 @@ function budgetMonthComparison(){
 function explainBudgetTotals(){
  const stats=budgetReviewStats(); const comp=budgetMonthComparison(); const modal=document.getElementById('budgetDetailModal'); const content=document.getElementById('budgetDetailContent');
  document.getElementById('budgetDetailTitle').textContent='🧮 Why these totals?'; document.getElementById('budgetDetailSub').textContent=`${stats.range.label} • ${budgetReviewAccountLabel()}`;
- content.innerHTML=`<section class="budget-insight-card"><h4>Spending includes</h4><p>Cleared cash-account expenses and categorized cash transfers, excluding Banking. Savings transfers are netted by direction.</p><h4>Current filters</h4><p><b>View:</b> ${budgetReviewMode==='extra'?'Extra spending only':budgetReviewMode==='bills'?'Bills only (recurring + budget overrides)':'All spending'}<br><b>Account:</b> ${budgetReviewAccountLabel()}</p><h4>Counted activity</h4><p>${stats.expenses.length} transactions total ${money(stats.totalSpent)}. Income is displayed separately and does not reduce spending totals.</p></section>`;
+ content.innerHTML=`<section class="budget-insight-card"><h4>Spending includes</h4><p>Cleared cash-account expenses and categorized cash transfers, excluding Banking. Savings transfers are netted by direction.</p><h4>Current filters</h4><p><b>View:</b> ${budgetReviewMode==='extra'?'Extra spending only':budgetReviewMode==='bills'?'Bills only (recurring + budget/category overrides)':'All spending'}<br><b>Account:</b> ${budgetReviewAccountLabel()}</p><h4>Counted activity</h4><p>${stats.expenses.length} transactions total ${money(stats.totalSpent)}. Income is displayed separately and does not reduce spending totals.</p></section>`;
  if(!modal.open)modal.showModal();
 }
 window.explainBudgetTotals=explainBudgetTotals;
@@ -6367,7 +6384,7 @@ function renderSettings(){
   if(categoryList){
     categoryList.innerHTML = sortedCategories().map(c=>`
       <div class="category-row">
-        <span class="cat-preview" style="background:${hexToSoft(effectiveCategoryColor(c))}"><i class="cat-dot" style="background:${effectiveCategoryColor(c)}"></i>${c.emoji} ${c.name}<small>${c.customColorOverride?"Custom color":paletteRoleLabel(c.paletteRole)}</small></span>
+        <span class="cat-preview" style="background:${hexToSoft(effectiveCategoryColor(c))}"><i class="cat-dot" style="background:${effectiveCategoryColor(c)}"></i>${c.emoji} ${c.name}<small>${c.customColorOverride?"Custom color":paletteRoleLabel(c.paletteRole)}${normalizedCategorySpendingType(c)!=="auto"?` • Budget: ${normalizedCategorySpendingType(c)==="bills"?"Bills":"Extra spending"}`:""}</small></span>
         <button class="ghost small" onclick="simpleCategory('${c.id}')">Edit</button>
       </div>`).join("");
   }
@@ -8696,6 +8713,12 @@ window.simpleCategory = (id=null)=>{
   simpleFields.innerHTML = `
     <label>Name<input id="sName" value="${id ? c.name : ""}" required></label>
     <label>Emoji<input id="sEmoji" value="${id ? c.emoji : ""}" placeholder="🍔"></label>
+    <label>Spending view <span class="hint-inline">Budget overview</span><select id="sCategorySpendingType">
+      <option value="auto" ${normalizedCategorySpendingType(c)==="auto"?"selected":""}>Auto — recurring decides</option>
+      <option value="bills" ${normalizedCategorySpendingType(c)==="bills"?"selected":""}>Bills</option>
+      <option value="extra" ${normalizedCategorySpendingType(c)==="extra"?"selected":""}>Extra spending</option>
+    </select></label>
+    <p class="hint">Controls Bills vs Extra spending in Budget Quick Views, including categories with no budget target. A matching budget's explicit Spending view still takes priority.</p>
     <label>Palette role<select id="sPaletteRole">${CATEGORY_PALETTE_ROLES.map(r=>`<option value="${r}" ${(id?c.paletteRole:defaultCategoryPaletteRole({id:slug(c?.name||"")}))===r?"selected":""}>${paletteRoleLabel(r)}</option>`).join("")}</select></label>
     <label class="checkbox-row"><input id="sCustomColorOverride" type="checkbox" ${id&&c.customColorOverride?"checked":""}> Keep a custom color instead of following the palette</label>
     <label>Custom color<input id="sColor" type="color" value="${id ? (c.customColor||c.color) : "#8c6f4d"}"></label>`;
@@ -8704,11 +8727,13 @@ window.simpleCategory = (id=null)=>{
     const emojiEl = document.getElementById("sEmoji");
     const colorEl = document.getElementById("sColor");
     const roleEl = document.getElementById("sPaletteRole");
+    const spendingTypeEl = document.getElementById("sCategorySpendingType");
     const overrideEl = document.getElementById("sCustomColorOverride");
     const nextName = (nameEl?.value || "").trim();
     const nextEmoji = emojiEl?.value || "";
     const nextColor = colorEl?.value || "#8c6f4d";
     const nextRole = roleEl?.value || "medium1";
+    const nextSpendingType = ["bills","extra"].includes(spendingTypeEl?.value) ? spendingTypeEl.value : "auto";
     const nextOverride = !!overrideEl?.checked;
 
     if(!nextName) return;
@@ -8718,6 +8743,7 @@ window.simpleCategory = (id=null)=>{
       target.name = nextName;
       target.emoji = nextEmoji;
       target.paletteRole = nextRole;
+      target.spendingType = nextSpendingType;
       target.customColorOverride = nextOverride;
       target.customColor = nextOverride ? nextColor : "";
       target.legacyColor ||= target.color || nextColor;
@@ -8729,12 +8755,13 @@ window.simpleCategory = (id=null)=>{
         existing.name = nextName;
         existing.emoji = nextEmoji;
         existing.paletteRole = nextRole;
+        existing.spendingType = nextSpendingType;
         existing.customColorOverride = nextOverride;
         existing.customColor = nextOverride ? nextColor : "";
         existing.legacyColor ||= existing.color || nextColor;
         existing.color = effectiveCategoryColor(existing);
       } else {
-        const created={id:nextId,name:nextName,emoji:nextEmoji,color:nextColor,legacyColor:nextColor,paletteRole:nextRole,customColorOverride:nextOverride,customColor:nextOverride?nextColor:""};
+        const created={id:nextId,name:nextName,emoji:nextEmoji,color:nextColor,legacyColor:nextColor,paletteRole:nextRole,spendingType:nextSpendingType,customColorOverride:nextOverride,customColor:nextOverride?nextColor:""};
         created.color=effectiveCategoryColor(created); data.categories.push(created);
       }
     }
@@ -10043,8 +10070,8 @@ function exportExtendedFinancialPicture(){
 function exportEditableCSVs(){
   const dateStamp = todayISO();
 
-  const categoryHeaders = ["id","name","emoji","color","paletteRole","customColorOverride","customColor","legacyColor"];
-  const categoryRows = data.categories.map(c=>({id:c.id,name:c.name,emoji:c.emoji||"",color:effectiveCategoryColor(c),paletteRole:c.paletteRole||"",customColorOverride:!!c.customColorOverride,customColor:c.customColor||"",legacyColor:c.legacyColor||c.color||""}));
+  const categoryHeaders = ["id","name","emoji","color","paletteRole","spendingType","customColorOverride","customColor","legacyColor"];
+  const categoryRows = data.categories.map(c=>({id:c.id,name:c.name,emoji:c.emoji||"",color:effectiveCategoryColor(c),paletteRole:c.paletteRole||"",spendingType:normalizedCategorySpendingType(c),customColorOverride:!!c.customColorOverride,customColor:c.customColor||"",legacyColor:c.legacyColor||c.color||""}));
 
   const accountHeaders = ["id","order","name","emoji","color","owner","startingBalance","goalName","goalAmount","paycheckAccount"];
   const accountRows = orderedAccounts().map(a=>({
@@ -10141,13 +10168,14 @@ function importEditedCSV(file){
       rows.forEach(row=>{
         let c = data.categories.find(x=>x.id === row.id);
         if(!c){
-          c = {id:row.id||slug(row.name),name:row.name||"New Category",emoji:row.emoji||"",color:row.color||"#8c6f4d",legacyColor:row.legacyColor||row.color||"#8c6f4d",paletteRole:row.paletteRole||defaultCategoryPaletteRole({id:row.id||slug(row.name)}),customColorOverride:String(row.customColorOverride).toLowerCase()==="true",customColor:row.customColor||""};
+          c = {id:row.id||slug(row.name),name:row.name||"New Category",emoji:row.emoji||"",color:row.color||"#8c6f4d",legacyColor:row.legacyColor||row.color||"#8c6f4d",paletteRole:row.paletteRole||defaultCategoryPaletteRole({id:row.id||slug(row.name)}),spendingType:["bills","extra"].includes(row.spendingType)?row.spendingType:"auto",customColorOverride:String(row.customColorOverride).toLowerCase()==="true",customColor:row.customColor||""};
           data.categories.push(c);
         } else {
           c.name = row.name || c.name;
           c.emoji = row.emoji || c.emoji;
           c.legacyColor = row.legacyColor || c.legacyColor || row.color || c.color;
           c.paletteRole = row.paletteRole || c.paletteRole || defaultCategoryPaletteRole(c);
+          c.spendingType = row.spendingType === undefined ? normalizedCategorySpendingType(c) : (["bills","extra"].includes(row.spendingType) ? row.spendingType : "auto");
           c.customColorOverride = row.customColorOverride === undefined ? !!c.customColorOverride : String(row.customColorOverride).toLowerCase()==="true";
           c.customColor = row.customColor === undefined ? (c.customColor||"") : (row.customColor||"");
           c.color = c.customColorOverride ? (c.customColor||row.color||c.color) : effectiveCategoryColor(c);

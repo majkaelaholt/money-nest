@@ -1,5 +1,13 @@
 # Money Nest
 
+## v2-281
+
+### Category spending-view overrides
+- Added an optional **Spending view** to each category: **Auto**, **Bills**, or **Extra spending**. This controls Bills vs Extra classification inside Budget Quick Views even when the category has no budget target.
+- Classification priority is **explicit matching budget override → category override → automatic recurring detection**. Existing equal-specificity budget conflicts still fall back directly to Auto recurring detection, preserving v2-276 behavior; otherwise non-budgeted categories such as Savings can now be classified consistently.
+- Category spending-view overrides affect only Budget Review/Quick Views. They do not create a budget, alter transaction/recurring data, or change the Bills page.
+- Category CSV export/import now preserves optional `spendingType`; older category CSVs and JSON backups safely default to **Auto**. Schema remains 225.
+
 ## v2-280
 
 ### iPhone Calendar-first overhaul
