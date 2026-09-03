@@ -1,5 +1,16 @@
 # Money Nest
 
+## v2-287
+
+### Stable budget performance + filter-only spending analysis
+
+- **How you did vs budget** now always evaluates the full selected month against every configured budget using that budget's own category, Spending bucket, and account scope. The Bills/Extra and Mak/Ty/Joint spending-view controls no longer change budget rows, amounts used, remaining amounts, or over-budget status.
+- Opening a budget from Budget performance uses the same full-month budget membership, so its detail total now stays consistent with the performance row regardless of the current spending view.
+- Spending-view controls remain useful for analysis: Spending by Category, spending totals, month comparison, and trends can still be filtered by Bills/Extra and account.
+- Spending by Category is now intentionally category-only analysis. It no longer shows “spent of category budget” or forces a slice to stay visible merely because a category budget exists. This matters after personal Spending buckets: a Mak/Ty bucketed Food or Beauty purchase remains visible under its true category without implying it also consumes a category-only budget.
+- Personal bucket ownership from v2-286 is unchanged. Bucketed transactions still belong only to matching bucket budgets; Category remains descriptive/reporting data. Bills/Extra classification logic itself is unchanged.
+- Schema remains 225; storage key, JSON/CSV/cloud compatibility, recurrence, and financial calculations are unchanged.
+
 ## v2-286
 
 ### Exclusive personal spending budget ownership

@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-286";
+const APP_VERSION = "2-287";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -4272,8 +4272,11 @@ function budgetReviewPieData(stats){
   let grouped = [];
   categories.forEach(item=>{
     const pct = total ? Number(item.amount || 0) / total : 0;
-    const hasBudget = Number(item.budgetAmount || 0) > 0;
-    const isMeaningful = hasBudget || Number(item.amount || 0) >= minStandaloneAmount || pct >= minStandalonePct;
+    // v2-287: Spending by Category is analysis, not budget ownership. Personal
+    // bucket transactions still belong to their real category here, so a
+    // category budget must not influence whether a slice appears or imply that
+    // all category spending consumes that category-only budget.
+    const isMeaningful = Number(item.amount || 0) >= minStandaloneAmount || pct >= minStandalonePct;
     (isMeaningful ? visible : grouped).push(item);
   });
 
@@ -4299,14 +4302,41 @@ function budgetReviewPieData(stats){
     note:`Categories $${minStandaloneAmount}+ or 3%+ of spending show separately; tiny categories roll into Other.`
   };
 }
-function budgetActualSpent(budget, monthRange, reviewAccountIds=null){
+function budgetActualSpent(budget, monthRange){
+  // Budget performance is the monthly plan itself. Quick-view Bills/Extra and
+  // account-analysis filters must not change how much a configured budget used.
   return expandedTransactions(monthRange.end)
     .filter(tx => tx.date >= monthRange.start && tx.date <= monthRange.end)
-    .filter(tx => budgetIncludesTransaction(tx, budgetReviewIncludeRecurringBills))
+    .filter(isBudgetReviewOutflow)
     .filter(tx => txMatchesBudgetDefinition(tx, budget))
     .filter(tx => txMatchesBudgetScope(tx, budget))
-    .filter(tx => reviewAccountIds === null || txMatchesBudgetAccount(tx, reviewAccountIds))
     .reduce((sum, tx)=>sum + budgetTransactionAmount(tx), 0);
+}
+
+function budgetPerformanceStats(monthValue=budgetReviewMonth){
+  const range = budgetMonthRange(monthValue);
+  const budgets = (data.budgets || []).filter(b => budgetHasSelector(b));
+  const budgetRows = budgets.map(b=>{
+    const spent = budgetActualSpent(b, range);
+    const amount = Number(b.amount || 0);
+    return {
+      budget:b,
+      account:accountById(b.accountId),
+      scopeLabel:budgetScopeLabel(b),
+      cat:budgetCategoryLabel(b),
+      spent,
+      amount,
+      left: amount - spent,
+      pct: amount ? Math.round((spent / amount) * 100) : 0
+    };
+  }).sort((a,b)=>compareBudgetsByTitle(a.budget,b.budget));
+  return {
+    range,
+    budgets,
+    budgetRows,
+    totalBudgeted:budgets.reduce((s,b)=>s+Number(b.amount || 0),0),
+    overBudgetCount:budgetRows.filter(r=>r.left < -0.005).length
+  };
 }
 
 function budgetReviewStats(monthValue=budgetReviewMonth, accountIds=budgetReviewAccountIds){
@@ -4323,36 +4353,17 @@ function budgetReviewStats(monthValue=budgetReviewMonth, accountIds=budgetReview
   });
   const categories = [...byCategory.entries()].filter(([, amount])=>amount > 0.005).map(([categoryId, amount])=>{
     const cat = categoryById(categoryId);
-    const budgetAmount = budgets.filter(b=>!budgetSpendingBucketId(b) && budgetCategoryIds(b).length === 1 && budgetCategoryIds(b)[0] === categoryId).reduce((s,b)=>s+Number(b.amount || 0),0);
-    return {categoryId, cat, amount, budgetAmount, over:Math.max(0, amount-budgetAmount)};
+    return {categoryId, cat, amount};
   }).sort((a,b)=>b.amount-a.amount);
-
-  const budgetRows = budgets.map(b=>{
-    const spent = budgetActualSpent(b, range, accountIds);
-    const amount = Number(b.amount || 0);
-    return {
-      budget:b,
-      account:accountById(b.accountId),
-      scopeLabel:budgetScopeLabel(b),
-      cat:budgetCategoryLabel(b),
-      spent,
-      amount,
-      left: amount - spent,
-      pct: amount ? Math.round((spent / amount) * 100) : 0
-    };
-  }).sort((a,b)=>compareBudgetsByTitle(a.budget,b.budget));
 
   const totalSpent = expenses.reduce((s,tx)=>s+budgetTransactionAmount(tx),0);
   const totalIncome = income.reduce((s,tx)=>s+Number(tx.amount || 0),0);
-  const totalBudgeted = budgets.reduce((s,b)=>s+Number(b.amount || 0),0);
   // A budget may now be bucket-only, so “unbudgeted” must be determined by
   // actual transaction membership rather than category ids alone.
   const unbudgetedSpent = expenses
     .filter(tx=>!budgets.some(b=>txMatchesBudgetDefinition(tx,b) && txMatchesBudgetScope(tx,b)))
     .reduce((sum,tx)=>sum+budgetTransactionAmount(tx),0);
-  const overBudgetCount = budgetRows.filter(r=>r.left < -0.005).length;
-
-  return {range, monthTx, expenses, income, budgets, categories, budgetRows, totalSpent, totalIncome, totalBudgeted, unbudgetedSpent, overBudgetCount};
+  return {range, monthTx, expenses, income, budgets, categories, totalSpent, totalIncome, unbudgetedSpent};
 }
 function budgetTrendMonths(count=6, accountIds=budgetReviewAccountIds){
   const selectedStart = parseDate(`${budgetReviewMonth}-01`);
@@ -4399,7 +4410,7 @@ function budgetAccountPresetActive(name){
 }
 function renderBudgetPresetBar(){
  const el=document.getElementById("budgetPresetBar"); if(!el)return;
- el.innerHTML=`<div class="budget-preset-heading"><div><b>Quick views</b><small>Choose one spending view, then combine any account buttons.</small></div></div><div class="budget-preset-buttons">
+ el.innerHTML=`<div class="budget-preset-heading"><div><b>Spending views</b><small>Filters spending analysis only. Budget performance always uses the full month and each budget's own account scope.</small></div></div><div class="budget-preset-buttons">
  <button class="${budgetReviewMode==='all'?'active':''}" onclick="applyBudgetPreset('all')">All spending</button>
  <button class="${budgetReviewMode==='extra'?'active':''}" onclick="applyBudgetPreset('extra')">Extra spending</button>
  <button class="${budgetReviewMode==='bills'?'active':''}" onclick="applyBudgetPreset('bills')">Bills</button>
@@ -4418,7 +4429,7 @@ function budgetMonthComparison(){
 function explainBudgetTotals(){
  const stats=budgetReviewStats(); const comp=budgetMonthComparison(); const modal=document.getElementById('budgetDetailModal'); const content=document.getElementById('budgetDetailContent');
  document.getElementById('budgetDetailTitle').textContent='🧮 Why these totals?'; document.getElementById('budgetDetailSub').textContent=`${stats.range.label} • ${budgetReviewAccountLabel()}`;
- content.innerHTML=`<section class="budget-insight-card"><h4>Spending includes</h4><p>Cleared cash-account expenses and categorized cash transfers, excluding Banking. Savings transfers are netted by direction.</p><h4>Current filters</h4><p><b>View:</b> ${budgetReviewMode==='extra'?'Extra spending only':budgetReviewMode==='bills'?'Bills only (recurring + budget/category overrides)':'All spending'}<br><b>Account:</b> ${budgetReviewAccountLabel()}</p><h4>Counted activity</h4><p>${stats.expenses.length} transactions total ${money(stats.totalSpent)}. Income is displayed separately and does not reduce spending totals.</p></section>`;
+ content.innerHTML=`<section class="budget-insight-card"><h4>Spending includes</h4><p>Cleared cash-account expenses and categorized cash transfers, excluding Banking. Savings transfers are netted by direction.</p><h4>Current spending filters</h4><p><b>View:</b> ${budgetReviewMode==='extra'?'Extra spending only':budgetReviewMode==='bills'?'Bills only (recurring + budget/category overrides)':'All spending'}<br><b>Account:</b> ${budgetReviewAccountLabel()}</p><p class="hint"><b>Budget performance is separate:</b> How you did vs budget always uses the full selected month and each budget's configured account/category/bucket scope, regardless of these spending-view filters.</p><h4>Counted activity</h4><p>${stats.expenses.length} transactions total ${money(stats.totalSpent)}. Income is displayed separately and does not reduce spending totals.</p></section>`;
  if(!modal.open)modal.showModal();
 }
 window.explainBudgetTotals=explainBudgetTotals;
@@ -4428,6 +4439,7 @@ function renderBudgetReview(){
   if(!el) return;
   renderBudgetPresetBar();
   const stats = budgetReviewStats();
+  const performance = budgetPerformanceStats();
   const monthCompare = budgetMonthComparison();
   const trend = budgetTrendMonths(6, budgetReviewAccountIds);
   const maxTrend = Math.max(1, ...trend.map(t=>t.spent));
@@ -4439,9 +4451,9 @@ function renderBudgetReview(){
     const label = parseDate(`${value}-01`).toLocaleString(undefined,{month:"short", year:"numeric"});
     monthOptions.push(`<option value="${value}" ${value===budgetReviewMonth?"selected":""}>${label}</option>`);
   }
-  const budgetMood = stats.overBudgetCount
-    ? `${stats.overBudgetCount} over budget`
-    : (stats.budgetRows.length ? "all tracked budgets okay" : "no budgets set yet");
+  const budgetMood = performance.overBudgetCount
+    ? `${performance.overBudgetCount} over budget`
+    : (performance.budgetRows.length ? "all tracked budgets okay" : "no budgets set yet");
   const pieGroup = budgetReviewPieData(stats);
   const pieData = pieGroup.data;
   const pieTotal = Math.max(0, stats.totalSpent);
@@ -4464,7 +4476,7 @@ function renderBudgetReview(){
           const pct = pieTotal ? Math.round((item.amount / pieTotal) * 100) : 0;
           const budgetNote = item.categoryId === "other" && item.children?.length
             ? `${money(item.amount)} across ${item.children.length} smaller categories`
-            : (item.budgetAmount ? `${money(item.amount)} of ${money(item.budgetAmount)}` : `${money(item.amount)} spent`);
+            : `${money(item.amount)} spent`;
           const click = item.categoryId === "other" ? `chooseOtherBudgetCategory()` : `openCategoryBudgetDetail('${escapeAttr(item.categoryId)}')`;
           const title = spendingPieTooltip(item, pieTotal);
           return `<button type="button" class="spending-legend-row" title="${escapeAttr(title)}" onclick="${click}">
@@ -4477,7 +4489,7 @@ function renderBudgetReview(){
       </div>
     </div>` : `<div class="empty-state">No cleared outflow for ${stats.range.label} yet.</div>`;
 
-  const budgetRows = stats.budgetRows.map(r=>{
+  const budgetRows = performance.budgetRows.map(r=>{
     const pct = Math.min(140, Math.max(0, r.pct));
     const status = r.left < -0.005 ? `Over by ${money(Math.abs(r.left))}` : `${money(r.left)} left`;
     return `<button type="button" class="budget-review-row budget-drill-row ${r.left < -0.005 ? "over" : ""}" onclick="openBudgetDetail('${r.budget.id}')">
@@ -4504,7 +4516,7 @@ function renderBudgetReview(){
     <section class="budget-summary-strip" aria-label="Budget review summary">
       <article><span>💸 Spending</span><b>${money(stats.totalSpent)}</b></article>
       <article><span>💰 Income</span><b>${money(stats.totalIncome)}</b></article>
-      <article><span>🎯 Budgeted</span><b>${money(stats.totalBudgeted)}</b><small>${budgetMood}</small></article>
+      <article><span>🎯 Monthly targets</span><b>${money(performance.totalBudgeted)}</b><small>${budgetMood}</small></article>
       <article><span>🕵️ Unbudgeted</span><b>${money(stats.unbudgetedSpent)}</b></article>
     </section>
     <details class="budget-more-insights">
@@ -4525,10 +4537,10 @@ function renderBudgetReview(){
     <section class="budget-review-section spending-pie-section">
       <div class="budget-section-head"><div><div class="section-kicker">Where money went</div><h4>Spending by category</h4></div><small>Tap a category to review transactions</small></div>
       ${spendingPie}
-      <p class="budget-section-note">Cleared spending for the selected view. ${pieGroup.note}</p>
+      <p class="budget-section-note">Cleared spending for the selected spending/account view. Personal buckets do not replace the purchase category here. ${pieGroup.note}</p>
     </section>
     <section class="budget-review-section budget-performance-section">
-      <div class="budget-section-head"><div><div class="section-kicker">Budget performance</div><h4>How you did vs budget</h4></div><small>Tap a budget for spending details</small></div>
+      <div class="budget-section-head"><div><div class="section-kicker">Budget performance</div><h4>How you did vs budget</h4></div><small>Full month • unaffected by spending views</small></div>
       <div class="budget-review-list">${budgetRows}</div>
     </section>`;
 }
@@ -4598,7 +4610,7 @@ function openBudgetDetailView({categoryId, categoryIds=null, budget=null, accoun
   const cat = budget ? budgetCategoryLabel(budget) : budgetCategoryLabel({categoryIds:selectedCategoryIds});
   const txs = expandedTransactions(range.end)
     .filter(tx=>tx.date >= range.start && tx.date <= range.end)
-    .filter(tx=>budgetIncludesTransaction(tx, budgetReviewIncludeRecurringBills))
+    .filter(tx=>budget ? isBudgetReviewOutflow(tx) : budgetIncludesTransaction(tx, budgetReviewIncludeRecurringBills))
     .filter(tx=>budget ? txMatchesBudgetDefinition(tx, budget) : selectedCategoryIds.includes(tx.categoryId))
     .filter(tx=>budget ? txMatchesBudgetScope(tx, budget) : txMatchesBudgetAccount(tx, accountId))
     .sort((a,b)=>String(b.date).localeCompare(String(a.date)) || String(a.title || "").localeCompare(String(b.title || "")));
@@ -11291,3 +11303,5 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 
 // v2-285: Transactions can carry an optional Mak/Ty Spending bucket independently from category; bucket-targeted budgets preserve category breakdowns and legacy personal-spending categories remain compatible.
 // v2-286: Bucketed personal spending now has exclusive budget ownership: category-only budgets cannot also claim Mak/Ty bucket transactions, while category remains available for reporting and same-bucket filtering.
+
+// v2-287: Budget performance is independent of Spending view/account filters; Spending by Category remains filterable and category analysis no longer implies category-budget ownership for bucketed personal spending.

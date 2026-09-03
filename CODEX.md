@@ -161,9 +161,16 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-286`
+Latest known version: `money-nest-v2-287`
 
 
+
+### v2-287 Budget Review filter boundaries
+
+- **How you did vs budget** is the stable monthly plan and must not be filtered by Budget Review's Bills/Extra or Mak/Ty/Joint spending-view controls. Calculate each budget against the full selected month using only the budget's own category, Spending bucket, and account scope. Budget detail opened from a performance row must use the same membership rules.
+- Spending-view controls are analysis filters. They may continue to affect Spending by Category, spending/income summary activity, month comparison, and spending trend, but not configured budget performance.
+- Spending by Category must remain descriptive category analysis even after personal Spending buckets. Bucketed transactions stay visible under their real category, but the category view must not imply that all spending in that category consumes a category-only budget. Avoid “spent of budget” labels in the category pie/legend when bucket ownership can exclude some of those transactions from that budget.
+- Keep v2-286 bucket exclusivity unchanged: personal bucket controls budget ownership; category remains available for reporting. Keep Bills/Extra classification independent from bucket ownership.
 
 ### v2-286 personal spending budget ownership rules
 
@@ -644,3 +651,5 @@ Example README note:
 - Template cleanup supports exact duplicate consolidation and deliberate selected-variant merge/archive/delete.
 - Category cleanup reports transaction counts, last use, configured references, and supports safe category merge or unused deletion.
 - Template CSV includes variantLabel, isDefault, archived, source, and createdAt.
+
+- v2-287: Budget performance is full-month and independent of spending-view/account filters; category analysis remains filterable and no longer implies category-budget ownership.
