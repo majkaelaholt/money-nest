@@ -7933,3 +7933,31 @@ dialog:not(.global-search-modal){box-shadow:none}
 .possible-recurring-dismissed{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 12px;padding:9px 11px;border:1px dashed color-mix(in srgb,var(--line) 84%,transparent);border-radius:14px;background:var(--panel-secondary)}
 .possible-recurring-dismissed>span{display:grid;gap:1px}.possible-recurring-dismissed b{font-size:11px}.possible-recurring-dismissed small{font-size:10px;color:var(--muted)}
 @media(max-width:650px){.possible-recurring-dismissed{align-items:flex-start;flex-direction:column}}
+
+/* v2-285: category describes the purchase; spending bucket optionally assigns personal allowance. */
+#transactionModal .tx-category-bucket-grid{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  gap:10px;
+}
+#transactionModal .tx-category-bucket-grid > label{min-width:0;display:grid;gap:5px}
+.ledger-bucket-label{
+  display:block;
+  margin-top:4px;
+  font-size:10px;
+  line-height:1.2;
+  color:var(--muted);
+}
+.spending-bucket-badge{
+  display:inline-flex;
+  align-items:center;
+  border:1px solid var(--line);
+  border-radius:999px;
+  padding:2px 7px;
+  font-size:10px;
+  color:var(--muted);
+  background:var(--panel2);
+}
+@media (max-width:700px){
+  #transactionModal .tx-category-bucket-grid{grid-template-columns:1fr 1fr;gap:8px}
+}

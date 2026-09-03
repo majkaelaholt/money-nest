@@ -161,9 +161,18 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-284`
+Latest known version: `money-nest-v2-285`
 
 
+
+### v2-285 personal spending bucket rules
+
+- Transactions may store optional `spendingBucketId`, currently `mak-spending`, `ty-spending`, or blank. Category remains the purchase purpose; bucket represents whose personal/discretionary allowance it counts against. Do not replace real categories such as Beauty/Food/Shopping with the bucket.
+- For backward compatibility, a transaction with no explicit bucket but category `mak-spending` or `ty-spending` has that category id as its effective bucket. Do not mass-rewrite historical transactions.
+- Budgets may store optional `spendingBucketId`. Budget selectors are ANDed: selected categories (if any) + selected bucket (if any) + account scope. A bucket-only budget may have zero category ids and therefore matches all categories in that bucket. At least category(s) or a bucket is required.
+- Bucket-targeted budget detail must preserve a Category breakdown so personal allowance totals remain explainable by what the purchases were for.
+- Template lightweight defaults are title + category + spending bucket. Legacy templates without the field must not unexpectedly clear/apply a bucket.
+- Preserve `spendingBucketId` in transaction, budget, and template JSON/CSV paths while accepting older data without it. Card-spend/payment conversion paths should copy the effective bucket. Keep `mak-spending` and `ty-spending` category ids protected because they anchor bucket labels, even if few transactions use them directly as categories. Schema remains 225.
 
 ### v2-284 recurring-health reviewed amount rules
 

@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-284";
+const APP_VERSION = "2-285";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -351,7 +351,7 @@ function maybeQueueCloudAutoSave(){
 
 // v2.80: compatibility shim for browsers that do not expose element IDs as global variables.
 (function bindDomIdGlobals(){
-  const ids = ['accountDetail', 'accountDetailContent', 'accountList', 'accounts', 'addAccountBtn', 'addBillBtn', 'addBudgetBtn', 'addCategoryBtn', 'addDayTransactionBtn', 'addDebtBtn', 'autoPaycheckHint', 'autoPaycheckLabel', 'backupBtn', 'financialPictureBtn', 'extendedFinancialPictureBtn', 'billAccountFilter', 'billCategoryFilter', 'billRecurrenceFilter', 'billSort', 'billTypeFilter', 'bills', 'billsList', 'budgetReview', 'bulkEditCategoriesBtn', 'budgets', 'calendar', 'calendarAccountFilter', 'calendarCategoryHighlight', 'calendarCategoryHighlightDropdown', 'calendarCategoryHighlightBtn', 'calendarCategoryHighlightMenu', 'calendarGrid', 'cancelDayModal', 'cancelSimple', 'cancelTxBtn', 'categoryList', 'clearRecentBtn', 'closeDayModal', 'closeModal', 'closeSimple', 'csvExportBtn', 'csvImportInput', 'ctxDelete', 'ctxDuplicate', 'ctxEdit', 'ctxCreateCardPayment', 'ctxMarkReimbursed', 'ctxToggleCleared', 'ctxUseCardInstead', 'dashboard', 'dayModal', 'dayModalSub', 'dayModalTitle', 'dayModalTransactions', 'debtDetail', 'debtDetailContent', 'debtGroups', 'debtSnapshot', 'debts', 'deleteSimpleBtn', 'deleteTxBtn', 'duplicateTxBtn', 'importInput', 'modalTitle', 'monthLabel', 'nextMonth', 'prevMonth', 'quickAddBtn', 'recentPlacesList', 'recentChangesList', 'undoLastChangeBtn', 'clearChangeHistoryBtn', 'recurrenceDetails', 'repeatIntervalUnitLabel', 'safeSpendList', 'saveTxBtn', 'settings', 'settingsClearAllBtn', 'simpleFields', 'simpleForm', 'simpleModal', 'simpleTitle', 'summaryCards', 'todayBtn', 'transactionForm', 'transactionModal', 'txAccount', 'txAmount', 'txAutoPaycheck', 'txCategory', 'txContextMenu', 'txDate', 'txDebt', 'txDebtAccount', 'txLoanBreakdownWrap', 'txLoanPrincipal', 'txLoanInterest', 'txLoanFees', 'txLoanBreakdownHint', 'txDeleteAll', 'txDeleteOne', 'txDeleteScopeWrap', 'txId', 'txNotes', 'txRepeatInterval', 'txRepeatIntervalUnit', 'txRepeatOrdinal', 'txRepeatRule', 'txRepeatWeekday', 'txSaveScopeHint', 'txSaveScopeWrap', 'txScopeFuture', 'txScopeOne', 'txStatus', 'txTitle', 'txTransferTo', 'txType', 'txWeekendHandling', 'upcomingList', 'viewTitle', 'settingsPaycheckCount', 'paycheckProfileList', 'makHourlyRate', 'makHoursPerWorkday', 'makDeductionPercent', 'makFixedDeduction', 'tyHourlyRate', 'tyDefaultHours', 'tyDeductionPercent', 'tyFixedDeduction', 'paycheckHoursWrap', 'txPaycheckHoursOverride', 'billCategoryDropdown', 'billCategoryDropdownBtn', 'billCategoryDropdownMenu'];
+  const ids = ['accountDetail', 'accountDetailContent', 'accountList', 'accounts', 'addAccountBtn', 'addBillBtn', 'addBudgetBtn', 'addCategoryBtn', 'addDayTransactionBtn', 'addDebtBtn', 'autoPaycheckHint', 'autoPaycheckLabel', 'backupBtn', 'financialPictureBtn', 'extendedFinancialPictureBtn', 'billAccountFilter', 'billCategoryFilter', 'billRecurrenceFilter', 'billSort', 'billTypeFilter', 'bills', 'billsList', 'budgetReview', 'bulkEditCategoriesBtn', 'budgets', 'calendar', 'calendarAccountFilter', 'calendarCategoryHighlight', 'calendarCategoryHighlightDropdown', 'calendarCategoryHighlightBtn', 'calendarCategoryHighlightMenu', 'calendarGrid', 'cancelDayModal', 'cancelSimple', 'cancelTxBtn', 'categoryList', 'clearRecentBtn', 'closeDayModal', 'closeModal', 'closeSimple', 'csvExportBtn', 'csvImportInput', 'ctxDelete', 'ctxDuplicate', 'ctxEdit', 'ctxCreateCardPayment', 'ctxMarkReimbursed', 'ctxToggleCleared', 'ctxUseCardInstead', 'dashboard', 'dayModal', 'dayModalSub', 'dayModalTitle', 'dayModalTransactions', 'debtDetail', 'debtDetailContent', 'debtGroups', 'debtSnapshot', 'debts', 'deleteSimpleBtn', 'deleteTxBtn', 'duplicateTxBtn', 'importInput', 'modalTitle', 'monthLabel', 'nextMonth', 'prevMonth', 'quickAddBtn', 'recentPlacesList', 'recentChangesList', 'undoLastChangeBtn', 'clearChangeHistoryBtn', 'recurrenceDetails', 'repeatIntervalUnitLabel', 'safeSpendList', 'saveTxBtn', 'settings', 'settingsClearAllBtn', 'simpleFields', 'simpleForm', 'simpleModal', 'simpleTitle', 'summaryCards', 'todayBtn', 'transactionForm', 'transactionModal', 'txAccount', 'txAmount', 'txAutoPaycheck', 'txCategory', 'txContextMenu', 'txDate', 'txDebt', 'txDebtAccount', 'txLoanBreakdownWrap', 'txLoanPrincipal', 'txLoanInterest', 'txLoanFees', 'txLoanBreakdownHint', 'txDeleteAll', 'txDeleteOne', 'txDeleteScopeWrap', 'txId', 'txNotes', 'txRepeatInterval', 'txRepeatIntervalUnit', 'txRepeatOrdinal', 'txRepeatRule', 'txRepeatWeekday', 'txSaveScopeHint', 'txSaveScopeWrap', 'txScopeFuture', 'txScopeOne', 'txStatus', 'txTitle', 'txSpendingBucket', 'txTransferTo', 'txType', 'txWeekendHandling', 'upcomingList', 'viewTitle', 'settingsPaycheckCount', 'paycheckProfileList', 'makHourlyRate', 'makHoursPerWorkday', 'makDeductionPercent', 'makFixedDeduction', 'tyHourlyRate', 'tyDefaultHours', 'tyDeductionPercent', 'tyFixedDeduction', 'paycheckHoursWrap', 'txPaycheckHoursOverride', 'billCategoryDropdown', 'billCategoryDropdownBtn', 'billCategoryDropdownMenu'];
   ids.forEach(id=>{
     if(!/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(id)) return;
     try{
@@ -761,6 +761,35 @@ function normalizeCategoryId(id){
   return id || "unassigned";
 }
 
+// v2-285: personal spending is a separate dimension from purchase purpose.
+// Keep the stable legacy category ids as bucket ids so older Mak/Ty Spending
+// transactions remain understandable without rewriting historical categories.
+const SPENDING_BUCKET_IDS = ["mak-spending", "ty-spending"];
+function normalizedSpendingBucketId(value){
+  return SPENDING_BUCKET_IDS.includes(String(value || "")) ? String(value) : "";
+}
+function spendingBucketCategory(id){
+  const normalized = normalizedSpendingBucketId(id);
+  return normalized ? categoryById(normalized) : null;
+}
+function spendingBucketLabel(id, fallback="None / shared"){
+  const bucket = spendingBucketCategory(id);
+  return bucket ? `${bucket.emoji || "🎯"} ${bucket.name}`.trim() : fallback;
+}
+function effectiveTransactionSpendingBucketId(tx){
+  const explicit = normalizedSpendingBucketId(tx?.spendingBucketId);
+  if(explicit) return explicit;
+  // Backward compatibility: old transactions that literally used Mak Spending
+  // or Ty Spending as their category count as that personal bucket too.
+  return normalizedSpendingBucketId(tx?.categoryId);
+}
+function budgetSpendingBucketId(budget){
+  return normalizedSpendingBucketId(budget?.spendingBucketId);
+}
+function budgetHasSelector(budget){
+  return budgetCategoryIds(budget).length > 0 || !!budgetSpendingBucketId(budget);
+}
+
 
 function isMedicalDebtLike(debt){
   const text = `${debt?.type || ""} ${debt?.company || ""} ${debt?.name || ""}`.toLowerCase();
@@ -845,6 +874,7 @@ function normalizeData(raw){
     if(!tx.categoryId && tx.category) tx.categoryId = localFindCategoryId(tx.category);
     if(tx.accountId === undefined) tx.accountId = "";
     if(tx.debtAccountId === undefined) tx.debtAccountId = "";
+    tx.spendingBucketId = normalizedSpendingBucketId(tx.spendingBucketId);
     if(tx.linkedDebtId === undefined) tx.linkedDebtId = "";
     if(tx.transferToAccountId === undefined) tx.transferToAccountId = "";
     tx.pendingReimbursement = tx.pendingReimbursement === true || String(tx.pendingReimbursement).toLowerCase() === "true";
@@ -880,6 +910,7 @@ function normalizeData(raw){
     if(!b.categoryIds.length && b.categoryId) b.categoryIds = [b.categoryId];
     b.categoryIds = b.categoryIds.filter(id => id && !isBudgetExcludedCategory(id));
     b.categoryId = b.categoryIds[0] || b.categoryId || ""; // legacy fallback for older versions
+    b.spendingBucketId = normalizedSpendingBucketId(b.spendingBucketId);
     b.spendingType = ["auto","bills","extra"].includes(b.spendingType) ? b.spendingType : "auto";
     const legacyAccountId = b.accountId || "";
     const requestedScope = ["single","all","selected"].includes(b.accountScope) ? b.accountScope : (legacyAccountId ? "single" : "all");
@@ -992,6 +1023,7 @@ function normalizeData(raw){
   d.transactions = d.transactions.map(tx => ({
     ...tx,
     categoryId: normalizeCategoryId(tx.categoryId || "unassigned"),
+    spendingBucketId: normalizedSpendingBucketId(tx.spendingBucketId),
     autoMakPaycheck: !!tx.autoMakPaycheck,
     recurrence: {
       ...(tx.recurrence || {type:"none", interval:1}),
@@ -1598,6 +1630,7 @@ function saveRecurringOccurrenceOverride(baseTx, formTx, occurrenceOriginalDate,
     accountId: formTx.accountId,
     debtAccountId: formTx.debtAccountId,
     categoryId: formTx.categoryId,
+    spendingBucketId: normalizedSpendingBucketId(formTx.spendingBucketId),
     transferToAccountId: formTx.transferToAccountId,
     linkedDebtId: formTx.linkedDebtId,
     loanPrincipalAmount: formTx.loanPrincipalAmount,
@@ -3787,7 +3820,7 @@ function filteredLedgerTransactions(txs){
     const categoryMatch = transactionFilters.category === "all" || tx.categoryId === transactionFilters.category;
     const typeMatch = transactionFilters.type === "all" || tx.type === transactionFilters.type;
     const searchTerm = (transactionFilters.search || "").trim().toLowerCase();
-    const searchMatch = !searchTerm || `${tx.title || ""} ${tx.notes || ""} ${categoryById(tx.categoryId).name || ""}`.toLowerCase().includes(searchTerm);
+    const searchMatch = !searchTerm || `${tx.title || ""} ${tx.notes || ""} ${categoryById(tx.categoryId).name || ""} ${spendingBucketLabel(effectiveTransactionSpendingBucketId(tx),"")}`.toLowerCase().includes(searchTerm);
 
     let dateMatch = true;
     if(transactionFilters.dateRange === "upcoming-90"){
@@ -3952,7 +3985,7 @@ function renderLedger(txs, options={}){
 
       return `<div class="ledger-row" data-tx="${editId}" onclick="openTransaction('${editId}',{generated:${!!tx.generated}, occurrenceOriginalDate:'${tx.originalDate || tx.date}', occurrenceDate:'${tx.date}'})">
         <div>${tx.date}</div><div><b>${tx.title}</b><div class="row-sub">${context}</div></div>
-        <div><span class="cat-preview" style="background:${hexToSoft(cat.color)}">${cat.emoji} ${cat.name}</span></div>
+        <div><span class="cat-preview" style="background:${hexToSoft(cat.color)}">${cat.emoji} ${cat.name}</span>${effectiveTransactionSpendingBucketId(tx)?`<span class="ledger-bucket-label">${escapeAttr(spendingBucketLabel(effectiveTransactionSpendingBucketId(tx),""))}</span>`:""}</div>
         <div class="ledger-status-cell">${statusButton(tx)}</div>
         <div class="amount ${amountClass}">${sign}${money(tx.amount)}</div>
         ${showBalance ? `<div class="amount projected">${balanceAfter === null || balanceAfter === undefined ? "—" : money(balanceAfter)}</div>` : ""}
@@ -4048,16 +4081,19 @@ function categorySpendingTypeOverrideForTransaction(tx){
   return normalizedCategorySpendingType(categoryById(tx.categoryId));
 }
 function budgetOverrideSpecificity(budget){
-  const categoryCount = Math.max(1, budgetCategoryIds(budget).length);
+  const categoryIds = budgetCategoryIds(budget);
+  const categoryCount = categoryIds.length || 999;
+  const bucketRank = budgetSpendingBucketId(budget) ? 1 : 0;
   const scope = budget?.accountScope || (budget?.accountId ? "single" : "all");
   const accountCount = scope === "all" ? 999 : Math.max(1, budgetScopeAccountIds(budget).length);
   const scopeRank = scope === "single" ? 3 : (scope === "selected" ? 2 : 1);
-  // Narrow category/account scopes should beat broad grouping budgets.
-  return {categoryCount, scopeRank, accountCount};
+  // Narrow category/bucket/account scopes should beat broad grouping budgets.
+  return {categoryCount, bucketRank, scopeRank, accountCount};
 }
 function compareBudgetOverrideSpecificity(a,b){
   const sa=budgetOverrideSpecificity(a), sb=budgetOverrideSpecificity(b);
   if(sa.categoryCount !== sb.categoryCount) return sa.categoryCount - sb.categoryCount;
+  if(sa.bucketRank !== sb.bucketRank) return sb.bucketRank - sa.bucketRank;
   if(sa.scopeRank !== sb.scopeRank) return sb.scopeRank - sa.scopeRank;
   if(sa.accountCount !== sb.accountCount) return sa.accountCount - sb.accountCount;
   return 0;
@@ -4066,8 +4102,8 @@ function budgetSpendingTypeOverrideForTransaction(tx){
   if(!tx) return "auto";
   const matches=(data.budgets || []).filter(b=>
     normalizedBudgetSpendingType(b) !== "auto" &&
-    budgetCategoryIds(b).length &&
-    txMatchesBudgetCategories(tx,b) &&
+    budgetHasSelector(b) &&
+    txMatchesBudgetDefinition(tx,b) &&
     txMatchesBudgetScope(tx,b)
   );
   if(!matches.length) return "auto";
@@ -4104,15 +4140,25 @@ function budgetCategoryIds(budget){
   return [...new Set(ids.filter(id => id && !isBudgetExcludedCategory(id)))];
 }
 function txMatchesBudgetCategories(tx, budget){
-  return budgetCategoryIds(budget).includes(tx?.categoryId);
+  const ids = budgetCategoryIds(budget);
+  return !ids.length || ids.includes(tx?.categoryId);
+}
+function txMatchesBudgetSpendingBucket(tx, budget){
+  const bucketId = budgetSpendingBucketId(budget);
+  return !bucketId || effectiveTransactionSpendingBucketId(tx) === bucketId;
+}
+function txMatchesBudgetDefinition(tx, budget){
+  return txMatchesBudgetCategories(tx, budget) && txMatchesBudgetSpendingBucket(tx, budget);
 }
 function budgetCategoryLabel(budget){
   const cats = budgetCategoryIds(budget).map(categoryById).filter(Boolean);
+  const bucket = spendingBucketCategory(budgetSpendingBucketId(budget));
   const customName = String(budget?.name || "").trim();
   const customEmoji = String(budget?.emoji || "").trim();
-  if(!cats.length) return {text:"Unassigned", emoji:customEmoji || "🏷️", color:"#8c6f4d", cats:[]};
-  if(cats.length === 1) return {text:customName || cats[0].name, emoji:customEmoji || cats[0].emoji || "🏷️", color:cats[0].color || "#8c6f4d", cats};
-  return {text:customName || cats.map(c=>c.name).join(" + "), emoji:customEmoji || "🧺", color:cats[0].color || "#8c6f4d", cats};
+  if(!cats.length && bucket) return {text:customName || bucket.name, emoji:customEmoji || bucket.emoji || "🎯", color:bucket.color || "#8c6f4d", cats:[], bucket};
+  if(!cats.length) return {text:customName || "Unassigned", emoji:customEmoji || "🏷️", color:"#8c6f4d", cats:[], bucket:null};
+  if(cats.length === 1) return {text:customName || cats[0].name, emoji:customEmoji || cats[0].emoji || "🏷️", color:cats[0].color || "#8c6f4d", cats, bucket};
+  return {text:customName || cats.map(c=>c.name).join(" + "), emoji:customEmoji || "🧺", color:cats[0].color || "#8c6f4d", cats, bucket};
 }
 function compareBudgetsByTitle(a,b){
   const aTitle = String(budgetCategoryLabel(a)?.text || "").trim();
@@ -4243,7 +4289,7 @@ function budgetActualSpent(budget, monthRange, reviewAccountIds=null){
   return expandedTransactions(monthRange.end)
     .filter(tx => tx.date >= monthRange.start && tx.date <= monthRange.end)
     .filter(tx => budgetIncludesTransaction(tx, budgetReviewIncludeRecurringBills))
-    .filter(tx => txMatchesBudgetCategories(tx, budget))
+    .filter(tx => txMatchesBudgetDefinition(tx, budget))
     .filter(tx => txMatchesBudgetScope(tx, budget))
     .filter(tx => reviewAccountIds === null || txMatchesBudgetAccount(tx, reviewAccountIds))
     .reduce((sum, tx)=>sum + budgetTransactionAmount(tx), 0);
@@ -4254,7 +4300,7 @@ function budgetReviewStats(monthValue=budgetReviewMonth, accountIds=budgetReview
   const monthTx = expandedTransactions(range.end).filter(tx => tx.date >= range.start && tx.date <= range.end);
   const expenses = monthTx.filter(tx => budgetIncludesTransaction(tx, budgetReviewIncludeRecurringBills)).filter(tx => txMatchesBudgetAccount(tx, accountIds));
   const income = monthTx.filter(isBudgetReviewIncome).filter(tx => txMatchesBudgetAccount(tx, accountIds));
-  const budgets = (data.budgets || []).filter(b => budgetCategoryIds(b).length).filter(b => budgetMatchesReviewAccount(b, accountIds));
+  const budgets = (data.budgets || []).filter(b => budgetHasSelector(b)).filter(b => budgetMatchesReviewAccount(b, accountIds));
 
   const byCategory = new Map();
   expenses.forEach(tx=>{
@@ -4263,7 +4309,7 @@ function budgetReviewStats(monthValue=budgetReviewMonth, accountIds=budgetReview
   });
   const categories = [...byCategory.entries()].filter(([, amount])=>amount > 0.005).map(([categoryId, amount])=>{
     const cat = categoryById(categoryId);
-    const budgetAmount = budgets.filter(b=>budgetCategoryIds(b).length === 1 && budgetCategoryIds(b)[0] === categoryId).reduce((s,b)=>s+Number(b.amount || 0),0);
+    const budgetAmount = budgets.filter(b=>!budgetSpendingBucketId(b) && budgetCategoryIds(b).length === 1 && budgetCategoryIds(b)[0] === categoryId).reduce((s,b)=>s+Number(b.amount || 0),0);
     return {categoryId, cat, amount, budgetAmount, over:Math.max(0, amount-budgetAmount)};
   }).sort((a,b)=>b.amount-a.amount);
 
@@ -4285,9 +4331,11 @@ function budgetReviewStats(monthValue=budgetReviewMonth, accountIds=budgetReview
   const totalSpent = expenses.reduce((s,tx)=>s+budgetTransactionAmount(tx),0);
   const totalIncome = income.reduce((s,tx)=>s+Number(tx.amount || 0),0);
   const totalBudgeted = budgets.reduce((s,b)=>s+Number(b.amount || 0),0);
-  const budgetedCategoryIds = new Set(budgets.flatMap(b=>budgetCategoryIds(b)));
-  const spentInBudgetedCategories = categories.filter(c=>budgetedCategoryIds.has(c.categoryId)).reduce((s,c)=>s+c.amount,0);
-  const unbudgetedSpent = Math.max(0, totalSpent - spentInBudgetedCategories);
+  // A budget may now be bucket-only, so “unbudgeted” must be determined by
+  // actual transaction membership rather than category ids alone.
+  const unbudgetedSpent = expenses
+    .filter(tx=>!budgets.some(b=>txMatchesBudgetDefinition(tx,b) && txMatchesBudgetScope(tx,b)))
+    .reduce((sum,tx)=>sum+budgetTransactionAmount(tx),0);
   const overBudgetCount = budgetRows.filter(r=>r.left < -0.005).length;
 
   return {range, monthTx, expenses, income, budgets, categories, budgetRows, totalSpent, totalIncome, totalBudgeted, unbudgetedSpent, overBudgetCount};
@@ -4475,18 +4523,20 @@ function renderBudgets(){
 }
 function budgetManagerCategoryText(budget){
   const ids = budgetCategoryIds(budget);
-  if(!ids.length) return "No categories";
+  const bucketId = budgetSpendingBucketId(budget);
+  const bucketText = bucketId ? spendingBucketLabel(bucketId, "") : "";
+  if(!ids.length) return bucketText ? `All categories • ${bucketText}` : "No categories";
   const labels = ids.map(id=>{
     const cat=categoryById(id);
     return cat ? `${cat.emoji || "🏷️"} ${cat.name}` : "Unknown category";
   });
-  if(labels.length <= 3) return labels.join(" • ");
-  return `${labels.slice(0,3).join(" • ")} +${labels.length-3} more`;
+  const categoryText = labels.length <= 3 ? labels.join(" • ") : `${labels.slice(0,3).join(" • ")} +${labels.length-3} more`;
+  return bucketText ? `${bucketText} • ${categoryText}` : categoryText;
 }
 function renderBudgetManager(){
   const list=document.getElementById("budgetManagerList");
   if(!list) return;
-  const budgets=(data.budgets || []).filter(b=>budgetCategoryIds(b).length).sort(compareBudgetsByTitle);
+  const budgets=(data.budgets || []).filter(b=>budgetHasSelector(b)).sort(compareBudgetsByTitle);
   list.innerHTML=budgets.map(b=>{
     const cat=budgetCategoryLabel(b);
     const spendingType=normalizedBudgetSpendingType(b);
@@ -4529,13 +4579,13 @@ function openBudgetDetailView({categoryId, categoryIds=null, budget=null, accoun
   const modal = document.getElementById("budgetDetailModal");
   const content = document.getElementById("budgetDetailContent");
   const selectedCategoryIds = budget ? budgetCategoryIds(budget) : (Array.isArray(categoryIds) ? categoryIds : [categoryId]).filter(Boolean);
-  if(!selectedCategoryIds.length || !modal || !content) return;
+  if((!selectedCategoryIds.length && !budgetSpendingBucketId(budget)) || !modal || !content) return;
   const range = budgetMonthRange(budgetReviewMonth);
   const cat = budget ? budgetCategoryLabel(budget) : budgetCategoryLabel({categoryIds:selectedCategoryIds});
   const txs = expandedTransactions(range.end)
     .filter(tx=>tx.date >= range.start && tx.date <= range.end)
     .filter(tx=>budgetIncludesTransaction(tx, budgetReviewIncludeRecurringBills))
-    .filter(tx=>selectedCategoryIds.includes(tx.categoryId))
+    .filter(tx=>budget ? txMatchesBudgetDefinition(tx, budget) : selectedCategoryIds.includes(tx.categoryId))
     .filter(tx=>budget ? txMatchesBudgetScope(tx, budget) : txMatchesBudgetAccount(tx, accountId))
     .sort((a,b)=>String(b.date).localeCompare(String(a.date)) || String(a.title || "").localeCompare(String(b.title || "")));
   const total = txs.reduce((sum,tx)=>sum+budgetTransactionAmount(tx),0);
@@ -4546,6 +4596,9 @@ function openBudgetDetailView({categoryId, categoryIds=null, budget=null, accoun
   });
   const merchants = budgetBreakdown(txs, tx=>String(tx.title || "Untitled").trim().toLowerCase(), key=>{
     const match=txs.find(tx=>String(tx.title || "Untitled").trim().toLowerCase()===key); return match?.title || "Untitled";
+  });
+  const categories = budgetBreakdown(txs, tx=>tx.categoryId || "unassigned", id=>{
+    const c=categoryById(id); return c ? `${c.emoji || "🏷️"} ${c.name}` : "Unassigned";
   });
   const topAccount = accounts[0]?.label || "No spending yet";
   const topMerchant = merchants[0]?.label || "No spending yet";
@@ -4560,6 +4613,7 @@ function openBudgetDetailView({categoryId, categoryIds=null, budget=null, accoun
       <article class="mini-card"><span>Top place</span><b>${escapeAttr(topMerchant)}</b><small>${merchants[0] ? money(merchants[0].amount) : "—"}</small></article>
     </div>
     <div class="budget-detail-grid">
+      ${budgetSpendingBucketId(budget) ? `<section class="budget-insight-card"><div class="section-kicker">What it was for</div><h4>Category breakdown</h4>${renderBudgetBreakdown(categories,"No categorized spending in this personal bucket yet.")}</section>` : ""}
       <section class="budget-insight-card"><div class="section-kicker">By place</div><h4>Merchant/place breakdown</h4>${renderBudgetBreakdown(merchants,"No merchant spending in this category yet.")}</section>
       <section class="budget-insight-card"><div class="section-kicker">By account</div><h4>Account breakdown</h4>${renderBudgetBreakdown(accounts,"No account spending in this category yet.")}</section>
     </div>
@@ -4569,7 +4623,7 @@ function openBudgetDetailView({categoryId, categoryIds=null, budget=null, accoun
         const a=accountById(tx.accountId), c=categoryById(tx.categoryId);
         return `<article class="budget-detail-tx-card">
           <div class="budget-detail-tx-top"><div><b>${escapeAttr(tx.title || "Untitled")}</b><span>${parseDate(tx.date).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})}</span></div><strong>${money(budgetTransactionAmount(tx))}</strong></div>
-          <div class="budget-detail-tx-meta"><span>${a?.emoji || "💵"} ${escapeAttr(a?.name || "Unknown account")}</span><span>${c?.emoji || "🏷️"} ${escapeAttr(c?.name || "Unassigned")}</span><span class="status-pill ${tx.status || "planned"}">${tx.status === "cleared" ? "✓ Cleared" : "○ Planned"}</span></div>
+          <div class="budget-detail-tx-meta"><span>${a?.emoji || "💵"} ${escapeAttr(a?.name || "Unknown account")}</span><span>${c?.emoji || "🏷️"} ${escapeAttr(c?.name || "Unassigned")}</span>${effectiveTransactionSpendingBucketId(tx)?`<span class="spending-bucket-badge">${escapeAttr(spendingBucketLabel(effectiveTransactionSpendingBucketId(tx),""))}</span>`:""}<span class="status-pill ${tx.status || "planned"}">${tx.status === "cleared" ? "✓ Cleared" : "○ Planned"}</span></div>
         </article>`;
       }).join("")}</div>` : `<div class="empty-state">No included transactions for ${range.label}.</div>`}
     </section>`;
@@ -5403,6 +5457,7 @@ function txTypeLabel(type){
 const DEFAULT_TEMPLATE_FIELDS = {
   title:true,
   categoryId:true,
+  spendingBucketId:false,
   notes:true,
   type:false,
   status:false,
@@ -5413,11 +5468,13 @@ const DEFAULT_TEMPLATE_FIELDS = {
 };
 const AUTO_TEMPLATE_FIELDS = {
   ...DEFAULT_TEMPLATE_FIELDS,
+  spendingBucketId:true,
   notes:false
 };
 const TEMPLATE_FIELD_LABELS = {
   title:"title",
   categoryId:"category",
+  spendingBucketId:"spending bucket",
   notes:"notes",
   type:"type",
   status:"status",
@@ -5441,13 +5498,14 @@ function templateSavedFieldNames(t){
 function templateFieldSummary(t){
   // Category is the normal/core part of every shortcut and is already shown
   // by the generated option label, so only call out extra autofill behavior.
-  const names = templateSavedFieldNames(t).filter(name=>!['title','category'].includes(name));
+  const names = templateSavedFieldNames(t).filter(name=>!['title','category','spending bucket'].includes(name));
   return names.length ? `Applies ${names.join(", ")}` : "";
 }
 function templateGeneratedVariantLabel(t){
   const cat = categoryById(t.categoryId || "unassigned");
   const bits = [];
   if(normalizeTemplateFields(t.fields).categoryId) bits.push(`${cat.emoji} ${cat.name}`);
+  if(normalizeTemplateFields(t.fields).spendingBucketId && t.spendingBucketId) bits.push(spendingBucketLabel(t.spendingBucketId, ""));
   if(normalizeTemplateFields(t.fields).type && t.type) bits.push(txTypeLabel(t.type));
   if(normalizeTemplateFields(t.fields).accountId && t.accountId) bits.push(accountById(t.accountId)?.name || "cash account");
   if(normalizeTemplateFields(t.fields).debtAccountId && t.debtAccountId) bits.push(debtById(t.debtAccountId)?.name || "card/debt");
@@ -5469,6 +5527,7 @@ function normalizeTransactionTemplate(t, {legacySafe=true}={}){
     type: t?.type || "expense",
     status: t?.status || "planned",
     categoryId: t?.categoryId || "unassigned",
+    spendingBucketId: normalizedSpendingBucketId(t?.spendingBucketId),
     accountId: t?.accountId || "",
     debtAccountId: t?.debtAccountId || "",
     transferToAccountId: t?.transferToAccountId || "",
@@ -5487,6 +5546,7 @@ function templateSignature(t){
   return JSON.stringify({
     title: templateKey(n.title),
     categoryId: f.categoryId ? n.categoryId : "",
+    spendingBucketId: f.spendingBucketId ? n.spendingBucketId : "",
     notes: f.notes ? n.notes : "",
     type: f.type ? n.type : "",
     status: f.status ? n.status : "",
@@ -5501,6 +5561,7 @@ function templateMatchesTransaction(t, tx){
   if(!t || !tx || templateKey(t.title) !== templateKey(tx.title)) return false;
   const f = normalizeTemplateFields(t.fields);
   if(f.categoryId && String(t.categoryId || "") !== String(tx.categoryId || "")) return false;
+  if(f.spendingBucketId && String(t.spendingBucketId || "") !== String(effectiveTransactionSpendingBucketId(tx) || "")) return false;
   if(f.notes && String(t.notes || "").trim() && String(t.notes || "").trim() !== String(tx.notes || "").trim()) return false;
   if(f.type && String(t.type || "") !== String(tx.type || "")) return false;
   if(f.status && String(t.status || "") !== String(tx.status || "")) return false;
@@ -5566,7 +5627,7 @@ function transactionTemplateFamilies({includeArchived=true, templates=null}={}){
   return [...map.values()].sort((a,b)=>a.title.localeCompare(b.title));
 }
 function cleanTemplateFromTx(tx){
-  // Auto-saved shortcuts intentionally remember only title + category. Routing,
+  // Auto-saved shortcuts intentionally remember title + category + spending bucket. Routing,
   // status, notes, and recurrence stay opt-in so ordinary entries do not create
   // a swarm of almost-identical templates.
   return normalizeTransactionTemplate({
@@ -5575,6 +5636,7 @@ function cleanTemplateFromTx(tx){
     type: tx.type || "expense",
     status: tx.status || "planned",
     categoryId: tx.categoryId || "unassigned",
+    spendingBucketId: effectiveTransactionSpendingBucketId(tx),
     accountId: tx.accountId || "",
     debtAccountId: tx.debtAccountId || "",
     transferToAccountId: tx.transferToAccountId || "",
@@ -5620,6 +5682,7 @@ function templateContextScore(t){
   const f = normalizeTemplateFields(t.fields);
   const current = {
     categoryId:document.getElementById("txCategory")?.value || "",
+    spendingBucketId:document.getElementById("txSpendingBucket")?.value || "",
     type:document.getElementById("txType")?.value || "",
     status:document.getElementById("txStatus")?.value || "",
     accountId:document.getElementById("txAccount")?.value || "",
@@ -5633,6 +5696,7 @@ function templateContextScore(t){
   if(f.linkedDebtId && t.linkedDebtId && current.linkedDebtId === t.linkedDebtId) score += 35;
   if(f.type && current.type === t.type) score += 20;
   if(f.categoryId && current.categoryId === t.categoryId) score += 10;
+  if(f.spendingBucketId && current.spendingBucketId === t.spendingBucketId) score += 18;
   score += Math.min(20, templateUsageStats(t).count);
   return score;
 }
@@ -5668,10 +5732,12 @@ function applyTransactionTemplate(templateId){
   const fields = normalizeTemplateFields(tpl.fields);
   const txTitleEl = document.getElementById("txTitle");
   const txCategoryEl = document.getElementById("txCategory");
+  const txSpendingBucketEl = document.getElementById("txSpendingBucket");
   const txNotesEl = document.getElementById("txNotes");
 
   if(fields.title && txTitleEl) txTitleEl.value = tpl.title || txTitleEl.value;
   if(fields.categoryId && txCategoryEl && tpl.categoryId) txCategoryEl.value = tpl.categoryId;
+  if(fields.spendingBucketId && txSpendingBucketEl) txSpendingBucketEl.value = normalizedSpendingBucketId(tpl.spendingBucketId);
   if(fields.type && document.getElementById("txType")) txType.value = tpl.type || txType.value;
   if(fields.status && document.getElementById("txStatus")) txStatus.value = tpl.status || txStatus.value;
 
@@ -5747,7 +5813,7 @@ function renderTransactionTemplates(){
   const activeFamilies = families.map(family=>({...family, active:family.templates.filter(t=>!t.archived)})).filter(family=>family.active.length);
   if(!activeFamilies.length){
     const archivedCount = normalizeTransactionTemplates().filter(t=>t.archived).length;
-    list.innerHTML = `<div class="empty">No active templates yet. Saving a normal transaction automatically remembers a simple title + category shortcut.${archivedCount?` <button type="button" class="ghost small" data-template-open-manager>View ${archivedCount} archived</button>`:""}</div>`;
+    list.innerHTML = `<div class="empty">No active templates yet. Saving a normal transaction automatically remembers a simple title + category + bucket shortcut.${archivedCount?` <button type="button" class="ghost small" data-template-open-manager>View ${archivedCount} archived</button>`:""}</div>`;
     list.querySelector("[data-template-open-manager]")?.addEventListener("click",()=>openTemplateCleanup());
     return;
   }
@@ -5788,19 +5854,28 @@ function simpleTemplate(id=null, familyTitle="", options={}){
     <div class="template-editor-fields">
     <div class="template-editor-intro">
       <b>Start simple.</b>
-      <span>Title + category are the normal shortcut. Advanced autofill is only for fields you intentionally want this template to change.</span>
+      <span>Title + category + spending bucket are the normal shortcut. Advanced autofill is only for fields you intentionally want this template to change.</span>
     </div>
     ${id && templateRecurringInfo(tpl) ? `<div class="template-recurring-note"><span class="template-badge recurring">Recurring match</span><span>Matches ${escapeAttr(templateRecurringInfo(tpl).description)} in Bills. This shortcut is separate from the recurring bill: editing or deleting this template never changes the bill's note, amount, schedule, account, or routing. Use Bills → Edit Series to change the recurring bill.</span></div>` : ""}
     <div class="two-col">
       <label>Transaction title<input id="sTplTitle" value="${escapeAttr(tpl?.title || familyTitle || "")}" placeholder="Gas" required></label>
       <label>Option label, optional<input id="sTplVariantLabel" value="${escapeAttr(tpl?.variantLabel || "")}" placeholder="Joint card, Mak debit…"></label>
     </div>
-    <label>Category
-      <select id="sTplCategory">
-        ${option(ignore,"Don't change category",fields.categoryId ? "" : ignore)}
-        ${sortedCategories().map(c=>option(c.id,`${c.emoji} ${c.name}`,fields.categoryId ? (tpl.categoryId || "unassigned") : "")).join("")}
-      </select>
-    </label>
+    <div class="two-col">
+      <label>Category
+        <select id="sTplCategory">
+          ${option(ignore,"Don't change category",fields.categoryId ? "" : ignore)}
+          ${sortedCategories().map(c=>option(c.id,`${c.emoji} ${c.name}`,fields.categoryId ? (tpl.categoryId || "unassigned") : "")).join("")}
+        </select>
+      </label>
+      <label>Spending bucket
+        <select id="sTplSpendingBucket">
+          ${option(ignore,"Don't change bucket",fields.spendingBucketId ? "" : ignore)}
+          ${option("","None / shared",fields.spendingBucketId ? (tpl.spendingBucketId || "") : "")}
+          ${SPENDING_BUCKET_IDS.map(id=>option(id,spendingBucketLabel(id,id),fields.spendingBucketId ? (tpl.spendingBucketId || "") : "")).join("")}
+        </select>
+      </label>
+    </div>
     <label class="checkbox-row"><input id="sTplDefault" type="checkbox" ${tpl.isDefault?"checked":""}> Use this option by default for this title</label>
 
     <details class="form-details template-advanced-details">
@@ -5829,6 +5904,8 @@ function simpleTemplate(id=null, familyTitle="", options={}){
 
   const categorySelect=document.getElementById("sTplCategory");
   if(categorySelect) categorySelect.value = fields.categoryId ? (tpl.categoryId || "unassigned") : ignore;
+  const bucketSelect=document.getElementById("sTplSpendingBucket");
+  if(bucketSelect) bucketSelect.value = fields.spendingBucketId ? (tpl.spendingBucketId || "") : ignore;
   const setOptional=(elId,enabled,value)=>{const el=document.getElementById(elId);if(el)el.value=enabled?String(value??""):ignore;};
   setOptional("sTplType",fields.type,tpl.type||"expense");
   setOptional("sTplStatus",fields.status,tpl.status||"planned");
@@ -5841,11 +5918,12 @@ function simpleTemplate(id=null, familyTitle="", options={}){
     const titleEl = document.getElementById("sTplTitle");
     if(!titleEl || !titleEl.value.trim()) return false;
     const readChoice=id=>document.getElementById(id)?.value ?? ignore;
-    const categoryChoice=readChoice("sTplCategory"), typeChoice=readChoice("sTplType"), statusChoice=readChoice("sTplStatus");
+    const categoryChoice=readChoice("sTplCategory"), bucketChoice=readChoice("sTplSpendingBucket"), typeChoice=readChoice("sTplType"), statusChoice=readChoice("sTplStatus");
     const accountChoice=readChoice("sTplAccount"), debtAccountChoice=readChoice("sTplDebtAccount"), transferChoice=readChoice("sTplTransferTo"), linkedDebtChoice=readChoice("sTplLinkedDebt");
     const savedNoteValue = document.getElementById("sTplNotes")?.value ?? "";
     const nextFields = normalizeTemplateFields({
       categoryId: categoryChoice !== ignore,
+      spendingBucketId: bucketChoice !== ignore,
       // A blank saved note means “no note”. Do not keep the notes autofill flag
       // enabled with an empty value, and never fall back to the template's old note.
       notes: !!document.getElementById("sTplApplyNotes")?.checked && savedNoteValue.trim() !== "",
@@ -5859,6 +5937,7 @@ function simpleTemplate(id=null, familyTitle="", options={}){
     const payload = normalizeTransactionTemplate({
       id:id || uid(), title:titleEl.value.trim(), variantLabel:document.getElementById("sTplVariantLabel")?.value || "",
       categoryId:categoryChoice!==ignore?categoryChoice:(tpl.categoryId||"unassigned"),
+      spendingBucketId:bucketChoice!==ignore?normalizedSpendingBucketId(bucketChoice):(tpl.spendingBucketId||""),
       type:typeChoice!==ignore?typeChoice:(tpl.type||"expense"), status:statusChoice!==ignore?statusChoice:(tpl.status||"planned"),
       accountId:accountChoice!==ignore?accountChoice:(tpl.accountId||""), debtAccountId:debtAccountChoice!==ignore?debtAccountChoice:(tpl.debtAccountId||""),
       transferToAccountId:transferChoice!==ignore?transferChoice:(tpl.transferToAccountId||""), linkedDebtId:linkedDebtChoice!==ignore?linkedDebtChoice:(tpl.linkedDebtId||""),
@@ -5898,6 +5977,7 @@ function templateRecurringMatches(t){
   return (data.transactions || []).filter(tx=>{
     if(!isRecurring(tx) || templateKey(tx.title)!==titleKey) return false;
     if(fields.categoryId && String(tx.categoryId||"unassigned")!==String(t.categoryId||"unassigned")) return false;
+    if(fields.spendingBucketId && String(effectiveTransactionSpendingBucketId(tx)||"")!==String(t.spendingBucketId||"")) return false;
     if(fields.accountId && String(tx.accountId||"")!==String(t.accountId||"")) return false;
     if(fields.debtAccountId && String(tx.debtAccountId||"")!==String(t.debtAccountId||"")) return false;
     if(fields.transferToAccountId && String(tx.transferToAccountId||"")!==String(t.transferToAccountId||"")) return false;
@@ -5935,6 +6015,7 @@ function templateManagerAutofillSummary(t){
   const f=normalizeTemplateFields(t?.fields);
   const bits=[];
   if(f.categoryId){const c=categoryById(t.categoryId||"unassigned");bits.push(`${c.emoji||""} ${c.name||"Unassigned"}`.trim());}
+  if(f.spendingBucketId) bits.push(t.spendingBucketId ? spendingBucketLabel(t.spendingBucketId, "") : "No spending bucket");
   if(f.status) bits.push(t.status==="cleared"?"Cleared":"Planned");
   if(f.type) bits.push(txTypeLabel(t.type));
   if(f.accountId && t.accountId) bits.push(accountById(t.accountId)?.name || "Cash account");
@@ -5967,6 +6048,7 @@ function templateBulkFieldChoices(field){
   if(field==="status") return [off,{value:"planned",label:"Planned"},{value:"cleared",label:"Cleared"}];
   if(field==="type") return [off,{value:"expense",label:"Expense"},{value:"income",label:"Income"},{value:"paycheck",label:"Paycheck"},{value:"transfer",label:"Transfer / Payment"}];
   if(field==="categoryId") return [off,...sortedCategories().map(c=>({value:c.id,label:`${c.emoji||""} ${c.name}`.trim()}))];
+  if(field==="spendingBucketId") return [off,{value:"",label:"None / shared"},...SPENDING_BUCKET_IDS.map(id=>({value:id,label:spendingBucketLabel(id,id)}))];
   if(field==="accountId") return [off,...orderedAccounts().map(a=>({value:a.id,label:`${a.emoji||"💵"} ${a.name}`}))];
   if(field==="debtAccountId") return [off,{value:"",label:"None / clear card or debt"},...data.debts.map(d=>({value:d.id,label:`${d.emoji||"💳"} ${d.company} • ${d.name}`}))];
   if(field==="transferToAccountId") return [off,{value:"",label:"None / clear destination"},...orderedAccounts().map(a=>({value:a.id,label:`${a.emoji||"💵"} ${a.name}`}))];
@@ -6391,7 +6473,7 @@ function renderSettings(){
   if(categoryList){
     categoryList.innerHTML = sortedCategories().map(c=>`
       <div class="category-row">
-        <span class="cat-preview" style="background:${hexToSoft(effectiveCategoryColor(c))}"><i class="cat-dot" style="background:${effectiveCategoryColor(c)}"></i>${c.emoji} ${c.name}<small>${c.customColorOverride?"Custom color":paletteRoleLabel(c.paletteRole)}${normalizedCategorySpendingType(c)!=="auto"?` • Budget: ${normalizedCategorySpendingType(c)==="bills"?"Bills":"Extra spending"}`:""}</small></span>
+        <span class="cat-preview" style="background:${hexToSoft(effectiveCategoryColor(c))}"><i class="cat-dot" style="background:${effectiveCategoryColor(c)}"></i>${c.emoji} ${c.name}<small>${c.customColorOverride?"Custom color":paletteRoleLabel(c.paletteRole)}${SPENDING_BUCKET_IDS.includes(c.id)?" • Spending bucket":""}${normalizedCategorySpendingType(c)!=="auto"?` • Budget: ${normalizedCategorySpendingType(c)==="bills"?"Bills":"Extra spending"}`:""}</small></span>
         <button class="ghost small" onclick="simpleCategory('${c.id}')">Edit</button>
       </div>`).join("");
   }
@@ -6422,6 +6504,8 @@ function renderSelectors(){
   const debtOptions = `<option value="">None</option>` + data.debts.map(d=>`<option value="${d.id}">${d.company} • ${d.name}</option>`).join("");
   document.getElementById("txAccount").innerHTML = accOptions;
   document.getElementById("txCategory").innerHTML = catOptions;
+  const bucketSelect = document.getElementById("txSpendingBucket");
+  if(bucketSelect) bucketSelect.innerHTML = `<option value="">None / shared</option>` + SPENDING_BUCKET_IDS.map(id=>`<option value="${id}">${escapeAttr(spendingBucketLabel(id,id))}</option>`).join("");
   document.getElementById("txDebt").innerHTML = debtOptions;
   document.getElementById("txDebtAccount").innerHTML = debtOptions;
   document.getElementById("txTransferTo").innerHTML = accOptions;
@@ -7287,6 +7371,7 @@ function transactionPayloadFromForm(id){
     accountId: txAccount.value,
     debtAccountId: txDebtAccount.value,
     categoryId: txCategory.value,
+    spendingBucketId: normalizedSpendingBucketId(document.getElementById("txSpendingBucket")?.value),
     transferToAccountId: txTransferTo.value,
     linkedDebtId: txDebt.value,
     loanPrincipalAmount: document.getElementById("txLoanPrincipal")?.value === "" ? "" : Number(document.getElementById("txLoanPrincipal")?.value || 0),
@@ -7470,6 +7555,7 @@ window.openTransaction = (id=null, defaults={})=>{
   txAccount.value = tx?.accountId || defaults.accountId || "";
   txDebtAccount.value = tx?.debtAccountId || defaults.debtAccountId || "";
   txCategory.value = tx?.categoryId || defaults.categoryId || data.categories[0]?.id;
+  if(document.getElementById("txSpendingBucket")) txSpendingBucket.value = normalizedSpendingBucketId(tx?.spendingBucketId || defaults.spendingBucketId || effectiveTransactionSpendingBucketId(tx));
   txTransferTo.value = tx?.transferToAccountId || defaults.transferToAccountId || "";
   txDebt.value = tx?.linkedDebtId || defaults.linkedDebtId || "";
   if(document.getElementById("txLoanPrincipal")) txLoanPrincipal.value = tx?.loanPrincipalAmount ?? defaults.loanPrincipalAmount ?? "";
@@ -7632,10 +7718,17 @@ window.simpleBudget = (id=null, preset={}, options={})=>{
       ${orderedAccounts().map(a=>`<label class="budget-account-check"><input type="checkbox" name="sBudgetAccountIds" value="${a.id}"> <span>${a.emoji || "💵"} ${a.name}</span></label>`).join("")}
       <p class="hint">Select one, several, or every account. Spending from unchecked accounts will be excluded.</p>
     </div>
+    <label>Spending bucket
+      <select id="sBudgetSpendingBucket">
+        <option value="">Any / not bucket-specific</option>
+        ${SPENDING_BUCKET_IDS.map(bucketId=>`<option value="${bucketId}" ${budgetSpendingBucketId(b)===bucketId?"selected":""}>${escapeAttr(spendingBucketLabel(bucketId,bucketId))}</option>`).join("")}
+      </select>
+      <span class="hint">Use this for a personal allowance such as Mak Spending or Ty Spending. Category still records what the purchase actually was.</span>
+    </label>
     <div class="budget-account-picker">
       <span class="field-label">Include categories</span>
       ${sortedCategories().filter(c=>!isBudgetExcludedCategory(c.id)).map(c=>`<label class="budget-account-check"><input type="checkbox" name="sBudgetCategoryIds" value="${c.id}"> <span>${c.emoji} ${c.name}</span></label>`).join("")}
-      <p class="hint">Select one category or combine several categories under one monthly budget.</p>
+      <p class="hint">Optional when a Spending bucket is selected. Leave all unchecked to include every category in that bucket; if both are set, transactions must match both.</p>
     </div>
     <label>Spending view
       <select id="sBudgetSpendingType">
@@ -7660,8 +7753,9 @@ window.simpleBudget = (id=null, preset={}, options={})=>{
     const scope = accountIds.length === allAccountIds.length ? "all" : (accountIds.length === 1 ? "single" : "selected");
     const accountId = scope === "all" ? "" : accountIds[0];
     const categoryIds = [...document.querySelectorAll('input[name="sBudgetCategoryIds"]:checked')].map(input=>input.value).filter(id=>!isBudgetExcludedCategory(id));
-    if(!categoryIds.length){
-      alert("Choose at least one category for this budget.");
+    const spendingBucketId = normalizedSpendingBucketId(document.getElementById("sBudgetSpendingBucket")?.value);
+    if(!categoryIds.length && !spendingBucketId){
+      alert("Choose at least one category or a Spending bucket for this budget.");
       return false;
     }
     const target = b || {id:uid()};
@@ -7671,7 +7765,8 @@ window.simpleBudget = (id=null, preset={}, options={})=>{
     target.accountId = accountId;
     target.accountIds = scope === "all" ? [] : accountIds;
     target.categoryIds = categoryIds;
-    target.categoryId = categoryIds[0]; // legacy fallback for older app versions
+    target.categoryId = categoryIds[0] || ""; // legacy fallback for older app versions
+    target.spendingBucketId = spendingBucketId;
     target.spendingType = ["bills","extra"].includes(document.getElementById("sBudgetSpendingType")?.value) ? document.getElementById("sBudgetSpendingType").value : "auto";
     target.amount = Number(sAmount.value);
     target.period = target.period || "monthly";
@@ -7795,6 +7890,7 @@ function useCardInstead(id, meta={}){
       accountId: "",
       debtAccountId: cardId,
       categoryId: tx.categoryId,
+      spendingBucketId: effectiveTransactionSpendingBucketId(tx),
       transferToAccountId: "",
       linkedDebtId: "",
       recurrence: {type:"none", interval:1, weekendHandling:"none"},
@@ -7813,6 +7909,7 @@ function useCardInstead(id, meta={}){
       accountId: cashId,
       debtAccountId: "",
       categoryId: tx.categoryId,
+      spendingBucketId: effectiveTransactionSpendingBucketId(tx),
       transferToAccountId: "",
       linkedDebtId: cardId,
       recurrence: {type:"none", interval:1, weekendHandling:"none"},
@@ -7946,6 +8043,7 @@ function createCardPaymentForCharge(id, meta={}){
       accountId: payAccountId,
       debtAccountId: "",
       categoryId: tx.categoryId,
+      spendingBucketId: effectiveTransactionSpendingBucketId(tx),
       transferToAccountId: "",
       linkedDebtId: debt.id,
       recurrence: {type:"none", interval:1, weekendHandling:"none"},
@@ -7970,6 +8068,7 @@ function createCardPaymentForCharge(id, meta={}){
         accountId: from,
         debtAccountId: "",
         categoryId: tx.categoryId,
+        spendingBucketId: effectiveTransactionSpendingBucketId(tx),
         transferToAccountId: to,
         linkedDebtId: "",
         pendingReimbursement: true,
@@ -8016,8 +8115,9 @@ function openPendingReimbursement(selectedAccountId=""){
     </div>
     <div class="two-col">
       <label>Category<select id="reimbCategory">${sortedCategories().map(c=>`<option value="${c.id}" ${c.id==="gas" ? "selected" : ""}>${c.emoji} ${c.name}</option>`).join("")}</select></label>
-      <label>Title<input id="reimbTitle" value="Pay back Joint" required></label>
+      <label>Spending bucket<select id="reimbSpendingBucket"><option value="">None / shared</option>${SPENDING_BUCKET_IDS.map(id=>`<option value="${id}">${escapeAttr(spendingBucketLabel(id,id))}</option>`).join("")}</select></label>
     </div>
+    <label>Title<input id="reimbTitle" value="Pay back Joint" required></label>
     <label>Notes<textarea id="reimbNotes" rows="3" placeholder="Gas reimbursement, OnePay payoff, etc."></textarea></label>
     <p class="hint">Tip: use an estimate while planning. Edit the amount once you know the exact total, then mark it cleared when you actually transfer the money.</p>
   `;
@@ -8037,6 +8137,7 @@ function openPendingReimbursement(selectedAccountId=""){
       accountId: from,
       debtAccountId: "",
       categoryId: document.getElementById("reimbCategory")?.value || "unassigned",
+      spendingBucketId: normalizedSpendingBucketId(document.getElementById("reimbSpendingBucket")?.value),
       transferToAccountId: to,
       linkedDebtId: "",
       pendingReimbursement: true,
@@ -8776,6 +8877,7 @@ window.simpleCategory = (id=null)=>{
     normalizeCategories();
   };
   simpleDelete = id ? ()=>{
+    if(CORE_CATEGORY_IDS.has(id)){ alert("This category is reserved by Money Nest and cannot be deleted. You can still edit its name, emoji, color, or spending view."); return; }
     if(confirm("Delete this category? Existing transactions will become unassigned.")){
       data.transactions.forEach(tx=>{ if(tx.categoryId === id) tx.categoryId = "unassigned"; });
       (data.settings?.transactionTemplates || []).forEach(t=>{ if(t.categoryId === id) t.categoryId = "unassigned"; });
@@ -8787,7 +8889,7 @@ window.simpleCategory = (id=null)=>{
 };
 
 
-const CORE_CATEGORY_IDS = new Set(["income","paycheck","transfer","unassigned","banking","credit-card-payment","loan-payment","klarna","savings","medical"]);
+const CORE_CATEGORY_IDS = new Set(["income","paycheck","transfer","unassigned","banking","credit-card-payment","loan-payment","klarna","savings","medical","mak-spending","ty-spending"]);
 function categoryUsageStats(category){
   const id=category.id;
   const txs=(data.transactions||[]).filter(tx=>tx.categoryId===id);
@@ -8796,20 +8898,24 @@ function categoryUsageStats(category){
     const ids=Array.isArray(b.categoryIds)&&b.categoryIds.length?b.categoryIds:[b.categoryId].filter(Boolean);
     return ids.includes(id);
   });
+  const bucketTxs=(data.transactions||[]).filter(tx=>normalizedSpendingBucketId(tx.spendingBucketId)===id);
+  const bucketTemplates=(data.settings?.transactionTemplates||[]).filter(t=>normalizedSpendingBucketId(t.spendingBucketId)===id);
+  const bucketBudgets=(data.budgets||[]).filter(b=>budgetSpendingBucketId(b)===id);
+  const bucketRefs=new Set([...bucketTxs.map(tx=>`tx:${tx.id}`),...bucketTemplates.map(t=>`tpl:${t.id}`),...bucketBudgets.map(b=>`budget:${b.id}`)]).size;
   const recurring=txs.filter(tx=>isRecurring(tx)).length;
   const dates=txs.map(tx=>String(tx.date||"")).filter(Boolean).sort();
   const lastDate=dates.at(-1)||"";
-  const configured=templates.length+budgets.length+recurring;
+  const configured=templates.length+budgets.length+recurring+bucketRefs;
   let status="Keep";
   let reason="Used regularly";
   if(CORE_CATEGORY_IDS.has(id)){status="Core";reason="Reserved for Money Nest calculations or routing";}
-  else if(!txs.length&&!configured){status="Unused";reason="No transactions, templates, budgets, or recurring rules";}
-  else if(configured){status="Configured";reason=[budgets.length?`${budgets.length} budget${budgets.length===1?'':'s'}`:'',templates.length?`${templates.length} template${templates.length===1?'':'s'}`:'',recurring?`${recurring} recurring rule${recurring===1?'':'s'}`:''].filter(Boolean).join(" • ");}
+  else if(!txs.length&&!configured){status="Unused";reason="No transactions, templates, budgets, recurring rules, or spending-bucket references";}
+  else if(configured){status="Configured";reason=[budgets.length?`${budgets.length} budget${budgets.length===1?'':'s'}`:'',templates.length?`${templates.length} template${templates.length===1?'':'s'}`:'',recurring?`${recurring} recurring rule${recurring===1?'':'s'}`:'',bucketRefs?`${bucketRefs} spending-bucket reference${bucketRefs===1?'':'s'}`:''].filter(Boolean).join(" • ");}
   else if(txs.length<=2){status="Review";reason=`Only ${txs.length} saved transaction${txs.length===1?'':'s'}`;}
   else if(lastDate){
     try{if(daysBetween(parseDate(lastDate),new Date())>365){status="Historical";reason="No use in the last year";}}catch(err){}
   }
-  return {txCount:txs.length,cleared:txs.filter(t=>t.status==='cleared').length,planned:txs.filter(t=>t.status==='planned').length,templates:templates.length,budgets:budgets.length,recurring,lastDate,configured,status,reason};
+  return {txCount:txs.length,cleared:txs.filter(t=>t.status==='cleared').length,planned:txs.filter(t=>t.status==='planned').length,templates:templates.length,budgets:budgets.length,recurring,bucketRefs,lastDate,configured,status,reason};
 }
 function categoryCleanupRows(filter="all"){
   return sortedCategories().map(c=>({category:c,stats:categoryUsageStats(c)})).filter(item=>{
@@ -8858,7 +8964,7 @@ function renderCategoryCleanup(){
   content.innerHTML=rows.map(({category:c,stats:s})=>`<article class="category-cleanup-row">
     <div class="category-cleanup-name"><span class="cat-dot" style="background:${effectiveCategoryColor(c)}"></span><div><b>${c.emoji||''} ${escapeAttr(c.name)}</b><small>${escapeAttr(s.status)} — ${escapeAttr(s.reason)}</small></div></div>
     <div class="category-cleanup-stats"><span><b>${s.txCount}</b> transactions</span><span>${s.cleared} cleared • ${s.planned} planned</span><span>${s.lastDate?templateLastUsedLabel(s.lastDate):'Never used'}</span></div>
-    <div class="category-cleanup-links"><span>${s.budgets} budgets</span><span>${s.templates} templates</span><span>${s.recurring} recurring</span></div>
+    <div class="category-cleanup-links"><span>${s.budgets} budgets</span><span>${s.templates} templates</span><span>${s.recurring} recurring</span>${s.bucketRefs?`<span>${s.bucketRefs} bucket refs</span>`:""}</div>
     <div class="category-cleanup-actions" data-category-cleanup-id="${c.id}"><button type="button" class="ghost small" data-category-cleanup-edit>Edit</button>${CORE_CATEGORY_IDS.has(c.id)?`<span class="template-badge default">Protected core category</span>`:`<label>Merge into<select data-category-merge-target><option value="">Choose…</option>${sortedCategories().filter(x=>x.id!==c.id).map(x=>`<option value="${x.id}">${x.emoji||''} ${escapeAttr(x.name)}</option>`).join('')}</select></label><button type="button" class="ghost small" data-category-cleanup-merge>Merge</button>${s.status==='Unused'?`<button type="button" class="danger ghost small" data-category-cleanup-delete>Delete unused</button>`:''}`}</div>
   </article>`).join('')||`<div class="empty">No categories match this filter.</div>`;
   content.querySelectorAll("[data-category-cleanup-edit]").forEach(btn=>btn.onclick=()=>{
@@ -10438,15 +10544,15 @@ function exportEditableCSVs(){
     frozenLocked:!!d.frozenLocked, notes:d.notes || ""
   }));
 
-  const budgetHeaders = ["id","name","emoji","accountScope","accountId","accountIdsJSON","categoryId","categoryIdsJSON","spendingType","amount","period","notes"];
+  const budgetHeaders = ["id","name","emoji","accountScope","accountId","accountIdsJSON","categoryId","categoryIdsJSON","spendingBucketId","spendingType","amount","period","notes"];
   const budgetRows = (data.budgets || []).map(b=>({
     id:b.id, name:b.name || "", emoji:b.emoji || "", accountScope:b.accountScope || (b.accountId ? "single" : "all"), accountId:b.accountId || "",
-    accountIdsJSON:JSON.stringify(budgetScopeAccountIds(b)), categoryId:budgetCategoryIds(b)[0] || b.categoryId || "", categoryIdsJSON:JSON.stringify(budgetCategoryIds(b)), spendingType:normalizedBudgetSpendingType(b), amount:b.amount ?? "",
+    accountIdsJSON:JSON.stringify(budgetScopeAccountIds(b)), categoryId:budgetCategoryIds(b)[0] || b.categoryId || "", categoryIdsJSON:JSON.stringify(budgetCategoryIds(b)), spendingBucketId:budgetSpendingBucketId(b), spendingType:normalizedBudgetSpendingType(b), amount:b.amount ?? "",
     period:b.period || "monthly", notes:b.notes || ""
   }));
 
   const txHeaders = [
-    "id","date","title","amount","type","status","accountId","debtAccountId","categoryId","transferToAccountId","linkedDebtId",
+    "id","date","title","amount","type","status","accountId","debtAccountId","categoryId","spendingBucketId","transferToAccountId","linkedDebtId",
     "pendingReimbursement","reimbursementToAccountId",
     "loanPrincipalAmount","loanInterestAmount","loanFeeAmount","loanBalanceAdjustment",
     "autoPaycheck","autoMakPaycheck","paycheckHoursOverride","autoPaycheckInfoJSON",
@@ -10454,7 +10560,7 @@ function exportEditableCSVs(){
   ];
   const txRows = data.transactions.map(tx=>({
     id:tx.id, date:tx.date, title:tx.title, amount:tx.amount, type:tx.type, status:tx.status,
-    accountId:tx.accountId || "", debtAccountId:tx.debtAccountId || "", categoryId:tx.categoryId || "",
+    accountId:tx.accountId || "", debtAccountId:tx.debtAccountId || "", categoryId:tx.categoryId || "", spendingBucketId:effectiveTransactionSpendingBucketId(tx),
     transferToAccountId:tx.transferToAccountId || "", linkedDebtId:tx.linkedDebtId || "",
     pendingReimbursement:!!tx.pendingReimbursement, reimbursementToAccountId:tx.reimbursementToAccountId || "",
     loanPrincipalAmount:tx.loanPrincipalAmount ?? "", loanInterestAmount:tx.loanInterestAmount ?? "", loanFeeAmount:tx.loanFeeAmount ?? "", loanBalanceAdjustment:tx.loanBalanceAdjustment ?? "",
@@ -10477,18 +10583,18 @@ function exportEditableCSVs(){
   }));
 
   const templateHeaders = [
-    "id","title","variantLabel","isDefault","archived","source","createdAt","type","status","categoryId","accountId","debtAccountId","transferToAccountId","linkedDebtId","notes",
-    "saveTitle","saveCategory","saveNotes","saveType","saveStatus","saveAccount","saveDebtSpendingAccount","saveTransferToAccount","savePaymentDebt"
+    "id","title","variantLabel","isDefault","archived","source","createdAt","type","status","categoryId","spendingBucketId","accountId","debtAccountId","transferToAccountId","linkedDebtId","notes",
+    "saveTitle","saveCategory","saveSpendingBucket","saveNotes","saveType","saveStatus","saveAccount","saveDebtSpendingAccount","saveTransferToAccount","savePaymentDebt"
   ];
   const templateRows = (data.settings?.transactionTemplates || []).map(raw=>{
     const t = normalizeTransactionTemplate(raw);
     const f = normalizeTemplateFields(t.fields);
     return {
-      id:t.id, title:t.title || "", variantLabel:t.variantLabel || "", isDefault:!!t.isDefault, archived:!!t.archived, source:t.source || "legacy", createdAt:t.createdAt || "", type:t.type || "expense", status:t.status || "planned", categoryId:t.categoryId || "unassigned",
+      id:t.id, title:t.title || "", variantLabel:t.variantLabel || "", isDefault:!!t.isDefault, archived:!!t.archived, source:t.source || "legacy", createdAt:t.createdAt || "", type:t.type || "expense", status:t.status || "planned", categoryId:t.categoryId || "unassigned", spendingBucketId:t.spendingBucketId || "",
       accountId:t.accountId || "", debtAccountId:t.debtAccountId || "",
       transferToAccountId:t.transferToAccountId || "", linkedDebtId:t.linkedDebtId || "",
       notes:t.notes || "",
-      saveTitle:!!f.title, saveCategory:!!f.categoryId, saveNotes:!!f.notes, saveType:!!f.type, saveStatus:!!f.status,
+      saveTitle:!!f.title, saveCategory:!!f.categoryId, saveSpendingBucket:!!f.spendingBucketId, saveNotes:!!f.notes, saveType:!!f.type, saveStatus:!!f.status,
       saveAccount:!!f.accountId, saveDebtSpendingAccount:!!f.debtAccountId, saveTransferToAccount:!!f.transferToAccountId, savePaymentDebt:!!f.linkedDebtId
     };
   });
@@ -10546,7 +10652,7 @@ function importEditedCSV(file){
         categoryIds = [...new Set(categoryIds.filter(id=>id && !isBudgetExcludedCategory(id)))];
         return {
           id: row.id || uid(), name: row.name || "", emoji: row.emoji || "", accountScope, accountId: accountScope === "all" ? "" : (accountId || accountIds[0] || ""), accountIds,
-          categoryId: categoryIds[0] || row.categoryId || "", categoryIds, spendingType:["bills","extra"].includes(row.spendingType) ? row.spendingType : "auto", amount: Number(row.amount || 0), period: row.period || "monthly", notes: row.notes || ""
+          categoryId: categoryIds[0] || row.categoryId || "", categoryIds, spendingBucketId:normalizedSpendingBucketId(row.spendingBucketId), spendingType:["bills","extra"].includes(row.spendingType) ? row.spendingType : "auto", amount: Number(row.amount || 0), period: row.period || "monthly", notes: row.notes || ""
         };
       });
       saveData();
@@ -10626,6 +10732,7 @@ function importEditedCSV(file){
         const fields = hasNewFieldColumns ? normalizeTemplateFields({
           title: boolFromCSV(row.saveTitle, true),
           categoryId: boolFromCSV(row.saveCategory, true),
+          spendingBucketId: boolFromCSV(row.saveSpendingBucket, false),
           notes: boolFromCSV(row.saveNotes, true),
           type: boolFromCSV(row.saveType, false),
           status: boolFromCSV(row.saveStatus, false),
@@ -10645,6 +10752,7 @@ function importEditedCSV(file){
           type: row.type || "expense",
           status: row.status || "planned",
           categoryId: row.categoryId || "unassigned",
+          spendingBucketId: normalizedSpendingBucketId(row.spendingBucketId),
           accountId: row.accountId || "",
           debtAccountId: row.debtAccountId || "",
           transferToAccountId: row.transferToAccountId || "",
@@ -10675,6 +10783,7 @@ function importEditedCSV(file){
         tx.accountId = row.accountId || "";
         tx.debtAccountId = row.debtAccountId || "";
         tx.categoryId = row.categoryId || tx.categoryId;
+        tx.spendingBucketId = row.spendingBucketId === undefined ? normalizedSpendingBucketId(tx.spendingBucketId) : normalizedSpendingBucketId(row.spendingBucketId);
         tx.transferToAccountId = row.transferToAccountId || "";
         tx.linkedDebtId = row.linkedDebtId || "";
         tx.pendingReimbursement = row.pendingReimbursement === undefined ? !!tx.pendingReimbursement : String(row.pendingReimbursement).toLowerCase() === "true";
@@ -10878,8 +10987,8 @@ window.openGlobalSearch=openGlobalSearch;
 function renderGlobalSearch(query=''){
  const el=document.getElementById('globalSearchResults'); if(!el)return; const q=String(query).trim().toLowerCase();
  if(!q){el.innerHTML='<div class="empty-state">Start typing to search all saved transactions.</div>';return;}
- const rows=expandedTransactions(toISO(addMonths(new Date(),24))).filter(tx=>{const a=accountById(tx.accountId),c=categoryById(tx.categoryId);return [tx.title,tx.notes,tx.date,tx.amount,a?.name,c?.name,tx.status,tx.type].some(v=>String(v??'').toLowerCase().includes(q));}).slice(0,80);
- el.innerHTML=rows.length?rows.map(tx=>{const a=accountById(tx.accountId),c=categoryById(tx.categoryId);return `<button class="global-search-row" onclick="openTransaction('${tx.originalId||tx.id}',{generated:${!!tx.generated},occurrenceOriginalDate:'${tx.originalDate||tx.date}',occurrenceDate:'${tx.date}'})"><span><b>${escapeAttr(tx.title||'Untitled')}</b><small>${tx.date} • ${a?.name||'Unknown account'} • ${c?.name||'Unassigned'} • ${tx.status}</small></span><strong>${money(tx.amount)}</strong></button>`}).join(''):'<div class="empty-state">No matches.</div>';
+ const rows=expandedTransactions(toISO(addMonths(new Date(),24))).filter(tx=>{const a=accountById(tx.accountId),c=categoryById(tx.categoryId);const bucket=spendingBucketLabel(effectiveTransactionSpendingBucketId(tx),"");return [tx.title,tx.notes,tx.date,tx.amount,a?.name,c?.name,bucket,tx.status,tx.type].some(v=>String(v??'').toLowerCase().includes(q));}).slice(0,80);
+ el.innerHTML=rows.length?rows.map(tx=>{const a=accountById(tx.accountId),c=categoryById(tx.categoryId);return `<button class="global-search-row" onclick="openTransaction('${tx.originalId||tx.id}',{generated:${!!tx.generated},occurrenceOriginalDate:'${tx.originalDate||tx.date}',occurrenceDate:'${tx.date}'})"><span><b>${escapeAttr(tx.title||'Untitled')}</b><small>${tx.date} • ${a?.name||'Unknown account'} • ${c?.name||'Unassigned'}${effectiveTransactionSpendingBucketId(tx)?` • ${escapeAttr(spendingBucketLabel(effectiveTransactionSpendingBucketId(tx),''))}`:''} • ${tx.status}</small></span><strong>${money(tx.amount)}</strong></button>`}).join(''):'<div class="empty-state">No matches.</div>';
 }
 window.renderGlobalSearch=renderGlobalSearch;
 function healthScan(){
@@ -11165,3 +11274,5 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 // v2-261: Template Manager can filter by the fields a shortcut actively autofills.
 
 // v2-274: IOU repayment dates follow the selected paying-later account paycheck; Search stays open behind transaction edits.
+
+// v2-285: Transactions can carry an optional Mak/Ty Spending bucket independently from category; bucket-targeted budgets preserve category breakdowns and legacy personal-spending categories remain compatible.

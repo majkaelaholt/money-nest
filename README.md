@@ -1,5 +1,18 @@
 # Money Nest
 
+## v2-285
+
+### Personal spending buckets
+
+- Added an optional **Spending bucket** to transactions so personal allowance ownership is separate from the purchase category. A salon charge can now remain **Beauty** while also counting toward **Mak Spending**; Ty purchases can similarly use **Ty Spending**.
+- Existing legacy transactions categorized directly as Mak Spending / Ty Spending remain compatible: when no explicit bucket exists, those legacy category ids act as the effective personal bucket without rewriting history.
+- Transaction templates can remember/apply Spending bucket alongside Category. Automatic lightweight templates now remember title + category + bucket; Template Manager and editable template CSVs support the field.
+- Budgets can optionally target a Spending bucket. A bucket-only budget may leave categories unchecked to include every category in that personal allowance, or combine bucket + categories for an AND filter. Bucket budget details add a **Category breakdown** so the user can see what personal spending was actually for.
+- Budget Review unbudgeted-spending math now checks actual budget membership, which supports bucket-only targets without pretending every category in that bucket has its own budget.
+- Editable Transactions and Budgets CSVs preserve `spendingBucketId`; older CSV/JSON backups default safely to no explicit bucket. Card-routing/payment helpers preserve the bucket when a purchase is moved through a card.
+- Mak Spending / Ty Spending remain as stable category records because their ids anchor the bucket labels; Category Cleanup treats them as protected while still allowing their name/emoji/color to be edited.
+- No existing transactions/categories are migrated or deleted. Schema remains 225 and the storage key is unchanged.
+
 ## v2-284
 
 ### Dismissible recurring-health amount changes
