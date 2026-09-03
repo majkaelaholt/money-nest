@@ -161,9 +161,16 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-285`
+Latest known version: `money-nest-v2-286`
 
 
+
+### v2-286 personal spending budget ownership rules
+
+- A transaction with an effective personal `spendingBucketId` (`mak-spending` or `ty-spending`, including the legacy-category fallback) must **not** match ordinary budgets that do not explicitly target that same bucket. This prevents one personal purchase from consuming both a personal bucket budget and an unrelated category-only budget.
+- A bucketed transaction may match a budget only when `budget.spendingBucketId` equals the transaction's effective bucket. Existing selected category(s) and account scope on that same bucket budget may still narrow the match.
+- Transactions with no effective personal bucket continue to use existing category + account budget matching. Category remains available for reporting/pie/category breakdowns even when bucket ownership controls budget membership.
+- Keep Bills/Extra spending classification separate from budget ownership. Preserve category spending-view overrides, recurring detection, overall transaction totals, schema 225, storage key, and JSON/CSV/cloud compatibility.
 
 ### v2-285 personal spending bucket rules
 

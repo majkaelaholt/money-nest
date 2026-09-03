@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-285";
+const APP_VERSION = "2-286";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -4148,6 +4148,20 @@ function txMatchesBudgetSpendingBucket(tx, budget){
   return !bucketId || effectiveTransactionSpendingBucketId(tx) === bucketId;
 }
 function txMatchesBudgetDefinition(tx, budget){
+  const txBucketId = effectiveTransactionSpendingBucketId(tx);
+  const budgetBucketId = budgetSpendingBucketId(budget);
+
+  // v2-286: an explicit/effective personal spending bucket owns budget
+  // membership. Once a transaction belongs to Mak Spending or Ty Spending,
+  // ordinary category-only budgets must not also claim it. Category remains
+  // available for reporting and may still narrow a budget that explicitly
+  // targets the same bucket.
+  if(txBucketId){
+    if(!budgetBucketId || budgetBucketId !== txBucketId) return false;
+  } else if(budgetBucketId){
+    return false;
+  }
+
   return txMatchesBudgetCategories(tx, budget) && txMatchesBudgetSpendingBucket(tx, budget);
 }
 function budgetCategoryLabel(budget){
@@ -11276,3 +11290,4 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 // v2-274: IOU repayment dates follow the selected paying-later account paycheck; Search stays open behind transaction edits.
 
 // v2-285: Transactions can carry an optional Mak/Ty Spending bucket independently from category; bucket-targeted budgets preserve category breakdowns and legacy personal-spending categories remain compatible.
+// v2-286: Bucketed personal spending now has exclusive budget ownership: category-only budgets cannot also claim Mak/Ty bucket transactions, while category remains available for reporting and same-bucket filtering.

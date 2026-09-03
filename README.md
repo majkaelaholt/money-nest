@@ -1,5 +1,15 @@
 # Money Nest
 
+## v2-286
+
+### Exclusive personal spending budget ownership
+
+- Fixed personal **Spending bucket** budget precedence so a transaction assigned to **Mak Spending** or **Ty Spending** is owned by budgets that explicitly target that same bucket. Ordinary category-only budgets can no longer also claim the same personal purchase.
+- Category remains the purchase-purpose dimension for Spending by Category, pie charts, budget-detail category breakdowns, search, and reporting. A salon purchase can therefore stay **Beauty** while only the **Mak Spending** budget receives its budget usage.
+- Bucket-targeted budgets may still optionally narrow themselves with category and account selectors. Transactions with no personal bucket continue using the existing category/account budget matching rules.
+- Legacy transactions whose category is literally `mak-spending` or `ty-spending` retain their effective bucket behavior without rewriting history.
+- Overall Budget Review spending totals remain transaction-based and are not duplicated. Bills/Extra classification precedence, Savings handling, recurrence, JSON/CSV/cloud data, schema 225, and the storage key are unchanged.
+
 ## v2-285
 
 ### Personal spending buckets
