@@ -161,9 +161,20 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-287`
+Latest known version: `money-nest-v2-288`
 
 
+
+### v2-288 Dynamic budget amount rules
+- Budget target ownership/matching is unchanged; this version changes only how the monthly target amount is calculated.
+- Budget `amount` remains the backward-compatible base/unit amount. `amountMethod` defaults to `fixed` and may be `fixed`, `occurrence`, or `paycheck`.
+- `occurrence` uses `occurrenceWeekday` (0–6) and multiplies the base amount by that weekday's count in the selected Budget month.
+- `paycheck` uses `paycheckOwner` (`Mak` or `Ty`) and multiplies the base amount by that person's scheduled paycheck occurrences returned from the existing transaction recurrence engine for the selected month. Do not create a separate paycheck recurrence model in Budgets.
+- `monthlyAmountOverrides` is an optional `{ "YYYY-MM": number }` map. A valid month override supersedes the calculated target only for that month.
+- Use `budgetTargetForMonth(budget, month)` anywhere the UI needs the effective monthly target. Do not read `budget.amount` directly for Budget Performance/remaining/%/Monthly targets totals or budget details.
+- Budget Manager may display the base rule, but Budget Performance should always show the effective month target plus a readable formula for non-fixed rules.
+- Editable Budget CSV fields: `amountMethod`, `occurrenceWeekday`, `paycheckOwner`, `monthlyAmountOverridesJSON`. Missing/old fields default to Fixed monthly.
+- Personal Spending bucket exclusivity and v2-287's view-filter boundaries remain exactly as before.
 
 ### v2-287 Budget Review filter boundaries
 
@@ -653,3 +664,4 @@ Example README note:
 - Template CSV includes variantLabel, isDefault, archived, source, and createdAt.
 
 - v2-287: Budget performance is full-month and independent of spending-view/account filters; category analysis remains filterable and no longer implies category-budget ownership.
+- v2-288: Budget targets can be fixed, per-weekday occurrence, or per paycheck with optional month-specific overrides; effective targets are used consistently across performance/details/manager/CSV.

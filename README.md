@@ -1,5 +1,18 @@
 # Money Nest
 
+## v2-288
+
+### Dynamic monthly budget targets
+
+- Budgets now support three **Amount methods**: **Fixed monthly**, **Per occurrence (weekly)**, and **Per paycheck**. Existing budgets/backups default to Fixed monthly, so old target amounts keep their prior meaning.
+- **Per occurrence** treats the stored budget `amount` as the amount per selected weekday. Budget Performance counts how many of that weekday fall in the viewed month and calculates the monthly target automatically (for example, `$60 × 5 Wednesdays`).
+- **Per paycheck** treats `amount` as the amount per Mak or Ty paycheck. Money Nest reuses the person's existing scheduled paycheck occurrences for the viewed month rather than creating a second paycheck cadence inside Budgets.
+- Each budget can store an optional **month-specific override** keyed by `YYYY-MM`. An override wins only for that month; clearing it returns the budget to its normal fixed/occurrence/paycheck rule.
+- Dynamic targets are used consistently by **How you did vs budget**, Monthly targets totals, budget details, and the Budget Manager. Non-fixed rows show the calculation so a target change is explainable instead of appearing arbitrary.
+- Spending buckets/category ownership from v2-286 and Spending-view filter boundaries from v2-287 are unchanged. Dynamic amount rules change only the budget target, not which transactions belong to a budget.
+- Editable Budgets CSVs preserve `amountMethod`, `occurrenceWeekday`, `paycheckOwner`, and `monthlyAmountOverridesJSON`; older CSVs safely import as Fixed monthly. JSON/cloud data remain backward-compatible.
+- Schema remains 225; storage key and recurrence/transaction formats are unchanged.
+
 ## v2-287
 
 ### Stable budget performance + filter-only spending analysis

@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-287";
+const APP_VERSION = "2-288";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -912,6 +912,12 @@ function normalizeData(raw){
     b.categoryId = b.categoryIds[0] || b.categoryId || ""; // legacy fallback for older versions
     b.spendingBucketId = normalizedSpendingBucketId(b.spendingBucketId);
     b.spendingType = ["auto","bills","extra"].includes(b.spendingType) ? b.spendingType : "auto";
+    b.amountMethod = ["fixed","occurrence","paycheck"].includes(b.amountMethod) ? b.amountMethod : "fixed";
+    b.occurrenceWeekday = Math.min(6, Math.max(0, Number.isFinite(Number(b.occurrenceWeekday)) ? Number(b.occurrenceWeekday) : 3));
+    b.paycheckOwner = ["Mak","Ty"].includes(b.paycheckOwner) ? b.paycheckOwner : "Ty";
+    b.monthlyAmountOverrides = b.monthlyAmountOverrides && typeof b.monthlyAmountOverrides === "object" && !Array.isArray(b.monthlyAmountOverrides)
+      ? Object.fromEntries(Object.entries(b.monthlyAmountOverrides).filter(([month,value])=>/^\d{4}-\d{2}$/.test(month) && Number.isFinite(Number(value)) && Number(value) >= 0).map(([month,value])=>[month,Number(value)]))
+      : {};
     const legacyAccountId = b.accountId || "";
     const requestedScope = ["single","all","selected"].includes(b.accountScope) ? b.accountScope : (legacyAccountId ? "single" : "all");
     b.accountScope = requestedScope;
@@ -4302,6 +4308,65 @@ function budgetReviewPieData(stats){
     note:`Categories $${minStandaloneAmount}+ or 3%+ of spending show separately; tiny categories roll into Other.`
   };
 }
+function normalizedBudgetAmountMethod(budget){
+  return ["occurrence","paycheck"].includes(budget?.amountMethod) ? budget.amountMethod : "fixed";
+}
+function budgetMonthlyAmountOverrides(budget){
+  return budget?.monthlyAmountOverrides && typeof budget.monthlyAmountOverrides === "object" && !Array.isArray(budget.monthlyAmountOverrides)
+    ? budget.monthlyAmountOverrides
+    : {};
+}
+function budgetMonthOverrideAmount(budget, monthValue){
+  const value = budgetMonthlyAmountOverrides(budget)[monthValue];
+  return value === undefined || value === null || value === "" || !Number.isFinite(Number(value)) ? null : Math.max(0, Number(value));
+}
+function countWeekdayInBudgetMonth(monthRange, weekday){
+  const targetDay = Math.min(6, Math.max(0, Number(weekday)));
+  let count = 0;
+  let cursor = parseDate(monthRange.start);
+  const end = parseDate(monthRange.end);
+  while(cursor <= end){
+    if(cursor.getDay() === targetDay) count++;
+    cursor = addDays(cursor, 1);
+  }
+  return count;
+}
+function budgetPaycheckOccurrences(owner, monthRange){
+  if(!["Mak","Ty"].includes(owner)) return [];
+  const seen = new Set();
+  return expandedTransactions(monthRange.end).filter(tx=>{
+    if(!tx || tx.date < monthRange.start || tx.date > monthRange.end) return false;
+    if(tx.type !== "paycheck" && !/paycheck/i.test(tx.title || "")) return false;
+    const accountOwner = accountById(tx.accountId)?.owner || "";
+    if(accountOwner !== owner && !new RegExp(`^${owner}\\b`, "i").test(String(tx.title || ""))) return false;
+    const key = `${tx.originalId || tx.id || tx.title}|${tx.originalDate || tx.date}`;
+    if(seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+function budgetTargetForMonth(budget, monthValue=budgetReviewMonth){
+  const range = budgetMonthRange(monthValue);
+  const override = budgetMonthOverrideAmount(budget, range.month);
+  const unitAmount = Math.max(0, Number(budget?.amount || 0));
+  if(override !== null){
+    return {amount:override, method:"override", baseAmount:unitAmount, count:null, formula:`${range.label} override`, detail:`Monthly override: ${money(override)}`};
+  }
+  const method = normalizedBudgetAmountMethod(budget);
+  if(method === "occurrence"){
+    const weekday = Math.min(6, Math.max(0, Number(budget?.occurrenceWeekday ?? 3)));
+    const count = countWeekdayInBudgetMonth(range, weekday);
+    const amount = unitAmount * count;
+    return {amount, method, baseAmount:unitAmount, count, formula:`${money(unitAmount)} × ${count} ${weekdayName(weekday)}${count===1?"":"s"}`, detail:`${money(unitAmount)} each ${weekdayName(weekday)} × ${count}`};
+  }
+  if(method === "paycheck"){
+    const owner = ["Mak","Ty"].includes(budget?.paycheckOwner) ? budget.paycheckOwner : "Ty";
+    const count = budgetPaycheckOccurrences(owner, range).length;
+    const amount = unitAmount * count;
+    return {amount, method, baseAmount:unitAmount, count, owner, formula:`${money(unitAmount)} × ${count} ${owner} paycheck${count===1?"":"s"}`, detail:`${money(unitAmount)} per ${owner} paycheck × ${count}`};
+  }
+  return {amount:unitAmount, method:"fixed", baseAmount:unitAmount, count:1, formula:"Fixed monthly", detail:"Fixed monthly target"};
+}
 function budgetActualSpent(budget, monthRange){
   // Budget performance is the monthly plan itself. Quick-view Bills/Extra and
   // account-analysis filters must not change how much a configured budget used.
@@ -4318,7 +4383,8 @@ function budgetPerformanceStats(monthValue=budgetReviewMonth){
   const budgets = (data.budgets || []).filter(b => budgetHasSelector(b));
   const budgetRows = budgets.map(b=>{
     const spent = budgetActualSpent(b, range);
-    const amount = Number(b.amount || 0);
+    const target = budgetTargetForMonth(b, range.month);
+    const amount = target.amount;
     return {
       budget:b,
       account:accountById(b.accountId),
@@ -4327,14 +4393,15 @@ function budgetPerformanceStats(monthValue=budgetReviewMonth){
       spent,
       amount,
       left: amount - spent,
-      pct: amount ? Math.round((spent / amount) * 100) : 0
+      pct: amount ? Math.round((spent / amount) * 100) : 0,
+      target
     };
   }).sort((a,b)=>compareBudgetsByTitle(a.budget,b.budget));
   return {
     range,
     budgets,
     budgetRows,
-    totalBudgeted:budgets.reduce((s,b)=>s+Number(b.amount || 0),0),
+    totalBudgeted:budgetRows.reduce((s,row)=>s+Number(row.amount || 0),0),
     overBudgetCount:budgetRows.filter(r=>r.left < -0.005).length
   };
 }
@@ -4497,6 +4564,7 @@ function renderBudgetReview(){
         <div class="budget-category-title"><span class="cat-preview" style="background:${hexToSoft(r.cat.color)}">${r.cat.emoji} ${r.cat.text}</span></div>
         <div class="budget-account-sub">${escapeAttr(r.scopeLabel)}</div>
         <div class="row-sub">${money(r.spent)} spent of ${money(r.amount)} • ${r.pct}% used</div>
+        ${r.target?.method !== "fixed" ? `<div class="row-sub budget-target-formula">${escapeAttr(r.target.formula)}</div>` : ""}
         <div class="progress"><span style="width:${Math.min(100,pct)}%"></span></div>
       </div>
       <div class="amount ${r.left < -0.005 ? "bad" : "good"}">${status}</div>
@@ -4567,13 +4635,15 @@ function renderBudgetManager(){
     const cat=budgetCategoryLabel(b);
     const spendingType=normalizedBudgetSpendingType(b);
     const spendingLabel=spendingType==="bills" ? "🧾 Bills" : spendingType==="extra" ? "✨ Extra spending" : "↻ Auto";
+    const target=budgetTargetForMonth(b, budgetReviewMonth);
     return `<button type="button" class="budget-manager-row" onclick="simpleBudget('${b.id}', {}, {returnToBudgetManager:true})">
       <span class="budget-manager-main">
         <span class="budget-category-title"><span class="cat-preview" style="background:${hexToSoft(cat.color)}">${cat.emoji} ${escapeAttr(cat.text)}</span></span>
         <small>${escapeAttr(budgetScopeLabel(b))}</small>
         <small>${escapeAttr(budgetManagerCategoryText(b))}</small>
+        ${target.method !== "fixed" ? `<small>${escapeAttr(target.formula)}</small>` : ""}
       </span>
-      <span class="budget-manager-side"><strong>${money(b.amount)}</strong><small>${spendingLabel}</small><span aria-hidden="true">›</span></span>
+      <span class="budget-manager-side"><strong>${money(target.amount)}</strong><small>${spendingLabel}</small><span aria-hidden="true">›</span></span>
     </button>`;
   }).join("") || `<div class="empty-state">No budgets yet. Add one to start tracking monthly targets.</div>`;
 }
@@ -4615,7 +4685,8 @@ function openBudgetDetailView({categoryId, categoryIds=null, budget=null, accoun
     .filter(tx=>budget ? txMatchesBudgetScope(tx, budget) : txMatchesBudgetAccount(tx, accountId))
     .sort((a,b)=>String(b.date).localeCompare(String(a.date)) || String(a.title || "").localeCompare(String(b.title || "")));
   const total = txs.reduce((sum,tx)=>sum+budgetTransactionAmount(tx),0);
-  const amount = budget ? Number(budget.amount || 0) : null;
+  const budgetTarget = budget ? budgetTargetForMonth(budget, range.month) : null;
+  const amount = budgetTarget ? budgetTarget.amount : null;
   const remaining = amount === null ? null : amount-total;
   const accounts = budgetBreakdown(txs, tx=>tx.accountId || "unknown", id=>{
     const a=accountById(id); return a ? `${a.emoji || "💵"} ${a.name}` : "Unknown account";
@@ -4633,7 +4704,7 @@ function openBudgetDetailView({categoryId, categoryIds=null, budget=null, accoun
   content.innerHTML = `
     <div class="budget-detail-summary ${budget ? "" : "category-only"}">
       <article class="mini-card"><span>Total spent</span><b>${money(total)}</b><small>${txs.length} included transaction${txs.length===1?"":"s"}</small></article>
-      ${budget ? `<article class="mini-card"><span>Budget amount</span><b>${money(amount)}</b><small>Monthly target</small></article>
+      ${budget ? `<article class="mini-card"><span>Budget amount</span><b>${money(amount)}</b><small>${escapeAttr(budgetTarget?.detail || "Monthly target")}</small></article>
       <article class="mini-card"><span>${remaining < -0.005 ? "Over budget" : "Remaining"}</span><b class="${remaining < -0.005 ? "bad" : "good"}">${money(Math.abs(remaining))}</b><small>${amount ? Math.round(total/amount*100) : 0}% used</small></article>` : ""}
       <article class="mini-card"><span>Top account</span><b>${escapeAttr(topAccount)}</b><small>${accounts[0] ? money(accounts[0].amount) : "—"}</small></article>
       <article class="mini-card"><span>Top place</span><b>${escapeAttr(topMerchant)}</b><small>${merchants[0] ? money(merchants[0].amount) : "—"}</small></article>
@@ -7764,7 +7835,46 @@ window.simpleBudget = (id=null, preset={}, options={})=>{
       </select>
       <span class="hint">Controls where matching transactions appear in Budget Quick Views only. It does not change the transaction, recurring series, or Bills page.</span>
     </label>
-    <label>Monthly amount<input id="sAmount" type="number" step="0.01" value="${b?.amount ?? ""}" required></label>`;
+    <label>Amount method
+      <select id="sBudgetAmountMethod">
+        <option value="fixed" ${normalizedBudgetAmountMethod(b)==="fixed"?"selected":""}>Fixed monthly</option>
+        <option value="occurrence" ${normalizedBudgetAmountMethod(b)==="occurrence"?"selected":""}>Per occurrence (weekly)</option>
+        <option value="paycheck" ${normalizedBudgetAmountMethod(b)==="paycheck"?"selected":""}>Per paycheck</option>
+      </select>
+      <span class="hint">Choose whether this target stays fixed or scales with the number of weekly occurrences/paychecks in the selected month.</span>
+    </label>
+    <div id="sBudgetAmountRuleFields"></div>
+    <div class="budget-month-override-editor">
+      <label>${budgetMonthRange(budgetReviewMonth).label} override (optional)
+        <input id="sBudgetMonthOverride" type="number" min="0" step="0.01" value="${budgetMonthOverrideAmount(b,budgetReviewMonth) ?? ""}" placeholder="Use calculated target">
+      </label>
+      <span class="hint">Only changes this month. Leave blank to use the normal amount rule.</span>
+    </div>`;
+  let budgetAmountDraft = b?.amount ?? "";
+  let budgetOccurrenceWeekdayDraft = Math.min(6,Math.max(0,Number(b?.occurrenceWeekday ?? 3)));
+  let budgetPaycheckOwnerDraft = ["Mak","Ty"].includes(b?.paycheckOwner) ? b.paycheckOwner : "Ty";
+  const captureBudgetAmountRuleDraft = ()=>{
+    if(document.getElementById("sAmount")) budgetAmountDraft=document.getElementById("sAmount").value;
+    if(document.getElementById("sBudgetOccurrenceWeekday")) budgetOccurrenceWeekdayDraft=Math.min(6,Math.max(0,Number(document.getElementById("sBudgetOccurrenceWeekday").value)));
+    if(document.getElementById("sBudgetPaycheckOwner")) budgetPaycheckOwnerDraft=document.getElementById("sBudgetPaycheckOwner").value;
+  };
+  const renderBudgetAmountRuleFields = ()=>{
+    const host=document.getElementById("sBudgetAmountRuleFields");
+    const method=normalizedBudgetAmountMethod({amountMethod:document.getElementById("sBudgetAmountMethod")?.value});
+    if(!host) return;
+    if(method === "occurrence"){
+      host.innerHTML=`<div class="form-grid two"><label>Amount per occurrence<input id="sAmount" type="number" min="0" step="0.01" value="${escapeAttr(budgetAmountDraft)}" required></label><label>Every week on<select id="sBudgetOccurrenceWeekday">${[0,1,2,3,4,5,6].map(day=>`<option value="${day}" ${day===budgetOccurrenceWeekdayDraft?"selected":""}>${weekdayName(day)}</option>`).join("")}</select></label></div><p class="hint">The monthly target is amount × the number of that weekday in the month.</p>`;
+    } else if(method === "paycheck"){
+      host.innerHTML=`<div class="form-grid two"><label>Amount per paycheck<input id="sAmount" type="number" min="0" step="0.01" value="${escapeAttr(budgetAmountDraft)}" required></label><label>Paycheck schedule<select id="sBudgetPaycheckOwner"><option value="Mak" ${budgetPaycheckOwnerDraft==="Mak"?"selected":""}>Mak paychecks</option><option value="Ty" ${budgetPaycheckOwnerDraft==="Ty"?"selected":""}>Ty paychecks</option></select></label></div><p class="hint">Uses the paycheck occurrences Money Nest already has scheduled for that person in each month.</p>`;
+    } else {
+      host.innerHTML=`<label>Monthly amount<input id="sAmount" type="number" min="0" step="0.01" value="${escapeAttr(budgetAmountDraft)}" required></label>`;
+    }
+  };
+  renderBudgetAmountRuleFields();
+  document.getElementById("sBudgetAmountMethod")?.addEventListener("change",()=>{
+    captureBudgetAmountRuleDraft();
+    renderBudgetAmountRuleFields();
+  });
   setTimeout(()=>{
     document.querySelectorAll('input[name="sBudgetAccountIds"]').forEach(input=>{ input.checked = initialIds.includes(input.value); });
     const initialCategoryIds = b ? budgetCategoryIds(b) : (preset.categoryId ? [preset.categoryId] : []);
@@ -7794,7 +7904,15 @@ window.simpleBudget = (id=null, preset={}, options={})=>{
     target.categoryId = categoryIds[0] || ""; // legacy fallback for older app versions
     target.spendingBucketId = spendingBucketId;
     target.spendingType = ["bills","extra"].includes(document.getElementById("sBudgetSpendingType")?.value) ? document.getElementById("sBudgetSpendingType").value : "auto";
-    target.amount = Number(sAmount.value);
+    target.amountMethod = normalizedBudgetAmountMethod({amountMethod:document.getElementById("sBudgetAmountMethod")?.value});
+    captureBudgetAmountRuleDraft();
+    target.amount = Math.max(0, Number(budgetAmountDraft || 0));
+    target.occurrenceWeekday = budgetOccurrenceWeekdayDraft;
+    target.paycheckOwner = ["Mak","Ty"].includes(budgetPaycheckOwnerDraft) ? budgetPaycheckOwnerDraft : "Ty";
+    target.monthlyAmountOverrides = {...budgetMonthlyAmountOverrides(b)};
+    const monthOverrideRaw = document.getElementById("sBudgetMonthOverride")?.value;
+    if(monthOverrideRaw === "" || monthOverrideRaw === undefined) delete target.monthlyAmountOverrides[budgetReviewMonth];
+    else target.monthlyAmountOverrides[budgetReviewMonth] = Math.max(0, Number(monthOverrideRaw || 0));
     target.period = target.period || "monthly";
     target.notes = target.notes || "";
     if(!b) data.budgets.push(target);
@@ -10570,10 +10688,10 @@ function exportEditableCSVs(){
     frozenLocked:!!d.frozenLocked, notes:d.notes || ""
   }));
 
-  const budgetHeaders = ["id","name","emoji","accountScope","accountId","accountIdsJSON","categoryId","categoryIdsJSON","spendingBucketId","spendingType","amount","period","notes"];
+  const budgetHeaders = ["id","name","emoji","accountScope","accountId","accountIdsJSON","categoryId","categoryIdsJSON","spendingBucketId","spendingType","amount","amountMethod","occurrenceWeekday","paycheckOwner","monthlyAmountOverridesJSON","period","notes"];
   const budgetRows = (data.budgets || []).map(b=>({
     id:b.id, name:b.name || "", emoji:b.emoji || "", accountScope:b.accountScope || (b.accountId ? "single" : "all"), accountId:b.accountId || "",
-    accountIdsJSON:JSON.stringify(budgetScopeAccountIds(b)), categoryId:budgetCategoryIds(b)[0] || b.categoryId || "", categoryIdsJSON:JSON.stringify(budgetCategoryIds(b)), spendingBucketId:budgetSpendingBucketId(b), spendingType:normalizedBudgetSpendingType(b), amount:b.amount ?? "",
+    accountIdsJSON:JSON.stringify(budgetScopeAccountIds(b)), categoryId:budgetCategoryIds(b)[0] || b.categoryId || "", categoryIdsJSON:JSON.stringify(budgetCategoryIds(b)), spendingBucketId:budgetSpendingBucketId(b), spendingType:normalizedBudgetSpendingType(b), amount:b.amount ?? "", amountMethod:normalizedBudgetAmountMethod(b), occurrenceWeekday:b.occurrenceWeekday ?? 3, paycheckOwner:b.paycheckOwner || "Ty", monthlyAmountOverridesJSON:JSON.stringify(budgetMonthlyAmountOverrides(b)),
     period:b.period || "monthly", notes:b.notes || ""
   }));
 
@@ -10678,7 +10796,7 @@ function importEditedCSV(file){
         categoryIds = [...new Set(categoryIds.filter(id=>id && !isBudgetExcludedCategory(id)))];
         return {
           id: row.id || uid(), name: row.name || "", emoji: row.emoji || "", accountScope, accountId: accountScope === "all" ? "" : (accountId || accountIds[0] || ""), accountIds,
-          categoryId: categoryIds[0] || row.categoryId || "", categoryIds, spendingBucketId:normalizedSpendingBucketId(row.spendingBucketId), spendingType:["bills","extra"].includes(row.spendingType) ? row.spendingType : "auto", amount: Number(row.amount || 0), period: row.period || "monthly", notes: row.notes || ""
+          categoryId: categoryIds[0] || row.categoryId || "", categoryIds, spendingBucketId:normalizedSpendingBucketId(row.spendingBucketId), spendingType:["bills","extra"].includes(row.spendingType) ? row.spendingType : "auto", amount: Number(row.amount || 0), amountMethod:["occurrence","paycheck"].includes(row.amountMethod) ? row.amountMethod : "fixed", occurrenceWeekday:Math.min(6,Math.max(0,Number(row.occurrenceWeekday ?? 3))), paycheckOwner:["Mak","Ty"].includes(row.paycheckOwner) ? row.paycheckOwner : "Ty", monthlyAmountOverrides:(()=>{try{const parsed=JSON.parse(row.monthlyAmountOverridesJSON || "{}");return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? Object.fromEntries(Object.entries(parsed).filter(([month,value])=>/^\d{4}-\d{2}$/.test(month) && Number.isFinite(Number(value)) && Number(value)>=0).map(([month,value])=>[month,Number(value)])) : {};}catch(e){return {};}})(), period: row.period || "monthly", notes: row.notes || ""
         };
       });
       saveData();
@@ -11305,3 +11423,4 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 // v2-286: Bucketed personal spending now has exclusive budget ownership: category-only budgets cannot also claim Mak/Ty bucket transactions, while category remains available for reporting and same-bucket filtering.
 
 // v2-287: Budget performance is independent of Spending view/account filters; Spending by Category remains filterable and category analysis no longer implies category-budget ownership for bucketed personal spending.
+// v2-288: Budgets support fixed, per-weekday-occurrence, and per-paycheck monthly target rules plus month-specific amount overrides. Dynamic targets are used consistently in Budget Performance, details, manager rows, and CSV backup/edit flows.
