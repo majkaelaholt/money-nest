@@ -161,9 +161,16 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-288`
+Latest known version: `money-nest-v2-289`
 
 
+
+### v2-289 Startup local-data hydration safety
+- `SPENDING_BUCKET_IDS` must be initialized before the first `loadData()` / `normalizeData()` call. Startup normalization currently validates transaction and budget bucket ids, so moving bucket constants below `data = loadData()` reintroduces a TDZ startup failure.
+- `loadData()` must never overwrite an existing `moneyNest.v2.113` value with starter data merely because parsing/normalization threw. Preserve the stored browser copy and set the startup-load failure guard instead.
+- While the startup-load failure guard is active, `saveData()` must refuse to overwrite the preserved browser copy. A successful explicit cloud load or JSON backup import clears the guard.
+- Backup Health must show **Local data not loaded** while the guard is active; do not claim **Backed up** based only on backup timestamps when the current session did not hydrate local data.
+- Schema remains 225; storage key remains `moneyNest.v2.113`.
 
 ### v2-288 Dynamic budget amount rules
 - Budget target ownership/matching is unchanged; this version changes only how the monthly target amount is calculated.
@@ -664,4 +671,5 @@ Example README note:
 - Template CSV includes variantLabel, isDefault, archived, source, and createdAt.
 
 - v2-287: Budget performance is full-month and independent of spending-view/account filters; category analysis remains filterable and no longer implies category-budget ownership.
-- v2-288: Budget targets can be fixed, per-weekday occurrence, or per paycheck with optional month-specific overrides; effective targets are used consistently across performance/details/manager/CSV.
+- v2-289: Budget targets can be fixed, per-weekday occurrence, or per paycheck with optional month-specific overrides; effective targets are used consistently across performance/details/manager/CSV.
+

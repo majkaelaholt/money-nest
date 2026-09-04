@@ -1,5 +1,15 @@
 # Money Nest
 
+## v2-289
+
+### Startup local-data hydration safety
+
+- Fixed the startup-order regression that could run spending-bucket normalization before the bucket-id constant existed. A normal page load now hydrates the existing `moneyNest.v2.113` browser copy correctly instead of falling back to starter/default data.
+- If startup normalization ever fails again, Money Nest preserves the existing raw localStorage copy rather than replacing it with starter data. Local saves are blocked for that failed session until an explicit cloud/JSON restore succeeds.
+- Backup Health now reports **Local data not loaded** instead of **Backed up** when the session failed to hydrate the browser copy.
+- Cloud/JSON restores clear the startup protection after successful normalization.
+- Schema remains 225 and the storage key remains `moneyNest.v2.113`.
+
 ## v2-288
 
 ### Dynamic monthly budget targets
@@ -1329,3 +1339,4 @@ Use CSV for reviewing or batch-editing data.
 - Automatic templates now save title + category only and skip recurring series/occurrences.
 - Added Category Cleanup with usage statistics, configuration references, category merge, and unused deletion.
 - Template CSV preserves `variantLabel`, `isDefault`, `archived`, `source`, and `createdAt`; older CSV files remain compatible.
+

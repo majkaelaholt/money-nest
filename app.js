@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-288";
+const APP_VERSION = "2-289";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -325,6 +325,7 @@ window.cloudLoadNow = async()=>{
     if(!ok) return;
     suppressChangeHistory = true;
     data = normalizeData(row.data);
+    startupLocalLoadIssue = "";
     repairSplitRecurringSeriesData();
     saveImportedBackupData(data);
     suppressChangeHistory = false;
@@ -438,6 +439,7 @@ function createStarterData(){
 }
 
 let data;
+let startupLocalLoadIssue = "";
 const CHANGE_HISTORY_KEY = `${STORAGE_KEY}.changeHistory`;
 let suppressChangeHistory = false;
 let currentView = "dashboard";
@@ -754,17 +756,20 @@ window.useBuiltInMoneyNestPaletteResetDefault=()=>{
 };
 window.saveCustomMoneyNestPalette=window.saveActiveMoneyNestPalette;
 
-// v2-219: load saved data only after palette constants exist, preventing startup TDZ errors.
+// v2-285: personal spending is a separate dimension from purchase purpose.
+// This constant must exist before loadData()/normalizeData() runs because startup
+// normalization validates saved transaction and budget bucket ids.
+const SPENDING_BUCKET_IDS = ["mak-spending", "ty-spending"];
+
+// v2-219/v2-289: load saved data only after every startup normalization constant exists.
 data = loadData();
 
 function normalizeCategoryId(id){
   return id || "unassigned";
 }
 
-// v2-285: personal spending is a separate dimension from purchase purpose.
 // Keep the stable legacy category ids as bucket ids so older Mak/Ty Spending
 // transactions remain understandable without rewriting historical categories.
-const SPENDING_BUCKET_IDS = ["mak-spending", "ty-spending"];
 function normalizedSpendingBucketId(value){
   return SPENDING_BUCKET_IDS.includes(String(value || "")) ? String(value) : "";
 }
@@ -1052,16 +1057,37 @@ function normalizeData(raw){
 }
 function slug(s){ return String(s).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"") || uid(); }
 function loadData(){
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if(saved){
+    try{
+      const loaded = normalizeData(JSON.parse(saved));
+      startupLocalLoadIssue = "";
+      return loaded;
+    } catch(err){
+      startupLocalLoadIssue = err?.message || String(err);
+      // Never replace an existing browser copy with starter data just because a
+      // newer app version hit a startup-normalization bug. Preserve the raw local
+      // copy so a reload after an app fix (or an explicit cloud/JSON restore) can
+      // recover it intact.
+      console.error("Money Nest could not load the saved local copy. The saved browser data was preserved.", err);
+      return normalizeData(createStarterData());
+    }
+  }
   try{
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if(saved) return normalizeData(JSON.parse(saved));
     const old = localStorage.getItem("moneyNest.v1");
-    if(old) return normalizeData(JSON.parse(old));
+    if(old){
+      const loaded = normalizeData(JSON.parse(old));
+      startupLocalLoadIssue = "";
+      return loaded;
+    }
   } catch(err){
-    console.warn("Money Nest startup data issue. Starting with clean local data instead.", err);
+    startupLocalLoadIssue = err?.message || String(err);
+    console.error("Money Nest could not load the legacy local copy. The saved browser data was preserved.", err);
+    return normalizeData(createStarterData());
   }
   const starter = createStarterData();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(starter));
+  startupLocalLoadIssue = "";
   return normalizeData(starter);
 }
 function loadChangeHistory(){
@@ -1369,6 +1395,11 @@ function recordChangeSnapshot(beforeRaw, afterRaw){
   saveChangeHistory(history);
 }
 function saveData(){
+  if(startupLocalLoadIssue){
+    console.error("Blocked local save because the browser copy failed to load at startup:", startupLocalLoadIssue);
+    alert("Money Nest did not load the saved browser copy correctly, so it blocked this save to protect your local data. Reload after updating Money Nest, or explicitly load cloud/JSON data first.");
+    return;
+  }
   data.schemaVersion = CURRENT_SCHEMA_VERSION;
   const beforeRaw = localStorage.getItem(STORAGE_KEY);
   const afterRaw = JSON.stringify(data);
@@ -11079,6 +11110,7 @@ function importBackupJSON(file){
       const normalized = normalizeData(candidate);
       suppressChangeHistory = true;
       data = normalized;
+      startupLocalLoadIssue = "";
       repairSplitRecurringSeriesData();
       saveImportedBackupData(data);
       touchLocalMoneyNestData();
@@ -11292,12 +11324,15 @@ function backupHealthData(){
   const meta=loadLocalMeta(), cloud=loadCloudConfig();
   const local=meta.lastLocalChange||'', json=meta.lastJsonBackup||'', cloudSave=cloud.lastCloudSave||'';
   const newestBackup=newestISO(json,cloudSave); const changedSince=!newestBackup||isoIsAfter(local,newestBackup);
-  return {local,json,cloudSave,changedSince};
+  return {local,json,cloudSave,changedSince,startupLoadFailed:!!startupLocalLoadIssue};
 }
 window.renderBackupHealthIndicator=function(){
   const el=document.getElementById('backupHealthIndicator');if(!el)return;
   const b=backupHealthData();
-  el.innerHTML=`<article><b class="${b.changedSince?'backup-warn':'backup-good'}">${b.changedSince?'Backup recommended':'Backed up'}</b><span>${b.changedSince?'Local data changed after the newest saved copy.':'Newest backup is at least as recent as local edits.'}</span></article><article><b>${fmtCloudTime(b.json)}</b><span>Last JSON backup</span></article><article><b>${fmtCloudTime(b.cloudSave)}</b><span>Last cloud save</span></article>`;
+  const status = b.startupLoadFailed
+    ? `<article><b class="backup-warn">Local data not loaded</b><span>The saved browser copy was preserved, but this session could not open it. Money Nest will not overwrite it.</span></article>`
+    : `<article><b class="${b.changedSince?'backup-warn':'backup-good'}">${b.changedSince?'Backup recommended':'Backed up'}</b><span>${b.changedSince?'Local data changed after the newest saved copy.':'Newest backup is at least as recent as local edits.'}</span></article>`;
+  el.innerHTML=`${status}<article><b>${fmtCloudTime(b.json)}</b><span>Last JSON backup</span></article><article><b>${fmtCloudTime(b.cloudSave)}</b><span>Last cloud save</span></article>`;
 };
 const _renderSettings214=renderSettings;renderSettings=function(){_renderSettings214();renderBackupHealthIndicator();};
 
@@ -11424,3 +11459,4 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 
 // v2-287: Budget performance is independent of Spending view/account filters; Spending by Category remains filterable and category analysis no longer implies category-budget ownership for bucketed personal spending.
 // v2-288: Budgets support fixed, per-weekday-occurrence, and per-paycheck monthly target rules plus month-specific amount overrides. Dynamic targets are used consistently in Budget Performance, details, manager rows, and CSV backup/edit flows.
+// v2-289: Fixed startup local-data hydration by initializing spending-bucket constants before normalizeData runs. Startup normalization failures now preserve the existing localStorage copy, block accidental overwrite, and show a truthful backup-health warning until cloud/JSON data is explicitly restored.
