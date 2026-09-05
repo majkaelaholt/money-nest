@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-289";
+const APP_VERSION = "2-290";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -6685,6 +6685,7 @@ window.toggleCleared = (id, meta={})=>{
   }
 
   saveData();
+  render();
 };
 function statusButton(tx, mode="normal"){
   if(mode === "hidden") return "";
@@ -7168,6 +7169,7 @@ window.deleteTransactionById = async (id)=>{
   });
   hideTxContextMenu();
   saveData();
+  render();
 };
 let contextTxId = null;
 let contextTxMeta = {};
@@ -7623,6 +7625,7 @@ document.getElementById("transactionForm").onsubmit = async (e)=>{
   billSeriesEditId = "";
   txModal.close();
   saveData();
+  render();
   renderTransactionTemplates();
   renderDropdownDefaultsSettings();
 };
@@ -7650,6 +7653,7 @@ document.getElementById("deleteTxBtn").onclick = async ()=>{
   billSeriesEditId = "";
   txModal.close();
   saveData();
+  render();
 };
 document.getElementById("duplicateTxBtn").onclick = ()=>{
   const id = txId.value;
@@ -11460,3 +11464,5 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 // v2-287: Budget performance is independent of Spending view/account filters; Spending by Category remains filterable and category analysis no longer implies category-budget ownership for bucketed personal spending.
 // v2-288: Budgets support fixed, per-weekday-occurrence, and per-paycheck monthly target rules plus month-specific amount overrides. Dynamic targets are used consistently in Budget Performance, details, manager rows, and CSV backup/edit flows.
 // v2-289: Fixed startup local-data hydration by initializing spending-bucket constants before normalizeData runs. Startup normalization failures now preserve the existing localStorage copy, block accidental overwrite, and show a truthful backup-health warning until cloud/JSON data is explicitly restored.
+
+// v2-290: Transaction save/delete/status mutations now re-render the active view immediately so Accounts Actual/Safe metrics cannot remain stale while Calendar reflects newer cleared activity.

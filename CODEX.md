@@ -161,9 +161,15 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-289`
+Latest known version: `money-nest-v2-290`
 
 
+
+
+### v2-290 Accounts live-balance refresh
+- Transaction save, modal delete, context delete, and cleared/planned toggles now re-render the active view after `saveData()`.
+- This fixes stale Accounts `Actual`/Safe cards when transaction state changed while Accounts or Account Detail was already open.
+- The underlying `accountBalance(..., false, todayISO())` math is unchanged; Calendar and Accounts continue to use the same cleared cash effects.
 
 ### v2-289 Startup local-data hydration safety
 - `SPENDING_BUCKET_IDS` must be initialized before the first `loadData()` / `normalizeData()` call. Startup normalization currently validates transaction and budget bucket ids, so moving bucket constants below `data = loadData()` reintroduces a TDZ startup failure.

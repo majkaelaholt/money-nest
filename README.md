@@ -1,5 +1,10 @@
 # Money Nest
 
+## v2-290
+
+- Fixed stale Accounts balance cards after saving, deleting, or toggling transaction status. Transaction mutations now immediately re-render the active view, keeping Accounts `Actual`/Safe metrics in sync with the Calendar cleared balance.
+- No balance math, recurrence, cloud format, schema, or storage-key changes.
+
 ## v2-289
 
 ### Startup local-data hydration safety
