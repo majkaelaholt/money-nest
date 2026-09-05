@@ -161,10 +161,17 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-290`
+Latest known version: `money-nest-v2-291`
 
 
 
+
+
+### v2-291 Effective-date recurrence cutoff
+- `expandedTransactions(untilISO)` must include a recurring occurrence when its **effective/display date** is on or before `untilISO`, even if its original recurrence date is later.
+- This matters for `previous-friday` weekend handling and explicit `dateOverrides` / `occurrenceOverrides` that move an occurrence earlier.
+- Expansion may look ahead to the later original date only to discover a moved-earlier occurrence; ordinary future occurrences must not leak past the requested cutoff.
+- Account Actual, Calendar cleared balances, budget/report month ranges, and other through-date calculations should therefore agree on moved occurrences.
 
 ### v2-290 Accounts live-balance refresh
 - Transaction save, modal delete, context delete, and cleared/planned toggles now re-render the active view after `saveData()`.

@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-290";
+const APP_VERSION = "2-291";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -1689,11 +1689,42 @@ function transactionForOccurrenceForm(tx, originalISO, occurrenceISO){
   return baseOccurrence || {...tx, date: occurrenceISO || tx.date, originalDate: originalISO || tx.date};
 }
 
+function recurrenceGenerationUntil(tx, untilISO){
+  const requestedUntil = parseDate(untilISO);
+  let generationUntil = new Date(requestedUntil);
+
+  // A recurrence can land before its original scheduled date. The most common
+  // case is "previous Friday": a Saturday/Sunday occurrence must already count
+  // in balances/reports even when the original weekend date is still ahead.
+  if(tx?.recurrence?.weekendHandling === "previous-friday"){
+    generationUntil = addDays(generationUntil, 2);
+  }
+
+  // Explicit date/occurrence overrides can move a later original occurrence to
+  // any earlier effective date. Expand far enough to discover those known moves.
+  const extendForMovedEarlier = (originalISO, effectiveISO)=>{
+    if(!originalISO || !effectiveISO || isSkippedOccurrenceDate(effectiveISO)) return;
+    if(effectiveISO > untilISO || originalISO <= untilISO) return;
+    const originalDate = parseDate(originalISO);
+    if(originalDate > generationUntil) generationUntil = originalDate;
+  };
+  Object.entries(tx?.dateOverrides || {}).forEach(([originalISO, effectiveISO])=>{
+    extendForMovedEarlier(originalISO, effectiveISO);
+  });
+  Object.entries(tx?.occurrenceOverrides || {}).forEach(([originalISO, override])=>{
+    if(!override || override.deleted) return;
+    extendForMovedEarlier(originalISO, override.date || originalISO);
+  });
+
+  return generationUntil;
+}
+
 function expandedTransactions(untilISO){
   const out = [];
   const until = parseDate(untilISO);
 
   data.transactions.forEach(tx => {
+    const generationUntil = recurrenceGenerationUntil(tx, untilISO);
     const baseDate = occurrenceDateFor(tx, parseDate(tx.date));
     const baseOccurrence = applyOccurrenceOverride(tx, tx.date, baseDate);
     // Archived bills preserve cleared history but stop contributing planned/future
@@ -1706,7 +1737,7 @@ function expandedTransactions(untilISO){
     const start = parseDate(tx.date);
     let cursor = addDays(start, 1);
 
-    while(cursor <= until){
+    while(cursor <= generationUntil){
       let occurs = false;
 
       if(r.type === "weekly"){
@@ -1762,7 +1793,12 @@ function expandedTransactions(untilISO){
           status: "planned",
           generated:true
         }, originalISO, occurrenceISO);
-        if(generatedOccurrence && (!tx.billArchived || generatedOccurrence.status === "cleared")) out.push(generatedOccurrence);
+        // Look-ahead exists only to discover occurrences whose effective date
+        // moved backward. Do not leak ordinary future occurrences past the
+        // caller's requested cutoff.
+        const isLookAheadOccurrence = cursor > until;
+        const landsByRequestedCutoff = generatedOccurrence && generatedOccurrence.date <= untilISO;
+        if(generatedOccurrence && (!isLookAheadOccurrence || landsByRequestedCutoff) && (!tx.billArchived || generatedOccurrence.status === "cleared")) out.push(generatedOccurrence);
       }
 
       cursor = addDays(cursor, 1);
@@ -11466,3 +11502,5 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 // v2-289: Fixed startup local-data hydration by initializing spending-bucket constants before normalizeData runs. Startup normalization failures now preserve the existing localStorage copy, block accidental overwrite, and show a truthful backup-health warning until cloud/JSON data is explicitly restored.
 
 // v2-290: Transaction save/delete/status mutations now re-render the active view immediately so Accounts Actual/Safe metrics cannot remain stale while Calendar reflects newer cleared activity.
+
+// v2-291: Recurrence expansion now discovers occurrences moved earlier than their original schedule date (weekend previous-Friday handling or explicit overrides), so Account Actual and other effective-date calculations include them at the date they really land.

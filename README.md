@@ -1,5 +1,11 @@
 # Money Nest
 
+## v2-291
+
+- Fixed effective-date recurrence expansion: recurring items moved earlier than their original scheduled date (for example weekend previous-Friday moves or explicit occurrence/date overrides) now count in Account Actual, Safe to Spend, reports, and other through-date calculations on the date they actually land.
+- Prevents the Accounts/Calendar disagreement where a moved Sept 7 paycheck/transfer set was visible on Sept 4–5 in Calendar but omitted from Account Actual until Sept 7.
+- Keeps look-ahead bounded: ordinary future occurrences are not returned early; only occurrences whose effective date is at or before the requested cutoff are admitted from the look-ahead window.
+
 ## v2-290
 
 - Fixed stale Accounts balance cards after saving, deleting, or toggling transaction status. Transaction mutations now immediately re-render the active view, keeping Accounts `Actual`/Safe metrics in sync with the Calendar cleared balance.
