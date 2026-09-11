@@ -7941,23 +7941,24 @@ dialog:not(.global-search-modal){box-shadow:none}
   gap:10px;
 }
 #transactionModal .tx-category-bucket-grid > label{min-width:0;display:grid;gap:5px}
-.ledger-bucket-label{
-  display:block;
-  margin-top:4px;
-  font-size:10px;
-  line-height:1.2;
-  color:var(--muted);
-}
-.spending-bucket-badge{
+.spending-bucket-marker{
   display:inline-flex;
   align-items:center;
-  border:1px solid var(--line);
-  border-radius:999px;
-  padding:2px 7px;
-  font-size:10px;
-  color:var(--muted);
-  background:var(--panel2);
+  justify-content:center;
+  flex:0 0 auto;
+  width:1.15em;
+  min-width:1.15em;
+  margin-left:4px;
+  font-size:12px;
+  line-height:1;
+  vertical-align:-1px;
 }
+.calendar-bucket-marker,
+.day-bucket-marker,
+.search-bucket-marker{margin-left:2px;margin-right:3px}
+.ledger-bucket-marker,
+.budget-bucket-marker{margin-left:5px}
+
 @media (max-width:700px){
   #transactionModal .tx-category-bucket-grid{grid-template-columns:1fr 1fr;gap:8px}
 }

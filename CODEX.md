@@ -161,11 +161,23 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-291`
+Latest known version: `money-nest-v2-293`
 
 
 
 
+
+### v2-293 Spending bucket transaction markers
+- Transaction-facing displays should show a compact **emoji-only** marker for an effective Mak/Ty Spending bucket. Do not print the full bucket name beside ordinary transaction rows/chips.
+- The marker emoji must come from the live `mak-spending` / `ty-spending` category record so Settings category edits update all markers automatically. Keep a tooltip/aria label with the bucket name for discoverability/accessibility.
+- Full bucket label text remains appropriate in selectors, Budget configuration, Template configuration, and search matching; this rule is about concise transaction display.
+- Mak Spending / Ty Spending remain protected category ids and their emoji is editable through the normal Category editor. Do not create a duplicate bucket-emoji preference field.
+
+### v2-292 Recurring occurrence action status
+- Generated recurring occurrences after the source/template date must default to `planned` unless `occurrenceOverrides[originalDate]` explicitly supplies another status.
+- `transactionForOccurrenceForm()` must mirror the generated-occurrence default used by `expandedTransactions()`. Context-menu actions, long-press actions, and the transaction editor all depend on this helper.
+- Do not infer a generated occurrence's status from the recurring source transaction itself; the source may be cleared while later occurrences are still planned.
+- Marking one occurrence cleared/planned remains occurrence-only and must not change the recurring template's default or sibling occurrences.
 
 ### v2-291 Effective-date recurrence cutoff
 - `expandedTransactions(untilISO)` must include a recurring occurrence when its **effective/display date** is on or before `untilISO`, even if its original recurrence date is later.

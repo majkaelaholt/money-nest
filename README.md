@@ -1,5 +1,19 @@
 # Money Nest
 
+## v2-293
+
+- Bucketed transactions now show the assigned **Mak Spending / Ty Spending emoji only** as a compact marker in Calendar chips, day details, account transaction ledgers, budget-detail transaction lists, and global Search. The marker uses a tooltip/accessibility label but does not print the bucket name beside the transaction.
+- The marker reads the bucket category's current emoji dynamically, so changing the emoji updates every bucket marker without rewriting transactions.
+- Bucket emojis were already editable through **Settings → Categories → Mak Spending / Ty Spending → Edit**. The category editor now labels that field **Emoji (bucket marker)** and explains that it controls the transaction marker, making the existing customization path explicit.
+- Bucket selection, budget ownership, template behavior, schema 225, storage key, and finance calculations are unchanged.
+
+## v2-292
+
+- Fixed recurring-occurrence quick-action status detection. Generated recurring occurrences now reconstruct as **Planned by default** unless that exact occurrence has its own saved status override, matching Calendar rendering.
+- Prevents a visibly Planned past recurring occurrence from incorrectly offering **Mark planned** on first right-click/long-press; it now immediately offers **Mark cleared**.
+- The same occurrence reconstruction is used by the transaction editor, so opening a generated Planned occurrence no longer inherits a Cleared status from the recurring source/template.
+- No recurrence schedules, transaction history, schema, storage key, or finance calculations changed.
+
 ## v2-291
 
 - Fixed effective-date recurrence expansion: recurring items moved earlier than their original scheduled date (for example weekend previous-Friday moves or explicit occurrence/date overrides) now count in Account Actual, Safe to Spend, reports, and other through-date calculations on the date they actually land.

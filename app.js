@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-291";
+const APP_VERSION = "2-293";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -780,6 +780,22 @@ function spendingBucketCategory(id){
 function spendingBucketLabel(id, fallback="None / shared"){
   const bucket = spendingBucketCategory(id);
   return bucket ? `${bucket.emoji || "🎯"} ${bucket.name}`.trim() : fallback;
+}
+function spendingBucketEmoji(id, fallback=""){
+  const bucket = spendingBucketCategory(id);
+  return bucket ? (bucket.emoji || "🎯") : fallback;
+}
+function spendingBucketMarkerForTransaction(tx, extraClass=""){
+  const id = effectiveTransactionSpendingBucketId(tx);
+  if(!id) return "";
+  // Legacy rows that literally use Mak/Ty Spending as their category already
+  // show the same emoji as the category itself; avoid rendering it twice.
+  if(!normalizedSpendingBucketId(tx?.spendingBucketId) && normalizedSpendingBucketId(tx?.categoryId) === id) return "";
+  const bucket = spendingBucketCategory(id);
+  const emoji = bucket?.emoji || "🎯";
+  const label = bucket?.name || "Spending bucket";
+  const cls = ["spending-bucket-marker", extraClass].filter(Boolean).join(" ");
+  return `<span class="${cls}" title="${escapeAttr(label)}" aria-label="${escapeAttr(label)}">${escapeAttr(emoji)}</span>`;
 }
 function effectiveTransactionSpendingBucketId(tx){
   const explicit = normalizedSpendingBucketId(tx?.spendingBucketId);
@@ -1685,8 +1701,20 @@ function saveRecurringOccurrenceOverride(baseTx, formTx, occurrenceOriginalDate,
 
 function transactionForOccurrenceForm(tx, originalISO, occurrenceISO){
   if(!tx) return null;
-  const baseOccurrence = applyOccurrenceOverride(tx, originalISO || tx.date, occurrenceISO || originalISO || tx.date);
-  return baseOccurrence || {...tx, date: occurrenceISO || tx.date, originalDate: originalISO || tx.date};
+  const originalDate = originalISO || tx.date;
+  const occurrenceDate = occurrenceISO || originalDate || tx.date;
+
+  // Recurring transactions are templates. Generated occurrences after the
+  // template's own date start Planned unless that exact occurrence has a
+  // saved override (for example, it was marked Cleared). Mirror the same
+  // default used by expandedTransactions() so Calendar rows, the editor, and
+  // right-click/long-press quick actions cannot disagree about status.
+  const occurrenceSource = isRecurring(tx) && originalDate !== tx.date
+    ? {...tx, status:"planned", generated:true, originalId:tx.originalId || tx.id}
+    : tx;
+
+  const baseOccurrence = applyOccurrenceOverride(occurrenceSource, originalDate, occurrenceDate);
+  return baseOccurrence || {...occurrenceSource, date:occurrenceDate, originalDate};
 }
 
 function recurrenceGenerationUntil(tx, untilISO){
@@ -3378,7 +3406,7 @@ function renderCalendar(){
     const isPositive = calendarEntryIsPositive(tx);
     const chipStatus = tx.status === "cleared" ? "cleared" : "planned";
     return `<div class="tx-chip ${extraClass} ${chipStatus} ${highlighted ? "" : "muted-category"}" draggable="true" style="${style}" data-tx="${tx.originalId || tx.id}" data-generated="${!!tx.generated}" data-original-date="${tx.originalDate || tx.date}" data-occurrence-date="${tx.date}" data-calendar-side="${tx.calendarSide || ""}" data-calendar-account="${tx.calendarAccountId || ""}">
-      <span class="tx-name">${highlighted ? cat.emoji : "◦"} ${calendarEntryLabel(tx)}<small class="chip-meta">${accountById(tx.calendarAccountId || tx.accountId)?.name || "Unknown account"} • ${tx.status === "cleared" ? "Cleared" : "Planned"}</small></span>
+      <span class="tx-name">${highlighted ? cat.emoji : "◦"} ${spendingBucketMarkerForTransaction(tx,"calendar-bucket-marker")}${calendarEntryLabel(tx)}<small class="chip-meta">${accountById(tx.calendarAccountId || tx.accountId)?.name || "Unknown account"} • ${tx.status === "cleared" ? "Cleared" : "Planned"}</small></span>
       <span class="tx-chip-amount">${isPositive?'+':'-'}${money(tx.amount)}</span>
       <button type="button" class="tx-touch-actions" aria-label="Transaction quick actions" onclick="event.preventDefault();event.stopPropagation();showTxActionsFromButton(this)">•••</button>
     </div>`;
@@ -4058,7 +4086,7 @@ function renderLedger(txs, options={}){
 
       return `<div class="ledger-row" data-tx="${editId}" onclick="openTransaction('${editId}',{generated:${!!tx.generated}, occurrenceOriginalDate:'${tx.originalDate || tx.date}', occurrenceDate:'${tx.date}'})">
         <div>${tx.date}</div><div><b>${tx.title}</b><div class="row-sub">${context}</div></div>
-        <div><span class="cat-preview" style="background:${hexToSoft(cat.color)}">${cat.emoji} ${cat.name}</span>${effectiveTransactionSpendingBucketId(tx)?`<span class="ledger-bucket-label">${escapeAttr(spendingBucketLabel(effectiveTransactionSpendingBucketId(tx),""))}</span>`:""}</div>
+        <div><span class="cat-preview" style="background:${hexToSoft(cat.color)}">${cat.emoji} ${cat.name}</span>${spendingBucketMarkerForTransaction(tx,"ledger-bucket-marker")}</div>
         <div class="ledger-status-cell">${statusButton(tx)}</div>
         <div class="amount ${amountClass}">${sign}${money(tx.amount)}</div>
         ${showBalance ? `<div class="amount projected">${balanceAfter === null || balanceAfter === undefined ? "—" : money(balanceAfter)}</div>` : ""}
@@ -4787,7 +4815,7 @@ function openBudgetDetailView({categoryId, categoryIds=null, budget=null, accoun
         const a=accountById(tx.accountId), c=categoryById(tx.categoryId);
         return `<article class="budget-detail-tx-card">
           <div class="budget-detail-tx-top"><div><b>${escapeAttr(tx.title || "Untitled")}</b><span>${parseDate(tx.date).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})}</span></div><strong>${money(budgetTransactionAmount(tx))}</strong></div>
-          <div class="budget-detail-tx-meta"><span>${a?.emoji || "💵"} ${escapeAttr(a?.name || "Unknown account")}</span><span>${c?.emoji || "🏷️"} ${escapeAttr(c?.name || "Unassigned")}</span>${effectiveTransactionSpendingBucketId(tx)?`<span class="spending-bucket-badge">${escapeAttr(spendingBucketLabel(effectiveTransactionSpendingBucketId(tx),""))}</span>`:""}<span class="status-pill ${tx.status || "planned"}">${tx.status === "cleared" ? "✓ Cleared" : "○ Planned"}</span></div>
+          <div class="budget-detail-tx-meta"><span>${a?.emoji || "💵"} ${escapeAttr(a?.name || "Unknown account")}</span><span>${c?.emoji || "🏷️"} ${escapeAttr(c?.name || "Unassigned")}</span>${spendingBucketMarkerForTransaction(tx,"budget-bucket-marker")}<span class="status-pill ${tx.status || "planned"}">${tx.status === "cleared" ? "✓ Cleared" : "○ Planned"}</span></div>
         </article>`;
       }).join("")}</div>` : `<div class="empty-state">No included transactions for ${range.label}.</div>`}
     </section>`;
@@ -9033,9 +9061,11 @@ if(bulkEditCategoriesBtnEl) bulkEditCategoriesBtnEl.onclick = window.bulkEditCat
 window.simpleCategory = (id=null)=>{
   const c = id ? categoryById(id) : null;
   simpleTitle.textContent = id ? "Edit category" : "Add category";
+  const isSpendingBucketCategory = !!id && SPENDING_BUCKET_IDS.includes(id);
   simpleFields.innerHTML = `
     <label>Name<input id="sName" value="${id ? c.name : ""}" required></label>
-    <label>Emoji<input id="sEmoji" value="${id ? c.emoji : ""}" placeholder="🍔"></label>
+    <label>${isSpendingBucketCategory ? "Emoji (bucket marker)" : "Emoji"}<input id="sEmoji" value="${id ? c.emoji : ""}" placeholder="🍔"></label>
+    ${isSpendingBucketCategory ? `<p class="hint">This emoji is the compact marker shown on transactions assigned to this spending bucket.</p>` : ""}
     <label>Spending view <span class="hint-inline">Budget overview</span><select id="sCategorySpendingType">
       <option value="auto" ${normalizedCategorySpendingType(c)==="auto"?"selected":""}>Auto — recurring decides</option>
       <option value="bills" ${normalizedCategorySpendingType(c)==="bills"?"selected":""}>Bills</option>
@@ -10400,7 +10430,7 @@ function openDayModal(dayISO){
     const isPositive = calendarEntryIsPositive(tx);
     return `<div class="day-modal-row" data-tx="${tx.originalId || tx.id}" data-generated="${!!tx.generated}" data-original-date="${tx.originalDate || tx.date}" data-occurrence-date="${tx.date}" onclick="closeDayModalNow(); openTransaction('${tx.originalId || tx.id}',{generated:${!!tx.generated}, occurrenceOriginalDate:'${tx.originalDate || tx.date}', occurrenceDate:'${tx.date}'});">
       <div class="day-modal-main">
-        <div class="row-title">${cat.emoji} ${calendarEntryLabel(tx)}</div>
+        <div class="row-title">${cat.emoji} ${spendingBucketMarkerForTransaction(tx,"day-bucket-marker")}${calendarEntryLabel(tx)}</div>
         <div class="row-sub">${acctText} • ${cat.name} • ${tx.status}</div>
       </div>
       <div class="amount ${isPositive?'good':'bad'}">${isPositive?'+':'-'}${money(tx.amount)}</div>
@@ -11204,7 +11234,7 @@ function renderGlobalSearch(query=''){
  const el=document.getElementById('globalSearchResults'); if(!el)return; const q=String(query).trim().toLowerCase();
  if(!q){el.innerHTML='<div class="empty-state">Start typing to search all saved transactions.</div>';return;}
  const rows=expandedTransactions(toISO(addMonths(new Date(),24))).filter(tx=>{const a=accountById(tx.accountId),c=categoryById(tx.categoryId);const bucket=spendingBucketLabel(effectiveTransactionSpendingBucketId(tx),"");return [tx.title,tx.notes,tx.date,tx.amount,a?.name,c?.name,bucket,tx.status,tx.type].some(v=>String(v??'').toLowerCase().includes(q));}).slice(0,80);
- el.innerHTML=rows.length?rows.map(tx=>{const a=accountById(tx.accountId),c=categoryById(tx.categoryId);return `<button class="global-search-row" onclick="openTransaction('${tx.originalId||tx.id}',{generated:${!!tx.generated},occurrenceOriginalDate:'${tx.originalDate||tx.date}',occurrenceDate:'${tx.date}'})"><span><b>${escapeAttr(tx.title||'Untitled')}</b><small>${tx.date} • ${a?.name||'Unknown account'} • ${c?.name||'Unassigned'}${effectiveTransactionSpendingBucketId(tx)?` • ${escapeAttr(spendingBucketLabel(effectiveTransactionSpendingBucketId(tx),''))}`:''} • ${tx.status}</small></span><strong>${money(tx.amount)}</strong></button>`}).join(''):'<div class="empty-state">No matches.</div>';
+ el.innerHTML=rows.length?rows.map(tx=>{const a=accountById(tx.accountId),c=categoryById(tx.categoryId);return `<button class="global-search-row" onclick="openTransaction('${tx.originalId||tx.id}',{generated:${!!tx.generated},occurrenceOriginalDate:'${tx.originalDate||tx.date}',occurrenceDate:'${tx.date}'})"><span><b>${spendingBucketMarkerForTransaction(tx,"search-bucket-marker")}${escapeAttr(tx.title||'Untitled')}</b><small>${tx.date} • ${a?.name||'Unknown account'} • ${c?.name||'Unassigned'} • ${tx.status}</small></span><strong>${money(tx.amount)}</strong></button>`}).join(''):'<div class="empty-state">No matches.</div>';
 }
 window.renderGlobalSearch=renderGlobalSearch;
 function healthScan(){
@@ -11504,3 +11534,6 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 // v2-290: Transaction save/delete/status mutations now re-render the active view immediately so Accounts Actual/Safe metrics cannot remain stale while Calendar reflects newer cleared activity.
 
 // v2-291: Recurrence expansion now discovers occurrences moved earlier than their original schedule date (weekend previous-Friday handling or explicit overrides), so Account Actual and other effective-date calculations include them at the date they really land.
+
+// v2-292: Generated recurring occurrence actions/editor reconstruction now defaults to Planned unless that exact occurrence has a saved override, matching Calendar status rendering.
+// v2-293: Bucketed transactions show the editable Mak/Ty bucket emoji as a compact marker across transaction views; full bucket words stay in selectors/configuration.
