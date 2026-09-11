@@ -1,5 +1,13 @@
 # Money Nest
 
+## v2-294
+
+- Category-based transaction filters now treat the protected **Mak Spending** and **Ty Spending** choices as aliases for their effective Spending buckets. This applies to Calendar Highlight, account/timeline Category filters, Bills Category filters, and category-only spending drill-downs; ordinary category choices still match the real transaction category.
+- Legacy transactions whose category is literally Mak Spending / Ty Spending remain compatible because effective bucket membership already falls back to those legacy category ids.
+- Fixed an August Bills/Extra false-positive: the conservative legacy recurring-occurrence detector no longer classifies an unrelated one-off cash expense as a recurring Bill solely because it shares account + category with a recurring series. Ordinary unlinked expenses must also match the recurring charge identity (title/notes). Routed card/debt/transfer matching is unchanged.
+- This prevents unrelated one-off purchases from being mistaken for a recurring series merely because they share its cash account and category, while preserving genuine recurring occurrences.
+- No transaction/category migration, budget ownership change, schema change, storage-key change, or cloud format change.
+
 ## v2-293
 
 - Bucketed transactions now show the assigned **Mak Spending / Ty Spending emoji only** as a compact marker in Calendar chips, day details, account transaction ledgers, budget-detail transaction lists, and global Search. The marker uses a tooltip/accessibility label but does not print the bucket name beside the transaction.

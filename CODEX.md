@@ -161,11 +161,15 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-293`
+Latest known version: `money-nest-v2-294`
 
 
 
-
+### v2-294 Bucket-aware category filters + recurring-spend classification
+- In transaction-facing category filters/highlights, selecting protected category id `mak-spending` or `ty-spending` means **effective Spending bucket membership**, not literal `tx.categoryId` equality. Normal category ids continue to match the real category.
+- Use `transactionMatchesCategorySelection()` for Calendar Highlight, account/timeline category filters, Bills category filters, and category-only spending drill-downs. Do not apply this alias rule to category editing/cleanup, template category fields, or Budget category definitions; those still refer to real categories.
+- `transactionBelongsToRecurringBill()` legacy fallback must be conservative for ordinary unlinked expenses. Same cash account + same category alone is insufficient; a plain expense also needs matching title/notes identity before it can inherit recurring-Bill status. Strong routed card/debt/transfer matching remains unchanged.
+- Do not migrate existing Mak/Ty Spending category history or rewrite user data. Effective bucket fallback preserves old history.
 
 ### v2-293 Spending bucket transaction markers
 - Transaction-facing displays should show a compact **emoji-only** marker for an effective Mak/Ty Spending bucket. Do not print the full bucket name beside ordinary transaction rows/chips.

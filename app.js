@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-293";
+const APP_VERSION = "2-294";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -803,6 +803,17 @@ function effectiveTransactionSpendingBucketId(tx){
   // Backward compatibility: old transactions that literally used Mak Spending
   // or Ty Spending as their category count as that personal bucket too.
   return normalizedSpendingBucketId(tx?.categoryId);
+}
+// v2-294: UI category filters keep the familiar Mak/Ty Spending options, but
+// those two protected ids now act as aliases for the spending-bucket dimension.
+// Normal category selections still match the transaction's real category.
+function transactionMatchesCategorySelection(tx, selected){
+  const ids = Array.isArray(selected) ? selected.filter(Boolean) : [selected].filter(Boolean);
+  if(!ids.length || ids.includes("all")) return true;
+  const bucketId = effectiveTransactionSpendingBucketId(tx);
+  return ids.some(id => normalizedSpendingBucketId(id)
+    ? bucketId === normalizedSpendingBucketId(id)
+    : String(tx?.categoryId || "") === String(id));
 }
 function budgetSpendingBucketId(budget){
   return normalizedSpendingBucketId(budget?.spendingBucketId);
@@ -3274,7 +3285,7 @@ function isCalendarHighlightAll(){
   return !calendarHighlightCategories.length || calendarHighlightCategories.includes("all");
 }
 function calendarHighlightMatches(tx){
-  return isCalendarHighlightAll() || calendarHighlightCategories.includes(tx.categoryId);
+  return isCalendarHighlightAll() || transactionMatchesCategorySelection(tx, calendarHighlightCategories);
 }
 function calendarHighlightSelectLabel(){
   if(isCalendarHighlightAll()) return "All categories";
@@ -3918,7 +3929,7 @@ function filteredLedgerTransactions(txs){
 
   list = list.filter(tx => {
     const statusMatch = transactionFilters.status === "all" || tx.status === transactionFilters.status;
-    const categoryMatch = transactionFilters.category === "all" || tx.categoryId === transactionFilters.category;
+    const categoryMatch = transactionMatchesCategorySelection(tx, transactionFilters.category);
     const typeMatch = transactionFilters.type === "all" || tx.type === transactionFilters.type;
     const searchTerm = (transactionFilters.search || "").trim().toLowerCase();
     const searchMatch = !searchTerm || `${tx.title || ""} ${tx.notes || ""} ${categoryById(tx.categoryId).name || ""} ${spendingBucketLabel(effectiveTransactionSpendingBucketId(tx),"")}`.toLowerCase().includes(searchTerm);
@@ -4158,6 +4169,22 @@ function transactionBelongsToRecurringBill(tx){
     return data.transactions.some(template => {
       if(!template || template.id === tx.id || !isRecurring(template)) return false;
       if(!billRouteMatches(template, tx)) return false;
+
+      // v2-294: for ordinary cash expenses, matching account + category alone is
+      // not enough to call a one-off purchase a recurring bill. A weekly Grocery
+      // placeholder otherwise made unrelated one-off grocery purchases look like
+      // Bills simply because they shared the same cash account + category.
+      // Keep the legacy fallback conservative: unlinked expenses also need the
+      // recurring series title/notes to identify the same charge. Strong routed
+      // transfers/card/debt payments keep the existing loose route matching.
+      const plainExpense = String(template.type || "") === "expense" && String(tx.type || "") === "expense" &&
+        !template.transferToAccountId && !template.linkedDebtId && !template.debtAccountId &&
+        !tx.transferToAccountId && !tx.linkedDebtId && !tx.debtAccountId;
+      if(plainExpense){
+        const sameChargeIdentity = billLooseTitleMatch(template.title, tx.title) || billLooseTitleMatch(template.notes, tx.notes);
+        if(!sameChargeIdentity) return false;
+      }
+
       const seriesStart = parseDate(template.date);
       for(let offset=-7; offset<=7; offset++){
         const cursor = addDays(txDate, offset);
@@ -4776,7 +4803,7 @@ function openBudgetDetailView({categoryId, categoryIds=null, budget=null, accoun
   const txs = expandedTransactions(range.end)
     .filter(tx=>tx.date >= range.start && tx.date <= range.end)
     .filter(tx=>budget ? isBudgetReviewOutflow(tx) : budgetIncludesTransaction(tx, budgetReviewIncludeRecurringBills))
-    .filter(tx=>budget ? txMatchesBudgetDefinition(tx, budget) : selectedCategoryIds.includes(tx.categoryId))
+    .filter(tx=>budget ? txMatchesBudgetDefinition(tx, budget) : transactionMatchesCategorySelection(tx, selectedCategoryIds))
     .filter(tx=>budget ? txMatchesBudgetScope(tx, budget) : txMatchesBudgetAccount(tx, accountId))
     .sort((a,b)=>String(b.date).localeCompare(String(a.date)) || String(a.title || "").localeCompare(String(b.title || "")));
   const total = txs.reduce((sum,tx)=>sum+budgetTransactionAmount(tx),0);
@@ -9518,7 +9545,7 @@ function billMatchesFilters(tx){
     owner === billFilters.account;
 
   normalizeBillCategoriesFilter();
-  const categoryMatch = billCategoryFilterIsAll() || billFilters.categories.includes(tx.categoryId);
+  const categoryMatch = billCategoryFilterIsAll() || transactionMatchesCategorySelection(tx, billFilters.categories);
   const typeMatch = billFilters.type === "all" || tx.type === billFilters.type;
   const recurrenceType = billRecurrenceType(tx);
   const recurrenceMatch = billFilters.recurrence === "all" || recurrenceType === billFilters.recurrence;
@@ -11537,3 +11564,5 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 
 // v2-292: Generated recurring occurrence actions/editor reconstruction now defaults to Planned unless that exact occurrence has a saved override, matching Calendar status rendering.
 // v2-293: Bucketed transactions show the editable Mak/Ty bucket emoji as a compact marker across transaction views; full bucket words stay in selectors/configuration.
+
+// v2-294: Mak/Ty Spending selections in category-based UI filters map to effective bucket membership; recurring-bill fallback no longer treats unrelated same-category cash expenses as Bills without matching charge identity.
