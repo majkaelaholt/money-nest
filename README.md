@@ -1,5 +1,11 @@
 # Money Nest
 
+## v2-297
+
+- Calendar account **View** now includes Savings as a selectable account.
+- Available in both normal Calendar and Planning Mode when Savings exists in that plan.
+- **All checking accounts** is unchanged and still excludes Savings; select Savings directly to view its planned/cleared activity and running balance.
+
 ## v2-296
 
 ### Planning start date

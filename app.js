@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-296";
+const APP_VERSION = "2-297";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -3927,7 +3927,7 @@ function renderCalendarFilter(){
 
   const calendarAccounts = data.accounts.filter(a => {
     const name = a.name.toLowerCase();
-    return name.includes("checking") && !name.includes("savings");
+    return (name.includes("checking") && !name.includes("savings")) || isSavingsAccount(a);
   });
 
   if(select){
@@ -11951,3 +11951,5 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 // v2-295: Calendar Planning Mode stores one-time account/transaction scenario snapshots inside the real root backup blob; planning edits remain isolated from real Bills, Budgets, Accounts history, and templates.
 // v2-296: Planning scenario creation accepts a custom start date; future-dated plans seed each account from the real projected balance entering that date and copy activity from that date forward.
 
+
+// v2-297: Calendar account View dropdown now includes savings accounts in both real and Planning modes; “All checking accounts” remains checking-only.

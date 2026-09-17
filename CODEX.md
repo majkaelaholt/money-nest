@@ -161,8 +161,14 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-296`
+Latest known version: `money-nest-v2-297`
 
+
+### v2-297 Calendar savings account view
+- The Calendar `View` account dropdown now includes savings accounts in addition to checking accounts.
+- This works in both the real-finances Calendar and Planning Mode, using whatever accounts exist in the active data context.
+- `All checking accounts` remains checking-only; savings is shown when explicitly selected.
+- Transfers into/out of savings use the existing account-perspective calendar logic, so savings inflows/outflows and running balances display correctly.
 
 ### v2-296 Planning scenario start date
 - New planning scenarios accept a user-selected `snapshotDate` / **Plan starts** date instead of always using today. Default remains today.
