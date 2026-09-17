@@ -161,7 +161,14 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-299`
+Latest known version: `money-nest-v2-300`
+
+### v2-300 Planning transfer + paycheck projection fixes
+- In Planning Mode, recurring cash transfers must retain both source and destination route fields through recurrence expansion. Generated transfer occurrences affect `accountId` negatively and `transferToAccountId` positively; explicit per-occurrence route overrides remain authoritative.
+- Keep Calendar filtering/display, account projected balances, and running-balance ordering aligned with those same two-sided transfer semantics. Route-first fallback is Planning-only so stale scenario metadata cannot hide a transfer destination; do not alter Real-mode behavior.
+- Future planned auto-paychecks in a scenario are derived from that scenario's live `settings.paycheckProfiles` on expansion/render. Ignore stale saved paycheck amount/rate metadata for Planning projections; preserve cleared paycheck amounts/history.
+- Plan settings owns scenario-only Mak/Ty paycheck assumptions. Editing these values must update future Planning projections after save without mutating root/Real paycheck settings or transactions.
+- Preserve occurrence overrides, cleared history, JSON/CSV/cloud compatibility, schema 225, and storage key `moneyNest.v2.113`.
 
 ### v2-299 Compact Planning Calendar header
 - Keep the desktop Calendar toolbar height consistent between Real and Planning modes. Do not put the planning scenario selector or Plan settings action back into the toolbar; they belong in `#planningModeBanner`.

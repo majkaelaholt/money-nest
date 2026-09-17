@@ -8072,3 +8072,24 @@ body.money-nest-planning-mode #calendarGrid .tx-chip::after{
   .planning-mode-banner small{font-size:9px}
   .planning-banner-actions{justify-content:flex-end}
 }
+
+/* v2-300 Planning paycheck assumptions */
+.planning-paycheck-settings{gap:10px}
+.planning-paycheck-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:8px;
+}
+.planning-paycheck-profile{
+  display:grid;
+  gap:7px;
+  padding:9px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:var(--panel);
+}
+.planning-paycheck-profile>b{font-size:12px}
+.planning-paycheck-profile small{font-size:9px;color:var(--muted);line-height:1.35}
+@media(max-width:720px){
+  .planning-paycheck-grid{grid-template-columns:1fr}
+}

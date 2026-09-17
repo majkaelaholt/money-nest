@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-299";
+const APP_VERSION = "2-300";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -1003,6 +1003,10 @@ function openCreatePlanningScenario(){
 function openPlanningScenarioSettings(){
   const scenario=activePlanningScenario();
   if(!scenario){ openCreatePlanningScenario(); return; }
+  scenario.dataset.settings ||= {};
+  scenario.dataset.settings.paycheckProfiles ||= {};
+  const makProfile=scenario.dataset.settings.paycheckProfiles.Mak || {};
+  const tyProfile=scenario.dataset.settings.paycheckProfiles.Ty || {};
   simpleTitle.textContent="Planning scenario";
   simpleFields.innerHTML=`
     <div class="planning-scenario-card">
@@ -1011,12 +1015,65 @@ function openPlanningScenarioSettings(){
       <p class="hint">Plan starts ${escapeAttr(scenario.snapshotDate)}. This is a one-time snapshot and does not auto-sync when real finances change.</p>
       <div class="planning-scenario-accounts">${scenario.dataset.accounts.map(a=>`<span>${a.emoji||"💵"} ${escapeAttr(a.name)}</span>`).join("")}</div>
     </div>
+    <div class="planning-scenario-card planning-paycheck-settings">
+      <div>
+        <p class="eyebrow">💵 Paycheck assumptions</p>
+        <p class="hint">These values apply only to this planning scenario. Future auto-paychecks recalculate from them; cleared paycheck history stays fixed.</p>
+      </div>
+      <div class="planning-paycheck-grid">
+        <div class="planning-paycheck-profile">
+          <b>Mak</b>
+          <div class="two-col">
+            <label>Hourly rate<input id="planningMakHourlyRate" type="number" min="0" step="0.01" value="${escapeAttr(makProfile.hourlyRate ?? 24)}"></label>
+            <label>Hours / workday<input id="planningMakHoursPerWorkday" type="number" min="0" step="0.25" value="${escapeAttr(makProfile.hoursPerWorkday ?? 8)}"></label>
+          </div>
+          <div class="two-col">
+            <label>Deduction %<input id="planningMakDeductionPercent" type="number" min="0" step="0.01" value="${escapeAttr(makProfile.deductionPercent ?? 18.51)}"></label>
+            <label>Fixed deduction<input id="planningMakFixedDeduction" type="number" min="0" step="0.01" value="${escapeAttr(makProfile.fixedDeduction ?? 0)}"></label>
+          </div>
+          <small>Uses pay-period weekdays unless that paycheck has an hours override.</small>
+        </div>
+        <div class="planning-paycheck-profile">
+          <b>Ty</b>
+          <div class="two-col">
+            <label>Hourly rate<input id="planningTyHourlyRate" type="number" min="0" step="0.01" value="${escapeAttr(tyProfile.hourlyRate ?? 22)}"></label>
+            <label>Default hours<input id="planningTyDefaultHours" type="number" min="0" step="0.25" value="${escapeAttr(tyProfile.defaultHours ?? 38)}"></label>
+          </div>
+          <div class="two-col">
+            <label>Deduction %<input id="planningTyDeductionPercent" type="number" min="0" step="0.01" value="${escapeAttr(tyProfile.deductionPercent ?? 18.51)}"></label>
+            <label>Fixed deduction<input id="planningTyFixedDeduction" type="number" min="0" step="0.01" value="${escapeAttr(tyProfile.fixedDeduction ?? 0)}"></label>
+          </div>
+          <small>Uses default hours unless that paycheck has an hours override.</small>
+        </div>
+      </div>
+    </div>
     <button type="button" class="ghost" onclick="simpleModal.close(); openCreatePlanningScenario();">＋ Create another scenario</button>`;
   simpleSubmit=()=>{
     const name=String(document.getElementById("planningEditName")?.value || "").trim();
     if(!name){ alert("Give the scenario a name."); return false; }
     scenario.name=name;
+    scenario.dataset.settings ||= {};
+    scenario.dataset.settings.planningScenarioMeta ||= {};
     scenario.dataset.settings.planningScenarioMeta.name=name;
+    scenario.dataset.settings.paycheckProfiles ||= {};
+    scenario.dataset.settings.paycheckProfiles.Mak={
+      ...(scenario.dataset.settings.paycheckProfiles.Mak || {}),
+      enabled:true,
+      mode:"pay-period-weekdays",
+      hourlyRate:Number(document.getElementById("planningMakHourlyRate")?.value || 0),
+      hoursPerWorkday:Number(document.getElementById("planningMakHoursPerWorkday")?.value || 0),
+      deductionPercent:Number(document.getElementById("planningMakDeductionPercent")?.value || 0),
+      fixedDeduction:Number(document.getElementById("planningMakFixedDeduction")?.value || 0)
+    };
+    scenario.dataset.settings.paycheckProfiles.Ty={
+      ...(scenario.dataset.settings.paycheckProfiles.Ty || {}),
+      enabled:true,
+      mode:"fixed-hours",
+      hourlyRate:Number(document.getElementById("planningTyHourlyRate")?.value || 0),
+      defaultHours:Number(document.getElementById("planningTyDefaultHours")?.value || 0),
+      deductionPercent:Number(document.getElementById("planningTyDeductionPercent")?.value || 0),
+      fixedDeduction:Number(document.getElementById("planningTyFixedDeduction")?.value || 0)
+    };
   };
   simpleDelete=()=>{
     if(!confirm(`Delete the “${scenario.name}” planning scenario? Your real finances will not be affected.`)) return false;
@@ -1963,15 +2020,30 @@ function paycheckAmountForTransaction(tx, dateISOOverride=""){
 function shouldAutoCalcPaycheck(tx){
   return !!(tx.autoPaycheck || tx.autoMakPaycheck) && tx.type === "paycheck" && !!paycheckProfileForAccount(tx.accountId);
 }
+function planningAutoPaycheckShouldRegenerate(tx){
+  if(!isPlanningDataContext() || !tx || tx.type !== "paycheck" || tx.status === "cleared") return false;
+  if(!paycheckProfileForAccount(tx.accountId)) return false;
+  // Older planned paycheck rows can carry useful autoPaycheckInfo even when an
+  // old save omitted the boolean flag. In Planning Mode that metadata identifies
+  // the row as auto-generated, but its stored rate/amount is never authoritative.
+  const hasStoredAutoInfo=!!(tx.autoPaycheckInfo && typeof tx.autoPaycheckInfo === "object" && Object.keys(tx.autoPaycheckInfo).length);
+  return !!(tx.autoPaycheck || tx.autoMakPaycheck || hasStoredAutoInfo);
+}
 function applyAutoPaycheckAmount(tx){
-  if(!shouldAutoCalcPaycheck(tx)) return tx;
+  const shouldRecalculate = isPlanningDataContext()
+    ? planningAutoPaycheckShouldRegenerate(tx)
+    : shouldAutoCalcPaycheck(tx);
+  if(!shouldRecalculate) return tx;
   const info = paycheckAmountForTransaction(tx, tx.date);
   if(!info) return tx;
   return {
     ...tx,
     amount: info.amount,
     autoPaycheck:true,
-    autoMakPaycheck: !!isMakAccountId(tx.accountId),
+    autoMakPaycheck: isPlanningDataContext() ? info.owner === "Mak" : !!isMakAccountId(tx.accountId),
+    // Runtime/projected occurrences always carry fresh calculation details in
+    // Planning Mode. The saved stale metadata is left untouched on disk unless
+    // the user edits that transaction, preserving backup compatibility/history.
     autoPaycheckInfo: info
   };
 }
@@ -1980,6 +2052,27 @@ function applyAutoPaycheckAmount(tx){
 
 function occurrenceOverrideFor(tx, originalISO){
   return tx?.occurrenceOverrides?.[originalISO] || null;
+}
+
+function planningRecurringRouteSource(tx){
+  if(!isPlanningDataContext() || !tx) return tx;
+  const sourceId=tx.recurringSourceId || tx.recurrenceSourceId || tx.originalId || "";
+  if(!sourceId) return tx;
+  return (data.transactions || []).find(candidate=>candidate.id===sourceId) || tx;
+}
+function applyPlanningRecurringRoute(sourceTx, occurrenceTx, originalISO){
+  if(!isPlanningDataContext() || !sourceTx || !occurrenceTx) return occurrenceTx;
+  // A recurring transfer must regenerate as the same two-sided cash movement.
+  // This also repairs older materialized occurrence rows that point back to a
+  // recurring source but lost one of the route fields in the saved occurrence.
+  if(sourceTx.type !== "transfer" && !sourceTx.transferToAccountId) return occurrenceTx;
+  const override=isRecurring(sourceTx) ? occurrenceOverrideFor(sourceTx, originalISO) : null;
+  const hasOwn=(key)=>!!override && Object.prototype.hasOwnProperty.call(override,key);
+  const routed={...occurrenceTx};
+  if(!hasOwn("accountId")) routed.accountId=routed.accountId || sourceTx.accountId || "";
+  if(!hasOwn("transferToAccountId")) routed.transferToAccountId=routed.transferToAccountId || sourceTx.transferToAccountId || "";
+  if(!hasOwn("type")) routed.type=routed.type || sourceTx.type;
+  return routed;
 }
 
 function applyOccurrenceOverride(tx, originalISO, occurrenceISO){
@@ -2096,7 +2189,8 @@ function expandedTransactions(untilISO){
   data.transactions.forEach(tx => {
     const generationUntil = recurrenceGenerationUntil(tx, untilISO);
     const baseDate = occurrenceDateFor(tx, parseDate(tx.date));
-    const baseOccurrence = applyOccurrenceOverride(tx, tx.date, baseDate);
+    let baseOccurrence = applyOccurrenceOverride(tx, tx.date, baseDate);
+    baseOccurrence = applyPlanningRecurringRoute(planningRecurringRouteSource(tx), baseOccurrence, tx.originalDate || tx.date);
     // Archived bills preserve cleared history but stop contributing planned/future
     // occurrences to calendars, forecasts, balances, and bill review totals.
     if(baseOccurrence && (!tx.billArchived || baseOccurrence.status === "cleared")) out.push(baseOccurrence);
@@ -2152,7 +2246,7 @@ function expandedTransactions(untilISO){
           continue;
         }
         const occurrenceISO = occurrenceDateFor(tx, cursor);
-        const generatedOccurrence = applyOccurrenceOverride({
+        let generatedOccurrence = applyOccurrenceOverride({
           ...tx,
           id: tx.id + "-" + originalISO,
           originalId:tx.id,
@@ -2163,6 +2257,7 @@ function expandedTransactions(untilISO){
           status: "planned",
           generated:true
         }, originalISO, occurrenceISO);
+        generatedOccurrence = applyPlanningRecurringRoute(tx, generatedOccurrence, originalISO);
         // Look-ahead exists only to discover occurrences whose effective date
         // moved backward. Do not leak ordinary future occurrences past the
         // caller's requested cutoff.
@@ -2186,14 +2281,22 @@ function pendingReimbursementsToAccount(accountId, throughISO="2999-12-31"){
     .filter(tx => isPendingReimbursementTx(tx) && tx.transferToAccountId === accountId && tx.date <= throughISO)
     .reduce((sum, tx)=>sum + Number(tx.amount || 0), 0);
 }
+function transactionActsAsCashTransfer(tx){
+  if(!tx) return false;
+  if(tx.type === "transfer") return true;
+  // Planning projections are route-first: if an older/generated scenario row
+  // still has both cash-account route fields, keep treating it as the transfer
+  // it represents even if stale metadata lost the type label.
+  return isPlanningDataContext() && !!tx.accountId && !!tx.transferToAccountId;
+}
 function txEffectOnCash(tx, accountId, projected=true){
   if(!projected && tx.status !== "cleared") return 0;
 
   // Transfers between cash accounts behave like normal planned/cleared money movement.
   // IOU / reimbursement transactions are still labeled for tracking, but they no
   // longer hide the receiving side from projected balances or Safe to Spend.
-  if(tx.type === "transfer" && tx.transferToAccountId === accountId){
-    return tx.amount;
+  if(transactionActsAsCashTransfer(tx) && tx.transferToAccountId === accountId){
+    return Number(tx.amount || 0);
   }
 
   if(tx.accountId !== accountId) return 0;
@@ -3643,7 +3746,7 @@ function calendarDisplayEntries(rawTxs){
   const entries = [];
 
   rawTxs.forEach(tx=>{
-    if(tx.type === "transfer" && tx.transferToAccountId){
+    if(transactionActsAsCashTransfer(tx) && tx.transferToAccountId){
       const fromIsChecking = checkingAccountIds.includes(tx.accountId);
       const toIsChecking = checkingAccountIds.includes(tx.transferToAccountId);
 
@@ -4144,8 +4247,8 @@ function accountTransactionSortRank(tx, accountId){
   // Same-day order for running balances:
   // 1) money coming in, 2) neutral/other, 3) money leaving.
   if(tx.type === "income" || tx.type === "paycheck") return 0;
-  if(tx.type === "transfer" && tx.transferToAccountId === accountId) return 0;
-  if(tx.type === "transfer" && tx.accountId === accountId) return 2;
+  if(transactionActsAsCashTransfer(tx) && tx.transferToAccountId === accountId) return 0;
+  if(transactionActsAsCashTransfer(tx) && tx.accountId === accountId) return 2;
   if(tx.accountId === accountId && tx.type === "expense") return 2;
   return 1;
 }
@@ -11967,3 +12070,5 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 // v2-297: Calendar account View dropdown now includes savings accounts in both real and Planning modes; “All checking accounts” remains checking-only.
 
 // v2-299: Planning scenario selection/settings live in the compact Planning banner so the desktop Calendar toolbar keeps the same one-row height as Real mode.
+
+// v2-300: Planning recurring transfers retain both cash-account sides during expansion/projection; future auto-paychecks regenerate from scenario paycheck profiles, which are editable in Plan settings.

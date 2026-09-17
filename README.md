@@ -1,5 +1,16 @@
 # Money Nest
 
+## v2-300
+
+### Planning transfer + paycheck projection fixes
+
+- Planning recurrence expansion now preserves both sides of recurring cash transfers, so each generated occurrence is an outflow from `accountId` and an inflow to `transferToAccountId`. Explicit occurrence overrides remain authoritative.
+- Planning Calendar/account projection logic uses the same two-sided transfer semantics, including older scenario rows that still carry both route fields even if stale metadata lost the transfer type label. Existing Real-mode transfer behavior is unchanged.
+- Future **planned** auto-paychecks in Planning Mode are regenerated from the scenario's current paycheck profile instead of trusting stale saved `amount` / `autoPaycheckInfo` values. The calculation uses current hourly rate, deduction %, fixed deduction, default/override hours, and Mak pay-period weekday logic.
+- Cleared paycheck history is not recalculated. Real-mode paycheck behavior and real data are unchanged.
+- **Plan settings** now exposes scenario-only Mak/Ty paycheck assumptions; saving them immediately refreshes future projected paycheck amounts in that plan.
+- No JSON/CSV/schema migration was required. Existing planning scenarios/backups remain compatible; schema remains 225 and storage key remains `moneyNest.v2.113`.
+
 ## v2-299
 
 ### Compact Planning Calendar header
