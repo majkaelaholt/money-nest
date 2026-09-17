@@ -161,7 +161,12 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-301`
+Latest known version: `money-nest-v2-302`
+
+### v2-302 DST-safe recurring schedule math
+- `daysBetween()` must count calendar dates via UTC-normalized date parts, not raw local-time milliseconds. DST transitions otherwise turn nominal 7-day spans into 6.958/7.042 days and break recurrence modulo checks.
+- Weekly, biweekly, and every-X-days recurrence expansion must remain stable across spring-forward/fall-back boundaries in both Real and Planning modes.
+- Preserve v2-301 source/destination transfer projection semantics and recurrence overrides. No schema change; schema remains 225.
 
 ### v2-301 Planning recurring-transfer projection order fix
 - Expand recurring scenario transactions before applying any cash-account filter. Account relevance is `tx.accountId === accountId || tx.transferToAccountId === accountId`.

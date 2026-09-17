@@ -1,5 +1,15 @@
 # Money Nest
 
+## v2-302
+
+### DST-safe recurring schedule math
+
+- Recurrence day spacing now uses calendar-day arithmetic instead of elapsed local-time milliseconds, so daylight-saving-time changes cannot break weekly, biweekly, or every-X-days schedules.
+- Fixes the Planning Mode Ty → Joint series stopping after March 10, 2027: the March 14 spring-forward boundary previously made later Wednesdays fail the 7-day modulo test.
+- Weekly transfers now continue normally on March 17, 24, and 31 (and beyond), with the existing two-sided source/destination transfer projection logic preserved.
+- The date-math fix is generic and applies to Real and Planning recurrence expansion without changing saved transaction data, recurrence overrides, cleared history, schema, or backup compatibility.
+- Schema remains 225 and storage key remains `moneyNest.v2.113`.
+
 ## v2-301
 
 ### Planning recurring-transfer projection order fix

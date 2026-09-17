@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-301";
+const APP_VERSION = "2-302";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -402,7 +402,17 @@ function addMonths(date, n){ const d = new Date(date); d.setMonth(d.getMonth()+n
 function groupBy(arr,key){ return arr.reduce((m,x)=>((m[x[key]] ||= []).push(x),m),{}); }
 function sameDay(a,b){ return toISO(a) === toISO(b); }
 function addDays(date,n){ const d = new Date(date); d.setDate(d.getDate()+n); return d; }
-function daysBetween(a,b){ return Math.floor((parseDate(toISO(b)) - parseDate(toISO(a))) / 86400000); }
+function daysBetween(a,b){
+  // Count calendar days, not elapsed local-time milliseconds. Crossing a DST
+  // boundary can make two local noons 23 or 25 hours apart, which previously
+  // broke weekly/biweekly/every-X-days recurrence modulo checks. UTC date parts
+  // keep recurrence cadence stable across spring-forward/fall-back changes.
+  const start=parseDate(toISO(a));
+  const end=parseDate(toISO(b));
+  const startUTC=Date.UTC(start.getFullYear(), start.getMonth(), start.getDate());
+  const endUTC=Date.UTC(end.getFullYear(), end.getMonth(), end.getDate());
+  return Math.round((endUTC-startUTC)/86400000);
+}
 function monthDiff(a,b){ return (b.getFullYear()-a.getFullYear())*12 + (b.getMonth()-a.getMonth()); }
 function nthWeekdayOfMonth(year, month, weekday, ordinal){
   if(Number(ordinal) === -1){
@@ -12096,4 +12106,5 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 // v2-299: Planning scenario selection/settings live in the compact Planning banner so the desktop Calendar toolbar keeps the same one-row height as Real mode.
 
 // v2-301: Planning cash-account relevance is evaluated after recurrence expansion. Calendar cards and account balances share source-or-destination transfer semantics, so recurring incoming transfers cannot be dropped before projection.
+// v2-302: Calendar-day recurrence math is DST-safe, so weekly/biweekly/every-X-days schedules continue across spring-forward/fall-back boundaries.
 // v2-300: Planning recurring transfers retain both cash-account sides during expansion/projection; future auto-paychecks regenerate from scenario paycheck profiles, which are editable in Plan settings.
