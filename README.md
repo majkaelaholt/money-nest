@@ -1,5 +1,16 @@
 # Money Nest
 
+## v2-301
+
+### Planning recurring-transfer projection order fix
+
+- Planning cash-account relevance is now evaluated **after** recurring series are expanded into concrete occurrences. A transfer occurrence is relevant when either `accountId` or `transferToAccountId` matches the selected account.
+- Added a shared account-perspective occurrence path used by projected account balances and Calendar filtering, preventing an incoming recurring transfer from being discarded just because its source account is different.
+- Transfer effects are consistently two-sided: `accountId` subtracts the amount and `transferToAccountId` adds it. Existing one-time/planned transfers remain supported, including one-sided Planning transfers whose other account is outside the scenario.
+- Calendar transfer chips now derive their incoming/outgoing side from the same account-effect helper used by balance math, keeping visible cards and running balances in sync.
+- Regression-checked against the After Move scenario: Ty → Joint generates +$490 on July 7, 14, 21, and 28, 2027; July 7 nets +$1,207; July 31 Joint projects to $2,578.92 with the matching scenario backup.
+- No JSON/CSV/schema migration was required. Schema remains 225 and storage key remains `moneyNest.v2.113`.
+
 ## v2-300
 
 ### Planning transfer + paycheck projection fixes

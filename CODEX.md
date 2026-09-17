@@ -161,7 +161,13 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-300`
+Latest known version: `money-nest-v2-301`
+
+### v2-301 Planning recurring-transfer projection order fix
+- Expand recurring scenario transactions before applying any cash-account filter. Account relevance is `tx.accountId === accountId || tx.transferToAccountId === accountId`.
+- `expandedCashTransactionsForAccount()` is the shared source for account-balance projections; Calendar filtering must use the same post-expansion source-or-destination rule.
+- `cashTransferEffectOnAccount()` defines transfer math: source side is negative, destination side is positive, and a same-account route nets to zero. Do not reintroduce source-only filtering before recurrence expansion.
+- Keep recurrence overrides authoritative and preserve one-time/planned transfer behavior. No schema change; schema remains 225.
 
 ### v2-300 Planning transfer + paycheck projection fixes
 - In Planning Mode, recurring cash transfers must retain both source and destination route fields through recurrence expansion. Generated transfer occurrences affect `accountId` negatively and `transferToAccountId` positively; explicit per-occurrence route overrides remain authoritative.

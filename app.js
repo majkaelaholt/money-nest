@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-300";
+const APP_VERSION = "2-301";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -2289,25 +2289,44 @@ function transactionActsAsCashTransfer(tx){
   // it represents even if stale metadata lost the type label.
   return isPlanningDataContext() && !!tx.accountId && !!tx.transferToAccountId;
 }
+function transactionTouchesCashAccount(tx, accountId){
+  if(!tx || !accountId) return false;
+  // IMPORTANT: account relevance is evaluated only after recurrence expansion.
+  // Incoming recurring transfers originate on another account, so source-only
+  // filtering would discard the series before its destination-side occurrences
+  // can contribute to Calendar cards or projected balances.
+  return tx.accountId === accountId || tx.transferToAccountId === accountId;
+}
+function expandedCashTransactionsForAccount(accountId, throughISO="2999-12-31"){
+  return expandedTransactions(throughISO).filter(tx=>transactionTouchesCashAccount(tx, accountId));
+}
+function cashTransferEffectOnAccount(tx, accountId){
+  if(!tx || !accountId) return 0;
+  const amount=Number(tx.amount || 0);
+  let effect=0;
+  if(tx.accountId === accountId) effect -= amount;
+  if(tx.transferToAccountId === accountId) effect += amount;
+  return effect;
+}
 function txEffectOnCash(tx, accountId, projected=true){
   if(!projected && tx.status !== "cleared") return 0;
 
-  // Transfers between cash accounts behave like normal planned/cleared money movement.
-  // IOU / reimbursement transactions are still labeled for tracking, but they no
-  // longer hide the receiving side from projected balances or Safe to Spend.
-  if(transactionActsAsCashTransfer(tx) && tx.transferToAccountId === accountId){
-    return Number(tx.amount || 0);
+  // Transfers are always two-sided from the account perspective: source is an
+  // outflow, destination is an inflow. This also preserves one-sided transfers
+  // to/from accounts outside a Planning scenario and makes same-account routes net 0.
+  if(transactionActsAsCashTransfer(tx)){
+    return cashTransferEffectOnAccount(tx, accountId);
   }
 
   if(tx.accountId !== accountId) return 0;
-  if(tx.type === "income" || tx.type === "paycheck") return tx.amount;
-  return -tx.amount;
+  if(tx.type === "income" || tx.type === "paycheck") return Number(tx.amount || 0);
+  return -Number(tx.amount || 0);
 }
 function accountBalance(accountId, projected=true, throughISO="2999-12-31"){
   const acc = accountById(accountId);
   if(!acc) return 0;
   const scenarioStart = planningScenarioSnapshotStartDate();
-  return acc.startingBalance + expandedTransactions(throughISO)
+  return acc.startingBalance + expandedCashTransactionsForAccount(accountId, throughISO)
     .filter(tx=>tx.date <= throughISO && (!scenarioStart || tx.date >= scenarioStart))
     .reduce((sum,tx)=>sum + txEffectOnCash(tx, accountId, projected),0);
 }
@@ -3760,13 +3779,13 @@ function calendarDisplayEntries(rawTxs){
         return;
       }
 
-      if(tx.accountId === calendarFilter){
-        entries.push({...tx, calendarSide:"out", calendarAccountId:tx.accountId, calendarAmountSign:-1});
+      const selectedEffect=cashTransferEffectOnAccount(tx, calendarFilter);
+      if(selectedEffect < 0){
+        entries.push({...tx, calendarSide:"out", calendarAccountId:calendarFilter, calendarAmountSign:-1});
         return;
       }
-
-      if(tx.transferToAccountId === calendarFilter){
-        entries.push({...tx, calendarSide:"in", calendarAccountId:tx.transferToAccountId, calendarAmountSign:1});
+      if(selectedEffect > 0){
+        entries.push({...tx, calendarSide:"in", calendarAccountId:calendarFilter, calendarAmountSign:1});
         return;
       }
 
@@ -3876,11 +3895,16 @@ function renderCalendar(){
     .filter(a => a.name.toLowerCase().includes("checking") && !a.name.toLowerCase().includes("savings"))
     .map(a => a.id);
   const scenarioStart = planningScenarioSnapshotStartDate();
-  const rawTxs = expandedTransactions(toISO(addMonths(monthStart,2))).filter(tx =>
+  // Expand every scenario recurrence first. Only then decide whether each concrete
+  // occurrence touches the selected account by source OR destination. This order is
+  // shared with accountBalance() so the Calendar cards and running balance cannot
+  // disagree about incoming recurring transfers.
+  const expandedForCalendar = expandedTransactions(toISO(addMonths(monthStart,2)));
+  const rawTxs = expandedForCalendar.filter(tx =>
     (!scenarioStart || tx.date >= scenarioStart) && (
       calendarFilter==="all"
-        ? (checkingAccountIds.includes(tx.accountId) || checkingAccountIds.includes(tx.transferToAccountId))
-        : (tx.accountId===calendarFilter || tx.transferToAccountId===calendarFilter)
+        ? checkingAccountIds.some(accountId=>transactionTouchesCashAccount(tx,accountId))
+        : transactionTouchesCashAccount(tx,calendarFilter)
     )
   );
   const txs = calendarDisplayEntries(rawTxs);
@@ -12071,4 +12095,5 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 
 // v2-299: Planning scenario selection/settings live in the compact Planning banner so the desktop Calendar toolbar keeps the same one-row height as Real mode.
 
+// v2-301: Planning cash-account relevance is evaluated after recurrence expansion. Calendar cards and account balances share source-or-destination transfer semantics, so recurring incoming transfers cannot be dropped before projection.
 // v2-300: Planning recurring transfers retain both cash-account sides during expansion/projection; future auto-paychecks regenerate from scenario paycheck profiles, which are editable in Plan settings.
