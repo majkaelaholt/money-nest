@@ -7970,7 +7970,7 @@ dialog:not(.global-search-modal){box-shadow:none}
   display:flex;
   align-items:center;
   gap:7px;
-  flex-wrap:wrap;
+  flex-wrap:nowrap;
 }
 .calendar-mode-toggle{
   display:inline-flex;
@@ -8000,17 +8000,19 @@ dialog:not(.global-search-modal){box-shadow:none}
   display:flex;
   align-items:center;
   justify-content:space-between;
-  gap:12px;
+  gap:10px;
   margin:0 0 7px;
-  padding:8px 10px;
+  padding:6px 8px;
   border:1px solid color-mix(in srgb,var(--accent) 38%,var(--line));
   border-radius:14px;
   background:color-mix(in srgb,var(--accent) 7%,var(--panel));
 }
 .planning-mode-banner[hidden]{display:none!important}
-.planning-mode-banner>span{display:grid;gap:1px;min-width:0}
-.planning-mode-banner b{font-size:12px}
-.planning-mode-banner small{font-size:9.5px;color:var(--muted);line-height:1.35}
+.planning-banner-main{display:flex;align-items:center;gap:9px;min-width:0;flex:1 1 auto}
+.planning-mode-banner .planning-scenario-select{flex:0 0 150px;width:150px;min-width:130px!important;max-width:170px}
+.planning-mode-copy{display:block;min-width:0}
+.planning-mode-banner small{font-size:9.5px;color:var(--muted);line-height:1.3}
+.planning-banner-actions{display:flex;align-items:center;gap:6px;flex:0 0 auto}
 body.money-nest-planning-mode #calendarGrid{
   outline:1px solid color-mix(in srgb,var(--accent) 26%,transparent);
   outline-offset:-1px;
@@ -8061,11 +8063,12 @@ body.money-nest-planning-mode #calendarGrid .tx-chip::after{
 @media(max-width:720px){
   #calendar.view.active .calendar-toolbar-local .calendar-planning-controls{
     grid-column:1 / -1;
-    display:grid;
-    grid-template-columns:auto minmax(0,1fr) auto;
+    display:flex;
     width:100%;
   }
-  .planning-scenario-select{min-width:0!important;max-width:none;width:100%}
-  .planning-mode-banner{align-items:flex-start}
+  .planning-mode-banner{align-items:stretch;flex-direction:column;gap:6px}
+  .planning-banner-main{display:grid;gap:5px}
+  .planning-mode-banner .planning-scenario-select{width:100%;min-width:0!important;max-width:none}
   .planning-mode-banner small{font-size:9px}
+  .planning-banner-actions{justify-content:flex-end}
 }

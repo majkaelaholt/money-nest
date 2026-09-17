@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-297";
+const APP_VERSION = "2-299";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -861,6 +861,11 @@ function syncCalendarDataContext(){
   if(calendarMode==="planning"){
     const scenario=activePlanningScenario();
     if(scenario?.dataset){
+      // v2-298: Planning sandboxes own their financial data, not the app theme.
+      // Always mirror the real/root appearance settings before Calendar renders so
+      // entering a scenario cannot temporarily replace the user's palette.
+      scenario.dataset.settings ||= {};
+      scenario.dataset.settings.appearance = JSON.parse(JSON.stringify(root.settings?.appearance || {}));
       data=scenario.dataset;
       if(calendarFilter!=="all" && !data.accounts.some(a=>a.id===calendarFilter)) calendarFilter="all";
       return scenario;
@@ -1037,6 +1042,7 @@ function setCalendarMode(mode){
   calendarMode=next;
   syncCalendarDataContext();
   saveUiPrefs();
+  applyMoneyNestPalette();
   renderSelectors();
   renderCalendar();
 }
@@ -1047,6 +1053,7 @@ function setPlanningScenario(id){
   calendarMode="planning";
   syncCalendarDataContext();
   saveUiPrefs();
+  applyMoneyNestPalette();
   renderSelectors();
   renderCalendar();
 }
@@ -1165,6 +1172,10 @@ function normalizePlanningScenarioDataset(rawDataset, scenarioMeta={}, root=null
   dataset.settings.paycheckProfiles = dataset.settings.paycheckProfiles && typeof dataset.settings.paycheckProfiles === "object"
     ? dataset.settings.paycheckProfiles
     : JSON.parse(JSON.stringify(fallbackRoot.settings?.paycheckProfiles || {}));
+  // Appearance is an app-wide preference, not scenario state. Refresh it from the
+  // root dataset during normalization so older planning scenarios that accidentally
+  // saved a default/temporary palette repair themselves on load.
+  dataset.settings.appearance = JSON.parse(JSON.stringify(fallbackRoot.settings?.appearance || {}));
   dataset.settings.planningScenarioMeta = {
     id:String(scenarioMeta.id || dataset.settings.planningScenarioMeta?.id || ""),
     name:String(scenarioMeta.name || dataset.settings.planningScenarioMeta?.name || "Planning"),
@@ -3726,6 +3737,7 @@ function renderCalendarPlanningControls(){
   const select=document.getElementById("planningScenarioSelect");
   const settingsBtn=document.getElementById("planningScenarioSettingsBtn");
   const banner=document.getElementById("planningModeBanner");
+  const bannerCopy=document.getElementById("planningModeCopy");
   if(realBtn) realBtn.classList.toggle("active",calendarMode==="real");
   if(planningBtn){
     planningBtn.classList.toggle("active",calendarMode==="planning");
@@ -3739,10 +3751,10 @@ function renderCalendarPlanningControls(){
   if(banner){
     if(calendarMode==="planning" && scenario){
       banner.hidden=false;
-      banner.innerHTML=`<span><b>🧪 ${escapeAttr(scenario.name)}</b><small>Planning mode • starts ${escapeAttr(scenario.snapshotDate)} • changes here do not affect real Bills, Budgets, or account history.</small></span><button type="button" class="ghost small" onclick="setCalendarMode('real')">Back to real</button>`;
+      if(bannerCopy) bannerCopy.innerHTML=`<small>🧪 Planning mode • starts ${escapeAttr(scenario.snapshotDate)} • changes here do not affect real Bills, Budgets, or account history.</small>`;
     } else {
       banner.hidden=true;
-      banner.innerHTML="";
+      if(bannerCopy) bannerCopy.innerHTML="";
     }
   }
   document.body.classList.toggle("money-nest-planning-mode",calendarMode==="planning" && !!scenario);
@@ -11953,3 +11965,5 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 
 
 // v2-297: Calendar account View dropdown now includes savings accounts in both real and Planning modes; “All checking accounts” remains checking-only.
+
+// v2-299: Planning scenario selection/settings live in the compact Planning banner so the desktop Calendar toolbar keeps the same one-row height as Real mode.

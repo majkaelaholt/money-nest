@@ -1,5 +1,24 @@
 # Money Nest
 
+## v2-299
+
+### Compact Planning Calendar header
+
+- Planning Mode no longer adds the scenario selector and Plan settings button to the main Calendar toolbar, so desktop Planning mode keeps the same compact one-row toolbar height as Real mode.
+- The active scenario selector and Plan settings action now live in the existing Planning banner directly below the toolbar, alongside the scenario safety note and Back to real action.
+- Planning behavior/data isolation is unchanged; this is a Calendar layout/presentation change only.
+- Schema remains 225 and the storage key remains `moneyNest.v2.113`.
+
+## v2-298
+
+### Planning palette consistency
+
+- Planning Mode now uses the real/root Money Nest appearance palette instead of allowing a planning snapshot to fall back to a separate default palette.
+- Creating, opening, or switching planning scenarios no longer changes Calendar/category colors or temporarily changes the app palette.
+- Existing planning scenarios are repaired automatically when normalized/opened; they do not need to be recreated.
+- Planning financial data remains independent; only app-wide appearance settings are mirrored from the real dataset.
+- Schema remains 225 and the storage key remains `moneyNest.v2.113`.
+
 ## v2-297
 
 - Calendar account **View** now includes Savings as a selectable account.

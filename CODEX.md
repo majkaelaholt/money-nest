@@ -161,7 +161,19 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-297`
+Latest known version: `money-nest-v2-299`
+
+### v2-299 Compact Planning Calendar header
+- Keep the desktop Calendar toolbar height consistent between Real and Planning modes. Do not put the planning scenario selector or Plan settings action back into the toolbar; they belong in `#planningModeBanner`.
+- `#planningModeBanner` contains the scenario selector, the planning safety/start-date copy, Plan settings, and Back to real. Keep it compact on desktop and stacked/touch-friendly on small screens.
+- This is presentation-only; Planning scenario data isolation, schema 225, and storage key `moneyNest.v2.113` are unchanged.
+
+
+### v2-298 Planning palette consistency
+- Planning scenario datasets must not own an independent visual theme. `settings.appearance` is mirrored from the authoritative root dataset during scenario normalization and whenever Calendar switches into a planning context.
+- This repairs older scenarios that may have persisted a temporary/default palette and prevents Planning Mode from changing category/app colors.
+- Mode/scenario switches explicitly reapply the palette so the Calendar updates immediately without requiring navigation away and back.
+- Financial scenario isolation is unchanged; only app-wide appearance state is shared. Preserve schema 225 and storage key `moneyNest.v2.113`.
 
 
 ### v2-297 Calendar savings account view
