@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-294";
+const APP_VERSION = "2-296";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -250,7 +250,9 @@ function latestKnownCloudTimestamp(config=loadCloudConfig()){
 }
 function cloudPayload(){
   // Keep undo history and local-only metadata out of the Supabase data blob.
-  return JSON.parse(JSON.stringify(data));
+  // Planning scenarios live inside the real Money Nest root data so they stay
+  // backed up/synced, even while Calendar is temporarily rendering a scenario.
+  return JSON.parse(JSON.stringify(moneyNestRootData()));
 }
 async function fetchCloudDataRow(client, user){
   const {data: row, error} = await client.from("money_nest_data").select("data, updated_at").eq("user_id", user.id).maybeSingle();
@@ -325,6 +327,9 @@ window.cloudLoadNow = async()=>{
     if(!ok) return;
     suppressChangeHistory = true;
     data = normalizeData(row.data);
+    rootData = data;
+    calendarMode = "real";
+    planningScenarioId = "";
     startupLocalLoadIssue = "";
     repairSplitRecurringSeriesData();
     saveImportedBackupData(data);
@@ -439,7 +444,10 @@ function createStarterData(){
 }
 
 let data;
+let rootData = null;
 let startupLocalLoadIssue = "";
+let calendarMode = "real";
+let planningScenarioId = "";
 const CHANGE_HISTORY_KEY = `${STORAGE_KEY}.changeHistory`;
 let suppressChangeHistory = false;
 let currentView = "dashboard";
@@ -452,6 +460,8 @@ let accountReorderMode = false;
 const defaultUiPrefs = {
   calendarFilter: "all",
   calendarHighlightCategories: ["all"],
+  calendarMode: "real",
+  planningScenarioId: "",
   billFilters: { account:"all", categories:["all"], type:"all", recurrence:"all", sort:"date" },
   transactionFilters: { status:"all", category:"all", type:"all", sort:"date-asc", dateRange:"upcoming-90", search:"" },
   transactionFilterDefaults: { status:"all", category:"all", type:"all", sort:"date-asc", dateRange:"upcoming-90" },
@@ -472,6 +482,8 @@ function loadUiPrefs(){
     const prefs = cloneUiPrefs(defaultUiPrefs);
     if(saved.calendarFilter) prefs.calendarFilter = saved.calendarFilter;
     if(Array.isArray(saved.calendarHighlightCategories) && saved.calendarHighlightCategories.length) prefs.calendarHighlightCategories = saved.calendarHighlightCategories;
+    if(["real","planning"].includes(saved.calendarMode)) prefs.calendarMode = saved.calendarMode;
+    if(saved.planningScenarioId) prefs.planningScenarioId = saved.planningScenarioId;
     if(saved.billFilters) prefs.billFilters = {...prefs.billFilters, ...saved.billFilters};
     if(Array.isArray(saved.billFilters?.categories)) prefs.billFilters.categories = saved.billFilters.categories;
     if(saved.transactionFilters) prefs.transactionFilters = {...prefs.transactionFilters, ...saved.transactionFilters};
@@ -491,6 +503,8 @@ function saveUiPrefs(){
     localStorage.setItem(UI_PREFS_KEY, JSON.stringify({
       calendarFilter,
       calendarHighlightCategories,
+      calendarMode,
+      planningScenarioId,
       billFilters,
       transactionFilters: {...transactionFilters, search:""},
       transactionFilterDefaults,
@@ -513,6 +527,8 @@ let selectedDayISO = null;
 let calendarDate = parseDate(todayISO());
 let calendarFilter = uiPrefs.calendarFilter || "all";
 let calendarHighlightCategories = Array.isArray(uiPrefs.calendarHighlightCategories) ? uiPrefs.calendarHighlightCategories : ["all"];
+calendarMode = ["real","planning"].includes(uiPrefs.calendarMode) ? uiPrefs.calendarMode : "real";
+planningScenarioId = uiPrefs.planningScenarioId || "";
 let recentPlaces = [];
 let suppressRecentTracking = false;
 loadRecentPlaces();
@@ -763,6 +779,7 @@ const SPENDING_BUCKET_IDS = ["mak-spending", "ty-spending"];
 
 // v2-219/v2-289: load saved data only after every startup normalization constant exists.
 data = loadData();
+rootData = data;
 
 function normalizeCategoryId(id){
   return id || "unassigned";
@@ -815,6 +832,230 @@ function transactionMatchesCategorySelection(tx, selected){
     ? bucketId === normalizedSpendingBucketId(id)
     : String(tx?.categoryId || "") === String(id));
 }
+
+function moneyNestRootData(){
+  return rootData || data;
+}
+function planningScenarios(){
+  const root=moneyNestRootData();
+  root.settings ||= {};
+  if(!Array.isArray(root.settings.planningScenarios)) root.settings.planningScenarios=[];
+  return root.settings.planningScenarios;
+}
+function planningScenarioById(id){
+  return planningScenarios().find(s=>s.id===id) || null;
+}
+function activePlanningScenario(){
+  let scenario=planningScenarioById(planningScenarioId);
+  if(!scenario && planningScenarios().length){
+    scenario=planningScenarios()[0];
+    planningScenarioId=scenario.id;
+  }
+  return scenario;
+}
+function isPlanningDataContext(){
+  return !!rootData && data !== rootData && !!data?.settings?.planningScenarioMeta;
+}
+function syncCalendarDataContext(){
+  const root=moneyNestRootData();
+  if(calendarMode==="planning"){
+    const scenario=activePlanningScenario();
+    if(scenario?.dataset){
+      data=scenario.dataset;
+      if(calendarFilter!=="all" && !data.accounts.some(a=>a.id===calendarFilter)) calendarFilter="all";
+      return scenario;
+    }
+    calendarMode="real";
+    planningScenarioId="";
+  }
+  data=root;
+  if(calendarFilter!=="all" && !data.accounts.some(a=>a.id===calendarFilter)) calendarFilter="all";
+  return null;
+}
+function realDataContext(){
+  data=moneyNestRootData();
+  return data;
+}
+function planningScenarioSnapshotStartDate(){
+  return data?.settings?.planningScenarioMeta?.snapshotDate || "";
+}
+function transactionTouchesPlanningAccounts(tx, selected){
+  return selected.has(tx?.accountId || "") || selected.has(tx?.transferToAccountId || "");
+}
+function planningSeriesStillActive(tx, snapshotDate){
+  if(!isRecurring(tx) || tx?.billArchived) return false;
+  if(tx?.recurrenceUntil && tx.recurrenceUntil < snapshotDate) return false;
+  return true;
+}
+function clonePlanningTransaction(tx, selected){
+  const copy=JSON.parse(JSON.stringify(tx));
+  // Keep transfers fully linked only when both sides are part of the scenario.
+  // External sides become one-sided cash movement so the plan never needs fake
+  // copies of accounts the user chose not to simulate.
+  if(copy.type==="transfer"){
+    if(copy.accountId && !selected.has(copy.accountId)) copy.accountId="";
+    if(copy.transferToAccountId && !selected.has(copy.transferToAccountId)) copy.transferToAccountId="";
+  }
+  copy.linkedTransactionIds=[];
+  return copy;
+}
+function createPlanningScenario(name, accountIds, requestedStartDate=todayISO()){
+  const root=moneyNestRootData();
+  const selected=new Set((accountIds || []).filter(id=>root.accounts.some(a=>a.id===id)));
+  if(!selected.size) throw new Error("Choose at least one account for this plan.");
+  const snapshotDate=String(requestedStartDate || todayISO()).trim();
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(snapshotDate) || toISO(parseDate(snapshotDate))!==snapshotDate){
+    throw new Error("Choose a valid plan start date.");
+  }
+  const dayBefore=toISO(addDays(parseDate(snapshotDate),-1));
+  const priorData=data;
+  data=root;
+  const projectToStart=snapshotDate>todayISO();
+  const accounts=root.accounts
+    .filter(a=>selected.has(a.id))
+    .map(a=>({
+      ...JSON.parse(JSON.stringify(a)),
+      // A plan starting today/past keeps the existing cleared-balance snapshot.
+      // A future start date uses the real projected balance entering that date
+      // so planned/recurring activity before the plan start is not silently lost.
+      startingBalance:Number(accountBalance(a.id,projectToStart,dayBefore))
+    }));
+  const transactions=root.transactions
+    .filter(tx=>{
+      if(!transactionTouchesPlanningAccounts(tx,selected)) return false;
+      if(planningSeriesStillActive(tx,snapshotDate)) return true;
+      return !isRecurring(tx) && String(tx.date || "") >= snapshotDate;
+    })
+    .map(tx=>clonePlanningTransaction(tx,selected));
+  data=priorData;
+
+  const scenarioId=uid();
+  const scenarioName=String(name || "Planning").trim() || "Planning";
+  const dataset={
+    schemaVersion:CURRENT_SCHEMA_VERSION,
+    accounts,
+    debts:JSON.parse(JSON.stringify(root.debts || [])),
+    budgets:[],
+    categories:JSON.parse(JSON.stringify(root.categories || [])),
+    transactions,
+    settings:{
+      buffer:Number(root.settings?.buffer || 50),
+      paycheckProfiles:JSON.parse(JSON.stringify(root.settings?.paycheckProfiles || {})),
+      transactionTemplates:[],
+      planningScenarioMeta:{id:scenarioId,name:scenarioName,snapshotDate}
+    }
+  };
+  const scenario={
+    id:scenarioId,
+    name:scenarioName,
+    createdAt:new Date().toISOString(),
+    snapshotDate,
+    sourceAccountIds:[...selected],
+    dataset:normalizePlanningScenarioDataset(dataset,{id:scenarioId,name:scenarioName,snapshotDate},root)
+  };
+  planningScenarios().push(scenario);
+  planningScenarioId=scenario.id;
+  calendarMode="planning";
+  syncCalendarDataContext();
+  saveUiPrefs();
+  saveData();
+  return scenario;
+}
+function planningScenarioAccountChoices(){
+  return moneyNestRootData().accounts.filter(a=>a?.type==="cash" || !a?.type || isSavingsAccount(a));
+}
+function openCreatePlanningScenario(){
+  const root=moneyNestRootData();
+  const choices=root.accounts || [];
+  if(!choices.length){ alert("Add at least one cash account before creating a planning scenario."); return; }
+  simpleTitle.textContent="Create planning scenario";
+  simpleFields.innerHTML=`
+    <p class="hint">Money Nest will make a one-time snapshot. After that, this plan is independent from your real finances.</p>
+    <label>Scenario name<input id="planningName" value="After Move" required></label>
+    <label>Plan starts<input id="planningStartDate" type="date" value="${todayISO()}" required><small>Choose the first date you want included in this planning sandbox.</small></label>
+    <div class="planning-account-picker">
+      <b>Accounts to simulate</b>
+      <p class="hint">Mak/Ty/Joint checking are selected by default. Savings is optional.</p>
+      ${choices.map(a=>{
+        const checked=!isSavingsAccount(a);
+        return `<label class="checkbox"><input type="checkbox" class="planning-account-choice" value="${escapeAttr(a.id)}" ${checked?"checked":""}> ${a.emoji||"💵"} ${escapeAttr(a.name)}</label>`;
+      }).join("")}
+    </div>
+    <div class="planning-copy-note">
+      <b>Copied once:</b> the balance entering your chosen start date, active recurring schedules, and transactions from that date forward. For a future start, the opening balance includes projected planned/recurring activity before the start date. Real Bills/Budgets stay untouched.
+    </div>`;
+  simpleSubmit=()=>{
+    const name=document.getElementById("planningName")?.value || "Planning";
+    const startDate=document.getElementById("planningStartDate")?.value || todayISO();
+    const ids=[...document.querySelectorAll(".planning-account-choice:checked")].map(el=>el.value);
+    try{ createPlanningScenario(name,ids,startDate); }
+    catch(err){ alert(err.message || String(err)); return false; }
+  };
+  simpleDelete=null;
+  deleteSimpleBtn.style.display="none";
+  simpleModal.showModal();
+}
+function openPlanningScenarioSettings(){
+  const scenario=activePlanningScenario();
+  if(!scenario){ openCreatePlanningScenario(); return; }
+  simpleTitle.textContent="Planning scenario";
+  simpleFields.innerHTML=`
+    <div class="planning-scenario-card">
+      <p class="eyebrow">🧪 Calendar sandbox</p>
+      <label>Name<input id="planningEditName" value="${escapeAttr(scenario.name)}" required></label>
+      <p class="hint">Plan starts ${escapeAttr(scenario.snapshotDate)}. This is a one-time snapshot and does not auto-sync when real finances change.</p>
+      <div class="planning-scenario-accounts">${scenario.dataset.accounts.map(a=>`<span>${a.emoji||"💵"} ${escapeAttr(a.name)}</span>`).join("")}</div>
+    </div>
+    <button type="button" class="ghost" onclick="simpleModal.close(); openCreatePlanningScenario();">＋ Create another scenario</button>`;
+  simpleSubmit=()=>{
+    const name=String(document.getElementById("planningEditName")?.value || "").trim();
+    if(!name){ alert("Give the scenario a name."); return false; }
+    scenario.name=name;
+    scenario.dataset.settings.planningScenarioMeta.name=name;
+  };
+  simpleDelete=()=>{
+    if(!confirm(`Delete the “${scenario.name}” planning scenario? Your real finances will not be affected.`)) return false;
+    const root=moneyNestRootData();
+    root.settings.planningScenarios=root.settings.planningScenarios.filter(s=>s.id!==scenario.id);
+    const remaining=root.settings.planningScenarios[0] || null;
+    planningScenarioId=remaining?.id || "";
+    calendarMode=remaining ? "planning" : "real";
+    syncCalendarDataContext();
+    saveUiPrefs();
+  };
+  deleteSimpleBtn.style.display="inline-block";
+  deleteSimpleBtn.textContent="Delete";
+  simpleModal.showModal();
+}
+function setCalendarMode(mode){
+  const next=mode==="planning" ? "planning" : "real";
+  if(next==="planning" && !planningScenarios().length){
+    realDataContext();
+    openCreatePlanningScenario();
+    return;
+  }
+  calendarMode=next;
+  syncCalendarDataContext();
+  saveUiPrefs();
+  renderSelectors();
+  renderCalendar();
+}
+function setPlanningScenario(id){
+  const scenario=planningScenarioById(id);
+  if(!scenario) return;
+  planningScenarioId=scenario.id;
+  calendarMode="planning";
+  syncCalendarDataContext();
+  saveUiPrefs();
+  renderSelectors();
+  renderCalendar();
+}
+window.setCalendarMode=setCalendarMode;
+window.setPlanningScenario=setPlanningScenario;
+window.openCreatePlanningScenario=openCreatePlanningScenario;
+window.openPlanningScenarioSettings=openPlanningScenarioSettings;
+
+
 function budgetSpendingBucketId(budget){
   return normalizedSpendingBucketId(budget?.spendingBucketId);
 }
@@ -875,6 +1116,81 @@ function defaultLoanForecastHistoryForDebt(debt){
     ]);
   }
   return [];
+}
+
+
+function normalizePlanningScenarioDataset(rawDataset, scenarioMeta={}, root=null){
+  const source = rawDataset && typeof rawDataset === "object" ? rawDataset : {};
+  const fallbackRoot = root && typeof root === "object" ? root : {};
+  const dataset = source;
+  dataset.schemaVersion = CURRENT_SCHEMA_VERSION;
+  dataset.accounts = Array.isArray(dataset.accounts) ? dataset.accounts.map((a,index)=>({
+    ...a,
+    id:String(a?.id || uid()),
+    name:String(a?.name || `Account ${index+1}`),
+    type:a?.type || "cash",
+    startingBalance:Number(a?.startingBalance || 0),
+    paycheckAccount:!!a?.paycheckAccount,
+    order:Number.isFinite(Number(a?.order)) ? Number(a.order) : index
+  })) : [];
+  dataset.debts = Array.isArray(dataset.debts) ? dataset.debts : JSON.parse(JSON.stringify(fallbackRoot.debts || []));
+  dataset.budgets = [];
+  dataset.categories = Array.isArray(dataset.categories) && dataset.categories.length
+    ? dataset.categories
+    : JSON.parse(JSON.stringify(fallbackRoot.categories || standardCategories()));
+  dataset.transactions = Array.isArray(dataset.transactions) ? dataset.transactions.map(tx=>({
+    ...tx,
+    accountId:tx?.accountId || "",
+    debtAccountId:tx?.debtAccountId || "",
+    transferToAccountId:tx?.transferToAccountId || "",
+    linkedDebtId:tx?.linkedDebtId || "",
+    categoryId:tx?.categoryId || "unassigned",
+    spendingBucketId:normalizedSpendingBucketId(tx?.spendingBucketId),
+    recurrence:{
+      ...(tx?.recurrence || {type:"none", interval:1}),
+      weekendHandling:tx?.recurrence?.weekendHandling || "none"
+    },
+    dateOverrides:tx?.dateOverrides || {},
+    occurrenceOverrides:tx?.occurrenceOverrides || {},
+    linkedTransactionIds:Array.isArray(tx?.linkedTransactionIds) ? [...new Set(tx.linkedTransactionIds.filter(Boolean).map(String))] : [],
+    pendingReimbursement:!!tx?.pendingReimbursement,
+    recurringSourceId:tx?.recurringSourceId || "",
+    recurrenceSourceId:tx?.recurrenceSourceId || "",
+    originalDate:tx?.originalDate || "",
+    wasRecurringOccurrence:!!tx?.wasRecurringOccurrence
+  })) : [];
+  dataset.settings = dataset.settings && typeof dataset.settings === "object" ? dataset.settings : {};
+  dataset.settings.buffer = Number.isFinite(Number(dataset.settings.buffer)) ? Number(dataset.settings.buffer) : Number(fallbackRoot.settings?.buffer || 50);
+  dataset.settings.transactionTemplates = Array.isArray(dataset.settings.transactionTemplates) ? dataset.settings.transactionTemplates : [];
+  dataset.settings.paycheckProfiles = dataset.settings.paycheckProfiles && typeof dataset.settings.paycheckProfiles === "object"
+    ? dataset.settings.paycheckProfiles
+    : JSON.parse(JSON.stringify(fallbackRoot.settings?.paycheckProfiles || {}));
+  dataset.settings.planningScenarioMeta = {
+    id:String(scenarioMeta.id || dataset.settings.planningScenarioMeta?.id || ""),
+    name:String(scenarioMeta.name || dataset.settings.planningScenarioMeta?.name || "Planning"),
+    snapshotDate:String(scenarioMeta.snapshotDate || dataset.settings.planningScenarioMeta?.snapshotDate || todayISO())
+  };
+  delete dataset.settings.planningScenarios;
+  return dataset;
+}
+
+function normalizePlanningScenarios(root){
+  root.settings ||= {};
+  const raw = Array.isArray(root.settings.planningScenarios) ? root.settings.planningScenarios : [];
+  root.settings.planningScenarios = raw.map((scenario,index)=>{
+    const id=String(scenario?.id || uid());
+    const name=String(scenario?.name || `Scenario ${index+1}`).trim() || `Scenario ${index+1}`;
+    const snapshotDate=/^\d{4}-\d{2}-\d{2}$/.test(String(scenario?.snapshotDate || "")) ? String(scenario.snapshotDate) : todayISO();
+    const sourceAccountIds=Array.isArray(scenario?.sourceAccountIds) ? [...new Set(scenario.sourceAccountIds.filter(Boolean).map(String))] : [];
+    return {
+      id,
+      name,
+      createdAt:scenario?.createdAt || new Date().toISOString(),
+      snapshotDate,
+      sourceAccountIds,
+      dataset:normalizePlanningScenarioDataset(scenario?.dataset || {}, {id,name,snapshotDate}, root)
+    };
+  });
 }
 
 function normalizeData(raw){
@@ -1080,6 +1396,7 @@ function normalizeData(raw){
     wasRecurringOccurrence: !!tx.wasRecurringOccurrence
   }));
 
+  normalizePlanningScenarios(d);
   return d;
 }
 function slug(s){ return String(s).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"") || uid(); }
@@ -1427,10 +1744,13 @@ function saveData(){
     alert("Money Nest did not load the saved browser copy correctly, so it blocked this save to protect your local data. Reload after updating Money Nest, or explicitly load cloud/JSON data first.");
     return;
   }
-  data.schemaVersion = CURRENT_SCHEMA_VERSION;
+  const storageData = moneyNestRootData();
+  storageData.schemaVersion = CURRENT_SCHEMA_VERSION;
   const beforeRaw = localStorage.getItem(STORAGE_KEY);
-  const afterRaw = JSON.stringify(data);
-  recordChangeSnapshot(beforeRaw, afterRaw);
+  const afterRaw = JSON.stringify(storageData);
+  // Scenario edits are intentionally isolated from real-finance undo history.
+  // The scenario itself is still saved/backed up in the root Money Nest blob.
+  if(!isPlanningDataContext()) recordChangeSnapshot(beforeRaw, afterRaw);
   localStorage.setItem(STORAGE_KEY, afterRaw);
   touchLocalMoneyNestData();
   try {
@@ -1872,7 +2192,10 @@ function txEffectOnCash(tx, accountId, projected=true){
 function accountBalance(accountId, projected=true, throughISO="2999-12-31"){
   const acc = accountById(accountId);
   if(!acc) return 0;
-  return acc.startingBalance + expandedTransactions(throughISO).filter(tx=>tx.date <= throughISO).reduce((sum,tx)=>sum + txEffectOnCash(tx, accountId, projected),0);
+  const scenarioStart = planningScenarioSnapshotStartDate();
+  return acc.startingBalance + expandedTransactions(throughISO)
+    .filter(tx=>tx.date <= throughISO && (!scenarioStart || tx.date >= scenarioStart))
+    .reduce((sum,tx)=>sum + txEffectOnCash(tx, accountId, projected),0);
 }
 
 function debtStartingBalance(d){
@@ -2546,6 +2869,11 @@ function setView(view){
     // v2-212: Debts is now part of Accounts. Keep old internal links/back targets working.
     if(view === "debts") view = "accounts";
     currentView = view;
+    if(view === "calendar") syncCalendarDataContext();
+    else {
+      realDataContext();
+      document.body.classList.remove("money-nest-planning-mode");
+    }
     document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active", v.id===view));
     document.body.classList.remove("money-nest-view-dashboard", "money-nest-view-future", "money-nest-view-calendar", "money-nest-view-accounts", "money-nest-view-budgets", "money-nest-view-bills", "money-nest-view-debts", "money-nest-view-settings", "money-nest-view-accountDetail", "money-nest-view-debtDetail");
     document.body.classList.add(`money-nest-view-${view}`);
@@ -3360,7 +3688,7 @@ function calendarEntryIsPositive(tx){
 function setMobileCalendarAccount(accountId){
   const account=accountById(accountId);
   if(!account) return;
-  if(isSavingsAccount(account)){
+  if(isSavingsAccount(account) && !isPlanningDataContext()){
     openAccountDetail(account.id, "calendar");
     return;
   }
@@ -3389,7 +3717,39 @@ function renderMobileCalendarBalances(){
     return `<button type="button" class="mobile-calendar-balance-card ${selected?'selected':''}" onclick="setMobileCalendarAccount('${a.id}')"><span>${a.emoji||"💵"} ${escapeAttr(a.name)}</span><b>${money(actual)}</b><small class="${level}">Safe ${money(safe.amount)}</small></button>`;
   }).join("");
 }
+
+function renderCalendarPlanningControls(){
+  const scenarios=planningScenarios();
+  const scenario=calendarMode==="planning" ? activePlanningScenario() : null;
+  const realBtn=document.getElementById("calendarModeRealBtn");
+  const planningBtn=document.getElementById("calendarModePlanningBtn");
+  const select=document.getElementById("planningScenarioSelect");
+  const settingsBtn=document.getElementById("planningScenarioSettingsBtn");
+  const banner=document.getElementById("planningModeBanner");
+  if(realBtn) realBtn.classList.toggle("active",calendarMode==="real");
+  if(planningBtn){
+    planningBtn.classList.toggle("active",calendarMode==="planning");
+    planningBtn.textContent=scenarios.length ? "🧪 Planning" : "🧪 Planning";
+  }
+  if(select){
+    select.hidden=calendarMode!=="planning" || !scenarios.length;
+    select.innerHTML=scenarios.map(s=>`<option value="${escapeAttr(s.id)}" ${s.id===planningScenarioId?"selected":""}>${escapeAttr(s.name)}</option>`).join("");
+  }
+  if(settingsBtn) settingsBtn.hidden=calendarMode!=="planning" || !scenario;
+  if(banner){
+    if(calendarMode==="planning" && scenario){
+      banner.hidden=false;
+      banner.innerHTML=`<span><b>🧪 ${escapeAttr(scenario.name)}</b><small>Planning mode • starts ${escapeAttr(scenario.snapshotDate)} • changes here do not affect real Bills, Budgets, or account history.</small></span><button type="button" class="ghost small" onclick="setCalendarMode('real')">Back to real</button>`;
+    } else {
+      banner.hidden=true;
+      banner.innerHTML="";
+    }
+  }
+  document.body.classList.toggle("money-nest-planning-mode",calendarMode==="planning" && !!scenario);
+}
+
 function renderCalendar(){
+  renderCalendarPlanningControls();
   renderCalendarFilter();
   renderMobileCalendarBalances();
   const monthStart = startOfMonth(calendarDate);
@@ -3400,10 +3760,13 @@ function renderCalendar(){
   const checkingAccountIds = data.accounts
     .filter(a => a.name.toLowerCase().includes("checking") && !a.name.toLowerCase().includes("savings"))
     .map(a => a.id);
+  const scenarioStart = planningScenarioSnapshotStartDate();
   const rawTxs = expandedTransactions(toISO(addMonths(monthStart,2))).filter(tx =>
-    calendarFilter==="all"
-      ? (checkingAccountIds.includes(tx.accountId) || checkingAccountIds.includes(tx.transferToAccountId))
-      : (tx.accountId===calendarFilter || tx.transferToAccountId===calendarFilter)
+    (!scenarioStart || tx.date >= scenarioStart) && (
+      calendarFilter==="all"
+        ? (checkingAccountIds.includes(tx.accountId) || checkingAccountIds.includes(tx.transferToAccountId))
+        : (tx.accountId===calendarFilter || tx.transferToAccountId===calendarFilter)
+    )
   );
   const txs = calendarDisplayEntries(rawTxs);
 
@@ -6594,6 +6957,9 @@ function undoLastChange(){
   try{
     suppressChangeHistory = true;
     data = normalizeData(JSON.parse(item.before));
+    rootData = data;
+    calendarMode = "real";
+    planningScenarioId = "";
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     saveChangeHistory(history);
     suppressChangeHistory = false;
@@ -7689,7 +8055,7 @@ document.getElementById("transactionForm").onsubmit = async (e)=>{
   // Existing template families may continue learning lightweight variants. A
   // brand-new title family is opt-in so one-off/temporary transactions do not
   // silently create template clutter. This never affects whether the transaction saves.
-  const templateEligible = transactionCanBecomeTemplate(formTx);
+  const templateEligible = !isPlanningDataContext() && transactionCanBecomeTemplate(formTx);
   const templateFamilyExists = templateEligible && hasActiveTransactionTemplateFamily(formTx.title);
   let shouldRememberTemplate = templateEligible && templateFamilyExists;
   if(templateEligible && !templateFamilyExists){
@@ -7762,7 +8128,8 @@ window.openTransaction = (id=null, defaults={})=>{
     occurrenceDate
   };
 
-  modalTitle.textContent = billSeriesEditId && baseTx?.id === billSeriesEditId ? "Edit bill series" : (tx ? "Edit transaction" : "Add transaction");
+  const planningPrefix=isPlanningDataContext() ? "🧪 " : "";
+  modalTitle.textContent = planningPrefix + (billSeriesEditId && baseTx?.id === billSeriesEditId ? "Edit bill series" : (tx ? "Edit transaction" : "Add transaction"));
   txId.value = tx?.id || "";
   txTitle.value = tx?.title || defaults.title || "";
   txAmount.value = tx?.amount || defaults.amount || "";
@@ -10439,11 +10806,12 @@ function openDayModal(dayISO){
     .filter(a => a.name.toLowerCase().includes("checking") && !a.name.toLowerCase().includes("savings"))
     .map(a => a.id);
 
+  const scenarioStart = planningScenarioSnapshotStartDate();
   const rawDayTx = expandedTransactions(dayISO).filter(tx => {
     const accountMatches = calendarFilter === "all"
       ? (checkingAccountIds.includes(tx.accountId) || checkingAccountIds.includes(tx.transferToAccountId))
       : (tx.accountId === calendarFilter || tx.transferToAccountId === calendarFilter);
-    return tx.date === dayISO && accountMatches;
+    return (!scenarioStart || tx.date >= scenarioStart) && tx.date === dayISO && accountMatches;
   });
   const dayTx = calendarDisplayEntries(rawDayTx);
 
@@ -10491,6 +10859,14 @@ function scrollCalendarToTodaySoon(){
   setTimeout(scrollCalendarToToday, 180);
 }
 todayBtn.onclick = ()=>{ calendarDate = new Date(); renderCalendar(); scrollCalendarToTodaySoon(); };
+const calendarModeRealBtn=document.getElementById("calendarModeRealBtn");
+if(calendarModeRealBtn) calendarModeRealBtn.onclick=()=>setCalendarMode("real");
+const calendarModePlanningBtn=document.getElementById("calendarModePlanningBtn");
+if(calendarModePlanningBtn) calendarModePlanningBtn.onclick=()=>setCalendarMode("planning");
+const planningScenarioSelectEl=document.getElementById("planningScenarioSelect");
+if(planningScenarioSelectEl) planningScenarioSelectEl.onchange=e=>setPlanningScenario(e.target.value);
+const planningScenarioSettingsBtn=document.getElementById("planningScenarioSettingsBtn");
+if(planningScenarioSettingsBtn) planningScenarioSettingsBtn.onclick=()=>openPlanningScenarioSettings();
 if(document.getElementById("calendarAccountFilter")) calendarAccountFilter.onchange = e=>{ calendarFilter = e.target.value; saveUiPrefs(); renderCalendar(); };
 const calendarCategoryHighlightBtnEl = document.getElementById("calendarCategoryHighlightBtn");
 if(calendarCategoryHighlightBtnEl) calendarCategoryHighlightBtnEl.onclick = (e)=>{
@@ -11155,6 +11531,9 @@ function clearEverything(){
     budgets:[],
     transactions:[]
   });
+  rootData = data;
+  calendarMode = "real";
+  planningScenarioId = "";
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   localStorage.removeItem(UI_PREFS_KEY);
   currentView = moneyNestDefaultView();
@@ -11162,7 +11541,7 @@ function clearEverything(){
   alert("Money Nest has been cleared.");
 }
 
-if(document.getElementById("backupBtn")) backupBtn.onclick = ()=>{ const blob = new Blob([JSON.stringify(data,null,2)],{type:"application/json"}); const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "money-nest-backup.json"; a.click(); saveLocalMeta({lastJsonBackup:new Date().toISOString()}); renderBackupHealthIndicator(); };
+if(document.getElementById("backupBtn")) backupBtn.onclick = ()=>{ const blob = new Blob([JSON.stringify(moneyNestRootData(),null,2)],{type:"application/json"}); const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "money-nest-backup.json"; a.click(); saveLocalMeta({lastJsonBackup:new Date().toISOString()}); renderBackupHealthIndicator(); };
 if(document.getElementById("financialPictureBtn")) financialPictureBtn.onclick = exportFinancialPicture;
 if(document.getElementById("extendedFinancialPictureBtn")) extendedFinancialPictureBtn.onclick = exportExtendedFinancialPicture;
 if(document.getElementById("csvExportBtn")) csvExportBtn.onclick = exportEditableCSVs;
@@ -11207,6 +11586,9 @@ function importBackupJSON(file){
       const normalized = normalizeData(candidate);
       suppressChangeHistory = true;
       data = normalized;
+      rootData = data;
+      calendarMode = "real";
+      planningScenarioId = "";
       startupLocalLoadIssue = "";
       repairSplitRecurringSeriesData();
       saveImportedBackupData(data);
@@ -11566,3 +11948,6 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 // v2-293: Bucketed transactions show the editable Mak/Ty bucket emoji as a compact marker across transaction views; full bucket words stay in selectors/configuration.
 
 // v2-294: Mak/Ty Spending selections in category-based UI filters map to effective bucket membership; recurring-bill fallback no longer treats unrelated same-category cash expenses as Bills without matching charge identity.
+// v2-295: Calendar Planning Mode stores one-time account/transaction scenario snapshots inside the real root backup blob; planning edits remain isolated from real Bills, Budgets, Accounts history, and templates.
+// v2-296: Planning scenario creation accepts a custom start date; future-dated plans seed each account from the real projected balance entering that date and copy activity from that date forward.
+

@@ -161,7 +161,27 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-294`
+Latest known version: `money-nest-v2-296`
+
+
+### v2-296 Planning scenario start date
+- New planning scenarios accept a user-selected `snapshotDate` / **Plan starts** date instead of always using today. Default remains today.
+- Non-recurring scenario transactions are copied only when dated on/after the chosen start date; active recurring source schedules are still copied so later occurrences can generate normally.
+- For a start date after today, seed each selected scenario account with its real **projected** balance through the day before the start date. This intentionally includes real planned and recurring activity before the scenario begins.
+- For start dates today or earlier, preserve the existing cleared-balance snapshot behavior through the day before the chosen date.
+- The chosen date is fixed at creation; changing real finances later must not auto-sync the scenario. Preserve schema 225 and storage key `moneyNest.v2.113`.
+
+
+### v2-295 Calendar Planning Mode
+- Calendar can switch between the real dataset and a named **Planning scenario**. Planning mode must remain a sandbox: edits may persist inside `settings.planningScenarios`, but must not mutate the root real accounts/transactions, Bills, Budgets, debts, templates, or reporting.
+- `rootData` / `moneyNestRootData()` is the authoritative real Money Nest blob. `data` may temporarily point at a scenario dataset only while Calendar is in Planning mode. Any non-Calendar view must restore the real data context.
+- Scenario creation is a **one-time snapshot**. Copy the selected cash accounts, their cleared balance entering the snapshot date, active recurring schedules that touch those accounts, and non-recurring transactions dated on/after the snapshot date. Never auto-sync a scenario after creation.
+- Keep account ids/names stable inside the scenario so the Calendar/account selector looks familiar. Do not expose cloned accounts as extra real Accounts entries.
+- Planning transfers between selected scenario accounts affect both planning copies. If only one side of a transfer belongs to the selected scenario, blank the external side in the scenario copy so it remains one-sided hypothetical cash movement and cannot touch a real account.
+- Scenario balances/Calendar must ignore copied pre-snapshot recurring history; use `planningScenarioMeta.snapshotDate` as the lower bound while retaining the original recurring rule so future occurrences still generate.
+- `saveData()`, JSON backup, and cloud payloads must serialize the **root** blob so scenarios persist while real data remains authoritative. Scenario edits should not create real-finance undo snapshots. Successful cloud/JSON restore resets to Real mode and replaces `rootData`.
+- Planning transaction edits must not create/update real transaction templates. Bills/Budgets and other management pages remain real-only.
+- Preserve schema 225, storage key `moneyNest.v2.113`, old backups, and all existing recurrence/budget/bucket behavior.
 
 
 

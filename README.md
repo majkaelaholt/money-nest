@@ -1,5 +1,27 @@
 # Money Nest
 
+## v2-296
+
+### Planning start date
+
+- Creating a Calendar Planning scenario now includes a **Plan starts** date picker, defaulting to today.
+- The chosen date becomes the scenario snapshot/lower bound: non-recurring transactions before it are not copied, while active recurring schedules are retained so occurrences on/after the chosen date still generate.
+- When the chosen start date is in the future, each selected account opens with its **real projected balance entering that date**, including planned and recurring activity before the start date. This prevents a December plan, for example, from dropping the cash-flow effects of September–November.
+- Plans starting today or in the past keep the existing cleared-balance snapshot behavior. After creation, the scenario remains independent and does not auto-sync with real finances.
+- Schema remains 225 and the storage key remains `moneyNest.v2.113`.
+
+## v2-295
+
+### Calendar Planning Mode
+
+- Added a **Real / 🧪 Planning** mode directly on Calendar. Planning scenarios keep the normal account names/dropdowns instead of adding duplicate accounts to the rest of Money Nest.
+- Creating a scenario makes a **one-time snapshot** of the selected accounts. The scenario starts from each selected account’s real cleared balance entering the snapshot date, then copies active recurring schedules plus transactions dated on/after the snapshot date. After creation, the plan is independent and does not auto-sync with later real-finance edits.
+- Scenario transactions are fully editable from Calendar, including adding/removing/changing recurring transactions. Transfers between selected planning accounts affect both planning balances, so Mak/Ty contribution changes can be tested against the planning Joint account. Transfers to/from accounts outside the scenario remain one-sided planning cash movement and never touch the real account.
+- Planning Calendar uses the same projected balance / Safe to Spend machinery as the real Calendar, scoped to the scenario snapshot. Scenario transactions carry a subtle 🧪 indicator and transaction editors are marked as planning edits.
+- Planning data is intentionally excluded from real **Dashboard, Accounts history, Budgets, Bills/Recurring Health, debt status, templates, and spending totals**. Leaving Calendar switches calculations back to the real dataset.
+- Scenarios persist inside the normal Money Nest JSON/cloud blob so planning work survives reloads and backups, but they do not enter real-finance undo history. Multiple named scenarios can coexist, be renamed, switched, or deleted without affecting real data.
+- JSON backup/import and cloud load/save preserve planning scenarios. Schema remains 225 and the storage key remains `moneyNest.v2.113`.
+
 ## v2-294
 
 - Category-based transaction filters now treat the protected **Mak Spending** and **Ty Spending** choices as aliases for their effective Spending buckets. This applies to Calendar Highlight, account/timeline Category filters, Bills Category filters, and category-only spending drill-downs; ordinary category choices still match the real transaction category.
