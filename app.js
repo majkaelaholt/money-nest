@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-302";
+const APP_VERSION = "2-303";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -2654,14 +2654,11 @@ function debtBalance(debtId, projected=true, throughISO=(projected ? "2999-12-31
   const debt = debtById(debtId);
   if(!debt) return 0;
 
-  // BNPL/Klarna installment accounts are best represented by remaining unpaid installments.
+  // BNPL/Klarna installment accounts are schedule-driven when linked payments
+  // exist, but retain the saved Remaining Balance as a fallback for accounts
+  // that have not had their installment schedule entered yet.
   if(isBNPLDebt(debt)){
-    if(projected){
-      const unpaid = expandedTransactions(throughISO)
-        .filter(tx => tx.linkedDebtId === debtId && tx.type === "transfer" && tx.status !== "cleared")
-        .reduce((sum,tx)=>sum + Number(tx.amount || 0),0);
-      return Math.max(0, unpaid || debtCurrentSeed(debt));
-    }
+    if(projected) return Math.max(0, bnplRemainingBalance(debtId, throughISO));
     return Math.max(0, debtCurrentSeed(debt));
   }
 
@@ -2690,7 +2687,7 @@ function debtBalance(debtId, projected=true, throughISO=(projected ? "2999-12-31
 
 function debtAmountLeftNow(d, throughISO=todayISO()){
   if(!d) return 0;
-  if(isBNPLDebt(d)) return Math.max(0, bnplRemainingBalance(d.id, toISO(addMonths(new Date(),24))) || debtCurrentSeed(d));
+  if(isBNPLDebt(d)) return Math.max(0, bnplRemainingBalance(d.id, toISO(addMonths(new Date(),24))));
 
   // Current Balance starts from the editable Current/Remaining Balance field,
   // then applies only real/cleared debt transactions. Planned or recurring future
@@ -5427,6 +5424,8 @@ function debtDisplayPaymentStatus(d){
   if(isBNPLDebt(d)){
     const explicit = d?.paymentStatus || "not-set";
     if(explicit && explicit !== "not-set") return explicit;
+    const payments = bnplPaymentTransactions(d.id, toISO(addMonths(new Date(),24)));
+    if(!payments.length) return debtCurrentSeed(d) > 0.005 ? "not-set" : "paid";
     return bnplNextPayment(d.id) ? "planned" : "paid";
   }
   return d?.paymentStatus || "not-set";
@@ -5435,7 +5434,10 @@ function debtDisplayPaymentStatus(d){
 function debtMinDueText(d){
   if(isBNPLDebt(d)){
     const next = bnplNextPayment(d.id);
-    return next ? money(next.amount) : "Complete";
+    if(next) return money(next.amount);
+    const payments = bnplPaymentTransactions(d.id, toISO(addMonths(new Date(),24)));
+    if(!payments.length) return Number(d.minDue || 0) ? money(d.minDue) : "Not set";
+    return "Complete";
   }
   const direct = Number(d.minDue || 0);
   if(direct) return money(direct);
@@ -5635,7 +5637,10 @@ function debtStatementBalanceText(d){
 function debtDueText(d){
   if(isBNPLDebt(d)){
     const next = bnplNextPayment(d.id);
-    return next ? next.date : "No upcoming payment";
+    if(next) return next.date;
+    const payments = bnplPaymentTransactions(d.id, toISO(addMonths(new Date(),24)));
+    if(!payments.length) return d.dueDate || "No installment schedule";
+    return "Complete";
   }
   return d.dueDate || "No due date";
 }
@@ -5961,7 +5966,15 @@ function bnplPaymentTransactions(debtId, untilISO="2999-12-31"){
     .sort((a,b)=>a.date.localeCompare(b.date));
 }
 function bnplRemainingBalance(debtId, untilISO="2999-12-31"){
-  return bnplPaymentTransactions(debtId, untilISO)
+  const payments = bnplPaymentTransactions(debtId, untilISO);
+  // If a BNPL account has no linked installment schedule yet, fall back to the
+  // saved Remaining Balance instead of reporting $0. Once a schedule exists,
+  // the schedule is authoritative; an all-cleared schedule correctly returns $0.
+  if(!payments.length){
+    const d = debtById(debtId);
+    return Math.max(0, debtCurrentSeed(d));
+  }
+  return payments
     .filter(tx => tx.status !== "cleared")
     .reduce((sum,tx)=>sum + Number(tx.amount || 0),0);
 }
@@ -5970,13 +5983,19 @@ function bnplOriginalPurchaseAmount(debtId, untilISO="2999-12-31"){
   const paymentTotal = bnplPaymentTransactions(debtId, untilISO)
     .reduce((sum,tx)=>sum + Number(tx.amount || 0),0);
 
-  // Prefer actual installment schedule total, then recorded statement/starting amounts as fallback.
-  return paymentTotal || debtStartingBalance(d) || Number(d?.limit || 0) || Number(d?.statementBalance || 0) || Number(d?.balance || 0);
+  // The saved starting/original balance is the best record of the original
+  // purchase. The payment schedule may contain only the remaining installments
+  // when an older/orphan BNPL account has its schedule rebuilt later.
+  return debtStartingBalance(d) || Number(d?.statementBalance || 0) || paymentTotal || Number(d?.limit || 0) || Number(d?.balance || 0);
 }
 function bnplPaidSoFar(debtId, untilISO="2999-12-31"){
-  return bnplPaymentTransactions(debtId, untilISO)
+  const clearedPayments = bnplPaymentTransactions(debtId, untilISO)
     .filter(tx => tx.status === "cleared")
     .reduce((sum,tx)=>sum + Number(tx.amount || 0),0);
+  const original = bnplOriginalPurchaseAmount(debtId, untilISO);
+  const remaining = bnplRemainingBalance(debtId, untilISO);
+  const inferredPaid = original > remaining ? original - remaining : 0;
+  return Math.max(0, clearedPayments, inferredPaid);
 }
 function bnplNextPayment(debtId){
   const now = todayISO();
@@ -6028,20 +6047,23 @@ function medicalPaymentPlanMetricsHTML(d, currentBal){
 }
 
 function bnplDetailMetricsHTML(d){
-  const original = bnplOriginalPurchaseAmount(d.id, toISO(addMonths(new Date(), 24)));
-  const paid = bnplPaidSoFar(d.id, toISO(addMonths(new Date(), 24)));
-  const remaining = bnplRemainingBalance(d.id, toISO(addMonths(new Date(), 24)));
+  const horizon = toISO(addMonths(new Date(), 24));
+  const payments = bnplPaymentTransactions(d.id, horizon);
+  const hasSchedule = payments.length > 0;
+  const original = bnplOriginalPurchaseAmount(d.id, horizon);
+  const paid = bnplPaidSoFar(d.id, horizon);
+  const remaining = bnplRemainingBalance(d.id, horizon);
   const next = bnplNextPayment(d.id);
   const progress = original ? Math.round((paid / original) * 100) : 0;
 
   return `
     <div class="debt-metrics bnpl-metrics">
-      <div class="card mini"><p class="eyebrow">Remaining balance</p><div class="value">${money(remaining)}</div><p class="sub">uncleared installments left</p></div>
-      <div class="card mini"><p class="eyebrow">Original purchase</p><div class="value">${money(original)}</div><p class="sub">total installment amount</p></div>
-      <div class="card mini"><p class="eyebrow">Paid so far</p><div class="value">${money(paid)}</div><p class="sub">${bnplProgressText(d.id)}${original ? ` • ${progress}%` : ""}</p></div>
-      <div class="card mini"><p class="eyebrow">Next due</p><div class="value">${next ? money(next.amount) : "—"}</div><p class="sub">${next ? next.date : "No upcoming payment"}</p></div>
+      <div class="card mini"><p class="eyebrow">Remaining balance</p><div class="value">${money(remaining)}</div><p class="sub">${hasSchedule ? "uncleared installments left" : "saved balance • schedule not entered"}</p></div>
+      <div class="card mini"><p class="eyebrow">Original purchase</p><div class="value">${money(original)}</div><p class="sub">original installment amount</p></div>
+      <div class="card mini"><p class="eyebrow">Paid so far</p><div class="value">${money(paid)}</div><p class="sub">${hasSchedule ? bnplProgressText(d.id) : "inferred from saved balance"}${original ? ` • ${progress}%` : ""}</p></div>
+      <div class="card mini"><p class="eyebrow">Next due</p><div class="value">${next ? money(next.amount) : "—"}</div><p class="sub">${next ? next.date : (hasSchedule ? "No upcoming payment" : "Add installment schedule")}</p></div>
       ${debtEstimatedPayoffCardHTML(d)}
-      <div class="card mini"><p class="eyebrow">Installment status</p><div class="debt-status-pill ${debtPaymentStatusClass(debtDisplayPaymentStatus(d))}">${debtPaymentStatusLabel(debtDisplayPaymentStatus(d))}</div><p class="sub">${next ? `Next: ${next.title}` : "All planned payments cleared"}</p></div>
+      <div class="card mini"><p class="eyebrow">Installment status</p><div class="debt-status-pill ${debtPaymentStatusClass(debtDisplayPaymentStatus(d))}">${debtPaymentStatusLabel(debtDisplayPaymentStatus(d))}</div><p class="sub">${next ? `Next: ${next.title}` : (hasSchedule ? "All planned payments cleared" : "No installment schedule entered")}</p></div>
     </div>`;
 }
 function debtDetailMetricsHTML(d, currentBal, util){
@@ -8118,6 +8140,7 @@ function transactionPayloadFromForm(id){
     autoMakPaycheck: autoPaycheck && isMakAccountId(txAccount.value),
     paycheckHoursOverride: hoursOverride === "" ? "" : Number(hoursOverride),
     recurrence: buildRecurrenceFromForm(),
+    recurrenceUntil: txRepeatRule.value === "none" ? "" : (document.getElementById("txRecurrenceUntil")?.value || ""),
     repeat: false,
     notes: txNotes.value,
     dateOverrides: {},
@@ -8303,6 +8326,9 @@ window.openTransaction = (id=null, defaults={})=>{
   if(document.getElementById("txAutoPaycheck")) txAutoPaycheck.checked = !!(tx?.autoPaycheck || tx?.autoMakPaycheck || defaults.autoPaycheck || defaults.autoMakPaycheck);
   if(document.getElementById("txPaycheckHoursOverride")) txPaycheckHoursOverride.value = tx?.paycheckHoursOverride ?? defaults.paycheckHoursOverride ?? "";
   setRecurrenceForm(tx?.recurrence || (tx?.repeat ? {type:"monthly", interval:1} : defaults.recurrence) || {type:"none", interval:1}, occurrenceDate);
+  const recurrenceUntilInput = document.getElementById("txRecurrenceUntil");
+  if(recurrenceUntilInput) recurrenceUntilInput.value = tx?.recurrenceUntil || defaults.recurrenceUntil || "";
+  updateRecurrenceUI();
   txNotes.value = tx?.notes || defaults.notes || "";
   txPreservedLinkedTransactionIds = Array.isArray(tx?.linkedTransactionIds) ? [...tx.linkedTransactionIds] : (Array.isArray(defaults.linkedTransactionIds) ? [...defaults.linkedTransactionIds] : []);
   const calcPanel = document.getElementById("txAmountCalcPanel");
@@ -9314,6 +9340,48 @@ window.simpleDebt = (id=null)=>{
     <div class="subpanel" id="sAutoPaymentStatusBlock" style="display:none"></div>
     <label class="checkbox" id="sFrozenLockedLabel"><input id="sFrozenLocked" type="checkbox" ${d?.frozenLocked ? "checked" : ""}> Frozen / locked</label>
 
+    <div class="subpanel" id="sBnplScheduleBlock" style="display:none">
+      <h4>Installment schedule</h4>
+      <p class="hint" id="sBnplScheduleIntro">Create the finite payment schedule now. Each payment is saved as its own linked planned transaction, so the BNPL debt stops automatically after the last installment.</p>
+      <div class="two-col">
+        <label>Pull payments from
+          <select id="sBnplSourceAccount">
+            ${data.accounts.filter(a=>!isSavingsAccount(a)).map(a=>`<option value="${a.id}">${a.emoji || "💵"} ${a.name}</option>`).join("")}
+          </select>
+        </label>
+        <label>Amount still to schedule
+          <input id="sBnplScheduleTotal" type="number" step="0.01" value="${d && isBNPLDebt(d) ? Number(debtCurrentSeed(d) || 0).toFixed(2) : "0.00"}">
+        </label>
+      </div>
+      <div class="two-col">
+        <label>Number of payments
+          <input id="sBnplCount" type="number" min="1" step="1" value="${d && isBNPLDebt(d) && Number(d.minDue || 0) > 0 ? Math.max(1, Math.ceil(Number(debtCurrentSeed(d) || 0) / Number(d.minDue || 1))) : 4}">
+        </label>
+        <label>First due date
+          <input id="sBnplFirstDate" type="date" value="${d?.dueDate || todayISO()}">
+        </label>
+      </div>
+      <div class="two-col">
+        <label>Payment schedule
+          <select id="sBnplScheduleMode">
+            <option value="days">Every N days / weeks</option>
+            <option value="monthly-same-day">Monthly on same date</option>
+          </select>
+        </label>
+        <label><span id="sBnplFrequencyLabel">Every how many days?</span>
+          <input id="sBnplFrequency" type="number" min="1" step="1" value="14">
+        </label>
+      </div>
+      <label class="checkbox"><input id="sBnplCreatePayments" type="checkbox" checked> Add each installment as a planned transaction</label>
+      <div class="bnpl-preview-head">
+        <strong>Payment schedule</strong>
+        <button type="button" class="ghost tiny" id="sBnplRefreshSchedule">Refresh split</button>
+      </div>
+      <div id="sBnplPayments"></div>
+      <p class="hint">You can edit every due date and amount below before saving the debt.</p>
+    </div>
+    <div class="subpanel" id="sBnplExistingScheduleNote" style="display:none"></div>
+
     <div class="subpanel" id="sLoanForecastBlock">
       <h4>Loan payoff forecast</h4>
       <label>Future payment split
@@ -9344,6 +9412,35 @@ window.simpleDebt = (id=null)=>{
     <p class="hint" id="sBnplHint"></p>
     <label>Notes<textarea id="sNotes" placeholder="Optional">${d?.notes || ""}</textarea></label>`;
 
+  const existingBnplPayments = d && isBNPLDebt(d)
+    ? bnplPaymentTransactions(d.id, "2999-12-31")
+    : [];
+  const canCreateBnplSchedule = !d || (isBNPLDebt(d) && existingBnplPayments.length === 0);
+  let bnplScheduleTotalTouched = false;
+
+  const refreshSimpleDebtBnplSchedule = ()=>{
+    const block = document.getElementById("sBnplScheduleBlock");
+    if(!block || block.style.display === "none") return;
+    const totalEl = document.getElementById("sBnplScheduleTotal");
+    const countEl = document.getElementById("sBnplCount");
+    const firstEl = document.getElementById("sBnplFirstDate");
+    const modeEl = document.getElementById("sBnplScheduleMode");
+    const freqEl = document.getElementById("sBnplFrequency");
+    const rowsEl = document.getElementById("sBnplPayments");
+    const labelEl = document.getElementById("sBnplFrequencyLabel");
+    if(!totalEl || !countEl || !firstEl || !modeEl || !freqEl || !rowsEl) return;
+    const monthly = modeEl.value === "monthly-same-day";
+    if(labelEl) labelEl.textContent = monthly ? "Every how many months?" : "Every how many days?";
+    if(monthly && Number(freqEl.value || 0) > 12) freqEl.value = 1;
+    if(monthly && !freqEl.value) freqEl.value = 1;
+    if(!monthly && !freqEl.value) freqEl.value = 14;
+    const total = Math.max(0, Number(totalEl.value || 0));
+    const count = Math.max(1, Number(countEl.value || 1));
+    const first = firstEl.value || todayISO();
+    const freq = Math.max(1, Number(freqEl.value || (monthly ? 1 : 14)));
+    rowsEl.innerHTML = bnplPaymentRowsHTML(total, count, first, freq, modeEl.value || "days");
+  };
+
   const updateDebtFormLabels = ()=>{
     const type = document.getElementById("sType")?.value || "";
     const isBnpl = type === "Buy Now, Pay Later" || type === "Klarna";
@@ -9369,6 +9466,8 @@ window.simpleDebt = (id=null)=>{
     const loanForecastBlock = document.getElementById("sLoanForecastBlock");
     const loanForecastHint = document.getElementById("sLoanForecastHint");
     const hint = document.getElementById("sBnplHint");
+    const bnplScheduleBlock = document.getElementById("sBnplScheduleBlock");
+    const bnplExistingScheduleNote = document.getElementById("sBnplExistingScheduleNote");
 
     if(isBnpl){
       if(startingBalanceLabel) startingBalanceLabel.childNodes[0].textContent = "Original purchase / total";
@@ -9385,8 +9484,18 @@ window.simpleDebt = (id=null)=>{
       if(autoPaymentStatusBlock) autoPaymentStatusBlock.style.display = "none";
       if(frozenLabel) frozenLabel.style.display = "none";
       if(loanForecastBlock) loanForecastBlock.style.display = "none";
-      if(hint) hint.textContent = "BNPL balances are calculated from linked installment payments. These fields are fallback/reference values.";
+      if(bnplScheduleBlock) bnplScheduleBlock.style.display = canCreateBnplSchedule ? "" : "none";
+      if(bnplExistingScheduleNote){
+        bnplExistingScheduleNote.style.display = !canCreateBnplSchedule && d ? "" : "none";
+        if(!canCreateBnplSchedule && d) bnplExistingScheduleNote.innerHTML = `<b>Installment schedule already linked</b><p class="hint">${existingBnplPayments.length} payment${existingBnplPayments.length === 1 ? "" : "s"} found. Edit or move those payment transactions directly so cleared history stays intact.</p>`;
+      }
+      if(hint) hint.textContent = canCreateBnplSchedule
+        ? "Set the saved balance, then build the finite installment schedule below."
+        : "BNPL balances are calculated from the linked installment schedule; saved balance remains a fallback/reference value.";
+      if(canCreateBnplSchedule) setTimeout(refreshSimpleDebtBnplSchedule, 0);
     } else if(isMedical){
+      if(bnplScheduleBlock) bnplScheduleBlock.style.display = "none";
+      if(bnplExistingScheduleNote) bnplExistingScheduleNote.style.display = "none";
       if(startingBalanceLabel) startingBalanceLabel.childNodes[0].textContent = "Starting balance";
       if(balanceLabel) balanceLabel.style.display = "none";
       if(trackingStartDateLabel) trackingStartDateLabel.style.display = "none";
@@ -9405,6 +9514,8 @@ window.simpleDebt = (id=null)=>{
       if(loanForecastBlock) loanForecastBlock.style.display = "none";
       if(hint) hint.textContent = "Medical Current Balance uses Statement/Current Balance + Date as the live provider baseline when provided, then counts cleared payments after that date.";
     } else {
+      if(bnplScheduleBlock) bnplScheduleBlock.style.display = "none";
+      if(bnplExistingScheduleNote) bnplExistingScheduleNote.style.display = "none";
       if(startingBalanceLabel) startingBalanceLabel.childNodes[0].textContent = "Starting balance";
       if(balanceLabel) balanceLabel.style.display = "none";
       if(trackingStartDateLabel) trackingStartDateLabel.style.display = "";
@@ -9473,12 +9584,57 @@ window.simpleDebt = (id=null)=>{
     };
     minInput?.addEventListener("input", syncTotalMonthly);
     extraInput?.addEventListener("input", syncTotalMonthly);
+
+    const sourceEl = document.getElementById("sBnplSourceAccount");
+    const scheduleTotalEl = document.getElementById("sBnplScheduleTotal");
+    const startingEl = document.getElementById("sStartingBalance");
+    const remainingEl = document.getElementById("sBalance");
+    const countEl = document.getElementById("sBnplCount");
+    const firstEl = document.getElementById("sBnplFirstDate");
+    const modeEl = document.getElementById("sBnplScheduleMode");
+    const freqEl = document.getElementById("sBnplFrequency");
+    const refreshBtn = document.getElementById("sBnplRefreshSchedule");
+    const defaultSource = data.accounts.find(a=>!isSavingsAccount(a) && a.owner === (d?.owner || sOwner.value || "Mak")) || data.accounts.find(a=>!isSavingsAccount(a));
+    if(sourceEl && defaultSource) sourceEl.value = defaultSource.id;
+    if(scheduleTotalEl && !Number(scheduleTotalEl.value || 0)){
+      const seed = d && isBNPLDebt(d) ? Number(debtCurrentSeed(d) || 0) : Number(remainingEl?.value || startingEl?.value || 0);
+      if(seed) scheduleTotalEl.value = seed.toFixed(2);
+    }
+    scheduleTotalEl?.addEventListener("input", ()=>{ bnplScheduleTotalTouched = true; });
+    const syncBnplScheduleTotal = ()=>{
+      if(bnplScheduleTotalTouched || !scheduleTotalEl || sType.value !== "Buy Now, Pay Later") return;
+      const seed = Number((d && isBNPLDebt(d) ? remainingEl?.value : (remainingEl?.value || startingEl?.value)) || 0);
+      scheduleTotalEl.value = seed ? seed.toFixed(2) : "0.00";
+      refreshSimpleDebtBnplSchedule();
+    };
+    startingEl?.addEventListener("input", syncBnplScheduleTotal);
+    remainingEl?.addEventListener("input", syncBnplScheduleTotal);
+    refreshBtn?.addEventListener("click", refreshSimpleDebtBnplSchedule);
+    [countEl, firstEl, freqEl].forEach(el=>el?.addEventListener("change", refreshSimpleDebtBnplSchedule));
+    modeEl?.addEventListener("change", ()=>{
+      if(modeEl.value === "monthly-same-day" && freqEl) freqEl.value = 1;
+      refreshSimpleDebtBnplSchedule();
+    });
+    sOwner?.addEventListener("change", ()=>{
+      if(!sourceEl) return;
+      const ownerDefault = data.accounts.find(a=>!isSavingsAccount(a) && a.owner === sOwner.value);
+      if(ownerDefault) sourceEl.value = ownerDefault.id;
+    });
+    refreshSimpleDebtBnplSchedule();
   },0);
 
   simpleSubmit = ()=>{
     const isBnpl = sType.value === "Buy Now, Pay Later" || sType.value === "Klarna";
     const isMedical = sType.value === "Medical";
     const isLoan = sType.value === "Loan";
+    const targetDebtId = d?.id || uid();
+    const scheduleBlock = document.getElementById("sBnplScheduleBlock");
+    const creatingBnplSchedule = isBnpl && canCreateBnplSchedule && scheduleBlock && scheduleBlock.style.display !== "none" && !!document.getElementById("sBnplCreatePayments")?.checked;
+    const scheduleDates = creatingBnplSchedule ? Array.from(scheduleBlock.querySelectorAll(".bnpl-date")).map(x=>x.value || todayISO()) : [];
+    const scheduleAmounts = creatingBnplSchedule ? Array.from(scheduleBlock.querySelectorAll(".bnpl-amount")).map(x=>Math.max(0, Number(x.value || 0))) : [];
+    const scheduleTotal = scheduleAmounts.reduce((sum,amount)=>sum+amount,0);
+    const firstScheduledAmount = scheduleAmounts.find(amount=>amount > 0) || 0;
+    const firstScheduledDate = scheduleDates[0] || "";
     const payload = {
       type:sType.value === "Klarna" ? "Buy Now, Pay Later" : sType.value,
       company:sCompany.value,
@@ -9486,19 +9642,19 @@ window.simpleDebt = (id=null)=>{
       owner:sOwner.value,
       emoji:sEmoji.value || "💳",
       color:sColor.value || "#8c6f4d",
-      startingBalance:Number(document.getElementById("sStartingBalance")?.value || document.getElementById("sBalance")?.value || 0),
+      startingBalance:Number(document.getElementById("sStartingBalance")?.value || document.getElementById("sBalance")?.value || (creatingBnplSchedule ? scheduleTotal : 0)),
       // Preserve legacy balance/currentBalance export field. Non-BNPL debts calculate live Current Balance from the selected baseline + cleared transactions.
-      balance:isBnpl ? Number(document.getElementById("sBalance")?.value || 0) : (isMedical ? Number(sStatementBalance?.value || document.getElementById("sStartingBalance")?.value || 0) : Number(document.getElementById("sStartingBalance")?.value || 0)),
+      balance:isBnpl ? Number(document.getElementById("sBalance")?.value || (creatingBnplSchedule ? scheduleTotal : 0)) : (isMedical ? Number(sStatementBalance?.value || document.getElementById("sStartingBalance")?.value || 0) : Number(document.getElementById("sStartingBalance")?.value || 0)),
       trackingStartDate:(isBnpl || isMedical) ? "" : (document.getElementById("sTrackingStartDate")?.value || ""),
       limit:(isBnpl || isMedical || isLoan) ? null : (sLimit.value === "" ? null : Number(sLimit.value)),
       statementDate:isBnpl ? "" : sStatementDate.value,
-      dueDate:sDueDate.value,
-      statementBalance:isBnpl ? Number(document.getElementById("sStartingBalance")?.value || document.getElementById("sBalance")?.value || 0) : Number(sStatementBalance.value || 0),
-      minDue:Number(sMinDue.value || 0),
+      dueDate:isBnpl && firstScheduledDate ? firstScheduledDate : sDueDate.value,
+      statementBalance:isBnpl ? Number(document.getElementById("sStartingBalance")?.value || document.getElementById("sBalance")?.value || (creatingBnplSchedule ? scheduleTotal : 0)) : Number(sStatementBalance.value || 0),
+      minDue:isBnpl && firstScheduledAmount ? firstScheduledAmount : Number(sMinDue.value || 0),
       manualExtra:isBnpl ? 0 : Number(sManualExtra.value || 0),
-      totalMonthlyPayment:isBnpl ? Number(sMinDue.value || 0) : (Number(document.getElementById("sTotalMonthlyPayment")?.value || 0) || (Number(sMinDue.value || 0) + Number(sManualExtra.value || 0))),
+      totalMonthlyPayment:isBnpl ? (firstScheduledAmount || Number(sMinDue.value || 0)) : (Number(document.getElementById("sTotalMonthlyPayment")?.value || 0) || (Number(sMinDue.value || 0) + Number(sManualExtra.value || 0))),
       apr:(isBnpl || isMedical) ? 0 : Number(sApr.value || 0),
-      paymentStatus:(sType.value === "Credit Card" ? (d?.paymentStatus || "not-set") : sPaymentStatus.value),
+      paymentStatus:(sType.value === "Credit Card" ? (d?.paymentStatus || "not-set") : (creatingBnplSchedule ? "scheduled" : sPaymentStatus.value)),
       loanForecastBreakdownMode:isLoan ? (document.getElementById("sLoanForecastBreakdownMode")?.value || "auto") : "auto",
       loanFeeTiming:isLoan ? (document.getElementById("sLoanFeeTiming")?.value || "auto") : "auto",
       loanEstPrincipalPct:isLoan ? (document.getElementById("sLoanEstPrincipalPct")?.value || "") : "",
@@ -9511,7 +9667,34 @@ window.simpleDebt = (id=null)=>{
     if(d){
       Object.assign(d, payload);
     } else {
-      data.debts.push({id:uid(), order:data.debts.length, ...payload});
+      data.debts.push({id:targetDebtId, order:data.debts.length, ...payload});
+    }
+
+    if(creatingBnplSchedule){
+      const sourceAccountId = document.getElementById("sBnplSourceAccount")?.value || "";
+      const totalPayments = scheduleDates.length;
+      scheduleDates.forEach((date, i)=>{
+        const amount = Number(scheduleAmounts[i] || 0);
+        if(!amount || !date) return;
+        data.transactions.push({
+          id:uid(),
+          title:`${sName.value || sCompany.value || "BNPL"} (${i+1}/${totalPayments})`,
+          amount,
+          date,
+          type:"transfer",
+          status:"planned",
+          accountId:sourceAccountId,
+          categoryId:"klarna",
+          linkedDebtId:targetDebtId,
+          recurrence:{type:"none", interval:1, weekendHandling:"none"},
+          recurrenceUntil:"",
+          repeat:false,
+          notes:`BNPL payment ${i+1} of ${totalPayments} for ${sName.value || sCompany.value || "BNPL"} • Original due date ${date}`,
+          dateOverrides:{},
+          occurrenceOverrides:{},
+          linkedTransactionIds:[]
+        });
+      });
     }
   };
   simpleDelete = d ? ()=>{ if(confirm("Delete this debt?")) data.debts = data.debts.filter(x=>x.id!==d.id); } : null;
@@ -10927,6 +11110,8 @@ function updateRecurrenceUI(){
     txRepeatOrdinal.closest("label").style.display = "grid";
     txRepeatIntervalUnit.value = "month(s)";
   }
+  const recurrenceUntilLabel = document.getElementById("txRecurrenceUntilLabel");
+  if(recurrenceUntilLabel) recurrenceUntilLabel.style.display = type === "none" ? "none" : "grid";
   const repeatSummary=document.getElementById("txRepeatSummary");
   if(repeatSummary){
     const labels={none:"Does not repeat",weekly:"Weekly",biweekly:"Every 2 weeks",monthly:"Monthly","last-day-month":"Last day monthly",yearly:"Yearly","every-x-days":`Every ${Math.max(1,Number(txRepeatInterval.value||1))} days`,"nth-weekday":"Monthly pattern"};
@@ -12106,5 +12291,6 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 // v2-299: Planning scenario selection/settings live in the compact Planning banner so the desktop Calendar toolbar keeps the same one-row height as Real mode.
 
 // v2-301: Planning cash-account relevance is evaluated after recurrence expansion. Calendar cards and account balances share source-or-destination transfer semantics, so recurring incoming transfers cannot be dropped before projection.
+// v2-303: BNPL creation restores finite installment scheduling, orphan BNPL balances fall back to saved Remaining Balance, and recurring transactions can optionally end on a chosen date.
 // v2-302: Calendar-day recurrence math is DST-safe, so weekly/biweekly/every-X-days schedules continue across spring-forward/fall-back boundaries.
 // v2-300: Planning recurring transfers retain both cash-account sides during expansion/projection; future auto-paychecks regenerate from scenario paycheck profiles, which are editable in Plan settings.

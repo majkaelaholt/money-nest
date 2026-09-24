@@ -161,7 +161,14 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-302`
+Latest known version: `money-nest-v2-303`
+
+### v2-303 BNPL installment creation + recurrence end dates
+- New/orphan BNPL debts must be able to create a finite installment schedule directly from Add/Edit Debt. Schedule rows are individual linked planned transactions so dates/amounts can be edited before save and there is no accidental infinite recurrence.
+- Never duplicate an existing linked BNPL installment schedule when editing a debt; when a schedule exists, edit/move the linked transactions instead.
+- If a BNPL debt has no linked installments, Remaining Balance falls back to the saved debt balance and unscheduled BNPL status/due text must not imply it is already paid. Once any linked schedule exists, the linked schedule is authoritative; all-cleared installments must show $0 remaining.
+- Preserve the saved starting/original purchase amount when rebuilding only the remaining installments of an older orphan BNPL account.
+- Transaction recurrence may optionally save `recurrenceUntil`; blank still means indefinite. Preserve existing recurrence overrides and CSV/JSON compatibility. Schema remains 225.
 
 ### v2-302 DST-safe recurring schedule math
 - `daysBetween()` must count calendar dates via UTC-normalized date parts, not raw local-time milliseconds. DST transitions otherwise turn nominal 7-day spans into 6.958/7.042 days and break recurrence modulo checks.

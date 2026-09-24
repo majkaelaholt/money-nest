@@ -1,5 +1,16 @@
 # Money Nest
 
+## v2-303
+
+### BNPL installment-entry restoration + finite recurrence end dates
+
+- Add/Edit Debt restores the BNPL installment builder when **Buy Now, Pay Later** is selected and no linked schedule exists. It asks for the source account, amount to schedule, payment count, first due date, every-N-days/weeks or monthly cadence, and shows editable payment dates/amounts before saving.
+- Saving that builder creates a finite set of individually linked planned BNPL payment transactions instead of an endless recurring payment. Existing BNPL schedules are preserved and are not duplicated when the debt is edited.
+- Existing BNPL debts with no linked installment transactions now show their saved **Remaining balance** instead of incorrectly displaying $0. Their status/due text also stays unscheduled rather than pretending they are paid. Once a linked schedule exists, the schedule remains authoritative, including correctly reaching $0 when every installment is cleared.
+- Saved original-purchase values remain the BNPL original-total reference even when an older debt later builds a schedule only for its remaining installments.
+- Add/Edit Transaction now exposes an optional **End repeat after** date for recurring transactions. This writes the already-supported `recurrenceUntil` field and remains backward compatible with existing JSON/CSV data.
+- Schema remains 225 and storage key remains `moneyNest.v2.113`.
+
 ## v2-302
 
 ### DST-safe recurring schedule math
