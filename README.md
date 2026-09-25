@@ -1,5 +1,16 @@
 # Money Nest
 
+## v2-309
+
+### Bug fix: archived BNPL/debt Restore path stays visible
+
+- Fixed the v2-308 archive UX where archiving a debt immediately removed it from the active list while the **Archived debts** section stayed collapsed, making the Restore action easy to miss and look as if the debt had disappeared.
+- Archiving any debt now automatically opens the **Archived debts** section in the current session and shows the archived card + **Restore** button immediately. The section remains manually collapsible afterward.
+- The collapsed summary now explicitly says **click to view / restore** so archived records are discoverable after a reload too.
+- Extracted archived-debt card rendering into one helper so Accounts and regression coverage share the same Restore markup.
+- Added a twelfth regression check using a synthetic Klarna/BNPL debt to prove archive auto-opens, the archived card is rendered, a Restore action is present, and restoring returns the debt to active views.
+- No schema/data migration. Schema remains **226** and storage key remains `moneyNest.v2.113`.
+
 ## v2-308
 
 ### Stabilization: archive debts without breaking history

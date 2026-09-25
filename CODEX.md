@@ -161,12 +161,18 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-308`
+Latest known version: `money-nest-v2-309`
+
+### v2-309 archived-debt restore visibility
+- `setDebtArchivedState(..., true)` intentionally opens the in-memory Archived debts section so the just-archived record and Restore action are immediately visible. Do not regress archive into a visually disappearing action.
+- `archivedDebtSectionHTML()` is the canonical archived-debt Accounts markup. Keep the Restore action in that helper and keep archived cards linked to `openDebtDetail()`.
+- When the archived section is collapsed, its summary must clearly communicate that it can be opened to view/restore records.
+- Regression coverage is now 12 checks, including an archived BNPL visibility/restore check. Schema remains 226; storage key remains `moneyNest.v2.113`.
 
 ### v2-308 debt archival / historical-link integrity
 - Debts now support optional `archived` + `archivedAt` metadata. `debtById()` must continue to resolve archived records so historical transaction labels/links remain intact.
 - Use `activeDebts()` for live debt totals, Dashboard reminders/attention, utilization, active Accounts groups, financial-picture active debt totals, and new card/debt payment choices. Do not globally change `debtById()` or erase archived records from saved data.
-- Archived debts render only in the collapsed Archived debts area and their detail/history remains readable. New spend/payment actions are disabled until Restore.
+- Archived debts render only in the Archived debts area and their detail/history remains readable. v2-309 auto-opens that area immediately after archive so Restore is visible; it can still be collapsed manually. New spend/payment actions are disabled until Restore.
 - Permanent delete is intentionally separate and destructive. It may leave historical transaction references, which Maintenance reports as removed-debt links; do not silently rewrite those transaction IDs.
 - Debt CSV export/import preserves `archived` and `archivedAt`; older CSV/JSON data defaults to active. Schema is now 226; storage key remains `moneyNest.v2.113`.
 - Regression coverage is now 11 checks, including archive/history preservation + restore.

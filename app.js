@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-308";
+const APP_VERSION = "2-309";
 const CURRENT_SCHEMA_VERSION = 226;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -1887,6 +1887,11 @@ function setDebtArchivedState(debtId, archived, options={}){
   if(!debt) return false;
   debt.archived=!!archived;
   debt.archivedAt=archived ? (debt.archivedAt || new Date().toISOString()) : "";
+  // Make the archive action visibly reversible. A newly archived debt should
+  // immediately appear with its Restore button instead of being hidden inside
+  // a collapsed details row. The user can collapse the section afterward.
+  if(archived) debtOpenState.archivedDebtsOpen=true;
+  else if(!archivedDebts().length) debtOpenState.archivedDebtsOpen=false;
   if(options.persist){
     saveData();
     renderSelectors();
@@ -5760,7 +5765,8 @@ function debtFrozenText(d){
 
 const debtOpenState = {
   openDebtTypes: new Set(),
-  openDebtCompanies: new Set()
+  openDebtCompanies: new Set(),
+  archivedDebtsOpen: false
 };
 
 function isDebtExpanded(listName, key){
@@ -5777,6 +5783,10 @@ function rememberExpanded(listName, key, isOpen){
   // whenever the app/page loads unless Mak expands them manually.
   data.settings[listName] ||= [];
 }
+function rememberArchivedDebtsOpen(isOpen){
+  debtOpenState.archivedDebtsOpen=!!isOpen;
+}
+window.rememberArchivedDebtsOpen=rememberArchivedDebtsOpen;
 function debtCompanyKey(type, company){
   return `${type}::${company}`;
 }
@@ -6001,6 +6011,28 @@ function updateUtilSimSummary(){
   </div>`;
 }
 
+function archivedDebtSectionHTML(archived=orderedDebts(archivedDebts()), options={}){
+  if(!archived.length) return "";
+  const isOpen=options.open ?? debtOpenState.archivedDebtsOpen;
+  return `<details class="debt-type-section archived-debt-section" ${isOpen ? "open" : ""} ontoggle="rememberArchivedDebtsOpen(this.open)">
+    <summary class="debt-type-summary">
+      <span class="debt-type-name">Archived debts</span>
+      <span class="debt-type-total">${archived.length} account${archived.length===1?"":"s"} • ${isOpen ? "history preserved" : "click to view / restore"} <span aria-hidden="true">⌄</span></span>
+    </summary>
+    <div class="debt-type-body">
+      <p class="hint">Archived debts are excluded from active totals, reminders, utilization, and new-payment pickers. Their historical transaction links are preserved.</p>
+      <div class="debt-cards open">
+        ${archived.map(d=>`<div class="debt-account-card tinted-card clickable debt-archived" data-archived-debt-id="${escapeAttr(d.id)}" style="--card-color:${d.color || "#8c6f4d"}; background:${hexToSoft(d.color || "#8c6f4d")}" onclick="openDebtDetail('${d.id}')">
+          <div class="debt-card-main"><div class="row-title">📦 ${d.emoji || "💳"} ${d.name}</div><div class="row-sub">${d.company} • ${d.owner} • Archived${d.archivedAt ? ` ${String(d.archivedAt).slice(0,10)}` : ""}</div></div>
+          <div class="debt-card-metric debt-card-current"><div class="label">Last/current balance</div><div class="amount">${money(debtAmountLeftNow(d))}</div><div class="row-sub">History remains linked</div></div>
+          <div class="debt-card-status"><button type="button" class="ghost small" onclick="event.stopPropagation(); restoreDebt('${d.id}')">Restore</button></div>
+          <span class="debt-row-chevron" aria-hidden="true">›</span>
+        </div>`).join("")}
+      </div>
+    </div>
+  </details>`;
+}
+
 function renderDebts(){
   const active=orderedDebts(activeDebts());
   const archived=orderedDebts(archivedDebts());
@@ -6066,23 +6098,7 @@ function renderDebts(){
       </div>
     </details>`;
   }).join("");
-  const archivedSection=archived.length ? `<details class="debt-type-section archived-debt-section">
-    <summary class="debt-type-summary">
-      <span class="debt-type-name">Archived debts</span>
-      <span class="debt-type-total">${archived.length} account${archived.length===1?"":"s"} • history preserved <span aria-hidden="true">⌄</span></span>
-    </summary>
-    <div class="debt-type-body">
-      <p class="hint">Archived debts are excluded from active totals, reminders, utilization, and new-payment pickers. Their historical transaction links are preserved.</p>
-      <div class="debt-cards open">
-        ${archived.map(d=>`<div class="debt-account-card tinted-card clickable debt-archived" style="--card-color:${d.color || "#8c6f4d"}; background:${hexToSoft(d.color || "#8c6f4d")}" onclick="openDebtDetail('${d.id}')">
-          <div class="debt-card-main"><div class="row-title">📦 ${d.emoji || "💳"} ${d.name}</div><div class="row-sub">${d.company} • ${d.owner} • Archived${d.archivedAt ? ` ${String(d.archivedAt).slice(0,10)}` : ""}</div></div>
-          <div class="debt-card-metric debt-card-current"><div class="label">Last/current balance</div><div class="amount">${money(debtAmountLeftNow(d))}</div><div class="row-sub">History remains linked</div></div>
-          <div class="debt-card-status"><button type="button" class="ghost small" onclick="event.stopPropagation(); restoreDebt('${d.id}')">Restore</button></div>
-          <span class="debt-row-chevron" aria-hidden="true">›</span>
-        </div>`).join("")}
-      </div>
-    </div>
-  </details>` : "";
+  const archivedSection=archivedDebtSectionHTML(archived);
   document.getElementById("debtGroups").innerHTML = creditCardUtilizationSummariesHTML() + debtTools + activeSections + archivedSection;
   setupReorder(".debt-account-card[data-id]", "debt");
 }
@@ -12419,7 +12435,7 @@ function regressionDataset({planning=false,accounts=[],debts=[],transactions=[],
   };
 }
 function runMoneyNestRegressionTests(options={}){
-  const saved={data,rootData,calendarMode,planningScenarioId,calendarFilter};
+  const saved={data,rootData,calendarMode,planningScenarioId,calendarFilter,archivedDebtsOpen:debtOpenState.archivedDebtsOpen};
   const results=[];
   const setSynthetic=(dataset,planning=false)=>{
     invalidateExpandedTransactionsCache();
@@ -12635,6 +12651,25 @@ function runMoneyNestRegressionTests(options={}){
       return "Archive keeps record + transaction links; restore returns it to active views";
     }));
 
+    results.push(regressionResult("Archived BNPL stays visibly restorable",()=>{
+      const ds=regressionDataset({
+        debts:[{id:"bnpl-archive",name:"Amazon",company:"Klarna",owner:"Mak",type:"Buy Now, Pay Later",startingBalance:207.30,balance:197.16,statementBalance:207.30,minDue:65.72}],
+        transactions:[]
+      });
+      setSynthetic(ds,false);
+      debtOpenState.archivedDebtsOpen=false;
+      regressionAssert(setDebtArchivedState("bnpl-archive",true)===true,"BNPL archive mutation failed");
+      regressionAssert(debtOpenState.archivedDebtsOpen===true,"Archive section did not auto-open after archive");
+      const html=archivedDebtSectionHTML(orderedDebts(archivedDebts()));
+      regressionAssert(/<details[^>]*\sopen(?:\s|>)/.test(html),"Archived section markup was not open");
+      regressionAssert(html.includes("Amazon"),"Archived BNPL card was missing from archive markup");
+      regressionAssert(html.includes("Restore"),"Archived BNPL did not expose a Restore action");
+      regressionAssert(html.includes('data-archived-debt-id="bnpl-archive"'),"Archived BNPL card identifier was missing");
+      setDebtArchivedState("bnpl-archive",false);
+      regressionAssert(activeDebts().some(d=>d.id==="bnpl-archive"),"Restored BNPL did not return to active debts");
+      return "Archive auto-opens with Amazon + Restore; restore returns BNPL active";
+    }));
+
     results.push(regressionResult("JSON normalization preserves planning scenarios",()=>{
       const raw=regressionDataset({
         accounts:[{id:"a",name:"A",owner:"Mak",type:"cash",startingBalance:10}],
@@ -12654,6 +12689,7 @@ function runMoneyNestRegressionTests(options={}){
     calendarMode=saved.calendarMode;
     planningScenarioId=saved.planningScenarioId;
     calendarFilter=saved.calendarFilter;
+    debtOpenState.archivedDebtsOpen=saved.archivedDebtsOpen;
   }
 
   const passed=results.filter(r=>r.pass).length;
@@ -12851,3 +12887,4 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 // v2-307: Expanded recurrence results are cached by active dataset/horizon and invalidated on saved/replaced data; regression coverage verifies reuse + stale-data prevention.
 
 // v2-308: Debt records can be archived/restored without breaking historical links; active debt views exclude archived records and permanent deletion is explicit.
+// v2-309: Newly archived debts auto-open the Archived debts section so the Restore path is immediately visible; archive rendering has direct regression coverage.
