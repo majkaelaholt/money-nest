@@ -161,7 +161,14 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-306`
+Latest known version: `money-nest-v2-307`
+
+### v2-307 expanded-occurrence cache
+- `expandedTransactions()` now caches canonical recurrence expansion by active dataset object + requested horizon. Do not add a second projection cache around individual screens.
+- Always return caller-safe arrays from the cache; downstream code may sort/filter/annotate its local rows without mutating the cached array.
+- Any in-place financial-data edit that is about to render must pass through `saveData()`, which invalidates the cache. Full dataset replacement paths (cloud load, JSON import, Undo, Clear All) also invalidate explicitly.
+- Real data and each Planning scenario are separate dataset objects/cache buckets. Switching contexts must never mix expanded rows between them.
+- Regression coverage is now 10 checks, including cache reuse and stale-data invalidation. Schema remains 225; no JSON/CSV migration.
 
 ### v2-306 canonical recurrence engine
 - `recurrenceRuleFor()` + `recurrenceOccursOn()` are the canonical cadence matcher for weekly, biweekly, monthly, last-day-month, yearly, every-X-days, and nth-weekday rules. Do not add a second cadence switch inside projection/reporting code.

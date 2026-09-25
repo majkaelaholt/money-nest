@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-306";
+const APP_VERSION = "2-307";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -328,6 +328,7 @@ window.cloudLoadNow = async()=>{
     suppressChangeHistory = true;
     data = normalizeData(row.data);
     rootData = data;
+    invalidateExpandedTransactionsCache();
     calendarMode = "real";
     planningScenarioId = "";
     startupLocalLoadIssue = "";
@@ -1822,6 +1823,9 @@ function saveData(){
     alert("Money Nest did not load the saved browser copy correctly, so it blocked this save to protect your local data. Reload after updating Money Nest, or explicitly load cloud/JSON data first.");
     return;
   }
+  // Data is usually mutated in-place before saveData() is called. Clear any
+  // expanded-occurrence snapshots before the following render can reuse them.
+  invalidateExpandedTransactionsCache();
   const storageData = moneyNestRootData();
   storageData.schemaVersion = CURRENT_SCHEMA_VERSION;
   const beforeRaw = localStorage.getItem(STORAGE_KEY);
@@ -2266,7 +2270,37 @@ function materializeRecurrenceOccurrence(tx, originalISO, options={}){
   return occurrence;
 }
 
+// v2-307: Recurrence expansion is one of Money Nest's most reused calculations.
+// Cache the canonical expanded rows by active dataset + requested horizon, then
+// hand callers shallow copies so their local sorting/annotation cannot mutate the
+// cached array. Any saved financial-data change clears the cache before render.
+let expandedTransactionsCache = new WeakMap();
+let expandedTransactionsCacheStats = {hits:0, misses:0, invalidations:0};
+function invalidateExpandedTransactionsCache(){
+  expandedTransactionsCache = new WeakMap();
+  expandedTransactionsCacheStats.invalidations += 1;
+}
+function expandedTransactionsCacheBucket(){
+  if(!data || typeof data !== "object") return null;
+  let bucket = expandedTransactionsCache.get(data);
+  if(!bucket){
+    bucket = new Map();
+    expandedTransactionsCache.set(data, bucket);
+  }
+  return bucket;
+}
+function cloneExpandedTransactionRows(rows){
+  return (rows || []).map(tx=>({...tx}));
+}
 function expandedTransactions(untilISO){
+  const cacheKey=String(untilISO || "");
+  const cacheBucket=expandedTransactionsCacheBucket();
+  if(cacheBucket?.has(cacheKey)){
+    expandedTransactionsCacheStats.hits += 1;
+    return cloneExpandedTransactionRows(cacheBucket.get(cacheKey));
+  }
+  expandedTransactionsCacheStats.misses += 1;
+
   const out = [];
   const until = parseDate(untilISO);
 
@@ -2308,7 +2342,9 @@ function expandedTransactions(untilISO){
     }
   });
 
-  return out.sort((a,b)=>a.date.localeCompare(b.date));
+  const sorted=out.sort((a,b)=>a.date.localeCompare(b.date));
+  if(cacheBucket) cacheBucket.set(cacheKey, sorted);
+  return cloneExpandedTransactionRows(sorted);
 }
 
 function isPendingReimbursementTx(tx){
@@ -7156,6 +7192,7 @@ function undoLastChange(){
     suppressChangeHistory = true;
     data = normalizeData(JSON.parse(item.before));
     rootData = data;
+    invalidateExpandedTransactionsCache();
     calendarMode = "real";
     planningScenarioId = "";
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -11834,6 +11871,7 @@ function clearEverything(){
     transactions:[]
   });
   rootData = data;
+  invalidateExpandedTransactionsCache();
   calendarMode = "real";
   planningScenarioId = "";
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -11889,6 +11927,7 @@ function importBackupJSON(file){
       suppressChangeHistory = true;
       data = normalized;
       rootData = data;
+      invalidateExpandedTransactionsCache();
       calendarMode = "real";
       planningScenarioId = "";
       startupLocalLoadIssue = "";
@@ -12295,6 +12334,7 @@ function runMoneyNestRegressionTests(options={}){
   const saved={data,rootData,calendarMode,planningScenarioId,calendarFilter};
   const results=[];
   const setSynthetic=(dataset,planning=false)=>{
+    invalidateExpandedTransactionsCache();
     if(planning){
       rootData=regressionDataset();
       data=dataset;
@@ -12464,6 +12504,27 @@ function runMoneyNestRegressionTests(options={}){
       return "Remaining $197.16; original $207.30";
     }));
 
+    results.push(regressionResult("Expanded-occurrence cache reuses work and invalidates safely",()=>{
+      const ds=regressionDataset({
+        accounts:[{id:"joint",name:"Joint",owner:"Joint",type:"cash",startingBalance:0}],
+        transactions:[{id:"cache-weekly",date:"2027-01-06",title:"Weekly",amount:10,type:"expense",status:"planned",accountId:"joint",categoryId:"utilities",recurrence:{type:"weekly",interval:1,weekday:3,weekendHandling:"none"},occurrenceOverrides:{},dateOverrides:{}}]
+      });
+      setSynthetic(ds,false);
+      const startHits=expandedTransactionsCacheStats.hits;
+      const first=expandedTransactions("2027-01-31");
+      const missesAfterFirst=expandedTransactionsCacheStats.misses;
+      const second=expandedTransactions("2027-01-31");
+      regressionAssert(expandedTransactionsCacheStats.hits===startHits+1,"Second identical expansion did not hit cache");
+      regressionAssert(expandedTransactionsCacheStats.misses===missesAfterFirst,"Second identical expansion unexpectedly recomputed");
+      regressionAssert(first!==second,"Cached callers received the same mutable array instance");
+      regressionAssert(JSON.stringify(first)===JSON.stringify(second),"Cached expansion changed occurrence content");
+      ds.transactions[0].amount=25;
+      invalidateExpandedTransactionsCache();
+      const refreshed=expandedTransactions("2027-01-31");
+      regressionAssert(refreshed.every(tx=>Number(tx.amount)===25),"Cache served stale rows after invalidation");
+      return "Repeated horizons reuse expansion; invalidation refreshes edited amounts";
+    }));
+
     results.push(regressionResult("JSON normalization preserves planning scenarios",()=>{
       const raw=regressionDataset({
         accounts:[{id:"a",name:"A",owner:"Mak",type:"cash",startingBalance:10}],
@@ -12479,6 +12540,7 @@ function runMoneyNestRegressionTests(options={}){
   }finally{
     data=saved.data;
     rootData=saved.rootData;
+    invalidateExpandedTransactionsCache();
     calendarMode=saved.calendarMode;
     planningScenarioId=saved.planningScenarioId;
     calendarFilter=saved.calendarFilter;
@@ -12676,3 +12738,4 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 
 // v2-305: Cash-account projection uses one post-expansion account-perspective path across Calendar, ledgers, and balance math; regression coverage includes Calendar/account cash-effect parity.
 // v2-306: Recurrence cadence matching and concrete occurrence materialization are centralized; expanded projections and Bills share weekend/override/delete/end-date semantics.
+// v2-307: Expanded recurrence results are cached by active dataset/horizon and invalidated on saved/replaced data; regression coverage verifies reuse + stale-data prevention.

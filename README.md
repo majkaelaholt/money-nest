@@ -1,5 +1,15 @@
 # Money Nest
 
+## v2-307
+
+### Stabilization: expanded-occurrence projection cache
+
+- Added a dataset/horizon cache around the canonical `expandedTransactions()` engine so repeated Calendar, account, Bills, budget, dashboard, and forecast reads can reuse the same recurrence expansion instead of regenerating identical occurrences.
+- Cached rows are returned as fresh shallow copies so downstream sorting/annotation cannot mutate the cached array itself.
+- `saveData()` invalidates the expansion cache before re-rendering, and full data replacements (cloud load, JSON import, Undo, Clear All, and regression dataset swaps) invalidate it as well. Real and Planning datasets keep separate cache buckets.
+- Added a tenth regression check proving an identical horizon reuses cached work, callers receive separate arrays, and explicit invalidation refreshes edited transaction amounts instead of serving stale projection rows.
+- No financial math, recurrence rules, JSON/CSV shape, schema, or storage key changed. Schema remains 225 and storage key remains `moneyNest.v2.113`.
+
 ## v2-306
 
 ### Stabilization: canonical recurrence engine
