@@ -161,7 +161,15 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-307`
+Latest known version: `money-nest-v2-308`
+
+### v2-308 debt archival / historical-link integrity
+- Debts now support optional `archived` + `archivedAt` metadata. `debtById()` must continue to resolve archived records so historical transaction labels/links remain intact.
+- Use `activeDebts()` for live debt totals, Dashboard reminders/attention, utilization, active Accounts groups, financial-picture active debt totals, and new card/debt payment choices. Do not globally change `debtById()` or erase archived records from saved data.
+- Archived debts render only in the collapsed Archived debts area and their detail/history remains readable. New spend/payment actions are disabled until Restore.
+- Permanent delete is intentionally separate and destructive. It may leave historical transaction references, which Maintenance reports as removed-debt links; do not silently rewrite those transaction IDs.
+- Debt CSV export/import preserves `archived` and `archivedAt`; older CSV/JSON data defaults to active. Schema is now 226; storage key remains `moneyNest.v2.113`.
+- Regression coverage is now 11 checks, including archive/history preservation + restore.
 
 ### v2-307 expanded-occurrence cache
 - `expandedTransactions()` now caches canonical recurrence expansion by active dataset object + requested horizon. Do not add a second projection cache around individual screens.

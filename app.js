@@ -1,6 +1,6 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-307";
-const CURRENT_SCHEMA_VERSION = 225;
+const APP_VERSION = "2-308";
+const CURRENT_SCHEMA_VERSION = 226;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
 // v2-239: reliably detect iPad/tablet Safari and touch-capable layouts.
@@ -1448,6 +1448,8 @@ function normalizeData(raw){
     loanEstFeePct: debt.loanEstFeePct ?? debt.loanFeePct ?? "",
     loanForecastHistory: normalizeLoanForecastHistory((debt.loanForecastHistory && debt.loanForecastHistory.length) ? debt.loanForecastHistory : defaultLoanForecastHistoryForDebt({...debt, type: normalizedType})),
     frozenLocked: debt.frozenLocked || false,
+    archived: !!debt.archived,
+    archivedAt: debt.archivedAt || "",
     notes: debt.notes || "",
     order: debt.order ?? index
   };
@@ -1874,6 +1876,49 @@ function normalizeCategories(){
 }
 function accountById(id){ return data.accounts.find(a=>a.id===id); }
 function debtById(id){ return data.debts.find(d=>d.id===id); }
+function isDebtArchived(debt){ return !!debt?.archived; }
+function activeDebts(list=data.debts){ return (list || []).filter(debt=>!isDebtArchived(debt)); }
+function archivedDebts(list=data.debts){ return (list || []).filter(debt=>isDebtArchived(debt)); }
+function debtLinkedTransactionCount(debtId){
+  return (data.transactions || []).filter(tx=>tx.linkedDebtId===debtId || tx.debtAccountId===debtId).length;
+}
+function setDebtArchivedState(debtId, archived, options={}){
+  const debt=debtById(debtId);
+  if(!debt) return false;
+  debt.archived=!!archived;
+  debt.archivedAt=archived ? (debt.archivedAt || new Date().toISOString()) : "";
+  if(options.persist){
+    saveData();
+    renderSelectors();
+    if(currentView === "debtDetail" && selectedDebtId === debtId) renderDebtDetail();
+    else render();
+  }
+  return true;
+}
+window.archiveDebt=(debtId)=>{
+  const debt=debtById(debtId);
+  if(!debt || isDebtArchived(debt)) return;
+  const linked=debtLinkedTransactionCount(debtId);
+  const message=`Archive ${debt.name || "this debt"}?\n\nIt will be hidden from active debt totals, reminders, utilization, and new debt/payment pickers. ${linked ? `${linked} linked saved transaction${linked===1?"":"s"} will stay connected to this debt.` : "Its saved history will be preserved."} Existing transactions and recurring bills are not deleted or changed.`;
+  if(!confirm(message)) return;
+  setDebtArchivedState(debtId,true,{persist:true});
+};
+window.restoreDebt=(debtId)=>{ setDebtArchivedState(debtId,false,{persist:true}); };
+window.permanentlyDeleteDebt=(debtId)=>{
+  const debt=debtById(debtId);
+  if(!debt) return;
+  const linked=debtLinkedTransactionCount(debtId);
+  const warning=`Permanently delete ${debt.name || "this debt"}?\n\nThis removes the debt record itself and cannot be undone from the debt screen.${linked ? ` ${linked} saved transaction${linked===1?"":"s"} will keep their debt ID as historical removed-debt links.` : ""}\n\nArchive is safer if you only want it out of the active list.`;
+  if(!confirm(warning)) return;
+  if(!confirm("Last check: permanently delete this debt record?")) return;
+  data.debts=data.debts.filter(item=>item.id!==debtId);
+  selectedDebtId = selectedDebtId===debtId ? "" : selectedDebtId;
+  if(simpleModal?.open) simpleModal.close();
+  saveData();
+  renderSelectors();
+  if(currentView === "debtDetail") setView("accounts");
+  else render();
+};
 
 
 function moveWeekendDate(date, handling){
@@ -3358,7 +3403,7 @@ function automaticCreditCardPaymentInfo(d){
 function debtPaymentsDueSoon(days=30){
   const start = todayISO();
   const end = toISO(addDays(parseDate(start), days));
-  return data.debts
+  return activeDebts()
     .map(d => ({...d, nextDue: d.type === "Credit Card" ? creditCardRelevantDueDate(d, start) : debtDashboardDueDate(d, start)}))
     .filter(d => d.nextDue && d.nextDue >= start && d.nextDue <= end && debtDashboardNeedsPaymentPlanning(d))
     .sort((a,b)=>a.nextDue.localeCompare(b.nextDue));
@@ -3375,7 +3420,7 @@ function nextCreditCardStatementDate(d, fromISO=todayISO()){
 function creditCardStatementsToCheck(days=7){
   const start = todayISO();
   const end = toISO(addDays(parseDate(start), days));
-  return data.debts
+  return activeDebts()
     .filter(d => d.type === "Credit Card" && d.statementDate)
     .map(d => ({...d, nextStatementDate: nextCreditCardStatementDate(d, start)}))
     .filter(d => d.nextStatementDate && d.nextStatementDate <= end)
@@ -3445,7 +3490,7 @@ function dashboardNeedsAttention(){
     });
   }
 
-  data.debts.forEach(d=>{
+  activeDebts().forEach(d=>{
     const debtRoute = debtAttentionAccountText(d);
     const needsPaymentPlanning = debtDashboardNeedsPaymentPlanning(d);
     if((d.type === "Credit Card" || d.type === "Klarna") && !d.dueDate && !isBNPLDebt(d) && needsPaymentPlanning){
@@ -5708,6 +5753,7 @@ function debtDueText(d){
   return d.dueDate || "No due date";
 }
 function debtFrozenText(d){
+  if(isDebtArchived(d)) return "Archived";
   return d.frozenLocked ? "Frozen/locked" : "Active";
 }
 
@@ -5739,7 +5785,7 @@ function expandDebtTypeAccounts(type){
   // Expand one top-level debt type plus all company/account groups inside it.
   // This is intentionally scoped to the clicked type only, not every debt group.
   debtOpenState.openDebtTypes.add(type);
-  const debts = orderedDebts().filter(d => d.type === type);
+  const debts = orderedDebts(activeDebts()).filter(d => d.type === type);
   Object.keys(groupBy(debts, "company")).forEach(company=>{
     debtOpenState.openDebtCompanies.add(debtCompanyKey(type, company));
   });
@@ -5748,7 +5794,7 @@ function expandDebtTypeAccounts(type){
 
 function collapseDebtTypeAccounts(type){
   // Collapse only the account/company groups inside this debt type.
-  const debts = orderedDebts().filter(d => d.type === type);
+  const debts = orderedDebts(activeDebts()).filter(d => d.type === type);
   Object.keys(groupBy(debts, "company")).forEach(company=>{
     debtOpenState.openDebtCompanies.delete(debtCompanyKey(type, company));
   });
@@ -5817,7 +5863,7 @@ function bnplPaymentRowsHTML(total, count, firstDate, frequencyValue, scheduleMo
 
 
 function creditCardUtilizationSummariesHTML(){
-  const cards = data.debts.filter(d => d.type === "Credit Card" && Number(d.limit || 0) > 0);
+  const cards = activeDebts().filter(d => d.type === "Credit Card" && Number(d.limit || 0) > 0);
   if(!cards.length) return "";
   const owners = [...new Set(cards.map(d=>d.owner || "Unassigned"))].sort();
   const rows = owners.map(owner=>{
@@ -5845,7 +5891,7 @@ function creditCardUtilizationSummariesHTML(){
 
 
 function openCreditUtilizationSimulator(owner){
-  const cards = data.debts.filter(d => d.type === "Credit Card" && (d.owner || "Unassigned") === owner && Number(d.limit || 0) > 0);
+  const cards = activeDebts().filter(d => d.type === "Credit Card" && (d.owner || "Unassigned") === owner && Number(d.limit || 0) > 0);
   if(!cards.length){ alert(`No credit cards found for ${owner}.`); return; }
   simpleTitle.textContent = `${owner} credit utilization simulator`;
   simpleFields.innerHTML = `
@@ -5956,12 +6002,14 @@ function updateUtilSimSummary(){
 }
 
 function renderDebts(){
-  const groupedType = groupBy(orderedDebts(), "type");
+  const active=orderedDebts(activeDebts());
+  const archived=orderedDebts(archivedDebts());
+  const groupedType = groupBy(active, "type");
   const debtTools = `<details class="account-tools-disclosure">
     <summary><span><b>Debt tools</b><small>BNPL purchases and category-label maintenance.</small></span><span class="account-tools-chevron" aria-hidden="true">⌄</span></summary>
     <div class="account-tools-body"><button class="primary small" onclick="addBNPLPurchase()">+ BNPL purchase</button><button class="ghost small" onclick="editDebtTypes()">Edit debt category labels</button></div>
   </details>`;
-  document.getElementById("debtGroups").innerHTML = creditCardUtilizationSummariesHTML() + debtTools + Object.entries(groupedType).map(([type,debts])=>{
+  const activeSections=Object.entries(groupedType).map(([type,debts])=>{
     const typeTotal = debts.reduce((s,d)=>s+debtAmountLeftNow(d),0);
     const byCompany = groupBy(orderedDebts(debts), "company");
     const companies = Object.keys(byCompany);
@@ -5976,7 +6024,7 @@ function renderDebts(){
       </summary>
       <div class="debt-type-body">
         ${Object.entries(byCompany).map(([company,cards])=>`
-          <div class="debt-company ${isDebtExpanded("openDebtCompanies", debtCompanyKey(type, company)) ? "open" : ""}" onclick="this.classList.toggle('open'); rememberExpanded('openDebtCompanies', debtCompanyKey('${type}', '${company.replaceAll("'", "\'")}'), this.classList.contains('open'))">
+          <div class="debt-company ${isDebtExpanded("openDebtCompanies", debtCompanyKey(type, company)) ? "open" : ""}" onclick="this.classList.toggle('open'); rememberExpanded('openDebtCompanies', debtCompanyKey('${type}', '${company.replaceAll("'", "\\'")}'), this.classList.contains('open'))">
             <strong>${company}</strong>
             <span>${money(cards.reduce((s,d)=>s+debtAmountLeftNow(d),0))} <span aria-hidden="true">⌄</span></span>
           </div>
@@ -6018,6 +6066,24 @@ function renderDebts(){
       </div>
     </details>`;
   }).join("");
+  const archivedSection=archived.length ? `<details class="debt-type-section archived-debt-section">
+    <summary class="debt-type-summary">
+      <span class="debt-type-name">Archived debts</span>
+      <span class="debt-type-total">${archived.length} account${archived.length===1?"":"s"} • history preserved <span aria-hidden="true">⌄</span></span>
+    </summary>
+    <div class="debt-type-body">
+      <p class="hint">Archived debts are excluded from active totals, reminders, utilization, and new-payment pickers. Their historical transaction links are preserved.</p>
+      <div class="debt-cards open">
+        ${archived.map(d=>`<div class="debt-account-card tinted-card clickable debt-archived" style="--card-color:${d.color || "#8c6f4d"}; background:${hexToSoft(d.color || "#8c6f4d")}" onclick="openDebtDetail('${d.id}')">
+          <div class="debt-card-main"><div class="row-title">📦 ${d.emoji || "💳"} ${d.name}</div><div class="row-sub">${d.company} • ${d.owner} • Archived${d.archivedAt ? ` ${String(d.archivedAt).slice(0,10)}` : ""}</div></div>
+          <div class="debt-card-metric debt-card-current"><div class="label">Last/current balance</div><div class="amount">${money(debtAmountLeftNow(d))}</div><div class="row-sub">History remains linked</div></div>
+          <div class="debt-card-status"><button type="button" class="ghost small" onclick="event.stopPropagation(); restoreDebt('${d.id}')">Restore</button></div>
+          <span class="debt-row-chevron" aria-hidden="true">›</span>
+        </div>`).join("")}
+      </div>
+    </div>
+  </details>` : "";
+  document.getElementById("debtGroups").innerHTML = creditCardUtilizationSummariesHTML() + debtTools + activeSections + archivedSection;
   setupReorder(".debt-account-card[data-id]", "debt");
 }
 
@@ -6229,25 +6295,23 @@ function renderDebtDetail(){
         <button class="ghost small" onclick="setView('accounts')">← Back</button>
         <div>
           <h3><span class="visual-dot" style="background:${d.color || "#8c6f4d"}"></span>${d.emoji || "💳"} ${d.company} • ${d.name}</h3>
-          <p class="hint">${d.type} • ${d.owner} • ${debtFrozenText(d)}${d.apr ? ` • ${d.apr}% APR` : ""}</p>
+          <p class="hint">${d.type} • ${d.owner} • ${debtFrozenText(d)}${d.apr ? ` • ${d.apr}% APR` : ""}${isDebtArchived(d) && d.archivedAt ? ` • archived ${String(d.archivedAt).slice(0,10)}` : ""}</p>
         </div>
       </div>
       <div class="detail-actions detail-actions-v245">
-        <button class="primary" onclick="openTransaction(null,{debtAccountId:'${d.id}', type:'expense'})">+ Card/Klarna spend</button>
-        <button class="ghost" onclick="openTransaction(null,{linkedDebtId:'${d.id}', type:'transfer'})">+ Payment</button>
+        ${isDebtArchived(d) ? `<button class="primary" onclick="restoreDebt('${d.id}')">Restore debt</button>` : `<button class="primary" onclick="openTransaction(null,{debtAccountId:'${d.id}', type:'expense'})">+ Card/Klarna spend</button><button class="ghost" onclick="openTransaction(null,{linkedDebtId:'${d.id}', type:'transfer'})">+ Payment</button>`}
         <details class="detail-more-actions">
           <summary class="ghost">More</summary>
           <div class="detail-more-menu">
             <button class="ghost" onclick="simpleDebt('${d.id}'); this.closest('details').removeAttribute('open')">Edit debt</button>
-            <button class="ghost" onclick="quickDebtDue('${d.id}'); this.closest('details').removeAttribute('open')">Update due/min</button>
-            ${isLoanDebt(d) ? `<button class="ghost" onclick="openLoanBalanceAdjustment('${d.id}'); this.closest('details').removeAttribute('open')">Adjust balance</button>` : ""}
-            ${Number(debtMonthlyPaymentAmount(d) || 0) && d.dueDate ? `<button class="ghost" onclick="createDebtMinPayment('${d.id}'); this.closest('details').removeAttribute('open')">Plan payment</button>` : ""}
+            ${isDebtArchived(d) ? `<button class="danger ghost" onclick="permanentlyDeleteDebt('${d.id}'); this.closest('details').removeAttribute('open')">Permanently delete…</button>` : `<button class="ghost" onclick="quickDebtDue('${d.id}'); this.closest('details').removeAttribute('open')">Update due/min</button>${isLoanDebt(d) ? `<button class="ghost" onclick="openLoanBalanceAdjustment('${d.id}'); this.closest('details').removeAttribute('open')">Adjust balance</button>` : ""}${Number(debtMonthlyPaymentAmount(d) || 0) && d.dueDate ? `<button class="ghost" onclick="createDebtMinPayment('${d.id}'); this.closest('details').removeAttribute('open')">Plan payment</button>` : ""}`}
           </div>
         </details>
       </div>
     </div>
 
     <section class="panel">
+      ${isDebtArchived(d) ? `<p class="hint"><b>Archived debt history.</b> This account is excluded from active totals/reminders, but its saved transactions remain linked and visible below.</p>` : ""}
       ${debtDetailMetricsHTML(d, currentBal, util)}
       ${d.notes ? `<div class="notes debt-notes"><b>Notes:</b> ${d.notes}</div>` : ""}
     </section>
@@ -7321,7 +7385,9 @@ function renderSettings(){
 function renderSelectors(){
   const accOptions = [`<option value="">None</option>`].concat(data.accounts.map(a=>`<option value="${a.id}">${a.name}</option>`)).join("");
   const catOptions = sortedCategories().map(c=>`<option value="${c.id}">${c.emoji} ${c.name}</option>`).join("");
-  const debtOptions = `<option value="">None</option>` + data.debts.map(d=>`<option value="${d.id}">${d.company} • ${d.name}</option>`).join("");
+  const activeDebtOptions = activeDebts().map(d=>`<option value="${d.id}">${d.company} • ${d.name}</option>`).join("");
+  const archivedDebtOptions = archivedDebts().map(d=>`<option value="${d.id}" disabled>${d.company} • ${d.name} (Archived)</option>`).join("");
+  const debtOptions = `<option value="">None</option>` + activeDebtOptions + (archivedDebtOptions ? `<optgroup label="Archived — history only">${archivedDebtOptions}</optgroup>` : "");
   document.getElementById("txAccount").innerHTML = accOptions;
   document.getElementById("txCategory").innerHTML = catOptions;
   const bucketSelect = document.getElementById("txSpendingBucket");
@@ -8438,6 +8504,7 @@ window.openTransaction = (id=null, defaults={})=>{
 const simpleModal = document.getElementById("simpleModal");
 let simpleSubmit = null, simpleDelete = null, simpleAfterClose = null;
 function runSimpleAfterClose(){
+  deleteSimpleBtn.textContent="Delete";
   const callback=simpleAfterClose;
   simpleAfterClose=null;
   if(callback) requestAnimationFrame(callback);
@@ -8682,7 +8749,7 @@ addDebtBtn.onclick = () => simpleDebt();
 
 
 function cardPayableDebts(){
-  return orderedDebts().filter(d => !isMedicalDebt(d) && !isLoanDebt(d));
+  return orderedDebts(activeDebts()).filter(d => !isMedicalDebt(d) && !isLoanDebt(d));
 }
 function isCreditCardDebt(d){
   return d?.type === "Credit Card" || debtTypeLabel(d?.type) === "Credit Card";
@@ -9237,6 +9304,8 @@ window.addBNPLPurchase = ()=>{
       manualExtra: 0,
       paymentStatus: bnplCreatePayments.checked ? "scheduled" : "not-set",
       frozenLocked: false,
+      archived: false,
+      archivedAt: "",
       notes: `BNPL purchase: ${merchant} • Schedule: ${scheduleText}`
     });
 
@@ -9474,7 +9543,8 @@ window.simpleDebt = (id=null)=>{
     </div>
 
     <p class="hint" id="sBnplHint"></p>
-    <label>Notes<textarea id="sNotes" placeholder="Optional">${d?.notes || ""}</textarea></label>`;
+    <label>Notes<textarea id="sNotes" placeholder="Optional">${d?.notes || ""}</textarea></label>
+    ${d ? `<div class="subpanel"><h4>Debt record</h4><p class="hint">${isDebtArchived(d) ? "This debt is archived. Restoring returns it to active totals and reminders." : "Archive is the safe way to remove an old/paid debt from active views while keeping its transaction history connected."}</p><button type="button" class="danger ghost small" onclick="permanentlyDeleteDebt(${jsString(d.id)})">Permanently delete debt…</button></div>` : ""}`;
 
   const existingBnplPayments = d && isBNPLDebt(d)
     ? bnplPaymentTransactions(d.id, "2999-12-31")
@@ -9726,6 +9796,8 @@ window.simpleDebt = (id=null)=>{
       loanEstFeePct:isLoan ? (document.getElementById("sLoanEstFeePct")?.value || "") : "",
       loanForecastHistory:isLoan ? normalizeLoanForecastHistory(d?.loanForecastHistory || defaultLoanForecastHistoryForDebt({owner:sOwner.value, company:sCompany.value, name:sName.value, type:"Loan"})) : [],
       frozenLocked:(isBnpl || isMedical) ? false : sFrozenLocked.checked,
+      archived:!!d?.archived,
+      archivedAt:d?.archivedAt || "",
       notes:sNotes.value || ""
     };
     if(d){
@@ -9761,7 +9833,16 @@ window.simpleDebt = (id=null)=>{
       });
     }
   };
-  simpleDelete = d ? ()=>{ if(confirm("Delete this debt?")) data.debts = data.debts.filter(x=>x.id!==d.id); } : null;
+  simpleDelete = d ? ()=>{
+    if(isDebtArchived(d)){
+      setDebtArchivedState(d.id,false);
+      return;
+    }
+    const linked=debtLinkedTransactionCount(d.id);
+    const message=`Archive ${d.name || "this debt"}?\n\nIt will leave active totals, reminders, utilization, and new-payment pickers. ${linked ? `${linked} linked saved transaction${linked===1?"":"s"} will stay connected.` : "Its history will stay intact."} Existing transactions and recurring bills are not deleted or changed.`;
+    if(confirm(message)) setDebtArchivedState(d.id,true);
+  } : null;
+  deleteSimpleBtn.textContent = d ? (isDebtArchived(d) ? "Restore debt" : "Archive debt") : "Delete";
   deleteSimpleBtn.style.display = d ? "inline-block" : "none";
   simpleModal.showModal();
 };
@@ -11352,7 +11433,7 @@ function financialPictureData(options={}){
   const next30 = toISO(addDays(parseDate(today), 30));
   const horizonDate = toISO(addDays(parseDate(today), horizonDays));
   const cashAccounts = [...(data.accounts || [])].sort((a,b)=>String(a.owner || "").localeCompare(String(b.owner || "")) || String(a.name || "").localeCompare(String(b.name || "")));
-  const debts = orderedDebts(data.debts || []);
+  const debts = orderedDebts(activeDebts(data.debts || []));
   const recurringBills = (data.transactions || [])
     .filter(tx => isRecurring(tx))
     .map(tx => {
@@ -11517,7 +11598,7 @@ function exportEditableCSVs(){
     startingBalance:a.startingBalance ?? 0, goalName:a.goalName || "", goalAmount:a.goalAmount ?? 0, paycheckAccount:!!a.paycheckAccount
   }));
 
-  const debtHeaders = ["id","order","type","company","name","emoji","color","owner","startingBalance","balance","trackingStartDate","limit","apr","statementDate","dueDate","statementBalance","minDue","manualExtra","totalMonthlyPayment","loanForecastBreakdownMode","loanFeeTiming","loanEstPrincipalPct","loanEstInterestPct","loanEstFeePct","loanForecastHistoryJSON","monthsToPayoffStarting","monthsToPayoffCurrent","payoffDate","paymentStatus","frozenLocked","notes"];
+  const debtHeaders = ["id","order","type","company","name","emoji","color","owner","startingBalance","balance","trackingStartDate","limit","apr","statementDate","dueDate","statementBalance","minDue","manualExtra","totalMonthlyPayment","loanForecastBreakdownMode","loanFeeTiming","loanEstPrincipalPct","loanEstInterestPct","loanEstFeePct","loanForecastHistoryJSON","monthsToPayoffStarting","monthsToPayoffCurrent","payoffDate","paymentStatus","frozenLocked","archived","archivedAt","notes"];
   const debtRows = orderedDebts().map(d=>({
     id:d.id, order:d.order ?? "", type:d.type, company:d.company, name:d.name, emoji:d.emoji || "", color:d.color || "", owner:d.owner,
     startingBalance:d.startingBalance ?? "", balance:d.balance ?? 0, trackingStartDate:d.trackingStartDate || "", limit:d.limit ?? "", apr:d.apr ?? 0,
@@ -11528,7 +11609,7 @@ function exportEditableCSVs(){
     loanForecastHistoryJSON: JSON.stringify(normalizeLoanForecastHistory(d.loanForecastHistory || [])),
     monthsToPayoffStarting:d.monthsToPayoffStarting ?? "", monthsToPayoffCurrent:d.monthsToPayoffCurrent ?? "",
     payoffDate:d.payoffDate || "", paymentStatus:d.paymentStatus || "not-set",
-    frozenLocked:!!d.frozenLocked, notes:d.notes || ""
+    frozenLocked:!!d.frozenLocked, archived:!!d.archived, archivedAt:d.archivedAt || "", notes:d.notes || ""
   }));
 
   const budgetHeaders = ["id","name","emoji","accountScope","accountId","accountIdsJSON","categoryId","categoryIdsJSON","spendingBucketId","spendingType","amount","amountMethod","occurrenceWeekday","paycheckOwner","monthlyAmountOverridesJSON","period","notes"];
@@ -11684,6 +11765,8 @@ function importEditedCSV(file){
         d.payoffDate = row.payoffDate === undefined ? (d.payoffDate || "") : (row.payoffDate || "");
         d.paymentStatus = row.paymentStatus || "not-set";
         d.frozenLocked = String(row.frozenLocked).toLowerCase() === "true";
+        d.archived = row.archived === undefined ? !!d.archived : String(row.archived).toLowerCase() === "true";
+        d.archivedAt = row.archivedAt === undefined ? (d.archivedAt || "") : (row.archivedAt || "");
         d.notes = row.notes || "";
       });
       saveData();
@@ -12162,7 +12245,9 @@ function maintenanceDataScan(){
   const transactions=Array.isArray(root.transactions)?root.transactions:[];
   const templates=Array.isArray(root.settings?.transactionTemplates)?root.settings.transactionTemplates:[];
   const accounts=new Set((root.accounts||[]).map(a=>String(a.id||"")).filter(Boolean));
-  const debts=new Set((root.debts||[]).map(d=>String(d.id||"")).filter(Boolean));
+  const debtRecords=Array.isArray(root.debts)?root.debts:[];
+  const debts=new Set(debtRecords.map(d=>String(d.id||"")).filter(Boolean));
+  const archivedDebtRecords=debtRecords.filter(d=>!!d.archived);
   const categories=new Set((root.categories||[]).map(c=>String(c.id||"")).filter(Boolean));
   const brokenReferences=[];
   const historicalDebtLinks=[];
@@ -12228,7 +12313,7 @@ function maintenanceDataScan(){
   },0);
 
   return {
-    transactions,templates,planningScenarios,storageBytes,planningBytes,storageRatio,
+    transactions,templates,planningScenarios,storageBytes,planningBytes,storageRatio,archivedDebtRecords,
     brokenReferences,historicalDebtLinks,lowUseAuto,unusedAuto,suspiciousAuto,
     exactTemplateDuplicates,exactTemplateDuplicateCount
   };
@@ -12271,7 +12356,10 @@ function renderMaintenanceCenter(){
   if(s.historicalDebtLinks.length){
     const uniqueDebtIds=[...new Set(s.historicalDebtLinks.map(x=>x.debtId))];
     const examples=s.historicalDebtLinks.slice(0,6).map(item=>`<div class="maintenance-row"><span><b>${escapeAttr(item.tx?.title||"Historical transaction")}</b><small>${escapeAttr(item.tx?.date||"")} • points to removed debt ${escapeAttr(item.debtId)}</small></span>${maintenanceTxReviewButton(item.tx)}</div>`).join("");
-    sections.push(`<div class="maintenance-section informational"><div class="maintenance-section-head"><div><b>Historical debt links</b><small>${s.historicalDebtLinks.length} transaction link${s.historicalDebtLinks.length===1?"":"s"} across ${uniqueDebtIds.length} removed debt record${uniqueDebtIds.length===1?"":"s"}</small></div></div><p class="hint">These are not automatically deleted or rewritten. They are usually safe historical breadcrumbs from paid/deleted BNPL, loans, or cards; a future archive workflow can preserve them more cleanly.</p>${examples}${s.historicalDebtLinks.length>6?`<small class="maintenance-more">+ ${s.historicalDebtLinks.length-6} more historical links</small>`:""}</div>`);
+    sections.push(`<div class="maintenance-section informational"><div class="maintenance-section-head"><div><b>Historical debt links</b><small>${s.historicalDebtLinks.length} transaction link${s.historicalDebtLinks.length===1?"":"s"} across ${uniqueDebtIds.length} permanently removed debt record${uniqueDebtIds.length===1?"":"s"}</small></div></div><p class="hint">These older links are left untouched. New paid/old debts can now be archived instead of deleted, which keeps their record available so future history does not become orphaned.</p>${examples}${s.historicalDebtLinks.length>6?`<small class="maintenance-more">+ ${s.historicalDebtLinks.length-6} more historical links</small>`:""}</div>`);
+  }
+  if(s.archivedDebtRecords.length){
+    sections.push(`<div class="maintenance-section informational"><div class="maintenance-section-head"><div><b>Archived debts</b><small>${s.archivedDebtRecords.length} debt record${s.archivedDebtRecords.length===1?"":"s"} preserved outside active totals</small></div><button class="ghost small" type="button" onclick="setView('accounts')">Open Accounts</button></div><p class="hint">Archived records stay available to historical transactions and can be restored from the collapsed Archived debts section.</p></div>`);
   }
   if(s.lowUseAuto.length || s.exactTemplateDuplicateCount){
     const suspiciousNote=s.suspiciousAuto.length?` • ${s.suspiciousAuto.length} very short/numeric learned title${s.suspiciousAuto.length===1?"":"s"}`:"";
@@ -12525,6 +12613,28 @@ function runMoneyNestRegressionTests(options={}){
       return "Repeated horizons reuse expansion; invalidation refreshes edited amounts";
     }));
 
+    results.push(regressionResult("Debt archive preserves history and active-view isolation",()=>{
+      const ds=regressionDataset({
+        debts:[{id:"old-card",name:"Old Card",company:"Test",owner:"Mak",type:"Credit Card",startingBalance:0,balance:0,statementBalance:0,limit:500}],
+        transactions:[
+          {id:"old-charge",date:"2026-01-01",title:"Old charge",amount:25,type:"expense",status:"cleared",accountId:"",debtAccountId:"old-card",categoryId:"utilities",recurrence:{type:"none",interval:1}},
+          {id:"old-payment",date:"2026-01-02",title:"Old payment",amount:25,type:"transfer",status:"cleared",accountId:"",linkedDebtId:"old-card",categoryId:"banking",recurrence:{type:"none",interval:1}}
+        ]
+      });
+      setSynthetic(ds,false);
+      regressionAssert(activeDebts().length===1,"Debt was not active before archive");
+      regressionAssert(setDebtArchivedState("old-card",true)===true,"Archive mutation failed");
+      regressionAssert(!!debtById("old-card"),"Archived debt record disappeared");
+      regressionAssert(activeDebts().length===0,"Archived debt remained in active debt list");
+      regressionAssert(archivedDebts().length===1,"Archived debt was not discoverable for restore");
+      regressionAssert(ds.transactions.every(tx=>tx.linkedDebtId==="old-card" || tx.debtAccountId==="old-card"),"Historical debt references were rewritten");
+      const normalized=normalizeData(JSON.parse(JSON.stringify(ds)));
+      regressionAssert(normalized.debts.find(d=>d.id==="old-card")?.archived===true,"Archive flag was lost during normalization");
+      setDebtArchivedState("old-card",false);
+      regressionAssert(activeDebts().some(d=>d.id==="old-card"),"Restored debt did not return to active list");
+      return "Archive keeps record + transaction links; restore returns it to active views";
+    }));
+
     results.push(regressionResult("JSON normalization preserves planning scenarios",()=>{
       const raw=regressionDataset({
         accounts:[{id:"a",name:"A",owner:"Mak",type:"cash",startingBalance:10}],
@@ -12739,3 +12849,5 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 // v2-305: Cash-account projection uses one post-expansion account-perspective path across Calendar, ledgers, and balance math; regression coverage includes Calendar/account cash-effect parity.
 // v2-306: Recurrence cadence matching and concrete occurrence materialization are centralized; expanded projections and Bills share weekend/override/delete/end-date semantics.
 // v2-307: Expanded recurrence results are cached by active dataset/horizon and invalidated on saved/replaced data; regression coverage verifies reuse + stale-data prevention.
+
+// v2-308: Debt records can be archived/restored without breaking historical links; active debt views exclude archived records and permanent deletion is explicit.

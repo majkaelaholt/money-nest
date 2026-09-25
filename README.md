@@ -1,5 +1,18 @@
 # Money Nest
 
+## v2-308
+
+### Stabilization: archive debts without breaking history
+
+- Added debt-level **Archive / Restore**. Archived debts stay in the saved dataset so historical `linkedDebtId` / `debtAccountId` references remain resolvable instead of becoming orphaned when an old debt is merely removed from day-to-day use.
+- Archived debts are excluded from active Accounts debt groups, debt totals/reports, credit-utilization summaries, due/statement reminders, Dashboard debt attention, card-payment choices, and normal new debt/payment selectors.
+- Accounts now includes a collapsed **Archived debts** section with preserved balance/history context and a Restore action. Archived debt detail stays readable but disables new spend/payment planning until restored.
+- **Permanently delete debt…** remains available as a separate deliberate two-confirm action. It does not rewrite historical transactions; Maintenance will continue to report any references to truly deleted debt IDs.
+- Maintenance now distinguishes archived debt records from permanently removed historical links and explains that archive is the preferred future cleanup path.
+- Debt CSV export/import now preserves optional `archived` and `archivedAt` fields; older CSVs/backups default safely to active debts. JSON/cloud backup compatibility is preserved automatically.
+- Added an eleventh regression check proving archive preserves the debt record + linked transactions, normalization keeps archive metadata, active views exclude it, and Restore returns it to the active set.
+- Data schema advances from 225 to **226** for the optional debt archive metadata. Storage key remains `moneyNest.v2.113`.
+
 ## v2-307
 
 ### Stabilization: expanded-occurrence projection cache
