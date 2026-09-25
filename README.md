@@ -1,5 +1,16 @@
 # Money Nest
 
+## v2-305
+
+### Stabilization: one canonical cash-account projection path
+
+- Centralized cash-account perspective math in `cashAccountPerspective()`: income/paychecks are positive, normal expenses are negative, and transfers are always source-negative / destination-positive after recurrence expansion.
+- Added canonical `cashAccountOccurrences()` / `cashAccountOccurrencesForAccounts()` helpers so account ledgers, projected balances, pending reimbursements, cash outflow summaries, planned incoming transfers, and Calendar all start from the same expanded occurrence set instead of re-implementing account relevance separately.
+- Calendar chips now carry the exact cash effect returned by the same helper used by account balance math; daily running balances sum that effect directly. Planning rows that preserve transfer routing but have stale type metadata still use transfer labels/effects consistently.
+- Calendar still expands recurrence rules before filtering to source/destination accounts, preserving the Planning recurring-transfer fix and DST-safe recurrence behavior.
+- Added a seventh synthetic regression check that compares Calendar cash effects with account-ledger/projected-balance effects on the same income, expense, and incoming-transfer set. Existing six stabilization checks remain intact.
+- No JSON/CSV/schema migration was required. Schema remains 225 and storage key remains `moneyNest.v2.113`.
+
 ## v2-304
 
 ### Stabilization: Maintenance & Diagnostics + regression checks

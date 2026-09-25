@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-304";
+const APP_VERSION = "2-305";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -2286,11 +2286,6 @@ function expandedTransactions(untilISO){
 function isPendingReimbursementTx(tx){
   return !!tx?.pendingReimbursement && tx.status !== "cleared" && tx.type === "transfer" && !!tx.transferToAccountId;
 }
-function pendingReimbursementsToAccount(accountId, throughISO="2999-12-31"){
-  return expandedTransactions(throughISO)
-    .filter(tx => isPendingReimbursementTx(tx) && tx.transferToAccountId === accountId && tx.date <= throughISO)
-    .reduce((sum, tx)=>sum + Number(tx.amount || 0), 0);
-}
 function transactionActsAsCashTransfer(tx){
   if(!tx) return false;
   if(tx.type === "transfer") return true;
@@ -2307,9 +2302,6 @@ function transactionTouchesCashAccount(tx, accountId){
   // can contribute to Calendar cards or projected balances.
   return tx.accountId === accountId || tx.transferToAccountId === accountId;
 }
-function expandedCashTransactionsForAccount(accountId, throughISO="2999-12-31"){
-  return expandedTransactions(throughISO).filter(tx=>transactionTouchesCashAccount(tx, accountId));
-}
 function cashTransferEffectOnAccount(tx, accountId){
   if(!tx || !accountId) return 0;
   const amount=Number(tx.amount || 0);
@@ -2318,26 +2310,61 @@ function cashTransferEffectOnAccount(tx, accountId){
   if(tx.transferToAccountId === accountId) effect += amount;
   return effect;
 }
-function txEffectOnCash(tx, accountId, projected=true){
-  if(!projected && tx.status !== "cleared") return 0;
-
-  // Transfers are always two-sided from the account perspective: source is an
-  // outflow, destination is an inflow. This also preserves one-sided transfers
-  // to/from accounts outside a Planning scenario and makes same-account routes net 0.
-  if(transactionActsAsCashTransfer(tx)){
-    return cashTransferEffectOnAccount(tx, accountId);
+// v2-305 canonical cash-account perspective. Calendar chips, account ledgers, and
+// projected balances all ask this helper the same question: what does this concrete
+// expanded occurrence do to this cash account? Keep recurrence expansion separate
+// and first; account relevance/effect is always evaluated on the occurrence afterward.
+function cashAccountPerspective(tx, accountId){
+  if(!transactionTouchesCashAccount(tx, accountId)){
+    return {touches:false,effect:0,sign:0,side:"none"};
   }
 
-  if(tx.accountId !== accountId) return 0;
-  if(tx.type === "income" || tx.type === "paycheck") return Number(tx.amount || 0);
-  return -Number(tx.amount || 0);
+  let effect=0;
+  if(transactionActsAsCashTransfer(tx)){
+    effect=cashTransferEffectOnAccount(tx, accountId);
+  }else if(tx.accountId === accountId){
+    const amount=Number(tx.amount || 0);
+    effect=(tx.type === "income" || tx.type === "paycheck") ? amount : -amount;
+  }
+
+  return {
+    touches:true,
+    effect,
+    sign:effect > 0 ? 1 : effect < 0 ? -1 : 0,
+    side:effect > 0 ? "in" : effect < 0 ? "out" : "neutral"
+  };
+}
+function cashAccountOccurrences(accountId, throughISO="2999-12-31", expandedRows=null){
+  if(!accountId) return [];
+  const rows=Array.isArray(expandedRows) ? expandedRows : expandedTransactions(throughISO);
+  return rows.filter(tx=>tx.date <= throughISO && transactionTouchesCashAccount(tx, accountId));
+}
+function cashAccountOccurrencesForAccounts(accountIds, throughISO="2999-12-31", expandedRows=null){
+  const ids=new Set((accountIds || []).filter(Boolean));
+  if(!ids.size) return [];
+  const rows=Array.isArray(expandedRows) ? expandedRows : expandedTransactions(throughISO);
+  return rows.filter(tx=>tx.date <= throughISO && (ids.has(tx.accountId) || ids.has(tx.transferToAccountId)));
+}
+// Backward-compatible name retained for older callers/tests while the cashflow
+// engine is consolidated incrementally.
+function expandedCashTransactionsForAccount(accountId, throughISO="2999-12-31", expandedRows=null){
+  return cashAccountOccurrences(accountId, throughISO, expandedRows);
+}
+function txEffectOnCash(tx, accountId, projected=true){
+  if(!projected && tx.status !== "cleared") return 0;
+  return cashAccountPerspective(tx, accountId).effect;
+}
+function pendingReimbursementsToAccount(accountId, throughISO="2999-12-31"){
+  return cashAccountOccurrences(accountId, throughISO)
+    .filter(tx => isPendingReimbursementTx(tx) && tx.transferToAccountId === accountId)
+    .reduce((sum, tx)=>sum + Number(tx.amount || 0), 0);
 }
 function accountBalance(accountId, projected=true, throughISO="2999-12-31"){
   const acc = accountById(accountId);
   if(!acc) return 0;
   const scenarioStart = planningScenarioSnapshotStartDate();
-  return acc.startingBalance + expandedCashTransactionsForAccount(accountId, throughISO)
-    .filter(tx=>tx.date <= throughISO && (!scenarioStart || tx.date >= scenarioStart))
+  return acc.startingBalance + cashAccountOccurrences(accountId, throughISO)
+    .filter(tx=>(!scenarioStart || tx.date >= scenarioStart))
     .reduce((sum,tx)=>sum + txEffectOnCash(tx, accountId, projected),0);
 }
 
@@ -2773,7 +2800,7 @@ function safeToSpend(account){
   return { amount: Number(projected), label:"next 30 days" };
 }
 function visibleTransactionsForAccount(accountId, untilISO="2999-12-31"){
-  return expandedTransactions(untilISO).filter(tx=>tx.accountId===accountId || tx.transferToAccountId===accountId);
+  return cashAccountOccurrences(accountId, untilISO);
 }
 function visibleTransactionsForDebt(debtId, untilISO="2999-12-31"){
   return expandedTransactions(untilISO).filter(tx=>tx.debtAccountId===debtId || tx.linkedDebtId===debtId);
@@ -2781,21 +2808,19 @@ function visibleTransactionsForDebt(debtId, untilISO="2999-12-31"){
 
 
 function accountOutflowBetween(accountId, startISO, endISO){
-  return expandedTransactions(endISO)
+  return cashAccountOccurrences(accountId, endISO)
     .filter(tx => tx.date >= startISO && tx.date <= endISO)
     .reduce((sum, tx) => {
-      if(tx.accountId === accountId && tx.type !== "income" && tx.type !== "paycheck"){
-        return sum + Number(tx.amount || 0);
-      }
-      return sum;
+      const effect=cashAccountPerspective(tx, accountId).effect;
+      return effect < 0 ? sum + Math.abs(effect) : sum;
     }, 0);
 }
 
 
 function accountPlannedTransfersInBetween(accountId, startISO, endISO){
-  return expandedTransactions(endISO)
+  return cashAccountOccurrences(accountId, endISO)
     .filter(tx =>
-      tx.type === "transfer" &&
+      transactionActsAsCashTransfer(tx) &&
       tx.transferToAccountId === accountId &&
       tx.date >= startISO &&
       tx.date <= endISO &&
@@ -3770,59 +3795,36 @@ function calendarDisplayEntries(rawTxs){
     .map(a => a.id);
 
   const entries = [];
+  const addPerspectiveEntry=(tx,accountId)=>{
+    const perspective=cashAccountPerspective(tx,accountId);
+    if(!perspective.touches || !perspective.sign) return;
+    entries.push({
+      ...tx,
+      calendarSide:transactionActsAsCashTransfer(tx) ? perspective.side : "normal",
+      calendarAccountId:accountId,
+      calendarAmountSign:perspective.sign,
+      calendarCashEffect:perspective.effect
+    });
+  };
 
   rawTxs.forEach(tx=>{
-    if(transactionActsAsCashTransfer(tx) && tx.transferToAccountId){
-      const fromIsChecking = checkingAccountIds.includes(tx.accountId);
-      const toIsChecking = checkingAccountIds.includes(tx.transferToAccountId);
-
-      if(calendarFilter === "all"){
-        if(fromIsChecking){
-          entries.push({...tx, calendarSide:"out", calendarAccountId:tx.accountId, calendarAmountSign:-1});
-        }
-        if(toIsChecking){
-          entries.push({...tx, calendarSide:"in", calendarAccountId:tx.transferToAccountId, calendarAmountSign:1});
-        }
-        return;
-      }
-
-      const selectedEffect=cashTransferEffectOnAccount(tx, calendarFilter);
-      if(selectedEffect < 0){
-        entries.push({...tx, calendarSide:"out", calendarAccountId:calendarFilter, calendarAmountSign:-1});
-        return;
-      }
-      if(selectedEffect > 0){
-        entries.push({...tx, calendarSide:"in", calendarAccountId:calendarFilter, calendarAmountSign:1});
-        return;
-      }
-
-      return;
-    }
-
     if(calendarFilter === "all"){
-      if(checkingAccountIds.includes(tx.accountId)){
-        const sign = (tx.type === "income" || tx.type === "paycheck") ? 1 : -1;
-        entries.push({...tx, calendarSide:"normal", calendarAccountId:tx.accountId, calendarAmountSign:sign});
-      }
+      checkingAccountIds.forEach(accountId=>addPerspectiveEntry(tx,accountId));
       return;
     }
-
-    if(tx.accountId === calendarFilter){
-      const sign = (tx.type === "income" || tx.type === "paycheck") ? 1 : -1;
-      entries.push({...tx, calendarSide:"normal", calendarAccountId:tx.accountId, calendarAmountSign:sign});
-    }
+    addPerspectiveEntry(tx,calendarFilter);
   });
 
   return entries;
 }
 function calendarEntryLabel(tx){
-  if(tx.type === "transfer"){
+  if(transactionActsAsCashTransfer(tx)){
     return transactionTransferLabel(tx);
   }
   return tx.title;
 }
 function calendarEntryIsPositive(tx){
-  return Number(tx.calendarAmountSign || 0) > 0;
+  return Number(tx.calendarCashEffect ?? (Number(tx.calendarAmountSign || 0) * Number(tx.amount || 0))) > 0;
 }
 
 function setMobileCalendarAccount(accountId){
@@ -3906,14 +3908,11 @@ function renderCalendar(){
   // occurrence touches the selected account by source OR destination. This order is
   // shared with accountBalance() so the Calendar cards and running balance cannot
   // disagree about incoming recurring transfers.
-  const expandedForCalendar = expandedTransactions(toISO(addMonths(monthStart,2)));
-  const rawTxs = expandedForCalendar.filter(tx =>
-    (!scenarioStart || tx.date >= scenarioStart) && (
-      calendarFilter==="all"
-        ? checkingAccountIds.some(accountId=>transactionTouchesCashAccount(tx,accountId))
-        : transactionTouchesCashAccount(tx,calendarFilter)
-    )
-  );
+  const calendarHorizon=toISO(addMonths(monthStart,2));
+  const expandedForCalendar = expandedTransactions(calendarHorizon);
+  const calendarAccountIds=calendarFilter==="all" ? checkingAccountIds : [calendarFilter];
+  const rawTxs = cashAccountOccurrencesForAccounts(calendarAccountIds, calendarHorizon, expandedForCalendar)
+    .filter(tx => !scenarioStart || tx.date >= scenarioStart);
   const txs = calendarDisplayEntries(rawTxs);
 
   const renderChip = (tx, extraClass="")=>{
@@ -3950,10 +3949,10 @@ function renderCalendar(){
     // Calendar balances now advance from the same visible account-perspective entries
     // shown on the calendar. This prevents recurring transfer/paycheck display from
     // disagreeing with the day balance.
-    const dayDelta = dayTx.reduce((sum,tx)=>sum + (Number(tx.calendarAmountSign || 0) * Number(tx.amount || 0)), 0);
+    const dayDelta = dayTx.reduce((sum,tx)=>sum + Number(tx.calendarCashEffect ?? (Number(tx.calendarAmountSign || 0) * Number(tx.amount || 0))), 0);
     const clearedDayDelta = dayTx
       .filter(tx => tx.status === "cleared")
-      .reduce((sum,tx)=>sum + (Number(tx.calendarAmountSign || 0) * Number(tx.amount || 0)), 0);
+      .reduce((sum,tx)=>sum + Number(tx.calendarCashEffect ?? (Number(tx.calendarAmountSign || 0) * Number(tx.amount || 0))), 0);
     runningCalendarBalance += dayDelta;
     runningCalendarClearedBalance += clearedDayDelta;
     const projectedTotal = runningCalendarBalance;
@@ -12385,6 +12384,31 @@ function runMoneyNestRegressionTests(options={}){
       return "Jul 7 +$1,207; Jul 31 $2,578.92";
     }));
 
+    results.push(regressionResult("Calendar and account cash effects stay in sync",()=>{
+      const ds=regressionDataset({
+        accounts:[
+          {id:"mak",name:"Mak Checking",owner:"Mak",type:"cash",startingBalance:50},
+          {id:"joint",name:"Joint Checking",owner:"Joint",type:"cash",startingBalance:100}
+        ],
+        transactions:[
+          {id:"in",date:"2027-01-05",title:"Income",amount:50,type:"income",status:"planned",accountId:"joint",categoryId:"income",transferToAccountId:"",recurrence:{type:"none",interval:1}},
+          {id:"expense",date:"2027-01-05",title:"Expense",amount:20,type:"expense",status:"planned",accountId:"joint",categoryId:"utilities",transferToAccountId:"",recurrence:{type:"none",interval:1}},
+          {id:"transfer",date:"2027-01-05",title:"Mak to Joint",amount:30,type:"transfer",status:"planned",accountId:"mak",transferToAccountId:"joint",categoryId:"banking",recurrence:{type:"none",interval:1}}
+        ]
+      });
+      setSynthetic(ds,false);
+      calendarFilter="joint";
+      const rows=cashAccountOccurrences("joint","2027-01-05");
+      const calendarRows=calendarDisplayEntries(rows);
+      const ledgerDelta=rows.reduce((sum,tx)=>sum+txEffectOnCash(tx,"joint",true),0);
+      const calendarDelta=calendarRows.reduce((sum,tx)=>sum+Number(tx.calendarCashEffect||0),0);
+      regressionApprox(ledgerDelta,60,0.001,"Joint ledger delta");
+      regressionApprox(calendarDelta,ledgerDelta,0.001,"Calendar/ledger effect mismatch");
+      regressionApprox(accountBalance("joint",true,"2027-01-05"),160,0.001,"Joint projected balance");
+      regressionAssert(calendarRows.length===3,`Expected 3 Joint calendar rows, got ${calendarRows.length}`);
+      return "Calendar +$60 matches account projection; ending $160";
+    }));
+
     results.push(regressionResult("Recurring end dates stop future occurrences",()=>{
       const ds=regressionDataset({
         accounts:[{id:"joint",name:"Joint",owner:"Joint",type:"cash",startingBalance:0}],
@@ -12641,3 +12665,5 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 // v2-303: BNPL creation restores finite installment scheduling, orphan BNPL balances fall back to saved Remaining Balance, and recurring transactions can optionally end on a chosen date.
 // v2-302: Calendar-day recurrence math is DST-safe, so weekly/biweekly/every-X-days schedules continue across spring-forward/fall-back boundaries.
 // v2-300: Planning recurring transfers retain both cash-account sides during expansion/projection; future auto-paychecks regenerate from scenario paycheck profiles, which are editable in Plan settings.
+
+// v2-305: Cash-account projection uses one post-expansion account-perspective path across Calendar, ledgers, and balance math; regression coverage includes Calendar/account cash-effect parity.

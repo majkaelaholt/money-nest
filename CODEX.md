@@ -161,7 +161,15 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-304`
+Latest known version: `money-nest-v2-305`
+
+### v2-305 canonical cash-account projection path
+- `cashAccountPerspective(tx, accountId)` is now the canonical source of per-account cash effect: income/paycheck positive, expenses negative, transfers source-negative/destination-positive. Calendar cards and balance math must not re-implement these signs independently.
+- `cashAccountOccurrences()` and `cashAccountOccurrencesForAccounts()` are the canonical post-expansion account relevance helpers. Always expand recurring rules first, then filter concrete occurrences by `accountId` OR `transferToAccountId`.
+- `expandedCashTransactionsForAccount()` remains only as a backward-compatible alias while older callers/tests are migrated incrementally.
+- Calendar `calendarCashEffect` comes from the canonical account perspective and daily running balances sum that value. Keep this in sync with `txEffectOnCash()`.
+- Regression coverage is now 7 checks, including explicit Calendar-vs-account cash-effect parity.
+- This is intentionally an incremental refactor: do not broadly rewrite recurrence generation or saved transaction shapes. Schema remains 225.
 
 ### v2-304 stabilization diagnostics
 - Settings now includes a read-only Maintenance & diagnostics section. It may surface cleanup opportunities, but must not delete/rewrite records automatically.
