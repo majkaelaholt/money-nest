@@ -1,5 +1,17 @@
 # Money Nest
 
+## v2-304
+
+### Stabilization: Maintenance & Diagnostics + regression checks
+
+- Added **Settings → Maintenance & diagnostics**, a read-only health pass for storage growth, broken references, historical links to deleted debt records, low-use automatically learned templates, suspicious short/numeric learned titles, and exact template duplicates.
+- The maintenance scan never deletes or rewrites financial data automatically. Existing Needs Review / Template Manager tools remain the deliberate action paths.
+- Needs Review now also flags missing transfer/reimbursement destination accounts instead of only source-account/category references.
+- Added an in-app synthetic regression harness covering DST-safe weekly recurrence, two-sided Planning recurring transfers (including the July-style +$1,207 / $2,578.92 regression), recurrence end dates, Planning paycheck regeneration from current scenario settings while preserving cleared overrides, BNPL remaining-balance fallback, and JSON/planning-scenario normalization.
+- Regression tests temporarily swap in synthetic data in memory and always restore the live dataset; they do not save test records to localStorage/cloud.
+- Added a conservative local-data footprint indicator so growth can be watched before browser storage becomes a problem.
+- No JSON/CSV/schema migration was required. Schema remains 225 and storage key remains `moneyNest.v2.113`.
+
 ## v2-303
 
 ### BNPL installment-entry restoration + finite recurrence end dates

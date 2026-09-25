@@ -8093,3 +8093,36 @@ body.money-nest-planning-mode #calendarGrid .tx-chip::after{
 @media(max-width:720px){
   .planning-paycheck-grid{grid-template-columns:1fr}
 }
+
+
+/* v2-304: Maintenance & diagnostics */
+.maintenance-overview{margin-top:4px}
+.maintenance-stat-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:14px}
+.maintenance-stat-grid article{border:1px solid var(--line);background:var(--panel-2);border-radius:14px;padding:12px;display:grid;gap:2px;min-width:0}
+.maintenance-stat-grid article>b{font-size:1.25rem}
+.maintenance-stat-grid article>span,.maintenance-stat-grid article>small{color:var(--muted);font-size:.82rem}
+.maintenance-stat-grid small.good{color:var(--good,#347a4a)}
+.maintenance-stat-grid small.warn{color:var(--warn,#9b691d)}
+.maintenance-stat-grid small.bad{color:var(--bad,#a33b32)}
+.maintenance-findings{display:grid;gap:10px}
+.maintenance-section{border:1px solid var(--line);border-radius:14px;background:var(--panel);padding:12px}
+.maintenance-section.informational{background:var(--panel-2)}
+.maintenance-section.warning{border-width:2px}
+.maintenance-section.healthy{display:grid;gap:4px}
+.maintenance-section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:6px}
+.maintenance-section-head>div{display:grid;gap:2px}
+.maintenance-section-head small,.maintenance-more{color:var(--muted)}
+.maintenance-row{display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid var(--line);padding:9px 0}
+.maintenance-row>span{display:grid;gap:2px;min-width:0}
+.maintenance-row small{color:var(--muted);overflow-wrap:anywhere}
+.regression-test-results{margin-top:12px}
+.regression-summary{display:grid;gap:3px;border:1px solid var(--line);background:var(--panel-2);border-radius:14px;padding:12px}
+.regression-summary small{color:var(--muted)}
+.regression-result-list{display:grid;gap:6px;margin-top:8px}
+.regression-result{display:flex;align-items:flex-start;gap:8px;border:1px solid var(--line);border-radius:12px;padding:9px 10px;background:var(--panel)}
+.regression-result>div{display:grid;gap:2px}
+.regression-result small{color:var(--muted)}
+.regression-result.pass>span{font-weight:800}
+.regression-result.fail{border-width:2px}
+@media(max-width:900px){.maintenance-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.maintenance-stat-grid{grid-template-columns:1fr}.maintenance-section-head,.maintenance-row{align-items:stretch;flex-direction:column}.maintenance-row button,.maintenance-section-head button{align-self:flex-start}}

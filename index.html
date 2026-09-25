@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <title>Money Nest</title>
-  <link rel="stylesheet" href="styles.css?v=2-303"/>
+  <link rel="stylesheet" href="styles.css?v=2-304"/>
 
   <link rel="icon" href="favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
@@ -318,6 +318,31 @@
                 </label>
                 <button id="settingsClearAllBtn" class="danger ghost">🧨 Clear everything</button>
               </div>
+            </div>
+          </details>
+
+          <details class="panel settings-collapsible settings-maintenance-card">
+            <summary>
+              <span class="settings-summary-main">
+                <span class="settings-emoji">🧰</span>
+                <span>
+                  <b>Maintenance & diagnostics</b>
+                  <small>Storage growth, safe cleanup opportunities, and money-math regression checks</small>
+                </span>
+              </span>
+              <span class="summary-pill" id="maintenanceSummaryPill">scan</span>
+            </summary>
+            <div class="settings-collapse-body">
+              <div class="panel-head compact-head">
+                <p class="hint">This area is read-only unless you deliberately open an existing review tool. It never deletes or rewrites financial records automatically.</p>
+                <div class="inline-actions">
+                  <button class="ghost small" type="button" onclick="refreshMaintenanceCenter()">Refresh scan</button>
+                  <button class="primary small" type="button" onclick="runMoneyNestRegressionTests({render:true})">Run regression checks</button>
+                </div>
+              </div>
+              <div id="maintenanceOverview" class="maintenance-overview"></div>
+              <div id="maintenanceFindings" class="maintenance-findings"></div>
+              <div id="regressionTestResults" class="regression-test-results"></div>
             </div>
           </details>
 
@@ -895,7 +920,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=2-303"></script>
+  <script src="app.js?v=2-304"></script>
   <dialog id="globalSearchModal" class="global-search-modal">
     <div class="global-search-shell">
       <div class="modal-head"><div><h3>🔎 Search Money Nest</h3><p class="hint">Transactions, merchants, categories, accounts, amounts, and dates.</p></div><button class="icon-btn" onclick="document.getElementById('globalSearchModal').close()">×</button></div>

@@ -161,7 +161,15 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-303`
+Latest known version: `money-nest-v2-304`
+
+### v2-304 stabilization diagnostics
+- Settings now includes a read-only Maintenance & diagnostics section. It may surface cleanup opportunities, but must not delete/rewrite records automatically.
+- `runMoneyNestRegressionTests()` is the lightweight in-app regression harness. Keep it synthetic and restore the live `data` / `rootData` context in `finally`.
+- Current regression coverage protects DST-safe recurrence, Planning transfer source/destination math, recurrence end dates, Planning paycheck regeneration + cleared overrides, BNPL no-schedule fallback, and JSON/planning-scenario normalization.
+- `?selftest=1` writes the regression pass/fail result to `document.documentElement.dataset.moneyNestRegression` for headless smoke checks.
+- Maintenance storage sizing uses a conservative 5 MB localStorage budget as an early warning only; it must not claim the browser's exact quota.
+- Historical transaction links to removed debts are informational, not automatically destructive cleanup targets.
 
 ### v2-303 BNPL installment creation + recurrence end dates
 - New/orphan BNPL debts must be able to create a finite installment schedule directly from Add/Edit Debt. Schedule rows are individual linked planned transactions so dates/amounts can be edited before save and there is no accidental infinite recurrence.

@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-303";
+const APP_VERSION = "2-304";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -12099,7 +12099,9 @@ function collectNeedsReview(){
   (data.transactions||[]).forEach(tx=>{
     const id=tx.id||uid();
     if(!isRecurring(tx) && pastPlannedNeedsAttention(tx,7)) out.push({kind:'past',id,key:reviewKey('past',id),title:`Past planned: ${tx.title||'Untitled'}`,sub:`${tx.date} • ${money(tx.amount||0)} • ${transactionAccountText(tx)}`,action:`openTransaction('${id}')`});
-    if(tx.accountId && !accountById(tx.accountId)) out.push({kind:'account',id,key:reviewKey('account',id),title:`Unknown account: ${tx.title||'Untitled'}`,sub:`${tx.date||''} • ${money(tx.amount||0)}`,action:`openTransaction('${id}')`});
+    if(tx.accountId && !accountById(tx.accountId) && !debtById(tx.accountId)) out.push({kind:'account',id,key:reviewKey('account',id),title:`Unknown account: ${tx.title||'Untitled'}`,sub:`${tx.date||''} • ${money(tx.amount||0)}`,action:`openTransaction('${id}')`});
+    if(tx.transferToAccountId && !accountById(tx.transferToAccountId)) out.push({kind:'route',id,key:reviewKey('route',id),title:`Unknown transfer destination: ${tx.title||'Untitled'}`,sub:`${tx.date||''} • ${money(tx.amount||0)} • destination ${tx.transferToAccountId}`,action:`openTransaction('${id}')`});
+    if(tx.reimbursementToAccountId && !accountById(tx.reimbursementToAccountId)) out.push({kind:'route',id,key:reviewKey('reimbursementRoute',id),title:`Unknown reimbursement destination: ${tx.title||'Untitled'}`,sub:`${tx.date||''} • ${money(tx.amount||0)} • destination ${tx.reimbursementToAccountId}`,action:`openTransaction('${id}')`});
     if(tx.categoryId && !(data.categories||[]).some(c=>c.id===tx.categoryId)) out.push({kind:'category',id,key:reviewKey('category',id),title:`Unknown category: ${tx.title||'Untitled'}`,sub:`${tx.date||''} • ${money(tx.amount||0)}`,action:`openTransaction('${id}')`});
   });
   clearedLoanPaymentsMissingBreakdown().forEach(tx=>{
@@ -12124,14 +12126,358 @@ function collectNeedsReview(){
 }
 window.renderNeedsReview=function(){
   const list=document.getElementById('needsReviewList'),summary=document.getElementById('needsReviewSummary');
-  const items=collectNeedsReview(); const groups={past:0,account:0,category:0,bill:0,duplicate:0,stale:0,loanBreakdown:0};items.forEach(x=>groups[x.kind]=(groups[x.kind]||0)+1);
+  const items=collectNeedsReview(); const groups={past:0,account:0,route:0,category:0,bill:0,duplicate:0,stale:0,loanBreakdown:0};items.forEach(x=>groups[x.kind]=(groups[x.kind]||0)+1);
   const badge=document.getElementById('reviewNavBadge');if(badge){badge.textContent=items.length;badge.hidden=!items.length;}
   const dashboardCount=document.getElementById('dashboardReviewCount');if(dashboardCount)dashboardCount.textContent=items.length?`${items.length} found`:'clear';
-  if(summary)summary.innerHTML=`<article><b>${items.length}</b><span>Total findings</span></article><article><b>${groups.past||0}</b><span>Past planned</span></article><article><b>${groups.loanBreakdown||0}</b><span>Loan breakdowns</span></article><article><b>${(groups.account||0)+(groups.category||0)}</b><span>Broken references</span></article><article><b>${(groups.bill||0)+(groups.duplicate||0)+(groups.stale||0)}</b><span>Cleanup suggestions</span></article>`;
+  if(summary)summary.innerHTML=`<article><b>${items.length}</b><span>Total findings</span></article><article><b>${groups.past||0}</b><span>Past planned</span></article><article><b>${groups.loanBreakdown||0}</b><span>Loan breakdowns</span></article><article><b>${(groups.account||0)+(groups.route||0)+(groups.category||0)}</b><span>Broken references</span></article><article><b>${(groups.bill||0)+(groups.duplicate||0)+(groups.stale||0)}</b><span>Cleanup suggestions</span></article>`;
   if(list)list.innerHTML=items.length?items.map(x=>`<div class="review-item"><span><b>${escapeAttr(x.title)}</b><small>${escapeAttr(x.sub)}</small></span><div class="review-actions"><button class="ghost small" onclick="${x.action}">Review</button>${x.secondary?`<button class="ghost small" onclick="${x.secondary}">${x.secondaryLabel}</button>`:''}<button class="ghost small" onclick="dismissReviewItem('${escapeAttr(x.key)}')">Dismiss</button></div></div>`).join(''):`<div class="empty-state">Nothing needs review right now. 🎉 <button class="ghost small" onclick="restoreReviewDismissals()">Restore dismissed</button></div>`;
 };
 const _render214=render; render=function(){_render214();renderNeedsReview();};
 
+
+
+// v2-304: Stabilization diagnostics. Maintenance scans are read-only and regression
+// checks run against temporary synthetic data, restoring the user's live dataset
+// before returning. Nothing here saves or mutates financial records automatically.
+function formatDataSize(bytes){
+  const n=Math.max(0,Number(bytes||0));
+  if(n < 1024) return `${n} B`;
+  if(n < 1024*1024) return `${(n/1024).toFixed(1)} KB`;
+  return `${(n/(1024*1024)).toFixed(2)} MB`;
+}
+function templateUsageStatsAgainstData(rawTemplate, txs){
+  const t=normalizeTransactionTemplate(rawTemplate,{legacySafe:false});
+  const matches=(txs||[]).filter(tx=>templateMatchesTransaction(t,tx));
+  return {count:matches.length,lastDate:matches.map(tx=>String(tx.date||"")).filter(Boolean).sort().at(-1)||""};
+}
+function maintenanceDataScan(){
+  const root=moneyNestRootData();
+  const transactions=Array.isArray(root.transactions)?root.transactions:[];
+  const templates=Array.isArray(root.settings?.transactionTemplates)?root.settings.transactionTemplates:[];
+  const accounts=new Set((root.accounts||[]).map(a=>String(a.id||"")).filter(Boolean));
+  const debts=new Set((root.debts||[]).map(d=>String(d.id||"")).filter(Boolean));
+  const categories=new Set((root.categories||[]).map(c=>String(c.id||"")).filter(Boolean));
+  const brokenReferences=[];
+  const historicalDebtLinks=[];
+  const seenIds=new Map();
+
+  transactions.forEach(tx=>{
+    const id=String(tx?.id||"");
+    if(id){
+      if(seenIds.has(id)) brokenReferences.push({kind:"duplicate-id",tx,label:`Duplicate transaction ID: ${id}`});
+      else seenIds.set(id,tx);
+    }
+    if(tx?.accountId && !accounts.has(String(tx.accountId)) && !debts.has(String(tx.accountId))){
+      brokenReferences.push({kind:"account",tx,label:`${tx.title||"Transaction"} references missing account ${tx.accountId}`});
+    }
+    if(tx?.transferToAccountId && !accounts.has(String(tx.transferToAccountId))){
+      brokenReferences.push({kind:"route",tx,label:`${tx.title||"Transfer"} points to missing destination ${tx.transferToAccountId}`});
+    }
+    if(tx?.reimbursementToAccountId && !accounts.has(String(tx.reimbursementToAccountId))){
+      brokenReferences.push({kind:"route",tx,label:`${tx.title||"Reimbursement"} points to missing destination ${tx.reimbursementToAccountId}`});
+    }
+    if(tx?.categoryId && !categories.has(String(tx.categoryId))){
+      brokenReferences.push({kind:"category",tx,label:`${tx.title||"Transaction"} references missing category ${tx.categoryId}`});
+    }
+    ["linkedDebtId","debtAccountId"].forEach(field=>{
+      const value=String(tx?.[field]||"");
+      if(value && !debts.has(value)){
+        historicalDebtLinks.push({tx,field,debtId:value});
+      }
+    });
+  });
+
+  const templateDetails=templates.map(raw=>{
+    const normalized=normalizeTransactionTemplate(raw,{legacySafe:false});
+    const usage=templateUsageStatsAgainstData(normalized,transactions);
+    return {raw,normalized,usage};
+  });
+  const activeAuto=templateDetails.filter(x=>!x.normalized.archived && x.normalized.source==="auto");
+  const lowUseAuto=activeAuto.filter(x=>x.usage.count<=1);
+  const unusedAuto=activeAuto.filter(x=>x.usage.count===0);
+  const suspiciousAuto=activeAuto.filter(x=>{
+    const title=String(x.normalized.title||"").trim();
+    return !title || /^\d{1,3}$/.test(title) || title.length<=2;
+  });
+
+  const signatureGroups=new Map();
+  templateDetails.forEach(x=>{
+    const key=templateSignature(x.normalized);
+    const arr=signatureGroups.get(key)||[];
+    arr.push(x.normalized);
+    signatureGroups.set(key,arr);
+  });
+  const exactTemplateDuplicates=[...signatureGroups.values()].filter(group=>group.length>1);
+  const exactTemplateDuplicateCount=exactTemplateDuplicates.reduce((sum,group)=>sum+group.length-1,0);
+
+  const rootJson=JSON.stringify(root);
+  const storageBytes=typeof Blob==="function" ? new Blob([rootJson]).size : rootJson.length;
+  const conservativeLocalStorageBytes=5*1024*1024;
+  const storageRatio=storageBytes/conservativeLocalStorageBytes;
+  const planningScenarios=Array.isArray(root.settings?.planningScenarios)?root.settings.planningScenarios:[];
+  const planningBytes=planningScenarios.reduce((sum,scenario)=>{
+    const raw=JSON.stringify(scenario||{});
+    return sum+(typeof Blob==="function"?new Blob([raw]).size:raw.length);
+  },0);
+
+  return {
+    transactions,templates,planningScenarios,storageBytes,planningBytes,storageRatio,
+    brokenReferences,historicalDebtLinks,lowUseAuto,unusedAuto,suspiciousAuto,
+    exactTemplateDuplicates,exactTemplateDuplicateCount
+  };
+}
+window.maintenanceDataScan=maintenanceDataScan;
+
+function maintenanceStatusLabel(scan){
+  if(scan.brokenReferences.length) return `${scan.brokenReferences.length} fix`;
+  if(scan.storageRatio>=0.75) return "storage high";
+  const cleanup=scan.lowUseAuto.length+scan.exactTemplateDuplicateCount;
+  return cleanup ? `${cleanup} cleanup` : "healthy";
+}
+function maintenanceTxReviewButton(tx,label="Review"){
+  if(!tx?.id) return "";
+  return `<button type="button" class="ghost small" onclick="openTransaction('${escapeAttr(tx.id)}')">${label}</button>`;
+}
+function renderMaintenanceCenter(){
+  const overview=document.getElementById("maintenanceOverview");
+  const findings=document.getElementById("maintenanceFindings");
+  const pill=document.getElementById("maintenanceSummaryPill");
+  if(!overview || !findings) return;
+  const s=maintenanceDataScan();
+  if(pill) pill.textContent=maintenanceStatusLabel(s);
+
+  const storagePct=Math.min(999,Math.round(s.storageRatio*100));
+  const storageTone=s.storageRatio>=0.75?"bad":s.storageRatio>=0.5?"warn":"good";
+  overview.innerHTML=`
+    <div class="maintenance-stat-grid">
+      <article><b>${formatDataSize(s.storageBytes)}</b><span>Saved data</span><small class="${storageTone}">~${storagePct}% of a conservative 5 MB browser-storage budget</small></article>
+      <article><b>${s.transactions.length}</b><span>Transactions</span><small>${s.planningScenarios.length} planning scenario${s.planningScenarios.length===1?"":"s"}</small></article>
+      <article><b>${s.templates.length}</b><span>Templates</span><small>${s.lowUseAuto.length} low-use learned shortcut${s.lowUseAuto.length===1?"":"s"}</small></article>
+      <article><b>${formatDataSize(s.planningBytes)}</b><span>Planning data</span><small>Included in JSON/cloud backup</small></article>
+    </div>`;
+
+  const sections=[];
+  if(s.brokenReferences.length){
+    const rows=s.brokenReferences.slice(0,8).map(item=>`<div class="maintenance-row"><span><b>${escapeAttr(item.label)}</b><small>This is a live reference problem and is worth reviewing.</small></span>${maintenanceTxReviewButton(item.tx)}</div>`).join("");
+    sections.push(`<div class="maintenance-section"><div class="maintenance-section-head"><div><b>Broken references</b><small>${s.brokenReferences.length} finding${s.brokenReferences.length===1?"":"s"}</small></div><button class="ghost small" type="button" onclick="setView('dashboard')">Open Needs Review</button></div>${rows}${s.brokenReferences.length>8?`<small class="maintenance-more">+ ${s.brokenReferences.length-8} more</small>`:""}</div>`);
+  }
+  if(s.historicalDebtLinks.length){
+    const uniqueDebtIds=[...new Set(s.historicalDebtLinks.map(x=>x.debtId))];
+    const examples=s.historicalDebtLinks.slice(0,6).map(item=>`<div class="maintenance-row"><span><b>${escapeAttr(item.tx?.title||"Historical transaction")}</b><small>${escapeAttr(item.tx?.date||"")} • points to removed debt ${escapeAttr(item.debtId)}</small></span>${maintenanceTxReviewButton(item.tx)}</div>`).join("");
+    sections.push(`<div class="maintenance-section informational"><div class="maintenance-section-head"><div><b>Historical debt links</b><small>${s.historicalDebtLinks.length} transaction link${s.historicalDebtLinks.length===1?"":"s"} across ${uniqueDebtIds.length} removed debt record${uniqueDebtIds.length===1?"":"s"}</small></div></div><p class="hint">These are not automatically deleted or rewritten. They are usually safe historical breadcrumbs from paid/deleted BNPL, loans, or cards; a future archive workflow can preserve them more cleanly.</p>${examples}${s.historicalDebtLinks.length>6?`<small class="maintenance-more">+ ${s.historicalDebtLinks.length-6} more historical links</small>`:""}</div>`);
+  }
+  if(s.lowUseAuto.length || s.exactTemplateDuplicateCount){
+    const suspiciousNote=s.suspiciousAuto.length?` • ${s.suspiciousAuto.length} very short/numeric learned title${s.suspiciousAuto.length===1?"":"s"}`:"";
+    sections.push(`<div class="maintenance-section"><div class="maintenance-section-head"><div><b>Template cleanup</b><small>${s.lowUseAuto.length} learned template${s.lowUseAuto.length===1?"":"s"} used 0–1 times • ${s.exactTemplateDuplicateCount} exact duplicate${s.exactTemplateDuplicateCount===1?"":"s"}${suspiciousNote}</small></div><button class="ghost small" type="button" onclick="openTemplateMaintenance()">Manage templates</button></div><p class="hint">Nothing is removed automatically. The existing Template Manager is still the place to archive, merge, or delete shortcuts after reviewing them.</p></div>`);
+  }
+  if(s.storageRatio>=0.5){
+    sections.push(`<div class="maintenance-section ${s.storageRatio>=0.75?"warning":""}"><div class="maintenance-section-head"><div><b>Storage growth</b><small>${formatDataSize(s.storageBytes)} saved locally</small></div></div><p class="hint">Money Nest is still within the conservative browser-storage budget, but this is the point where keeping JSON backups and planning an eventual IndexedDB migration becomes more valuable.</p></div>`);
+  }
+  if(!sections.length){
+    sections.push(`<div class="maintenance-section healthy"><b>✓ No obvious maintenance problems</b><p class="hint">No broken references, template clutter, or storage-pressure signals were found by this scan.</p></div>`);
+  }
+  findings.innerHTML=sections.join("");
+}
+window.renderMaintenanceCenter=renderMaintenanceCenter;
+window.refreshMaintenanceCenter=()=>{renderMaintenanceCenter();renderNeedsReview();};
+window.openTemplateMaintenance=()=>{
+  templateManagerState.filter="unused";
+  templateManagerState.familyKey="";
+  templateManagerState.query="";
+  templateManagerState.selected.clear();
+  openTemplateCleanup("");
+};
+
+function regressionResult(name,fn){
+  try{
+    const detail=fn();
+    return {name,pass:true,detail:typeof detail==="string"?detail:"Passed"};
+  }catch(err){
+    return {name,pass:false,detail:err?.message||String(err)};
+  }
+}
+function regressionAssert(condition,message){
+  if(!condition) throw new Error(message);
+}
+function regressionApprox(actual,expected,tolerance=0.005,message="Values differ"){
+  if(Math.abs(Number(actual)-Number(expected))>tolerance) throw new Error(`${message}: expected ${expected}, got ${actual}`);
+}
+function regressionDataset({planning=false,accounts=[],debts=[],transactions=[],paycheckProfiles={}}={}){
+  return {
+    schemaVersion:CURRENT_SCHEMA_VERSION,
+    settings:{
+      buffer:50,
+      paycheckProfiles,
+      transactionTemplates:[],
+      ...(planning?{planningScenarioMeta:{id:"self-test",name:"Self test",snapshotDate:"2027-01-01"}}:{})
+    },
+    accounts,
+    debts,
+    budgets:[],
+    categories:[
+      {id:"banking",name:"Banking",emoji:"↔️",color:"#888"},
+      {id:"income",name:"Income",emoji:"💰",color:"#888"},
+      {id:"utilities",name:"Utilities",emoji:"🔌",color:"#888"},
+      {id:"klarna",name:"Klarna",emoji:"🩷",color:"#888"}
+    ],
+    transactions
+  };
+}
+function runMoneyNestRegressionTests(options={}){
+  const saved={data,rootData,calendarMode,planningScenarioId,calendarFilter};
+  const results=[];
+  const setSynthetic=(dataset,planning=false)=>{
+    if(planning){
+      rootData=regressionDataset();
+      data=dataset;
+      calendarMode="planning";
+      planningScenarioId="self-test";
+    }else{
+      rootData=dataset;
+      data=dataset;
+      calendarMode="real";
+      planningScenarioId="";
+    }
+    calendarFilter="all";
+  };
+
+  try{
+    results.push(regressionResult("Weekly recurrence survives DST",()=>{
+      const ds=regressionDataset({
+        accounts:[{id:"ty",name:"Ty",owner:"Ty",type:"cash",startingBalance:0}],
+        transactions:[{
+          id:"weekly-dst",date:"2027-02-10",title:"Weekly",amount:1,type:"expense",status:"planned",
+          accountId:"ty",categoryId:"utilities",transferToAccountId:"",
+          recurrence:{type:"weekly",interval:1,weekday:3,weekendHandling:"none"},occurrenceOverrides:{},dateOverrides:{}
+        }]
+      });
+      setSynthetic(ds,false);
+      const dates=expandedTransactions("2027-03-31").filter(tx=>(tx.originalId||tx.id)==="weekly-dst").map(tx=>tx.date);
+      ["2027-03-17","2027-03-24","2027-03-31"].forEach(date=>regressionAssert(dates.includes(date),`Missing ${date}`));
+      regressionAssert(daysBetween(parseDate("2027-03-10"),parseDate("2027-03-17"))===7,"Calendar-day difference across DST was not 7");
+      return "Mar 17/24/31 all generated";
+    }));
+
+    results.push(regressionResult("Planning recurring transfers are two-sided",()=>{
+      const ds=regressionDataset({
+        planning:true,
+        accounts:[
+          {id:"ty",name:"Ty Checking",owner:"Ty",type:"cash",startingBalance:0},
+          {id:"joint",name:"Joint Checking",owner:"Joint",type:"cash",startingBalance:430.92}
+        ],
+        transactions:[
+          {id:"ty-joint",date:"2027-07-07",title:"Ty to Joint",amount:490,type:"transfer",status:"planned",accountId:"ty",transferToAccountId:"joint",categoryId:"banking",recurrence:{type:"weekly",interval:1,weekday:3,weekendHandling:"none"},occurrenceOverrides:{},dateOverrides:{}},
+          {id:"joint-income",date:"2027-07-07",title:"Other inflow",amount:1000,type:"income",status:"planned",accountId:"joint",transferToAccountId:"",categoryId:"income",recurrence:{type:"none",interval:1}},
+          {id:"joint-expense",date:"2027-07-07",title:"Other outflow",amount:283,type:"expense",status:"planned",accountId:"joint",transferToAccountId:"",categoryId:"utilities",recurrence:{type:"none",interval:1}},
+          {id:"joint-later",date:"2027-07-20",title:"Later outflow",amount:529,type:"expense",status:"planned",accountId:"joint",transferToAccountId:"",categoryId:"utilities",recurrence:{type:"none",interval:1}}
+        ]
+      });
+      setSynthetic(ds,true);
+      const jointRows=expandedCashTransactionsForAccount("joint","2027-07-31");
+      const transfers=jointRows.filter(tx=>(tx.originalId||tx.id)==="ty-joint");
+      const transferDates=transfers.map(tx=>tx.date);
+      ["2027-07-07","2027-07-14","2027-07-21","2027-07-28"].forEach(date=>regressionAssert(transferDates.includes(date),`Incoming transfer missing on ${date}`));
+      transfers.forEach(tx=>regressionApprox(txEffectOnCash(tx,"joint",true),490,0.001,"Joint transfer effect"));
+      transfers.forEach(tx=>regressionApprox(txEffectOnCash(tx,"ty",true),-490,0.001,"Ty transfer effect"));
+      const july7=jointRows.filter(tx=>tx.date==="2027-07-07").reduce((sum,tx)=>sum+txEffectOnCash(tx,"joint",true),0);
+      regressionApprox(july7,1207,0.001,"July 7 Joint net");
+      regressionApprox(accountBalance("joint",true,"2027-07-31"),2578.92,0.001,"July-end Joint balance");
+      return "Jul 7 +$1,207; Jul 31 $2,578.92";
+    }));
+
+    results.push(regressionResult("Recurring end dates stop future occurrences",()=>{
+      const ds=regressionDataset({
+        accounts:[{id:"joint",name:"Joint",owner:"Joint",type:"cash",startingBalance:0}],
+        transactions:[{id:"finite",date:"2027-07-07",title:"Finite",amount:10,type:"expense",status:"planned",accountId:"joint",categoryId:"utilities",transferToAccountId:"",recurrence:{type:"weekly",interval:1,weekday:3,weekendHandling:"none"},recurrenceUntil:"2027-07-14",occurrenceOverrides:{},dateOverrides:{}}]
+      });
+      setSynthetic(ds,false);
+      const dates=expandedTransactions("2027-07-31").filter(tx=>(tx.originalId||tx.id)==="finite").map(tx=>tx.date);
+      regressionAssert(JSON.stringify(dates)==='["2027-07-07","2027-07-14"]',`Unexpected occurrences: ${dates.join(", ")}`);
+      return "Stops after Jul 14";
+    }));
+
+    results.push(regressionResult("Planning paychecks use current scenario profile",()=>{
+      const profile={enabled:true,mode:"pay-period-weekdays",hourlyRate:26,hoursPerWorkday:8,deductionPercent:19.5,fixedDeduction:0};
+      const ds=regressionDataset({
+        planning:true,
+        accounts:[{id:"mak",name:"Mak Checking",owner:"Mak",type:"cash",startingBalance:0}],
+        paycheckProfiles:{Mak:profile},
+        transactions:[{
+          id:"mak-pay",date:"2027-01-07",title:"Mak Paycheck",amount:999,type:"paycheck",status:"planned",accountId:"mak",categoryId:"income",
+          autoPaycheck:true,autoMakPaycheck:true,autoPaycheckInfo:{hourlyRate:24,amount:999},
+          recurrence:{type:"monthly",interval:1,weekendHandling:"previous-friday"},
+          occurrenceOverrides:{"2027-02-07":{date:"2027-02-05",title:"Mak Paycheck",amount:1234,type:"paycheck",status:"cleared",accountId:"mak",categoryId:"income",autoPaycheck:false,autoMakPaycheck:false}},
+          dateOverrides:{}
+        }]
+      });
+      setSynthetic(ds,true);
+      const jan=expandedTransactions("2027-01-07").find(tx=>(tx.originalId||tx.id)==="mak-pay"&&tx.date==="2027-01-07");
+      const expected=estimatePaycheckFromProfile("Mak",profile,"2027-01-07","");
+      regressionAssert(!!jan,"January paycheck missing");
+      regressionApprox(jan.amount,expected.amount,0.001,"Scenario paycheck amount");
+      regressionAssert(Number(jan.autoPaycheckInfo?.hourlyRate)===26,"Stale hourly rate was reused");
+      const feb=expandedTransactions("2027-02-28").find(tx=>(tx.originalId||tx.id)==="mak-pay"&&tx.status==="cleared"&&Number(tx.amount)===1234);
+      regressionAssert(!!feb,"Cleared paycheck override was recalculated instead of preserved");
+      return `Uses $26/hr profile; cleared override preserved`;
+    }));
+
+    results.push(regressionResult("BNPL without schedule keeps saved remaining balance",()=>{
+      const ds=regressionDataset({
+        debts:[{id:"bnpl",name:"Amazon",type:"Buy Now, Pay Later",startingBalance:207.30,balance:197.16,statementBalance:207.30}],
+        transactions:[]
+      });
+      setSynthetic(ds,false);
+      regressionApprox(bnplRemainingBalance("bnpl"),197.16,0.001,"BNPL remaining balance fallback");
+      regressionApprox(bnplOriginalPurchaseAmount("bnpl"),207.30,0.001,"BNPL original purchase amount");
+      return "Remaining $197.16; original $207.30";
+    }));
+
+    results.push(regressionResult("JSON normalization preserves planning scenarios",()=>{
+      const raw=regressionDataset({
+        accounts:[{id:"a",name:"A",owner:"Mak",type:"cash",startingBalance:10}],
+        transactions:[{id:"t",date:"2027-01-01",title:"T",amount:1,type:"expense",status:"planned",accountId:"a",categoryId:"utilities",recurrence:{type:"none",interval:1}}]
+      });
+      raw.settings.planningScenarios=[{id:"p",name:"Plan",snapshotDate:"2027-02-01",sourceAccountIds:["a"],dataset:regressionDataset({planning:true,accounts:[{id:"a",name:"A",owner:"Mak",type:"cash",startingBalance:9}],transactions:[]})}];
+      const roundTrip=normalizeData(JSON.parse(JSON.stringify(raw)));
+      regressionAssert(roundTrip.schemaVersion===CURRENT_SCHEMA_VERSION,"Schema version changed unexpectedly");
+      regressionAssert(roundTrip.transactions.some(tx=>tx.id==="t"),"Transaction ID was lost");
+      regressionAssert(roundTrip.settings?.planningScenarios?.some(s=>s.id==="p"),"Planning scenario was lost");
+      return "Core IDs + planning scenario survive normalization";
+    }));
+  }finally{
+    data=saved.data;
+    rootData=saved.rootData;
+    calendarMode=saved.calendarMode;
+    planningScenarioId=saved.planningScenarioId;
+    calendarFilter=saved.calendarFilter;
+  }
+
+  const passed=results.filter(r=>r.pass).length;
+  const summary={passed,total:results.length,failed:results.length-passed,results,ranAt:new Date().toISOString()};
+  if(options.render){
+    const el=document.getElementById("regressionTestResults");
+    if(el){
+      el.innerHTML=`<div class="regression-summary ${summary.failed?"bad":"good"}"><b>${summary.failed?`⚠ ${summary.failed} regression check${summary.failed===1?"":"s"} failed`:`✓ ${summary.passed} regression checks passed`}</b><small>Tests use temporary synthetic data only; your saved Money Nest data is restored immediately afterward.</small></div><div class="regression-result-list">${results.map(r=>`<div class="regression-result ${r.pass?"pass":"fail"}"><span>${r.pass?"✓":"✕"}</span><div><b>${escapeAttr(r.name)}</b><small>${escapeAttr(r.detail)}</small></div></div>`).join("")}</div>`;
+    }
+    renderMaintenanceCenter();
+  }
+  return summary;
+}
+window.runMoneyNestRegressionTests=runMoneyNestRegressionTests;
+
+if(typeof location!=="undefined" && new URLSearchParams(location.search).get("selftest")==="1"){
+  setTimeout(()=>{
+    const result=runMoneyNestRegressionTests();
+    document.documentElement.dataset.moneyNestRegression=result.failed?"failed":"passed";
+    document.documentElement.dataset.moneyNestRegressionSummary=`${result.passed}/${result.total}`;
+  },0);
+}
+
+const _renderSettings304=renderSettings;
+renderSettings=function(){
+  _renderSettings304();
+  renderMaintenanceCenter();
+};
 
 function backupHealthData(){
   const meta=loadLocalMeta(), cloud=loadCloudConfig();
@@ -12190,7 +12536,7 @@ function organizeSettingsIntoFourSections(){
     const t=(card.querySelector('summary b')?.textContent||'').toLowerCase();
     let g='preferences';
     if(/appearance|categor/.test(t))g='appearance';
-    else if(/cloud|backup|recent changes/.test(t))g='data';
+    else if(/cloud|backup|recent changes|maintenance|diagnostic/.test(t))g='data';
     else if(/template|paycheck/.test(t))g='automation';
     groups[g].appendChild(card);
   });
@@ -12291,6 +12637,7 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 // v2-299: Planning scenario selection/settings live in the compact Planning banner so the desktop Calendar toolbar keeps the same one-row height as Real mode.
 
 // v2-301: Planning cash-account relevance is evaluated after recurrence expansion. Calendar cards and account balances share source-or-destination transfer semantics, so recurring incoming transfers cannot be dropped before projection.
+// v2-304: Stabilization release adds read-only Maintenance & Diagnostics, storage/template/orphan-link scans, and synthetic regression checks for recurrence, Planning transfers/paychecks, BNPL fallback, and backup normalization.
 // v2-303: BNPL creation restores finite installment scheduling, orphan BNPL balances fall back to saved Remaining Balance, and recurring transactions can optionally end on a chosen date.
 // v2-302: Calendar-day recurrence math is DST-safe, so weekly/biweekly/every-X-days schedules continue across spring-forward/fall-back boundaries.
 // v2-300: Planning recurring transfers retain both cash-account sides during expansion/projection; future auto-paychecks regenerate from scenario paycheck profiles, which are editable in Plan settings.
