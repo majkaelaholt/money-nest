@@ -161,7 +161,15 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-305`
+Latest known version: `money-nest-v2-306`
+
+### v2-306 canonical recurrence engine
+- `recurrenceRuleFor()` + `recurrenceOccursOn()` are the canonical cadence matcher for weekly, biweekly, monthly, last-day-month, yearly, every-X-days, and nth-weekday rules. Do not add a second cadence switch inside projection/reporting code.
+- `materializeRecurrenceOccurrence()` is the canonical conversion from an original schedule date to its concrete occurrence. It owns weekend handling, date overrides, occurrence overrides/deletions, recurrence end-date enforcement, and Planning route repair.
+- `expandedTransactions()`, Bills next/due evaluation, and latest bill occurrence should use that shared materializer rather than independently applying weekend/override rules.
+- Keep the base-row compatibility exception in `expandedTransactions()`: legacy malformed rows remain visible even if their stored recurrence end date predates the base row. Generated dates still obey the end date.
+- Preserve moved-earlier look-ahead, DST-safe `daysBetween()`, cleared occurrence overrides, archived-bill semantics, and post-expansion cash-account filtering.
+- Regression coverage is now 9 checks. Schema remains 225; no JSON/CSV migration.
 
 ### v2-305 canonical cash-account projection path
 - `cashAccountPerspective(tx, accountId)` is now the canonical source of per-account cash effect: income/paycheck positive, expenses negative, transfers source-negative/destination-positive. Calendar cards and balance math must not re-implement these signs independently.

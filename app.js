@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-305";
+const APP_VERSION = "2-306";
 const CURRENT_SCHEMA_VERSION = 225;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -2192,82 +2192,110 @@ function recurrenceGenerationUntil(tx, untilISO){
   return generationUntil;
 }
 
+function recurrenceRuleFor(tx){
+  return tx?.recurrence || (tx?.repeat ? {type:"monthly", interval:1} : {type:"none", interval:1});
+}
+
+// v2-306 canonical cadence matcher. Any feature that needs to decide whether an
+// original schedule date exists should use this instead of re-implementing
+// weekly/monthly/yearly/every-X-days math. Effective dates/overrides are applied
+// separately by materializeRecurrenceOccurrence().
+function recurrenceOccursOn(tx, cursor, start=parseDate(tx?.date || todayISO())){
+  const r = recurrenceRuleFor(tx);
+  if(!r || r.type === "none") return sameDay(cursor, start);
+  if(cursor < start) return false;
+
+  if(r.type === "weekly"){
+    const interval = Number(r.interval || 1);
+    return cursor.getDay() === Number(r.weekday ?? start.getDay()) && daysBetween(start, cursor) % (interval * 7) === 0;
+  }
+  if(r.type === "biweekly"){
+    return cursor.getDay() === start.getDay() && daysBetween(start, cursor) % 14 === 0;
+  }
+  if(r.type === "monthly"){
+    const interval = Number(r.interval || 1);
+    return cursor.getDate() === monthlyTargetDay(start, cursor) && monthDiff(start, cursor) % interval === 0;
+  }
+  if(r.type === "last-day-month"){
+    const interval = Number(r.interval || 1);
+    return cursor.getDate() === endOfMonth(cursor).getDate() && monthDiff(start, cursor) % interval === 0;
+  }
+  if(r.type === "yearly"){
+    const interval = Number(r.interval || 1);
+    return cursor.getMonth() === start.getMonth() && cursor.getDate() === start.getDate() && ((cursor.getFullYear() - start.getFullYear()) % interval === 0);
+  }
+  if(r.type === "every-x-days"){
+    const interval = Number(r.interval || 1);
+    return daysBetween(start, cursor) % interval === 0;
+  }
+  if(r.type === "nth-weekday"){
+    const interval = Number(r.interval || 1);
+    const nth = nthWeekdayOfMonth(cursor.getFullYear(), cursor.getMonth(), r.weekday ?? start.getDay(), r.ordinal || 1);
+    return !!(nth && sameDay(cursor, nth) && monthDiff(start, cursor) % interval === 0);
+  }
+  return false;
+}
+
+function recurrenceOriginalDateAllowed(tx, originalISO){
+  return !tx?.recurrenceUntil || originalISO <= tx.recurrenceUntil;
+}
+
+// Turn one ORIGINAL recurrence date into the concrete transaction that every
+// downstream consumer sees. This is the canonical place for weekend movement,
+// saved date/occurrence overrides, deleted occurrences, Planning route repair,
+// and recurrence end-date enforcement.
+function materializeRecurrenceOccurrence(tx, originalISO, options={}){
+  if(!tx || !originalISO) return null;
+  const isBase = originalISO === tx.date;
+  const respectEndDate = options.respectEndDate !== false;
+  if(respectEndDate && !recurrenceOriginalDateAllowed(tx, originalISO)) return null;
+
+  const occurrenceISO = occurrenceDateFor(tx, parseDate(originalISO));
+  const seed = isBase ? tx : {
+    ...tx,
+    id: `${tx.id}-${originalISO}`,
+    originalId: tx.id,
+    // The saved series row is a template. Generated dates start Planned unless
+    // an explicit occurrence override says otherwise.
+    status:"planned",
+    generated:true
+  };
+  let occurrence = applyOccurrenceOverride(seed, originalISO, occurrenceISO);
+  const routeSource = options.routeSource || tx;
+  occurrence = applyPlanningRecurringRoute(routeSource, occurrence, originalISO);
+  return occurrence;
+}
+
 function expandedTransactions(untilISO){
   const out = [];
   const until = parseDate(untilISO);
 
   data.transactions.forEach(tx => {
     const generationUntil = recurrenceGenerationUntil(tx, untilISO);
-    const baseDate = occurrenceDateFor(tx, parseDate(tx.date));
-    let baseOccurrence = applyOccurrenceOverride(tx, tx.date, baseDate);
-    baseOccurrence = applyPlanningRecurringRoute(planningRecurringRouteSource(tx), baseOccurrence, tx.originalDate || tx.date);
+    // Preserve historical behavior: even a malformed/legacy series whose end
+    // date predates its saved base row still exposes that saved base row.
+    const baseOccurrence = materializeRecurrenceOccurrence(tx, tx.date, {
+      respectEndDate:false,
+      routeSource:planningRecurringRouteSource(tx)
+    });
     // Archived bills preserve cleared history but stop contributing planned/future
     // occurrences to calendars, forecasts, balances, and bill review totals.
     if(baseOccurrence && (!tx.billArchived || baseOccurrence.status === "cleared")) out.push(baseOccurrence);
 
-    const r = tx.recurrence || (tx.repeat ? { type:"monthly", interval:1 } : { type:"none" });
+    const r = recurrenceRuleFor(tx);
     if(!r || r.type === "none") return;
 
     const start = parseDate(tx.date);
     let cursor = addDays(start, 1);
 
     while(cursor <= generationUntil){
-      let occurs = false;
-
-      if(r.type === "weekly"){
-        const interval = Number(r.interval || 1);
-        occurs = cursor.getDay() === Number(r.weekday ?? start.getDay()) && daysBetween(start, cursor) % (interval * 7) === 0;
-      }
-
-      if(r.type === "biweekly"){
-        occurs = cursor.getDay() === start.getDay() && daysBetween(start, cursor) % 14 === 0;
-      }
-
-      if(r.type === "monthly"){
-        const interval = Number(r.interval || 1);
-        occurs = cursor.getDate() === monthlyTargetDay(start, cursor) && monthDiff(start, cursor) % interval === 0;
-      }
-
-      if(r.type === "last-day-month"){
-        const interval = Number(r.interval || 1);
-        occurs = cursor.getDate() === endOfMonth(cursor).getDate() && monthDiff(start, cursor) % interval === 0;
-      }
-
-      if(r.type === "yearly"){
-        const interval = Number(r.interval || 1);
-        occurs = cursor.getMonth() === start.getMonth() && cursor.getDate() === start.getDate() && ((cursor.getFullYear() - start.getFullYear()) % interval === 0);
-      }
-
-      if(r.type === "every-x-days"){
-        const interval = Number(r.interval || 1);
-        occurs = daysBetween(start, cursor) % interval === 0;
-      }
-
-      if(r.type === "nth-weekday"){
-        const interval = Number(r.interval || 1);
-        const nth = nthWeekdayOfMonth(cursor.getFullYear(), cursor.getMonth(), r.weekday ?? start.getDay(), r.ordinal || 1);
-        occurs = nth && sameDay(cursor, nth) && monthDiff(start, cursor) % interval === 0;
-      }
-
-      if(occurs){
+      if(recurrenceOccursOn(tx, cursor, start)){
         const originalISO = toISO(cursor);
-        if(tx.recurrenceUntil && originalISO > tx.recurrenceUntil){
-          cursor = addDays(cursor, 1);
-          continue;
-        }
-        const occurrenceISO = occurrenceDateFor(tx, cursor);
-        let generatedOccurrence = applyOccurrenceOverride({
-          ...tx,
-          id: tx.id + "-" + originalISO,
-          originalId:tx.id,
-          // A recurring transaction is a template. Future/past generated
-          // occurrences should start as planned unless that exact date has
-          // its own saved override. Otherwise marking one occurrence cleared
-          // makes every generated occurrence look cleared.
-          status: "planned",
-          generated:true
-        }, originalISO, occurrenceISO);
-        generatedOccurrence = applyPlanningRecurringRoute(tx, generatedOccurrence, originalISO);
+        // Original recurrence dates are chronological, so once the series end
+        // date is exceeded there can be no later valid generated occurrence.
+        if(!recurrenceOriginalDateAllowed(tx, originalISO)) break;
+
+        const generatedOccurrence = materializeRecurrenceOccurrence(tx, originalISO, {routeSource:tx});
         // Look-ahead exists only to discover occurrences whose effective date
         // moved backward. Do not leak ordinary future occurrences past the
         // caller's requested cutoff.
@@ -9959,50 +9987,6 @@ window.deleteUnusedCategory=deleteUnusedCategory;
 
 
 
-function recurrenceOccursOn(tx, cursor, start){
-  const r = tx.recurrence || (tx.repeat ? { type:"monthly", interval:1 } : { type:"none", interval:1 });
-  if(!r || r.type === "none") return sameDay(cursor, start);
-
-  if(cursor < start) return false;
-
-  if(r.type === "weekly"){
-    const interval = Number(r.interval || 1);
-    return cursor.getDay() === Number(r.weekday ?? start.getDay()) && daysBetween(start, cursor) % (interval * 7) === 0;
-  }
-
-  if(r.type === "biweekly"){
-    return cursor.getDay() === start.getDay() && daysBetween(start, cursor) % 14 === 0;
-  }
-
-  if(r.type === "monthly"){
-    const interval = Number(r.interval || 1);
-    return cursor.getDate() === monthlyTargetDay(start, cursor) && monthDiff(start, cursor) % interval === 0;
-  }
-
-  if(r.type === "last-day-month"){
-    const interval = Number(r.interval || 1);
-    return cursor.getDate() === endOfMonth(cursor).getDate() && monthDiff(start, cursor) % interval === 0;
-  }
-
-  if(r.type === "yearly"){
-    const interval = Number(r.interval || 1);
-    return cursor.getMonth() === start.getMonth() && cursor.getDate() === start.getDate() && ((cursor.getFullYear() - start.getFullYear()) % interval === 0);
-  }
-
-  if(r.type === "every-x-days"){
-    const interval = Number(r.interval || 1);
-    return daysBetween(start, cursor) % interval === 0;
-  }
-
-  if(r.type === "nth-weekday"){
-    const interval = Number(r.interval || 1);
-    const nth = nthWeekdayOfMonth(cursor.getFullYear(), cursor.getMonth(), r.weekday ?? start.getDay(), r.ordinal || 1);
-    return !!(nth && sameDay(cursor, nth) && monthDiff(start, cursor) % interval === 0);
-  }
-
-  return false;
-}
-
 
 function billLooseTitle(value){
   return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
@@ -10087,25 +10071,12 @@ function billOccurrenceInfo(tx){
     while(cursor <= horizon){
       if(recurrenceOccursOn(tx, cursor, start)){
         const originalISO = toISO(cursor);
-        if(tx.recurrenceUntil && originalISO > tx.recurrenceUntil){
+        if(!recurrenceOriginalDateAllowed(tx, originalISO)){
           cursor = addDays(cursor, 1);
           continue;
         }
 
-        const moved = occurrenceDateFor(tx, cursor);
-        if(moved === RECURRENCE_SKIP_DATE || isSkippedOccurrenceDate(tx.dateOverrides?.[originalISO])){
-          cursor = addDays(cursor, 1);
-          continue;
-        }
-
-        const occurrence = applyOccurrenceOverride({
-          ...tx,
-          id: originalISO === tx.date ? tx.id : `${tx.id}-${originalISO}`,
-          originalId: tx.id,
-          status: originalISO === tx.date ? tx.status : "planned",
-          generated: originalISO !== tx.date
-        }, originalISO, moved);
-
+        const occurrence = materializeRecurrenceOccurrence(tx, originalISO, {routeSource:tx});
         if(occurrence){
           const looseMatch = occurrence.status === "cleared"
             ? null
@@ -10176,11 +10147,9 @@ function latestBillOccurrenceDate(tx){
     while(cursor <= today){
       if(recurrenceOccursOn(tx, cursor, start)){
         const originalISO = toISO(cursor);
-        if(!tx.recurrenceUntil || originalISO <= tx.recurrenceUntil){
-          const moved = occurrenceDateFor(tx, cursor);
-          if(moved !== RECURRENCE_SKIP_DATE && !isSkippedOccurrenceDate(tx.dateOverrides?.[originalISO]) && moved <= todayISOValue){
-            latest = moved;
-          }
+        const occurrence = materializeRecurrenceOccurrence(tx, originalISO, {routeSource:tx});
+        if(occurrence && occurrence.date <= todayISOValue){
+          latest = occurrence.date;
         }
       }
       cursor = addDays(cursor, 1);
@@ -12409,6 +12378,45 @@ function runMoneyNestRegressionTests(options={}){
       return "Calendar +$60 matches account projection; ending $160";
     }));
 
+    results.push(regressionResult("Canonical recurrence cadence covers monthly/yearly/nth patterns",()=>{
+      const ds=regressionDataset({
+        accounts:[{id:"joint",name:"Joint",owner:"Joint",type:"cash",startingBalance:0}],
+        transactions:[
+          {id:"month-end",date:"2027-01-31",title:"Month end",amount:1,type:"expense",status:"planned",accountId:"joint",categoryId:"utilities",recurrence:{type:"monthly",interval:1,weekendHandling:"none"},occurrenceOverrides:{},dateOverrides:{}},
+          {id:"yearly",date:"2027-02-15",title:"Yearly",amount:1,type:"expense",status:"planned",accountId:"joint",categoryId:"utilities",recurrence:{type:"yearly",interval:1,weekendHandling:"none"},occurrenceOverrides:{},dateOverrides:{}},
+          {id:"nth",date:"2027-01-12",title:"Second Tuesday",amount:1,type:"expense",status:"planned",accountId:"joint",categoryId:"utilities",recurrence:{type:"nth-weekday",interval:1,weekday:2,ordinal:2,weekendHandling:"none"},occurrenceOverrides:{},dateOverrides:{}}
+        ]
+      });
+      setSynthetic(ds,false);
+      const throughMarch=expandedTransactions("2027-03-31");
+      const monthDates=throughMarch.filter(tx=>(tx.originalId||tx.id)==="month-end").map(tx=>tx.date);
+      const nthDates=throughMarch.filter(tx=>(tx.originalId||tx.id)==="nth").map(tx=>tx.date);
+      const yearlyDates=expandedTransactions("2028-02-15").filter(tx=>(tx.originalId||tx.id)==="yearly").map(tx=>tx.date);
+      regressionAssert(JSON.stringify(monthDates)==='["2027-01-31","2027-02-28","2027-03-31"]',`Monthly dates drifted: ${monthDates.join(", ")}`);
+      regressionAssert(JSON.stringify(nthDates)==='["2027-01-12","2027-02-09","2027-03-09"]',`Nth-weekday dates drifted: ${nthDates.join(", ")}`);
+      regressionAssert(JSON.stringify(yearlyDates)==='["2027-02-15","2028-02-15"]',`Yearly dates drifted: ${yearlyDates.join(", ")}`);
+      return "31st fallback + yearly + second-Tuesday cadence agree";
+    }));
+
+    results.push(regressionResult("Recurrence materializer shares weekend/override/delete behavior",()=>{
+      const ds=regressionDataset({
+        accounts:[{id:"joint",name:"Joint",owner:"Joint",type:"cash",startingBalance:0}],
+        transactions:[
+          {id:"moved",date:"2027-01-31",title:"Moved",amount:1,type:"expense",status:"planned",accountId:"joint",categoryId:"utilities",recurrence:{type:"monthly",interval:1,weekendHandling:"previous-friday"},occurrenceOverrides:{"2027-02-28":{deleted:true}},dateOverrides:{"2027-03-31":"2027-03-30"}},
+          {id:"lookahead",date:"2027-01-01",title:"Look ahead",amount:1,type:"expense",status:"planned",accountId:"joint",categoryId:"utilities",recurrence:{type:"monthly",interval:1,weekendHandling:"none"},occurrenceOverrides:{},dateOverrides:{"2027-04-01":"2027-03-30"}}
+        ]
+      });
+      setSynthetic(ds,false);
+      const rows=expandedTransactions("2027-03-31");
+      const moved=rows.filter(tx=>(tx.originalId||tx.id)==="moved").map(tx=>`${tx.originalDate}:${tx.date}`);
+      regressionAssert(moved.includes("2027-01-31:2027-01-29"),`Weekend move missing: ${moved.join(", ")}`);
+      regressionAssert(!moved.some(value=>value.startsWith("2027-02-28:")),`Deleted Feb occurrence leaked: ${moved.join(", ")}`);
+      regressionAssert(moved.includes("2027-03-31:2027-03-30"),`Date override missing: ${moved.join(", ")}`);
+      const early=rows.find(tx=>(tx.originalId||tx.id)==="lookahead"&&tx.originalDate==="2027-04-01");
+      regressionAssert(early?.date==="2027-03-30",`Moved-earlier look-ahead missing: ${early?.date||"not found"}`);
+      return "Weekend move + delete + date override + moved-earlier look-ahead agree";
+    }));
+
     results.push(regressionResult("Recurring end dates stop future occurrences",()=>{
       const ds=regressionDataset({
         accounts:[{id:"joint",name:"Joint",owner:"Joint",type:"cash",startingBalance:0}],
@@ -12667,3 +12675,4 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 // v2-300: Planning recurring transfers retain both cash-account sides during expansion/projection; future auto-paychecks regenerate from scenario paycheck profiles, which are editable in Plan settings.
 
 // v2-305: Cash-account projection uses one post-expansion account-perspective path across Calendar, ledgers, and balance math; regression coverage includes Calendar/account cash-effect parity.
+// v2-306: Recurrence cadence matching and concrete occurrence materialization are centralized; expanded projections and Bills share weekend/override/delete/end-date semantics.

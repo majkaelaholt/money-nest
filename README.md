@@ -1,5 +1,16 @@
 # Money Nest
 
+## v2-306
+
+### Stabilization: canonical recurrence engine
+
+- Centralized recurrence cadence matching in `recurrenceOccursOn()` / `recurrenceRuleFor()` so weekly, biweekly, monthly, last-day-month, yearly, every-X-days, and nth-weekday schedules no longer maintain a second copy of cadence math inside `expandedTransactions()`.
+- Added `materializeRecurrenceOccurrence()` as the shared concrete-occurrence path for weekend movement, explicit date overrides, deleted occurrence overrides, recurrence end dates, and Planning transfer-route repair.
+- `expandedTransactions()`, Bills next/due logic, and latest-bill-occurrence logic now materialize occurrences through that shared path instead of independently applying overrides/weekend rules.
+- Preserved the v2-291 moved-earlier look-ahead behavior, v2-302 DST-safe calendar-day math, v2-301/v2-305 transfer/account perspective behavior, archived-bill behavior, and cleared historical occurrence overrides.
+- Added two recurrence regression checks: cadence parity across 31st-of-month/yearly/nth-weekday schedules, plus shared weekend/date-override/delete/moved-earlier behavior. Regression suite is now 9 checks.
+- No JSON/CSV/schema migration was required. Schema remains 225 and storage key remains `moneyNest.v2.113`.
+
 ## v2-305
 
 ### Stabilization: one canonical cash-account projection path
