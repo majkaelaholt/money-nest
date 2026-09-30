@@ -2669,17 +2669,8 @@ button:disabled{
   .row-title{font-size:14px}
   .amount{font-size:14px}
   .cards-4,.split,.debt-grid{grid-template-columns:1fr}
-  .account-card{
-    grid-template-columns:1fr;
-    gap:8px;
-    padding:11px;
-    border-radius:16px;
-  }
-  .account-card .amount{text-align:left}
-  .account-reorder-actions{justify-content:flex-start}
-  .debt-company{padding:10px;border-radius:14px}
   .debt-group{padding:11px;border-radius:16px}
-  .debt-row,.utilization-card,.util-sim-card{padding:11px;border-radius:15px}
+  .debt-row,.util-sim-card{padding:11px;border-radius:15px}
   .ledger-row{
     grid-template-columns:1fr;
     gap:5px;
@@ -3180,146 +3171,13 @@ button:disabled{
     scroll-margin-top:164px !important;
   }
 
-  /* Accounts: remove the extra action row height and tighten metrics. */
-  .account-list{gap:8px !important;}
-  .account-card{
-    position:relative !important;
-    grid-template-columns:repeat(3,minmax(0,1fr)) !important;
-    gap:5px 8px !important;
-    padding:9px 10px !important;
-    min-height:0 !important;
-  }
-  .account-card > div:first-child{
-    grid-column:1 / -1 !important;
-    padding-right:116px !important;
-  }
-  .account-card .row-title{
-    font-size:15px !important;
-    line-height:1.05 !important;
-  }
-  .account-card .row-sub{
-    font-size:10px !important;
-    line-height:1.12 !important;
-  }
-  .account-card .label{
-    font-size:9px !important;
-    line-height:1.05 !important;
-    letter-spacing:.14em !important;
-  }
-  .account-card .amount{
-    font-size:15px !important;
-    line-height:1.02 !important;
-    margin-top:1px !important;
-  }
-  .account-card .account-reorder-actions{
-    position:absolute !important;
-    top:8px !important;
-    right:8px !important;
-    grid-column:auto !important;
-    padding:0 !important;
-    gap:4px !important;
-  }
-  .account-card .account-reorder-actions .tiny{
-    width:26px !important;
-    min-width:26px !important;
-    height:26px !important;
-    min-height:26px !important;
-    font-size:13px !important;
-  }
-  .account-card .account-reorder-actions .small{
-    min-height:26px !important;
-    padding:4px 9px !important;
-    font-size:11px !important;
-  }
-
-  /* Debts: compact utilization cards and debt rows into mobile-friendly grids. */
-  .credit-util-summary{
-    padding:10px !important;
-    border-radius:17px !important;
-  }
-  .credit-util-summary .panel-head{
-    margin-bottom:7px !important;
-  }
-  .credit-util-summary .hint{
-    font-size:10px !important;
-    line-height:1.18 !important;
-  }
-  .utilization-grid{
-    gap:8px !important;
-  }
-  .utilization-card{
-    grid-template-columns:1fr 1fr !important;
-    gap:7px 10px !important;
-    padding:9px 10px !important;
-    border-radius:14px !important;
-    align-items:start !important;
-  }
-  .utilization-card > div:first-child{
-    grid-column:1 / -1 !important;
-    display:grid !important;
-    grid-template-columns:1fr auto !important;
-    gap:8px !important;
-    align-items:center !important;
-  }
-  .utilization-card .row-title{
-    font-size:14px !important;
-  }
-  .utilization-card .amount{
-    font-size:17px !important;
-  }
-  .utilization-card .label{
-    font-size:9px !important;
-    line-height:1.05 !important;
-  }
-  .debt-account-card{
-    grid-template-columns:1fr 1fr !important;
-    gap:7px 10px !important;
-    padding:9px 10px !important;
-    border-radius:14px !important;
-    align-items:start !important;
-  }
-  .debt-account-card > div:first-child{
-    grid-column:1 / -1 !important;
-  }
-  .debt-account-card .row-title{
-    font-size:14px !important;
-    line-height:1.08 !important;
-  }
-  .debt-account-card .row-sub{
-    font-size:10px !important;
-    line-height:1.18 !important;
-  }
-  .debt-account-card .label{
-    font-size:9px !important;
-    line-height:1.05 !important;
-    letter-spacing:.13em !important;
-  }
-  .debt-account-card .amount{
-    font-size:15px !important;
-    line-height:1.05 !important;
-  }
-  .debt-status-pill{
-    padding:4px 8px !important;
-    font-size:10px !important;
-  }
-  .debt-type-section{
-    padding:10px !important;
-    border-radius:16px !important;
-  }
-  .debt-type-summary{
-    gap:8px !important;
-  }
-  .debt-type-summary-actions{
-    gap:5px !important;
-  }
+  /* Accounts/debts mobile compaction consolidated into the canonical v2-245 Accounts block (v2-313). */
 }
 
 @media(max-width:390px){
   body.money-nest-view-calendar #calendar.view.active{padding-top:148px !important;}
   body.money-nest-view-calendar #calendar .calendar-toolbar.calendar-toolbar-local,
   body.money-nest-view-calendar #calendar .calendar-toolbar{top:52px !important;}
-  .account-card > div:first-child{padding-right:104px !important;}
-  .account-card .account-reorder-actions .small{padding:4px 7px !important;}
 }
 
 /* v2-174 iPhone calendar/header de-sticky + shared card compaction */
@@ -5390,7 +5248,7 @@ button.budget-review-row:hover,button.budget-review-row:focus-visible{
 }
 
 
-/* v2-245: overhaul pass 3 — calmer Accounts + touch refinement */
+/* v2-245/v2-313: calmer Accounts + canonicalized mobile account/debt compaction */
 #accounts .account-section-head{align-items:center}
 #accounts .account-head-actions{justify-content:flex-end}
 #toggleAccountReorderBtn.active{
@@ -5622,6 +5480,35 @@ button.budget-review-row:hover,button.budget-review-row:focus-visible{
   .detail-more-actions>summary{min-width:68px;padding-left:9px;padding-right:9px}
   .detail-more-menu{right:0;min-width:min(220px,calc(100vw - 32px))}
 }
+@media(max-width:700px){
+  /* v2-313: preserve the effective legacy iPhone account/debt compaction in one scoped layer. */
+  #accounts .account-card{position:relative!important;min-height:0!important;align-items:start!important}
+  #accounts .account-card-main{grid-column:1 / -1!important}
+  #accounts .account-card .row-title{line-height:1.05!important}
+  #accounts .account-card-main .row-sub{font-size:10px!important;line-height:1.12!important}
+  #accounts .account-card .label{line-height:1.05!important;letter-spacing:.14em!important}
+  #accounts .account-card .amount{line-height:1.02!important;margin-top:1px!important;text-align:left}
+  #accounts .account-card .account-metric .row-sub{line-height:1.12!important}
+  #accounts .account-card.is-arranging .account-reorder-actions{top:8px;right:8px;grid-column:auto!important;justify-content:flex-end;gap:4px!important;padding-top:2px}
+  #accounts .credit-util-summary{border-radius:17px!important}
+  #accounts .credit-util-summary .panel-head{margin-bottom:7px!important}
+  #accounts .credit-util-summary .hint{font-size:10px!important;line-height:1.18!important}
+  #accounts .utilization-grid{gap:8px!important}
+  #accounts .utilization-card{padding:9px 10px!important;align-items:start!important}
+  #accounts .utilization-card>div:first-child{grid-column:1 / -1!important;display:grid!important;grid-template-columns:1fr auto!important;gap:8px!important;align-items:center!important}
+  #accounts .utilization-card .row-title{font-size:14px!important}
+  #accounts .utilization-card .amount{font-size:17px!important}
+  #accounts .utilization-card .label{font-size:9px!important;line-height:1.05!important}
+  #accounts .debt-type-section{padding:10px!important;border-radius:16px!important}
+  #accounts .debt-type-summary{gap:8px!important}
+  #accounts .debt-type-summary-actions{gap:5px!important}
+  #accounts .debt-account-card{align-items:start!important}
+  #accounts .debt-card-main{grid-column:1 / -1!important}
+  #accounts .debt-card-main .row-title{line-height:1.08!important}
+  #accounts .debt-card-main .row-sub,#accounts .debt-card-metric .row-sub{line-height:1.18!important}
+  #accounts .debt-card-metric .label,#accounts .debt-card-status .label{line-height:1.05!important;letter-spacing:.13em!important}
+  #accounts .debt-card-metric .amount{line-height:1.05!important}
+}
 @media(max-width:430px){
   #accounts .panel-head{gap:8px}
   #accounts .account-head-actions .small{padding:7px 9px;font-size:11px}
@@ -5644,6 +5531,9 @@ button.budget-review-row:hover,button.budget-review-row:focus-visible{
   .detail-more-actions{grid-column:1/-1}
   .detail-more-actions>summary{width:100%;box-sizing:border-box}
   .detail-more-menu{left:0;right:auto;width:100%;box-sizing:border-box}
+}
+@media(max-width:390px){
+  #accounts .account-card.is-arranging .account-reorder-actions .small{padding:4px 7px!important}
 }
 
 /* iPad: keep quick actions accessible, but make the floating pair read as one quiet control. */

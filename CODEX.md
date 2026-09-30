@@ -161,7 +161,14 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-312`
+Latest known version: `money-nest-v2-313`
+
+### v2-313 Accounts CSS consolidation guardrails
+
+- Accounts/debt iPhone compaction now has one scoped late layer under the v2-245/v2-313 Accounts section. Do not reintroduce the old unscoped v2-168/v2-173 account-card/debt-card mobile overrides.
+- Preserve current cash-account row, credit-utilization, debt-group/card, and account/debt detail layouts across desktop, tablet, iPhone, and iPad unless a visual change is explicitly requested.
+- Continue CSS cleanup by proving cascade parity first, then deleting superseded declarations; avoid broad selector rewrites.
+- No schema/data changes. Schema remains 226; storage key remains `moneyNest.v2.113`; regression suite remains 14 checks.
 
 ### v2-312 CSS consolidation guardrails
 

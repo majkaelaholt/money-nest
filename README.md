@@ -1,5 +1,16 @@
 # Money Nest
 
+## v2-313
+
+### Stabilization: Accounts CSS consolidation pass 2
+
+- Consolidated the effective iPhone Accounts/debt compaction rules into the later scoped Accounts styling instead of leaving the same behavior split across the old v2-168/v2-173 mobile layers and the v2-245 overhaul layer.
+- Preserved the existing desktop/tablet/iPhone visual result for cash account rows, utilization cards, debt groups/cards, and the account/debt detail header controls. No intentional redesign.
+- Removed superseded legacy Accounts/debt declarations from the older mobile blocks while keeping shared non-Accounts mobile rules intact.
+- Stylesheet shrank from 7,833 to 7,723 lines and `!important` usage dropped from 1,065 to 1,032.
+- Static cascade-parity checks across representative widths (1200, 1000, 900, 760, 701, 700, 640, 520, 430, 391, 390, and 375px) found no winning-declaration differences for the targeted Accounts/debt/detail samples.
+- No saved-data, JSON/CSV, finance-calculation, or schema changes. Schema remains **226**, storage key remains `moneyNest.v2.113`, and the regression suite remains 14 checks.
+
 ## v2-312
 
 ### Stabilization: Calendar CSS consolidation pass 1
