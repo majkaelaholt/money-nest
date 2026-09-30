@@ -1,3 +1,7 @@
+## v2-317
+
+Maintenance follow-up: Recent Changes is now capped by bytes instead of only item count, so full-data undo snapshots cannot multiply browser storage. Existing oversized history is compacted on startup, and Maintenance offers Compact/Clear actions. Historical transactions that still point to debt records deleted before debt archiving existed can now be explicitly resolved: the dead active pointer is cleared while the original removed-debt ID is preserved as `legacyDebtRefs` metadata. Transaction cash effects and history remain unchanged. Data schema 227 adds normalized legacy debt-reference metadata; transaction CSV backup/import preserves it. Regression coverage expands to 20 checks.
+
 # Money Nest
 
 ## v2-316

@@ -1,3 +1,9 @@
+## v2-317 maintenance rules
+
+- Recent Changes/undo storage is browser-local convenience data and must stay byte-capped (`CHANGE_HISTORY_MAX_BYTES`) so it cannot crowd out the primary finance blob. Preserve the newest full undo snapshot when it fits; older entries may degrade to storage-limited breadcrumbs.
+- Pre-archive missing debt references are resolved only by explicit user action. Move each dead `linkedDebtId`/`debtAccountId` into normalized `legacyDebtRefs` metadata, then clear the active pointer. Never invent debt metadata or alter transaction amount/date/category/notes/cash effect.
+- Transaction JSON and CSV must preserve `legacyDebtRefs`. Schema 227 remains backward-compatible with older backups, which normalize missing legacy metadata to an empty array.
+
 # CODEX
 
 ## v2-316 final stabilization baseline
@@ -173,7 +179,7 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-316`
+Latest known version: `money-nest-v2-317`
 
 ### v2-315 Settings + shared controls/forms CSS consolidation guardrails
 

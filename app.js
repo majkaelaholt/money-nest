@@ -1,6 +1,6 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-316";
-const CURRENT_SCHEMA_VERSION = 226;
+const APP_VERSION = "2-317";
+const CURRENT_SCHEMA_VERSION = 227;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
 // v2-239: reliably detect iPad/tablet Safari and touch-capable layouts.
@@ -470,6 +470,11 @@ let startupLocalLoadIssue = "";
 let calendarMode = "real";
 let planningScenarioId = "";
 const CHANGE_HISTORY_KEY = `${STORAGE_KEY}.changeHistory`;
+// v2-317: Recent Changes is useful, but full-data undo snapshots can be almost as
+// large as the finance blob itself. Keep a conservative byte budget so undo
+// history can never quietly consume several browser-storage copies of Money Nest.
+const CHANGE_HISTORY_MAX_BYTES = Math.floor(2.25 * 1024 * 1024);
+const CHANGE_HISTORY_MAX_ITEMS = 5;
 let suppressChangeHistory = false;
 let lastLocalSaveError = "";
 
@@ -859,6 +864,10 @@ const SPENDING_BUCKET_IDS = ["mak-spending", "ty-spending"];
 // v2-219/v2-289: load saved data only after every startup normalization constant exists.
 data = loadData();
 rootData = data;
+// v2-317 one-time/ongoing hygiene: older builds could keep up to five full
+// finance snapshots in Recent Changes. Compact that browser-only history on
+// startup before it can keep a healthy primary dataset above a localStorage cap.
+compactExistingChangeHistoryStorage();
 
 function normalizeCategoryId(id){
   return id || "unassigned";
@@ -1262,6 +1271,22 @@ function defaultLoanForecastHistoryForDebt(debt){
 }
 
 
+function normalizeLegacyDebtRefs(value){
+  if(!Array.isArray(value)) return [];
+  const seen=new Set();
+  return value.map(ref=>({
+    field:ref?.field === "debtAccountId" ? "debtAccountId" : "linkedDebtId",
+    debtId:String(ref?.debtId || ""),
+    resolvedAt:String(ref?.resolvedAt || "")
+  })).filter(ref=>{
+    if(!ref.debtId) return false;
+    const key=`${ref.field}:${ref.debtId}`;
+    if(seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function normalizePlanningScenarioDataset(rawDataset, scenarioMeta={}, root=null){
   const source = rawDataset && typeof rawDataset === "object" ? rawDataset : {};
   const fallbackRoot = root && typeof root === "object" ? root : {};
@@ -1287,6 +1312,7 @@ function normalizePlanningScenarioDataset(rawDataset, scenarioMeta={}, root=null
     debtAccountId:tx?.debtAccountId || "",
     transferToAccountId:tx?.transferToAccountId || "",
     linkedDebtId:tx?.linkedDebtId || "",
+    ...(normalizeLegacyDebtRefs(tx?.legacyDebtRefs).length ? {legacyDebtRefs:normalizeLegacyDebtRefs(tx?.legacyDebtRefs)} : {}),
     categoryId:tx?.categoryId || "unassigned",
     spendingBucketId:normalizedSpendingBucketId(tx?.spendingBucketId),
     recurrence:{
@@ -1371,6 +1397,9 @@ function normalizeData(raw){
     if(tx.debtAccountId === undefined) tx.debtAccountId = "";
     tx.spendingBucketId = normalizedSpendingBucketId(tx.spendingBucketId);
     if(tx.linkedDebtId === undefined) tx.linkedDebtId = "";
+    const legacyDebtRefs=normalizeLegacyDebtRefs(tx.legacyDebtRefs);
+    if(legacyDebtRefs.length) tx.legacyDebtRefs=legacyDebtRefs;
+    else delete tx.legacyDebtRefs;
     if(tx.transferToAccountId === undefined) tx.transferToAccountId = "";
     tx.pendingReimbursement = tx.pendingReimbursement === true || String(tx.pendingReimbursement).toLowerCase() === "true";
     if(tx.reimbursementToAccountId === undefined) tx.reimbursementToAccountId = tx.pendingReimbursement ? (tx.transferToAccountId || "") : "";
@@ -1587,31 +1616,65 @@ function loadChangeHistory(){
   try{ return JSON.parse(localStorage.getItem(CHANGE_HISTORY_KEY) || "[]"); }
   catch(err){ return []; }
 }
-function saveChangeHistory(history){
-  // Recent Changes stores full before-snapshots so Undo can work. On iPhone/Safari,
-  // localStorage can fill up quickly, so save fewer items before giving up instead of
-  // silently letting history get stale.
-  const normalized = (history || []).filter(Boolean);
-  const attempts = [5, 3, 1];
-  for(const limit of attempts){
-    try{
-      localStorage.setItem(CHANGE_HISTORY_KEY, JSON.stringify(normalized.slice(0, limit)));
+function changeHistoryBreadcrumb(item){
+  return {
+    id:item?.id || uid(),
+    at:item?.at || new Date().toISOString(),
+    label:item?.label || "Changed Money Nest data",
+    storageLimited:true
+  };
+}
+function compactChangeHistoryForStorage(history,maxBytes=CHANGE_HISTORY_MAX_BYTES){
+  const normalized=(history || []).filter(Boolean).slice(0,CHANGE_HISTORY_MAX_ITEMS);
+  const compacted=[];
+  normalized.forEach(item=>{
+    const fullCandidate=[...compacted,item];
+    if(storageTextBytes(JSON.stringify(fullCandidate))<=maxBytes){
+      compacted.push(item);
       return;
-    } catch(err){
-      if(limit === attempts[attempts.length - 1]) console.warn("Could not save undoable change history", err);
     }
-  }
-  // Last-resort: keep a tiny non-undoable breadcrumb so the list still reflects
-  // that a change happened, even if storage is too tight for restore snapshots.
+    // Preserve the visible audit breadcrumb even when another full undo snapshot
+    // would exceed the byte budget. The newest snapshot therefore gets first
+    // claim on undo capacity and older entries gracefully become read-only.
+    const breadcrumb=changeHistoryBreadcrumb(item);
+    const breadcrumbCandidate=[...compacted,breadcrumb];
+    if(storageTextBytes(JSON.stringify(breadcrumbCandidate))<=maxBytes) compacted.push(breadcrumb);
+  });
+  return compacted;
+}
+function saveChangeHistory(history){
+  const compacted=compactChangeHistoryForStorage(history);
   try{
-    const tiny = normalized.slice(0, 5).map(item=>({
-      id:item.id || uid(),
-      at:item.at || new Date().toISOString(),
-      label:item.label || "Changed Money Nest data",
-      storageLimited:true
-    }));
-    localStorage.setItem(CHANGE_HISTORY_KEY, JSON.stringify(tiny));
-  } catch(err){}
+    writeStorageVerified(localStorage,CHANGE_HISTORY_KEY,JSON.stringify(compacted));
+    return compacted;
+  } catch(err){
+    console.warn("Could not save byte-capped undoable change history",err);
+  }
+  // Last-resort: keep only tiny non-undoable breadcrumbs. Primary finance data
+  // always has priority over browser-local undo convenience.
+  try{
+    const tiny=(history || []).filter(Boolean).slice(0,CHANGE_HISTORY_MAX_ITEMS).map(changeHistoryBreadcrumb);
+    writeStorageVerified(localStorage,CHANGE_HISTORY_KEY,JSON.stringify(tiny));
+    return tiny;
+  } catch(err){
+    try{ localStorage.removeItem(CHANGE_HISTORY_KEY); }catch(removeErr){}
+    return [];
+  }
+}
+function compactExistingChangeHistoryStorage(){
+  try{
+    const raw=localStorage.getItem(CHANGE_HISTORY_KEY) || "";
+    if(!raw) return {beforeBytes:0,afterBytes:0,changed:false};
+    const history=loadChangeHistory();
+    const beforeBytes=storageTextBytes(raw);
+    const compacted=compactChangeHistoryForStorage(history);
+    const nextRaw=JSON.stringify(compacted);
+    if(raw!==nextRaw) writeStorageVerified(localStorage,CHANGE_HISTORY_KEY,nextRaw);
+    return {beforeBytes,afterBytes:storageTextBytes(nextRaw),changed:raw!==nextRaw};
+  }catch(err){
+    console.warn("Could not compact existing Recent Changes storage",err);
+    return {beforeBytes:0,afterBytes:0,changed:false,error:err?.message||String(err)};
+  }
 }
 
 function snapshotCategoryLabel(snapshot, categoryId){
@@ -7424,8 +7487,18 @@ function clearChangeHistory(){
   if(!confirm("Clear recent change history? This does not change your Money Nest data.")) return;
   saveChangeHistory([]);
   renderRecentChanges();
+  try{ renderMaintenanceCenter(); }catch(err){}
 }
 window.clearChangeHistory = clearChangeHistory;
+function compactRecentChangesStorage(){
+  const before=moneyNestLocalStorageSnapshot().historyBytes;
+  const saved=saveChangeHistory(loadChangeHistory());
+  const after=moneyNestLocalStorageSnapshot().historyBytes;
+  renderRecentChanges();
+  try{ renderMaintenanceCenter(); }catch(err){}
+  alert(`Recent Changes storage compacted from ${formatDataSize(before)} to ${formatDataSize(after)}. ${saved.filter(item=>item.before && !item.storageLimited).length ? "Your newest undo snapshot was preserved." : "No full undo snapshot fit inside the safety budget; visible history breadcrumbs were kept where possible."}`);
+}
+window.compactRecentChangesStorage=compactRecentChangesStorage;
 
 
 function renderDropdownDefaultsSettings(){
@@ -11775,7 +11848,7 @@ function exportEditableCSVs(){
   }));
 
   const txHeaders = [
-    "id","date","title","amount","type","status","accountId","debtAccountId","categoryId","spendingBucketId","transferToAccountId","linkedDebtId",
+    "id","date","title","amount","type","status","accountId","debtAccountId","categoryId","spendingBucketId","transferToAccountId","linkedDebtId","legacyDebtRefsJSON",
     "pendingReimbursement","reimbursementToAccountId",
     "loanPrincipalAmount","loanInterestAmount","loanFeeAmount","loanBalanceAdjustment",
     "autoPaycheck","autoMakPaycheck","paycheckHoursOverride","autoPaycheckInfoJSON",
@@ -11784,7 +11857,7 @@ function exportEditableCSVs(){
   const txRows = data.transactions.map(tx=>({
     id:tx.id, date:tx.date, title:tx.title, amount:tx.amount, type:tx.type, status:tx.status,
     accountId:tx.accountId || "", debtAccountId:tx.debtAccountId || "", categoryId:tx.categoryId || "", spendingBucketId:effectiveTransactionSpendingBucketId(tx),
-    transferToAccountId:tx.transferToAccountId || "", linkedDebtId:tx.linkedDebtId || "",
+    transferToAccountId:tx.transferToAccountId || "", linkedDebtId:tx.linkedDebtId || "", legacyDebtRefsJSON:JSON.stringify(normalizeLegacyDebtRefs(tx.legacyDebtRefs)),
     pendingReimbursement:!!tx.pendingReimbursement, reimbursementToAccountId:tx.reimbursementToAccountId || "",
     loanPrincipalAmount:tx.loanPrincipalAmount ?? "", loanInterestAmount:tx.loanInterestAmount ?? "", loanFeeAmount:tx.loanFeeAmount ?? "", loanBalanceAdjustment:tx.loanBalanceAdjustment ?? "",
     autoPaycheck:!!tx.autoPaycheck, autoMakPaycheck:!!tx.autoMakPaycheck, paycheckHoursOverride:tx.paycheckHoursOverride ?? "", autoPaycheckInfoJSON: JSON.stringify(tx.autoPaycheckInfo || {}),
@@ -12011,6 +12084,10 @@ function importEditedCSV(file){
         tx.spendingBucketId = row.spendingBucketId === undefined ? normalizedSpendingBucketId(tx.spendingBucketId) : normalizedSpendingBucketId(row.spendingBucketId);
         tx.transferToAccountId = row.transferToAccountId || "";
         tx.linkedDebtId = row.linkedDebtId || "";
+        if(row.legacyDebtRefsJSON !== undefined){
+          try{ tx.legacyDebtRefs = normalizeLegacyDebtRefs(JSON.parse(row.legacyDebtRefsJSON || "[]")); }
+          catch(err){ tx.legacyDebtRefs = normalizeLegacyDebtRefs(tx.legacyDebtRefs); }
+        }
         tx.pendingReimbursement = row.pendingReimbursement === undefined ? !!tx.pendingReimbursement : String(row.pendingReimbursement).toLowerCase() === "true";
         tx.reimbursementToAccountId = row.reimbursementToAccountId === undefined ? (tx.reimbursementToAccountId || "") : (row.reimbursementToAccountId || "");
         tx.loanPrincipalAmount = row.loanPrincipalAmount === undefined || row.loanPrincipalAmount === "" ? (tx.loanPrincipalAmount ?? "") : Number(row.loanPrincipalAmount);
@@ -12404,6 +12481,56 @@ function templateUsageStatsAgainstData(rawTemplate, txs){
   const t=normalizeTransactionTemplate(rawTemplate,{legacySafe:false});
   return templateUsageStatsForTransactions(t,txs||[]);
 }
+function resolveHistoricalDebtLinksInDataset(dataset){
+  const target=dataset && typeof dataset === "object" ? dataset : {};
+  const debts=new Set((target.debts || []).map(d=>String(d?.id || "")).filter(Boolean));
+  const debtIds=new Set();
+  let links=0;
+  let transactions=0;
+  (target.transactions || []).forEach(tx=>{
+    let touched=false;
+    const refs=normalizeLegacyDebtRefs(tx?.legacyDebtRefs);
+    ["linkedDebtId","debtAccountId"].forEach(field=>{
+      const debtId=String(tx?.[field] || "");
+      if(!debtId || debts.has(debtId)) return;
+      if(!refs.some(ref=>ref.field===field && ref.debtId===debtId)){
+        refs.push({field,debtId,resolvedAt:new Date().toISOString()});
+      }
+      tx[field]="";
+      debtIds.add(debtId);
+      links+=1;
+      touched=true;
+    });
+    if(touched){
+      tx.legacyDebtRefs=normalizeLegacyDebtRefs(refs);
+      transactions+=1;
+    }
+  });
+  return {links,transactions,debtIds:[...debtIds]};
+}
+window.resolveHistoricalDebtLinksInDataset=resolveHistoricalDebtLinksInDataset;
+function resolveHistoricalDebtLinks(){
+  const scan=maintenanceDataScan();
+  if(!scan.historicalDebtLinks.length){ alert("There are no unresolved historical debt links to clean up."); return; }
+  const uniqueDebtIds=[...new Set(scan.historicalDebtLinks.map(item=>item.debtId))];
+  if(!confirm(`Resolve ${scan.historicalDebtLinks.length} old debt link${scan.historicalDebtLinks.length===1?"":"s"} across ${uniqueDebtIds.length} removed debt record${uniqueDebtIds.length===1?"":"s"}?\n\nMoney Nest will clear only the dead active debt pointer and preserve the original removed debt ID as legacy history metadata. Transaction dates, amounts, titles, categories, cash-account effects, and notes will not change.`)) return;
+  const root=moneyNestRootData();
+  const before=JSON.stringify(root.transactions || []);
+  const result=resolveHistoricalDebtLinksInDataset(root);
+  if(!result.links) return;
+  if(!saveData()){
+    root.transactions=JSON.parse(before);
+    if(rootData===root) rootData=root;
+    if(data===root) data=root;
+    invalidateExpandedTransactionsCache();
+    alert("The cleanup could not be saved, so Money Nest restored the transactions in this tab.");
+    return;
+  }
+  renderMaintenanceCenter();
+  alert(`Resolved ${result.links} historical debt link${result.links===1?"":"s"} across ${result.transactions} transaction${result.transactions===1?"":"s"}. The original removed-debt IDs are still preserved inside the JSON as legacy history metadata.`);
+}
+window.resolveHistoricalDebtLinks=resolveHistoricalDebtLinks;
+
 function maintenanceDataScan(){
   const root=moneyNestRootData();
   const transactions=Array.isArray(root.transactions)?root.transactions:[];
@@ -12528,7 +12655,7 @@ function renderMaintenanceCenter(){
   if(s.historicalDebtLinks.length){
     const uniqueDebtIds=[...new Set(s.historicalDebtLinks.map(x=>x.debtId))];
     const examples=s.historicalDebtLinks.slice(0,6).map(item=>`<div class="maintenance-row"><span><b>${escapeAttr(item.tx?.title||"Historical transaction")}</b><small>${escapeAttr(item.tx?.date||"")} • points to removed debt ${escapeAttr(item.debtId)}</small></span>${maintenanceTxReviewButton(item.tx)}</div>`).join("");
-    sections.push(`<div class="maintenance-section informational"><div class="maintenance-section-head"><div><b>Historical debt links</b><small>${s.historicalDebtLinks.length} transaction link${s.historicalDebtLinks.length===1?"":"s"} across ${uniqueDebtIds.length} permanently removed debt record${uniqueDebtIds.length===1?"":"s"}</small></div></div><p class="hint">These older links are left untouched. New paid/old debts can now be archived instead of deleted, which keeps their record available so future history does not become orphaned.</p>${examples}${s.historicalDebtLinks.length>6?`<small class="maintenance-more">+ ${s.historicalDebtLinks.length-6} more historical links</small>`:""}</div>`);
+    sections.push(`<div class="maintenance-section informational"><div class="maintenance-section-head"><div><b>Historical debt links</b><small>${s.historicalDebtLinks.length} transaction link${s.historicalDebtLinks.length===1?"":"s"} across ${uniqueDebtIds.length} permanently removed debt record${uniqueDebtIds.length===1?"":"s"}</small></div><button class="ghost small" type="button" onclick="resolveHistoricalDebtLinks()">Resolve old links</button></div><p class="hint">These are dead pointers to debt records that were deleted before archiving existed. Resolve converts the dead pointer into hidden legacy-history metadata, preserving the original removed-debt ID without changing the transaction amount, date, category, notes, or cash effect.</p>${examples}${s.historicalDebtLinks.length>6?`<small class="maintenance-more">+ ${s.historicalDebtLinks.length-6} more historical links</small>`:""}</div>`);
   }
   if(s.archivedDebtRecords.length){
     sections.push(`<div class="maintenance-section informational"><div class="maintenance-section-head"><div><b>Archived debts</b><small>${s.archivedDebtRecords.length} debt record${s.archivedDebtRecords.length===1?"":"s"} preserved outside active totals</small></div><button class="ghost small" type="button" onclick="setView('accounts')">Open Accounts</button></div><p class="hint">Archived records stay available to historical transactions and can be restored from the collapsed Archived debts section.</p></div>`);
@@ -12537,7 +12664,7 @@ function renderMaintenanceCenter(){
     sections.push(`<div class="maintenance-section"><div class="maintenance-section-head"><div><b>Template cleanup</b><small>${s.usefulAuto.length} useful learned • ${s.dormantAuto.length} dormant learned • ${s.junkAuto.length} junk candidate${s.junkAuto.length===1?"":"s"} • ${s.exactTemplateDuplicateCount} exact duplicate${s.exactTemplateDuplicateCount===1?"":"s"}</small></div><button class="ghost small" type="button" onclick="openTemplateMaintenance()">Manage templates</button></div><p class="hint">Learned shortcuts are now confidence-aware: useful repeated ones stay prominent, one-use learned shortcuts stay quiet during partial autocomplete, and suspicious short/numeric titles are excluded from normal suggestions. Nothing is deleted automatically.</p></div>`);
   }
   if(s.storageRatio>=0.5){
-    sections.push(`<div class="maintenance-section ${s.storageRatio>=0.75?"warning":""}"><div class="maintenance-section-head"><div><b>Storage growth</b><small>${formatDataSize(s.totalLocalStorageBytes)} total Money Nest local storage • ${formatDataSize(s.historyBytes)} Recent Changes history</small></div></div><p class="hint">The primary finance blob is ${formatDataSize(s.storageBytes)}. Money Nest now measures its full local footprint, verifies primary writes, and will sacrifice local undo history before allowing quota pressure to block the finance data itself. Keep JSON/cloud backups current; IndexedDB can remain a future migration if the full footprint actually approaches the browser limit.</p></div>`);
+    sections.push(`<div class="maintenance-section ${s.storageRatio>=0.75?"warning":""}"><div class="maintenance-section-head"><div><b>Storage growth</b><small>${formatDataSize(s.totalLocalStorageBytes)} total Money Nest local storage • ${formatDataSize(s.historyBytes)} Recent Changes history</small></div><div class="review-actions">${s.historyBytes?`<button class="ghost small" type="button" onclick="compactRecentChangesStorage()">Compact Recent Changes</button><button class="ghost small" type="button" onclick="clearChangeHistory()">Clear Recent Changes</button>`:""}</div></div><p class="hint">The primary finance blob is ${formatDataSize(s.storageBytes)}. Recent Changes is now capped at about ${formatDataSize(CHANGE_HISTORY_MAX_BYTES)} so older full-data undo snapshots cannot multiply your storage footprint. Compact preserves the newest undo snapshot when it fits; Clear removes browser-only undo history entirely and does not touch financial data or cloud/JSON backups.</p></div>`);
   }
   if(!sections.length){
     sections.push(`<div class="maintenance-section healthy"><b>✓ No obvious maintenance problems</b><p class="hint">No broken references, template clutter, or storage-pressure signals were found by this scan.</p></div>`);
@@ -12967,6 +13094,41 @@ function runMoneyNestRegressionTests(options={}){
       return "Real root stays primary; planning sandbox remains nested and cloned";
     }));
 
+    results.push(regressionResult("Recent Changes byte cap prevents snapshot multiplication",()=>{
+      const big="x".repeat(700000);
+      const history=[1,2,3,4,5].map(i=>({id:`h${i}`,at:`2027-01-0${i}T00:00:00.000Z`,label:`Change ${i}`,before:big,details:{kind:"test"}}));
+      const compacted=compactChangeHistoryForStorage(history);
+      const bytes=storageTextBytes(JSON.stringify(compacted));
+      regressionAssert(bytes<=CHANGE_HISTORY_MAX_BYTES,`Compacted history exceeded byte budget: ${bytes}`);
+      regressionAssert(compacted[0]?.before===big,"Newest full undo snapshot was not preserved");
+      regressionAssert(compacted.slice(1).every(item=>item.storageLimited && !item.before),"Older oversized snapshots did not become breadcrumbs");
+      regressionAssert(compacted.length===5,"Visible Recent Changes breadcrumbs were unexpectedly lost");
+      return `Newest undo kept; history capped at ${formatDataSize(bytes)}`;
+    }));
+
+    results.push(regressionResult("Legacy debt-link cleanup preserves cash history",()=>{
+      const ds=regressionDataset({
+        accounts:[{id:"joint",name:"Joint",owner:"Joint",type:"cash",startingBalance:100}],
+        debts:[],
+        transactions:[{id:"old-payment",date:"2027-01-05",title:"Old BNPL payment",amount:25,type:"transfer",status:"cleared",accountId:"joint",linkedDebtId:"deleted-debt",categoryId:"klarna",recurrence:{type:"none",interval:1}}]
+      });
+      setSynthetic(ds,false);
+      const tx=ds.transactions[0];
+      const beforeEffect=cashAccountPerspective(tx,"joint").effect;
+      const result=resolveHistoricalDebtLinksInDataset(ds);
+      const afterEffect=cashAccountPerspective(tx,"joint").effect;
+      regressionAssert(result.links===1 && result.transactions===1,"Expected one legacy debt link to resolve");
+      regressionAssert(tx.linkedDebtId==="","Dead active linkedDebtId was not cleared");
+      regressionAssert(tx.legacyDebtRefs?.some(ref=>ref.field==="linkedDebtId"&&ref.debtId==="deleted-debt"),"Original removed debt ID was not preserved as legacy metadata");
+      regressionApprox(beforeEffect,-25,0.001,"Pre-cleanup cash effect");
+      regressionApprox(afterEffect,beforeEffect,0.001,"Cash effect changed during legacy cleanup");
+      regressionAssert(maintenanceDataScan().historicalDebtLinks.length===0,"Resolved legacy link still appeared as unresolved Maintenance debt history");
+      const roundTrip=normalizeData(JSON.parse(JSON.stringify(ds)));
+      const roundTripTx=roundTrip.transactions.find(item=>item.id==="old-payment");
+      regressionAssert(roundTripTx?.legacyDebtRefs?.some(ref=>ref.field==="linkedDebtId"&&ref.debtId==="deleted-debt"),"Legacy debt metadata was lost during JSON normalization");
+      return "Dead pointer cleared; removed ID preserved; cash effect unchanged";
+    }));
+
     results.push(regressionResult("JSON normalization preserves planning scenarios",()=>{
       const raw=regressionDataset({
         accounts:[{id:"a",name:"A",owner:"Mak",type:"cash",startingBalance:10}],
@@ -13194,3 +13356,4 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 // v2-312: First CSS consolidation pass removes superseded Calendar chip rollback layers and merges duplicate transaction-modal rules while preserving the existing visual cascade.
 
 // v2-316: Final stabilization baseline adds verified/quota-resilient primary saves, whole-Money-Nest storage diagnostics, expanded backup/planning/cloud/bill regression coverage, and the final safe dead-selector/app-shell CSS cleanup.
+// v2-317: Maintenance can compact/clear browser-only Recent Changes storage, undo snapshots are byte-capped, and pre-archive dangling debt pointers can be resolved into preserved legacy metadata.
