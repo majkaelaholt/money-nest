@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-309";
+const APP_VERSION = "2-310";
 const CURRENT_SCHEMA_VERSION = 226;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -3244,7 +3244,8 @@ function setupContextMenuEvents(){
   if(del) del.onclick = (e)=>{
     e.stopPropagation();
     const id = contextTxId;
-    if(id){ hideTxContextMenu(); deleteTransactionById(id); }
+    const meta = {...contextTxMeta};
+    if(id){ hideTxContextMenu(); deleteTransactionById(id, meta); }
   };
 }
 
@@ -7924,10 +7925,20 @@ function deleteTransactionWithScope(id, scope="all", meta={}){
   }
 }
 
-window.deleteTransactionById = async (id)=>{
+function transactionDeleteMeta(tx, meta={}){
+  return {
+    originalDate: meta.originalDate || tx?.date || "",
+    occurrenceDate: meta.occurrenceDate || meta.originalDate || tx?.date || ""
+  };
+}
+window.deleteTransactionById = async (id, meta={})=>{
   if(!id) return;
   const tx = data.transactions.find(t=>t.id===id);
   if(!tx) return;
+  // v2-310: Context-menu actions close the menu before the recurring-scope dialog
+  // resolves. Preserve the clicked occurrence metadata in this local snapshot so
+  // deleting one generated occurrence cannot fall back to the series anchor date.
+  const deleteMeta = transactionDeleteMeta(tx, meta);
 
   let scope = "all";
   if(isRecurring(tx)){
@@ -7937,10 +7948,7 @@ window.deleteTransactionById = async (id)=>{
     return;
   }
 
-  deleteTransactionWithScope(id, scope, {
-    originalDate: contextTxMeta.originalDate || tx.date,
-    occurrenceDate: contextTxMeta.occurrenceDate || contextTxMeta.originalDate || tx.date
-  });
+  deleteTransactionWithScope(id, scope, deleteMeta);
   hideTxContextMenu();
   saveData();
   render();
@@ -12670,6 +12678,36 @@ function runMoneyNestRegressionTests(options={}){
       return "Archive auto-opens with Amazon + Restore; restore returns BNPL active";
     }));
 
+    results.push(regressionResult("Quick-action delete removes only the clicked recurring occurrence",()=>{
+      const ds=regressionDataset({
+        accounts:[{id:"joint",name:"Joint",owner:"Joint",type:"cash",startingBalance:0}],
+        transactions:[{
+          id:"quick-delete",date:"2027-01-06",title:"Weekly bill",amount:10,type:"expense",status:"planned",
+          accountId:"joint",categoryId:"utilities",transferToAccountId:"",
+          recurrence:{type:"weekly",interval:1,weekday:3,weekendHandling:"none"},occurrenceOverrides:{},dateOverrides:{}
+        }]
+      });
+      setSynthetic(ds,false);
+      const clicked={originalDate:"2027-01-20",occurrenceDate:"2027-01-20"};
+      contextTxId="quick-delete";
+      contextTxMeta={...clicked};
+      const capturedId=contextTxId;
+      const capturedMeta={...contextTxMeta};
+      hideTxContextMenu();
+      const base=data.transactions.find(tx=>tx.id===capturedId);
+      deleteTransactionWithScope(capturedId,"one",transactionDeleteMeta(base,capturedMeta));
+      invalidateExpandedTransactionsCache();
+      const dates=expandedTransactions("2027-01-31")
+        .filter(tx=>(tx.originalId||tx.id)==="quick-delete")
+        .map(tx=>tx.date);
+      regressionAssert(dates.includes("2027-01-13"),"Previous weekly occurrence was removed");
+      regressionAssert(!dates.includes("2027-01-20"),"Clicked Jan 20 occurrence was not removed");
+      regressionAssert(dates.includes("2027-01-27"),"Future weekly occurrence was removed");
+      regressionAssert(ds.transactions[0].occurrenceOverrides?.["2027-01-20"]?.deleted===true,"Clicked occurrence did not receive a deleted override");
+      regressionAssert(!ds.transactions[0].occurrenceOverrides?.["2027-01-06"]?.deleted,"Series anchor was deleted instead of the clicked occurrence");
+      return "Jan 20 removed; Jan 13/27 preserved after context menu closes";
+    }));
+
     results.push(regressionResult("JSON normalization preserves planning scenarios",()=>{
       const raw=regressionDataset({
         accounts:[{id:"a",name:"A",owner:"Mak",type:"cash",startingBalance:10}],
@@ -12888,3 +12926,4 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 
 // v2-308: Debt records can be archived/restored without breaking historical links; active debt views exclude archived records and permanent deletion is explicit.
 // v2-309: Newly archived debts auto-open the Archived debts section so the Restore path is immediately visible; archive rendering has direct regression coverage.
+// v2-310: Right-click/long-press recurring delete snapshots occurrence metadata before closing the context menu so deleting one occurrence targets the clicked date.
