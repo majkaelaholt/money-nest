@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-313";
+const APP_VERSION = "2-316";
 const CURRENT_SCHEMA_VERSION = 226;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -316,6 +316,8 @@ window.cloudSaveNow = async()=>{
   catch(err){ cloudSavingNow = false; alert(`Cloud save failed: ${err.message || err}`); }
 };
 window.cloudLoadNow = async()=>{
+  const previous={data,rootData,calendarMode,planningScenarioId,startupLocalLoadIssue,currentView};
+  let replacedLocal=false;
   try{
     const config = loadCloudConfig();
     if(config.mode === "off") throw new Error("Cloud sync is paused/off.");
@@ -328,6 +330,7 @@ window.cloudLoadNow = async()=>{
     suppressChangeHistory = true;
     data = normalizeData(row.data);
     rootData = data;
+    replacedLocal=true;
     invalidateExpandedTransactionsCache();
     calendarMode = "real";
     planningScenarioId = "";
@@ -342,7 +345,14 @@ window.cloudLoadNow = async()=>{
     setView(currentView);
     await renderCloudSyncSettings();
     alert("Loaded Money Nest data from Supabase.");
-  } catch(err){ suppressChangeHistory = false; alert(`Cloud load failed: ${err.message || err}`); }
+  } catch(err){
+    suppressChangeHistory = false;
+    if(replacedLocal){
+      data=previous.data; rootData=previous.rootData; calendarMode=previous.calendarMode; planningScenarioId=previous.planningScenarioId; startupLocalLoadIssue=previous.startupLocalLoadIssue; currentView=previous.currentView;
+      invalidateExpandedTransactionsCache();
+    }
+    alert(`Cloud load failed: ${err.message || err}`);
+  }
 };
 function maybeQueueCloudAutoSave(){
   const config = loadCloudConfig();
@@ -461,6 +471,64 @@ let calendarMode = "real";
 let planningScenarioId = "";
 const CHANGE_HISTORY_KEY = `${STORAGE_KEY}.changeHistory`;
 let suppressChangeHistory = false;
+let lastLocalSaveError = "";
+
+function storageErrorLooksLikeQuota(err){
+  const name=String(err?.name||"");
+  const message=String(err?.message||"").toLowerCase();
+  return name === "QuotaExceededError" || name === "NS_ERROR_DOM_QUOTA_REACHED" || Number(err?.code) === 22 || Number(err?.code) === 1014 || message.includes("quota") || message.includes("storage");
+}
+function writeStorageVerified(storage,key,raw){
+  storage.setItem(key,raw);
+  const reread=storage.getItem(key);
+  if(reread !== raw) throw new Error(`Browser storage verification failed for ${key}.`);
+  return true;
+}
+function persistPrimaryDataRaw(raw,{storage=localStorage,dataKey=STORAGE_KEY,historyKey=CHANGE_HISTORY_KEY,allowHistoryTrim=true,trackSession=(storage===localStorage)}={}){
+  let firstError=null;
+  try{
+    writeStorageVerified(storage,dataKey,raw);
+    if(trackSession) lastLocalSaveError="";
+    return {ok:true,recovered:false};
+  }catch(err){
+    firstError=err;
+  }
+  if(allowHistoryTrim && storageErrorLooksLikeQuota(firstError)){
+    try{ storage.removeItem(historyKey); }catch(err){}
+    try{
+      writeStorageVerified(storage,dataKey,raw);
+      if(trackSession) lastLocalSaveError="";
+      return {ok:true,recovered:true};
+    }catch(err){ firstError=err; }
+  }
+  if(trackSession) lastLocalSaveError=firstError?.message || String(firstError || "Local save failed");
+  throw firstError || new Error("Local save failed.");
+}
+function storageTextBytes(value){
+  const raw=String(value ?? "");
+  const utf16Estimate=raw.length*2;
+  try{ return typeof Blob === "function" ? Math.max(new Blob([raw]).size,utf16Estimate) : utf16Estimate; }
+  catch(err){ return utf16Estimate; }
+}
+function moneyNestLocalStorageSnapshot(storage=localStorage){
+  const entries=[];
+  let totalBytes=0;
+  let historyBytes=0;
+  try{
+    for(let i=0;i<storage.length;i++){
+      const key=storage.key(i);
+      if(!key || (key!==STORAGE_KEY && !key.startsWith(`${STORAGE_KEY}.`))) continue;
+      const value=storage.getItem(key) || "";
+      const bytes=storageTextBytes(key)+storageTextBytes(value);
+      entries.push({key,bytes});
+      totalBytes+=bytes;
+      if(key===CHANGE_HISTORY_KEY) historyBytes=bytes;
+    }
+  }catch(err){
+    return {entries,totalBytes,historyBytes,error:err?.message||String(err)};
+  }
+  return {entries,totalBytes,historyBytes,error:""};
+}
 let currentView = "dashboard";
 let selectedAccountId = null;
 let selectedDebtId = null;
@@ -1511,8 +1579,8 @@ function loadData(){
     return normalizeData(createStarterData());
   }
   const starter = createStarterData();
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(starter));
-  startupLocalLoadIssue = "";
+  try{ persistPrimaryDataRaw(JSON.stringify(starter)); startupLocalLoadIssue = ""; }
+  catch(err){ lastLocalSaveError=err?.message||String(err); console.warn("Money Nest could not persist starter data",err); }
   return normalizeData(starter);
 }
 function loadChangeHistory(){
@@ -1823,7 +1891,7 @@ function saveData(){
   if(startupLocalLoadIssue){
     console.error("Blocked local save because the browser copy failed to load at startup:", startupLocalLoadIssue);
     alert("Money Nest did not load the saved browser copy correctly, so it blocked this save to protect your local data. Reload after updating Money Nest, or explicitly load cloud/JSON data first.");
-    return;
+    return false;
   }
   // Data is usually mutated in-place before saveData() is called. Clear any
   // expanded-occurrence snapshots before the following render can reuse them.
@@ -1832,10 +1900,21 @@ function saveData(){
   storageData.schemaVersion = CURRENT_SCHEMA_VERSION;
   const beforeRaw = localStorage.getItem(STORAGE_KEY);
   const afterRaw = JSON.stringify(storageData);
+  try{
+    // v2-316: the finance blob always wins over undo history when browser storage
+    // is tight. Verify the write before updating timestamps or claiming success.
+    const persisted=persistPrimaryDataRaw(afterRaw);
+    if(persisted.recovered) console.warn("Money Nest cleared Recent Changes history to make room for the primary data save.");
+  }catch(err){
+    console.error("Money Nest local save failed; existing saved browser data was preserved when possible.",err);
+    try{ renderBackupHealthIndicator(); renderVersionSaveIndicator(); }catch(renderErr){}
+    alert(`Money Nest could not save this change to browser storage. The app will not mark it backed up or auto-save it to cloud. Export a JSON backup now if this tab contains changes you need to keep.\n\n${err.message || err}`);
+    return false;
+  }
   // Scenario edits are intentionally isolated from real-finance undo history.
-  // The scenario itself is still saved/backed up in the root Money Nest blob.
+  // Save undo history only after the primary finance blob is safely persisted so
+  // history can never crowd out the data it is meant to protect.
   if(!isPlanningDataContext()) recordChangeSnapshot(beforeRaw, afterRaw);
-  localStorage.setItem(STORAGE_KEY, afterRaw);
   touchLocalMoneyNestData();
   try {
     render();
@@ -1847,6 +1926,7 @@ function saveData(){
       Send Mak's debugging goblin this error: ${err.message}
     </div>`);
   }
+  return true;
 }
 
 window.addEventListener("error", event => {
@@ -7320,13 +7400,15 @@ function undoLastChange(){
   if(!confirm(`Undo: ${item.label || "last change"}?`)) return;
   try{
     suppressChangeHistory = true;
-    data = normalizeData(JSON.parse(item.before));
+    const restored = normalizeData(JSON.parse(item.before));
+    persistPrimaryDataRaw(JSON.stringify(restored));
+    data = restored;
     rootData = data;
     invalidateExpandedTransactionsCache();
     calendarMode = "real";
     planningScenarioId = "";
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     saveChangeHistory(history);
+    touchLocalMoneyNestData();
     suppressChangeHistory = false;
     renderSelectors();
     render();
@@ -11991,7 +12073,7 @@ function clearEverything(){
     return;
   }
 
-  data = normalizeData({
+  const cleared = normalizeData({
     settings:{buffer:50},
     categories:[
     {id:"income", name:"Income", emoji:"💰", color:"#31d136"},
@@ -12026,12 +12108,20 @@ function clearEverything(){
     budgets:[],
     transactions:[]
   });
+  try{
+    persistPrimaryDataRaw(JSON.stringify(cleared));
+  }catch(err){
+    alert(`Money Nest could not verify the clear operation in browser storage, so it left the current in-memory data alone.\n\n${err.message || err}`);
+    return;
+  }
+  data = cleared;
   rootData = data;
   invalidateExpandedTransactionsCache();
   calendarMode = "real";
   planningScenarioId = "";
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  localStorage.removeItem(UI_PREFS_KEY);
+  try{ localStorage.removeItem(UI_PREFS_KEY); }catch(err){}
+  try{ localStorage.removeItem(CHANGE_HISTORY_KEY); }catch(err){}
+  touchLocalMoneyNestData();
   currentView = moneyNestDefaultView();
   setView(currentView);
   alert("Money Nest has been cleared.");
@@ -12063,18 +12153,15 @@ function validateBackupShape(candidate){
 }
 function saveImportedBackupData(normalized){
   const raw = JSON.stringify(normalized);
-  try{
-    localStorage.setItem(STORAGE_KEY, raw);
-  } catch(err){
-    // Importing a full backup should not also store a giant before/after undo snapshot.
-    // If browser storage is tight, clear local undo history and try once more.
-    try{ localStorage.removeItem(CHANGE_HISTORY_KEY); } catch(innerErr){}
-    localStorage.setItem(STORAGE_KEY, raw);
-  }
+  // Import replaces the primary blob directly. If storage is tight, sacrificing
+  // local undo history is safer than accepting an unverified/partial import save.
+  return persistPrimaryDataRaw(raw);
 }
 function importBackupJSON(file){
   const reader = new FileReader();
   reader.onload = ()=>{
+    const previous={data,rootData,calendarMode,planningScenarioId,startupLocalLoadIssue,currentView};
+    let replacedLocal=false;
     try{
       const parsed = JSON.parse(reader.result);
       const candidate = backupImportCandidate(parsed);
@@ -12083,6 +12170,7 @@ function importBackupJSON(file){
       suppressChangeHistory = true;
       data = normalized;
       rootData = data;
+      replacedLocal=true;
       invalidateExpandedTransactionsCache();
       calendarMode = "real";
       planningScenarioId = "";
@@ -12096,6 +12184,10 @@ function importBackupJSON(file){
       alert("Backup imported.");
     } catch(err){
       suppressChangeHistory = false;
+      if(replacedLocal){
+        data=previous.data; rootData=previous.rootData; calendarMode=previous.calendarMode; planningScenarioId=previous.planningScenarioId; startupLocalLoadIssue=previous.startupLocalLoadIssue; currentView=previous.currentView;
+        invalidateExpandedTransactionsCache();
+      }
       console.error("Backup import failed", err);
       alert(`Backup import failed: ${err.message || err}`);
     }
@@ -12376,9 +12468,12 @@ function maintenanceDataScan(){
   const exactTemplateDuplicateCount=exactTemplateDuplicates.reduce((sum,group)=>sum+group.length-1,0);
 
   const rootJson=JSON.stringify(root);
-  const storageBytes=typeof Blob==="function" ? new Blob([rootJson]).size : rootJson.length;
+  const storageBytes=storageTextBytes(rootJson);
+  const localStorageSnapshot=moneyNestLocalStorageSnapshot();
+  const totalLocalStorageBytes=Math.max(storageBytes,Number(localStorageSnapshot.totalBytes||0));
+  const historyBytes=Number(localStorageSnapshot.historyBytes||0);
   const conservativeLocalStorageBytes=5*1024*1024;
-  const storageRatio=storageBytes/conservativeLocalStorageBytes;
+  const storageRatio=totalLocalStorageBytes/conservativeLocalStorageBytes;
   const planningScenarios=Array.isArray(root.settings?.planningScenarios)?root.settings.planningScenarios:[];
   const planningBytes=planningScenarios.reduce((sum,scenario)=>{
     const raw=JSON.stringify(scenario||{});
@@ -12386,14 +12481,15 @@ function maintenanceDataScan(){
   },0);
 
   return {
-    transactions,templates,planningScenarios,storageBytes,planningBytes,storageRatio,archivedDebtRecords,
+    transactions,templates,planningScenarios,storageBytes,totalLocalStorageBytes,historyBytes,localStorageSnapshot,planningBytes,storageRatio,archivedDebtRecords,
     brokenReferences,historicalDebtLinks,lowUseAuto,unusedAuto,suspiciousAuto,usefulAuto,dormantAuto,junkAuto,
-    exactTemplateDuplicates,exactTemplateDuplicateCount
+    exactTemplateDuplicates,exactTemplateDuplicateCount,localSaveError:lastLocalSaveError
   };
 }
 window.maintenanceDataScan=maintenanceDataScan;
 
 function maintenanceStatusLabel(scan){
+  if(scan.localSaveError) return "save failed";
   if(scan.brokenReferences.length) return `${scan.brokenReferences.length} fix`;
   if(scan.storageRatio>=0.75) return "storage high";
   const cleanup=scan.dormantAuto.length+scan.junkAuto.length+scan.exactTemplateDuplicateCount;
@@ -12415,13 +12511,16 @@ function renderMaintenanceCenter(){
   const storageTone=s.storageRatio>=0.75?"bad":s.storageRatio>=0.5?"warn":"good";
   overview.innerHTML=`
     <div class="maintenance-stat-grid">
-      <article><b>${formatDataSize(s.storageBytes)}</b><span>Saved data</span><small class="${storageTone}">~${storagePct}% of a conservative 5 MB browser-storage budget</small></article>
+      <article><b>${formatDataSize(s.storageBytes)}</b><span>Primary saved data</span><small class="${storageTone}">${formatDataSize(s.totalLocalStorageBytes)} total local • ~${storagePct}% of a conservative 5 MB budget</small></article>
       <article><b>${s.transactions.length}</b><span>Transactions</span><small>${s.planningScenarios.length} planning scenario${s.planningScenarios.length===1?"":"s"}</small></article>
       <article><b>${s.templates.length}</b><span>Templates</span><small>${s.usefulAuto.length} useful learned • ${s.dormantAuto.length} dormant • ${s.junkAuto.length} junk candidate${s.junkAuto.length===1?"":"s"}</small></article>
       <article><b>${formatDataSize(s.planningBytes)}</b><span>Planning data</span><small>Included in JSON/cloud backup</small></article>
     </div>`;
 
   const sections=[];
+  if(s.localSaveError){
+    sections.push(`<div class="maintenance-section warning"><div class="maintenance-section-head"><div><b>Local save needs attention</b><small>Last primary-data write was not verified</small></div></div><p class="hint">Money Nest is deliberately not calling this state backed up and will not queue an automatic cloud save from the failed local write. Export JSON before reloading if this tab contains changes you need to keep.</p><small class="maintenance-more">${escapeAttr(s.localSaveError)}</small></div>`);
+  }
   if(s.brokenReferences.length){
     const rows=s.brokenReferences.slice(0,8).map(item=>`<div class="maintenance-row"><span><b>${escapeAttr(item.label)}</b><small>This is a live reference problem and is worth reviewing.</small></span>${maintenanceTxReviewButton(item.tx)}</div>`).join("");
     sections.push(`<div class="maintenance-section"><div class="maintenance-section-head"><div><b>Broken references</b><small>${s.brokenReferences.length} finding${s.brokenReferences.length===1?"":"s"}</small></div><button class="ghost small" type="button" onclick="setView('dashboard')">Open Needs Review</button></div>${rows}${s.brokenReferences.length>8?`<small class="maintenance-more">+ ${s.brokenReferences.length-8} more</small>`:""}</div>`);
@@ -12438,7 +12537,7 @@ function renderMaintenanceCenter(){
     sections.push(`<div class="maintenance-section"><div class="maintenance-section-head"><div><b>Template cleanup</b><small>${s.usefulAuto.length} useful learned • ${s.dormantAuto.length} dormant learned • ${s.junkAuto.length} junk candidate${s.junkAuto.length===1?"":"s"} • ${s.exactTemplateDuplicateCount} exact duplicate${s.exactTemplateDuplicateCount===1?"":"s"}</small></div><button class="ghost small" type="button" onclick="openTemplateMaintenance()">Manage templates</button></div><p class="hint">Learned shortcuts are now confidence-aware: useful repeated ones stay prominent, one-use learned shortcuts stay quiet during partial autocomplete, and suspicious short/numeric titles are excluded from normal suggestions. Nothing is deleted automatically.</p></div>`);
   }
   if(s.storageRatio>=0.5){
-    sections.push(`<div class="maintenance-section ${s.storageRatio>=0.75?"warning":""}"><div class="maintenance-section-head"><div><b>Storage growth</b><small>${formatDataSize(s.storageBytes)} saved locally</small></div></div><p class="hint">Money Nest is still within the conservative browser-storage budget, but this is the point where keeping JSON backups and planning an eventual IndexedDB migration becomes more valuable.</p></div>`);
+    sections.push(`<div class="maintenance-section ${s.storageRatio>=0.75?"warning":""}"><div class="maintenance-section-head"><div><b>Storage growth</b><small>${formatDataSize(s.totalLocalStorageBytes)} total Money Nest local storage • ${formatDataSize(s.historyBytes)} Recent Changes history</small></div></div><p class="hint">The primary finance blob is ${formatDataSize(s.storageBytes)}. Money Nest now measures its full local footprint, verifies primary writes, and will sacrifice local undo history before allowing quota pressure to block the finance data itself. Keep JSON/cloud backups current; IndexedDB can remain a future migration if the full footprint actually approaches the browser limit.</p></div>`);
   }
   if(!sections.length){
     sections.push(`<div class="maintenance-section healthy"><b>✓ No obvious maintenance problems</b><p class="hint">No broken references, template clutter, or storage-pressure signals were found by this scan.</p></div>`);
@@ -12792,6 +12891,82 @@ function runMoneyNestRegressionTests(options={}){
       return "Useful repeated stays prominent; one-use exact-only; junk hidden; archived stays archived";
     }));
 
+    results.push(regressionResult("Primary local save wins over undo history under quota pressure",()=>{
+      const store=new Map([[STORAGE_KEY,"old-data"],[CHANGE_HISTORY_KEY,"large-undo-history"]]);
+      const fakeStorage={
+        get length(){ return store.size; },
+        key(index){ return [...store.keys()][index] ?? null; },
+        getItem(key){ return store.has(key) ? store.get(key) : null; },
+        setItem(key,value){
+          if(key===STORAGE_KEY && store.has(CHANGE_HISTORY_KEY)){
+            const err=new Error("quota exceeded by undo history"); err.name="QuotaExceededError"; throw err;
+          }
+          store.set(key,String(value));
+        },
+        removeItem(key){ store.delete(key); }
+      };
+      const result=persistPrimaryDataRaw("new-primary-data",{storage:fakeStorage,trackSession:false});
+      regressionAssert(result.recovered===true,"Quota recovery path did not report recovery");
+      regressionAssert(fakeStorage.getItem(STORAGE_KEY)==="new-primary-data","Primary finance data was not persisted after recovery");
+      regressionAssert(fakeStorage.getItem(CHANGE_HISTORY_KEY)===null,"Undo history was not released before retrying the primary save");
+      return "Quota retry drops undo history, verifies primary finance blob";
+    }));
+
+    results.push(regressionResult("Advanced JSON round-trip preserves archive, recurrence, templates, and planning",()=>{
+      const raw=regressionDataset({
+        accounts:[{id:"joint",name:"Joint",owner:"Joint",type:"cash",startingBalance:100}],
+        debts:[{id:"old-card",name:"Old Card",type:"credit",balance:0,archived:true,archivedAt:"2027-01-02T00:00:00.000Z"}],
+        transactions:[{id:"series",date:"2027-01-31",title:"Series",amount:20,type:"expense",status:"planned",accountId:"joint",categoryId:"utilities",linkedDebtId:"old-card",recurrence:{type:"monthly",interval:1,weekendHandling:"previous-friday"},recurrenceUntil:"2027-06-30",dateOverrides:{"2027-02-28":"2027-02-26"},occurrenceOverrides:{"2027-03-31":{amount:25,status:"cleared"}}}]
+      });
+      raw.settings.transactionTemplates=[normalizeTransactionTemplate({id:"manual-template",title:"Series",categoryId:"utilities",source:"manual",archived:false,fields:{...AUTO_TEMPLATE_FIELDS}},{legacySafe:false})];
+      raw.settings.planningScenarios=[{id:"plan-advanced",name:"Advanced Plan",snapshotDate:"2027-04-01",sourceAccountIds:["joint"],dataset:regressionDataset({planning:true,accounts:[{id:"joint",name:"Joint",owner:"Joint",type:"cash",startingBalance:80}],transactions:[{id:"plan-only",date:"2027-04-01",title:"Plan only",amount:9,type:"expense",status:"planned",accountId:"joint",categoryId:"utilities",recurrence:{type:"none",interval:1}}]})}];
+      const roundTrip=normalizeData(JSON.parse(JSON.stringify(raw)));
+      const debt=roundTrip.debts.find(d=>d.id==="old-card");
+      const tx=roundTrip.transactions.find(t=>t.id==="series");
+      regressionAssert(debt?.archived===true && !!debt?.archivedAt,"Archived debt metadata was lost");
+      regressionAssert(tx?.recurrenceUntil==="2027-06-30","Recurrence end date was lost");
+      regressionAssert(tx?.dateOverrides?.["2027-02-28"]==="2027-02-26","Date override was lost");
+      regressionAssert(Number(tx?.occurrenceOverrides?.["2027-03-31"]?.amount)===25,"Occurrence override was lost");
+      regressionAssert(roundTrip.settings.transactionTemplates.some(t=>t.id==="manual-template"),"Manual template was lost");
+      regressionAssert(roundTrip.settings.planningScenarios.some(p=>p.id==="plan-advanced"&&p.dataset?.transactions?.some(t=>t.id==="plan-only")),"Planning dataset was lost");
+      return "Archive + recurrence overrides + template + planning dataset survive normalization";
+    }));
+
+    results.push(regressionResult("Bills next occurrence matches canonical recurrence expansion",()=>{
+      const start=todayISO();
+      const nextWeek=toISO(addDays(parseDate(start),7));
+      const through=toISO(addDays(parseDate(start),15));
+      const ds=regressionDataset({
+        accounts:[{id:"joint",name:"Joint",owner:"Joint",type:"cash",startingBalance:0}],
+        transactions:[{id:"bill-parity",date:start,title:"Parity Bill",amount:15,type:"expense",status:"planned",accountId:"joint",categoryId:"utilities",recurrence:{type:"weekly",interval:1,weekday:parseDate(start).getDay(),weekendHandling:"none"},occurrenceOverrides:{[start]:{deleted:true}},dateOverrides:{}}]
+      });
+      setSynthetic(ds,false);
+      const tx=ds.transactions[0];
+      const bill=billOccurrenceInfo(tx);
+      const expanded=expandedTransactions(through).filter(row=>(row.originalId||row.id)==="bill-parity"&&row.date>=start).sort((a,b)=>a.date.localeCompare(b.date));
+      regressionAssert(expanded[0]?.date===nextWeek,`Canonical expansion expected ${nextWeek}, got ${expanded[0]?.date||"none"}`);
+      regressionAssert(bill.date===expanded[0].date,`Bills next date ${bill.date} disagreed with expansion ${expanded[0].date}`);
+      regressionAssert(bill.originalDate===nextWeek,"Bills helper did not advance past the deleted occurrence");
+      return `Deleted today; both Bills + expansion advance to ${nextWeek}`;
+    }));
+
+    results.push(regressionResult("Cloud payload stays rooted in real data during Planning Mode",()=>{
+      const real=regressionDataset({
+        accounts:[{id:"joint",name:"Joint",owner:"Joint",type:"cash",startingBalance:100}],
+        transactions:[{id:"real-only",date:"2027-01-01",title:"Real",amount:1,type:"income",status:"cleared",accountId:"joint",categoryId:"income",recurrence:{type:"none",interval:1}}]
+      });
+      const plan=regressionDataset({planning:true,accounts:[{id:"joint",name:"Joint",owner:"Joint",type:"cash",startingBalance:90}],transactions:[{id:"plan-only",date:"2027-02-01",title:"Plan",amount:5,type:"expense",status:"planned",accountId:"joint",categoryId:"utilities",recurrence:{type:"none",interval:1}}]});
+      real.settings.planningScenarios=[{id:"self-test",name:"Self test",snapshotDate:"2027-02-01",sourceAccountIds:["joint"],dataset:plan}];
+      rootData=real; data=plan; calendarMode="planning"; planningScenarioId="self-test";
+      const payload=cloudPayload();
+      regressionAssert(payload.transactions.some(tx=>tx.id==="real-only"),"Cloud payload lost real transactions while Planning Mode was active");
+      regressionAssert(!payload.transactions.some(tx=>tx.id==="plan-only"),"Planning sandbox replaced the root cloud transaction list");
+      regressionAssert(payload.settings?.planningScenarios?.some(p=>p.id==="self-test"&&p.dataset?.transactions?.some(tx=>tx.id==="plan-only")),"Planning scenario was not included inside the root cloud backup");
+      payload.transactions[0].amount=999;
+      regressionAssert(real.transactions[0].amount===1,"Cloud payload was not a defensive clone");
+      return "Real root stays primary; planning sandbox remains nested and cloned";
+    }));
+
     results.push(regressionResult("JSON normalization preserves planning scenarios",()=>{
       const raw=regressionDataset({
         accounts:[{id:"a",name:"A",owner:"Mak",type:"cash",startingBalance:10}],
@@ -12845,14 +13020,16 @@ function backupHealthData(){
   const meta=loadLocalMeta(), cloud=loadCloudConfig();
   const local=meta.lastLocalChange||'', json=meta.lastJsonBackup||'', cloudSave=cloud.lastCloudSave||'';
   const newestBackup=newestISO(json,cloudSave); const changedSince=!newestBackup||isoIsAfter(local,newestBackup);
-  return {local,json,cloudSave,changedSince,startupLoadFailed:!!startupLocalLoadIssue};
+  return {local,json,cloudSave,changedSince,startupLoadFailed:!!startupLocalLoadIssue,localSaveFailed:!!lastLocalSaveError,localSaveError:lastLocalSaveError};
 }
 window.renderBackupHealthIndicator=function(){
   const el=document.getElementById('backupHealthIndicator');if(!el)return;
   const b=backupHealthData();
   const status = b.startupLoadFailed
     ? `<article><b class="backup-warn">Local data not loaded</b><span>The saved browser copy was preserved, but this session could not open it. Money Nest will not overwrite it.</span></article>`
-    : `<article><b class="${b.changedSince?'backup-warn':'backup-good'}">${b.changedSince?'Backup recommended':'Backed up'}</b><span>${b.changedSince?'Local data changed after the newest saved copy.':'Newest backup is at least as recent as local edits.'}</span></article>`;
+    : b.localSaveFailed
+      ? `<article><b class="backup-warn">Local save failed</b><span>This tab has a change that was not verified in browser storage. Export JSON before reloading. ${escapeAttr(b.localSaveError||"")}</span></article>`
+      : `<article><b class="${b.changedSince?'backup-warn':'backup-good'}">${b.changedSince?'Backup recommended':'Backed up'}</b><span>${b.changedSince?'Local data changed after the newest saved copy.':'Newest backup is at least as recent as local edits.'}</span></article>`;
   el.innerHTML=`${status}<article><b>${fmtCloudTime(b.json)}</b><span>Last JSON backup</span></article><article><b>${fmtCloudTime(b.cloudSave)}</b><span>Last cloud save</span></article>`;
 };
 const _renderSettings214=renderSettings;renderSettings=function(){_renderSettings214();renderBackupHealthIndicator();};
@@ -12879,7 +13056,7 @@ window.setBillFilterPreset=function(mode){
 function renderVersionSaveIndicator(){
   const el=document.getElementById('appVersionSaveIndicator'); if(!el)return;
   const meta=loadLocalMeta(); const warning=meta.olderSchemaWarning;
-  el.innerHTML=`<article><b>Money Nest v${APP_VERSION}</b><span>Data schema ${CURRENT_SCHEMA_VERSION}</span></article><article><b>${fmtCloudTime(meta.lastLocalChange)}</b><span>Last local data save</span></article>${warning?`<article class="schema-warning"><b>Older data upgraded</b><span>Schema ${warning.from} → ${warning.to}. Keep a fresh JSON backup.</span></article>`:''}`;
+  el.innerHTML=`<article><b>Money Nest v${APP_VERSION}</b><span>Data schema ${CURRENT_SCHEMA_VERSION}</span></article><article><b>${lastLocalSaveError?'Save failed':fmtCloudTime(meta.lastLocalChange)}</b><span>${lastLocalSaveError?'Current tab has an unverified local change':'Last local data save'}</span></article>${warning?`<article class="schema-warning"><b>Older data upgraded</b><span>Schema ${warning.from} → ${warning.to}. Keep a fresh JSON backup.</span></article>`:''}`;
 }
 function organizeSettingsIntoFourSections(){
   const stack=document.querySelector('#settings .settings-stack'); if(!stack || stack.dataset.grouped223==='1')return;
@@ -12930,7 +13107,7 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
     const result = repairSplitRecurringSeriesData();
     localStorage.setItem(RECURRING_REPAIR_231_KEY, JSON.stringify({...result, at:new Date().toISOString()}));
     if(result.merged || result.removedPlanned || result.materialized){
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      persistPrimaryDataRaw(JSON.stringify(data));
       saveLocalMeta({lastRecurringSeriesRepair:new Date().toISOString(), recurringSeriesRepairResult:result});
     }
   } catch(err){
@@ -13015,3 +13192,5 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 // v2-311: Learned transaction templates are confidence-aware: repeated learned shortcuts stay prominent, one-use learned shortcuts are exact-match-only, suspicious short/numeric learned titles stay out of normal suggestions, and archived learned templates do not auto-reactivate.
 
 // v2-312: First CSS consolidation pass removes superseded Calendar chip rollback layers and merges duplicate transaction-modal rules while preserving the existing visual cascade.
+
+// v2-316: Final stabilization baseline adds verified/quota-resilient primary saves, whole-Money-Nest storage diagnostics, expanded backup/planning/cloud/bill regression coverage, and the final safe dead-selector/app-shell CSS cleanup.

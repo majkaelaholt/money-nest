@@ -1,5 +1,17 @@
 # CODEX
 
+## v2-316 final stabilization baseline
+
+- Treat v2-316 as the preferred baseline for future edits unless Mak supplies a newer deployed version. Schema remains 226 and `moneyNest.v2.113` remains the storage key.
+- Primary local persistence must go through the verified write path (`persistPrimaryDataRaw` / `writeStorageVerified`). Do not reintroduce direct `localStorage.setItem(STORAGE_KEY, ...)` writes. The finance blob must be readable back exactly before Money Nest updates local-save metadata, renders a successful save state, or queues auto cloud save.
+- When quota pressure blocks a primary write, Recent Changes/undo history is disposable before the primary finance blob. Undo history is convenience data; the finance blob is authoritative.
+- Backup-health UI must never show **Backed up** while `startupLocalLoadIssue` or `lastLocalSaveError` is active.
+- Maintenance storage pressure uses Money Nest's full localStorage footprint, not only the root JSON blob. Keep the estimate conservative and report Recent Changes history separately.
+- Planning Mode remains a sandbox nested inside the real/root blob. `cloudPayload()` must always clone the root dataset even while the active `data` pointer is a Planning scenario.
+- Regression suite baseline is 18 checks. Preserve the storage quota-recovery, advanced JSON round-trip, Bills/canonical recurrence parity, and Planning/cloud-root checks added in this release.
+- The v2-312 through v2-316 CSS work intentionally preserves the current cascade. Do not revive retired selectors simply because older comments mention them. Future CSS cleanup should be tied to a specific current surface and verified for desktop/tablet/phone parity.
+
+
 ## v2-269
 
 - Dashboard palette hierarchy: major Dashboard panels map to Main panels, nested sections map to Secondary panels, and inner rows/metrics map to Soft panels. Keep this role separation when adding future Dashboard UI.
@@ -161,7 +173,21 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-313`
+Latest known version: `money-nest-v2-316`
+
+### v2-315 Settings + shared controls/forms CSS consolidation guardrails
+
+- Current Settings structure is the scan-first disclosure layout (`settings-collapsible`, `settings-summary-main`, `settings-collapse-body`) plus the v2-251/v2-311 scan-first transaction-template library and Template Manager. Do not restore the retired template-family/variant library CSS or old recurring scope-box form styling.
+- Shared `button` / `.file-label` transition behavior and `.ghost` / `.file-label` shadow behavior now live with the canonical shared-control/palette rules rather than a later duplicate polish block. Preserve the resulting visual state across desktop/tablet/mobile.
+- The old `.template-manager-category` column and pre-manager flexible-template field-toggle UI are removed because current render code no longer emits them. Keep current Template Manager rows three-column (checkbox/content/edit) unless a deliberate redesign is requested.
+- CSS cleanup remains presentation-only and parity-first. Schema remains 226; storage key remains `moneyNest.v2.113`; regression suite remains 14 checks.
+
+### v2-314 Dashboard + Bills/Budgets CSS consolidation guardrails
+
+- Current Dashboard markup is the v2-243+ hierarchy (`dashboard-metric-strip`, `dashboard-primary-grid`, `dashboard-review-panel`, `dashboard-action-*`). Do not restore the retired pre-v2-243 `.dashboard-stack` / `.action-center-grid` / `.action-item` layout layer.
+- Bills list/filter/card/archive structure is now self-contained in the canonical v2-244 section. Preserve the current responsive card geometry and archive summary behavior; do not reintroduce the older v2.0/v2.24/v2.207-v2.210 Bills layout overrides.
+- Budget Review retired helpers such as the old review grid/bar/target/wide-grid wrappers were removed because current render code no longer emits them. Keep active Budget Review, Budget Manager, spending pie/trend, and detail-modal selectors separate from retired markup.
+- CSS cleanup remains presentation-only and parity-first. Schema remains 226; storage key remains `moneyNest.v2.113`; regression suite remains 14 checks.
 
 ### v2-313 Accounts CSS consolidation guardrails
 

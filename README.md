@@ -1,5 +1,42 @@
 # Money Nest
 
+## v2-316
+
+### Final stabilization baseline: storage resilience + hardening + CSS cleanup
+
+- Combined the remaining cleanup roadmap into one baseline release instead of three separate deploys. No finance calculation or saved-data schema changes; schema remains **226** and storage key remains `moneyNest.v2.113`.
+- Primary browser saves are now **verified after writing**. Money Nest updates its local-save timestamp, backup-health status, render, and automatic cloud queue only after the finance blob can be read back exactly. A failed write now shows an explicit local-save warning instead of allowing a false “Backed up” state.
+- Browser-quota recovery now prioritizes financial data over local undo history. If a primary save hits quota pressure, Money Nest may release Recent Changes history and retry the verified primary write; undo history is now written only after the primary finance blob is safely persisted. JSON import, Undo, Clear All, starter initialization, and the legacy recurring repair path use the same verified primary-write contract.
+- Maintenance now measures both the **primary finance blob** and Money Nest's **full localStorage footprint**, including Recent Changes history, using a conservative UTF-16-aware byte estimate. It reports undo-history contribution and surfaces session-level save failures. IndexedDB remains a future migration rather than a forced change while verified local saves still have comfortable headroom.
+- Added four final hardening checks: quota recovery prioritizes primary data; advanced JSON round-trip preserves archived debt/recurrence overrides/templates/planning; Bills next-occurrence matches canonical expansion after a deleted occurrence; and cloud payload stays rooted in real data while Planning Mode remains nested. Regression suite is now **18 checks**.
+- Real-data parity against the current backup remained exact versus v2-315: 763 transactions, one Planning scenario, 2,657 expanded occurrences through 2028-12-31, identical expanded-transaction hash, identical cash-balance hash, and identical Bills occurrence hash.
+- Final CSS/dead-selector pass removed 77 rules whose class/id selectors are no longer emitted anywhere by current HTML/JavaScript, including retired Action Center, old account forecast/header controls, old template-cleanup family UI, and other historical shell fragments. `styles.css` shrank from 7,257 to 7,053 lines and `!important` usage from 1,017 to 1,013.
+- Static cascade parity across the full current `index.html` plus synthetic app-shell/mobile-nav runtime fragments at 1440, 1024, 900, 760, 700, 640, 520, and 390px found **zero winning-style differences**.
+- This release is the intended **clean stabilization baseline** for future feature work. Further cleanup should be driven by a concrete bug/performance need rather than reducing code for its own sake.
+
+## v2-315
+
+### Stabilization: Settings + shared controls/forms CSS consolidation pass 4
+
+- Consolidated the Settings disclosure shell so the final summary/body spacing and backup-panel positioning live in the canonical Settings block instead of depending on later v2-94/v2-175 overrides.
+- Retired CSS for UI that current markup no longer emits: the old recurring save/delete scope boxes, pre-manager template family/variant library, flexible-template field toggles, template suggestion delete button, obsolete template-manager category column, and the unused recurrence wrapper.
+- Folded shared button transition/shadow behavior into the canonical shared-control rules while preserving current button/file-label presentation.
+- Current template autocomplete, scan-first Settings template library, Template Manager, category cleanup, transaction modal, and Recent Changes rows remain intact.
+- Stylesheet shrank from 7,497 to 7,257 lines; top-level qualified rules dropped from 1,463 to 1,398 and `!important` usage dropped from 1,023 to 1,017.
+- Static cascade-parity checks across representative Settings, Template Manager, transaction-form, template-suggestion, and Recent Changes samples at 1440, 1024, 900, 760, 700, 520, and 390px found zero winning-declaration differences.
+- No saved-data, JSON/CSV, finance-calculation, or schema changes. Schema remains **226**, storage key remains `moneyNest.v2.113`, and the regression suite remains 14 checks.
+
+## v2-314
+
+### Stabilization: Dashboard + Bills/Budgets CSS consolidation pass 3
+
+- Retired the unused pre-v2-243 Dashboard action-center layout selectors while preserving the current Safe to Spend, Upcoming, Needs Review, metric-strip, and Action Center presentation.
+- Consolidated the active Bills list/filter/card/archive structure into the later v2-244 Bills block instead of depending on overlapping v2.0/v2.24/v2.207-v2.210 layout layers. The current desktop/tablet/phone result is intentionally unchanged.
+- Removed Budget Review selectors for retired markup (old summary/grid/bar/target/wide-grid helpers) while keeping current summary strip, spending pie, trend, performance list, Budget Manager, and budget-detail styling intact.
+- Stylesheet shrank from 7,723 to 7,497 lines and `!important` usage dropped from 1,032 to 1,023.
+- Static cascade-parity checks across representative Dashboard/Bills/Budgets elements at 1440, 1024, 800, 700, 520, and 390px found no effective style differences for current markup; the only raw-parser discrepancy was the legacy `margin-bottom` longhand already overridden by the later `margin: 0` shorthand.
+- No saved-data, JSON/CSV, finance-calculation, or schema changes. Schema remains **226**, storage key remains `moneyNest.v2.113`, and the regression suite remains 14 checks.
+
 ## v2-313
 
 ### Stabilization: Accounts CSS consolidation pass 2
