@@ -1,5 +1,28 @@
 # Money Nest
 
+## v2-311
+
+### Stabilization: template intelligence + clutter control
+
+- Learned transaction templates are now confidence-aware without deleting or rewriting any saved transactions. Repeated learned shortcuts (2+ matching uses) stay prominent, while one-use learned shortcuts stay quiet during broad/partial autocomplete and reappear when their exact title is typed again.
+- Suspicious very-short/numeric learned titles are classified as **Junk candidates** and excluded from normal transaction autocomplete until deliberately reviewed. Manual/custom templates are never quieted by this logic.
+- The normal Settings template library shows promoted/custom shortcuts and explains when low-confidence learned shortcuts are being kept out of the quick list. Everything remains accessible in **Manage templates**.
+- Template Manager adds **Useful learned**, **Dormant learned**, and **Junk candidates** filters plus matching row badges and summary counts.
+- Maintenance & diagnostics now separates useful learned, dormant learned, and junk-candidate counts instead of lumping every 0–1-use shortcut together. Its Manage button opens directly to the most relevant learned-cleanup view.
+- Deliberately archived learned templates stay archived when a matching transaction is later saved; auto-learning no longer silently resurrects them.
+- Added regression check #14 proving template classification/suggestion behavior and verifying that template intelligence does not mutate financial transactions.
+- No schema/data migration. Schema remains **226** and storage key remains `moneyNest.v2.113`.
+
+## v2-310
+
+### Bug fix: right-click delete targets the clicked recurring occurrence
+
+- Fixed Calendar/account quick-action **Delete** for generated recurring occurrences. The context menu used to clear its occurrence metadata before the recurring delete-scope dialog finished, so **Delete this occurrence only** could fall back to the recurring series anchor instead of the date that was right-clicked/long-pressed.
+- Quick-action Delete now snapshots `originalDate` / `occurrenceDate` before the context menu closes and passes that snapshot through the same `deleteRecurringOccurrence()` path used by the transaction editor.
+- Deleting one occurrence still preserves the recurring series, earlier occurrences, and future occurrences.
+- Added a thirteenth regression check proving a right-click-style delete of Jan 20 removes Jan 20 only while Jan 13 and Jan 27 remain.
+- No schema/data migration. Schema remains **226** and storage key remains `moneyNest.v2.113`.
+
 ## v2-309
 
 ### Bug fix: archived BNPL/debt Restore path stays visible

@@ -161,7 +161,23 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-309`
+Latest known version: `money-nest-v2-311`
+
+### v2-311 template intelligence / cleanup guardrails
+
+- Manual/custom transaction templates remain fully visible and must never be quieted by learned-template confidence rules.
+- Active auto-learned templates are runtime-classified from real transaction history: **useful** = 2+ matching uses, **dormant** = 0–1 matching uses with a normal title, **junk candidate** = suspicious very-short/numeric title. Do not persist a new confidence field solely for this classification.
+- Dormant learned templates stay out of broad/partial autocomplete but remain available when the user types the exact saved title again. Useful learned templates remain eligible for ordinary partial autocomplete. Junk candidates stay out of normal autocomplete until deliberately edited/reviewed.
+- Settings quick template library shows custom + useful learned shortcuts; dormant/junk learned templates remain accessible in Manage Templates.
+- Archiving a learned template is deliberate: `rememberTransactionTemplate()` must not silently unarchive it later.
+- Template cleanup/intelligence must never modify existing transactions, recurring series, budgets, or financial calculations. Schema remains 226.
+
+
+### v2-310 recurring quick-action delete metadata
+- Desktop right-click and touch long-press Delete must snapshot `contextTxMeta` before `hideTxContextMenu()` clears the global context state. Pass that snapshot into `deleteTransactionById(id, meta)`.
+- `transactionDeleteMeta()` is the shared fallback for delete target dates. Generated recurring occurrence deletes must use the clicked `originalDate` / `occurrenceDate`, not silently fall back to the recurring template's anchor date.
+- **Delete this occurrence only** must add a deleted occurrence override for only the clicked date and preserve both earlier and future occurrences.
+- Regression coverage is now 13 checks. Schema remains 226; no JSON/CSV migration.
 
 ### v2-309 archived-debt restore visibility
 - `setDebtArchivedState(..., true)` intentionally opens the in-memory Archived debts section so the just-archived record and Restore action are immediately visible. Do not regress archive into a visually disappearing action.

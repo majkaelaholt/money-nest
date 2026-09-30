@@ -8126,3 +8126,9 @@ body.money-nest-planning-mode #calendarGrid .tx-chip::after{
 .regression-result.fail{border-width:2px}
 @media(max-width:900px){.maintenance-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:700px){.maintenance-stat-grid{grid-template-columns:1fr}.maintenance-section-head,.maintenance-row{align-items:stretch;flex-direction:column}.maintenance-row button,.maintenance-section-head button{align-self:flex-start}}
+
+/* v2-311: template-intelligence status badges */
+.template-badge.useful{background:color-mix(in srgb,var(--green) 14%,var(--panel));color:var(--green)}
+.template-badge.dormant{background:color-mix(in srgb,var(--muted) 12%,var(--panel));color:var(--muted)}
+.template-badge.junk{background:color-mix(in srgb,var(--yellow) 16%,var(--panel));color:var(--yellow)}
+.template-library-quiet-note{margin-top:6px}

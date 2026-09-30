@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-310";
+const APP_VERSION = "2-311";
 const CURRENT_SCHEMA_VERSION = 226;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -6468,8 +6468,8 @@ function templateMatchesTransaction(t, tx){
   if(f.linkedDebtId && String(t.linkedDebtId || "") !== String(tx.linkedDebtId || "")) return false;
   return true;
 }
-function templateUsageStats(t){
-  const matches = (data.transactions || []).filter(tx=>templateMatchesTransaction(t, tx));
+function templateUsageStatsForTransactions(t, txs=[]){
+  const matches = (txs || []).filter(tx=>templateMatchesTransaction(t, tx));
   const dates = matches.map(tx=>String(tx.date || "")).filter(Boolean).sort();
   return {
     count: matches.length,
@@ -6477,6 +6477,38 @@ function templateUsageStats(t){
     planned: matches.filter(tx=>tx.status === "planned").length,
     cleared: matches.filter(tx=>tx.status === "cleared").length
   };
+}
+function templateUsageStats(t){
+  return templateUsageStatsForTransactions(t, data.transactions || []);
+}
+function templateLearnedState(t, txs=null){
+  const normalized=normalizeTransactionTemplate(t,{legacySafe:false});
+  const usage=txs ? templateUsageStatsForTransactions(normalized,txs) : templateUsageStats(normalized);
+  if(normalized.source!=="auto") return {state:"custom",usage,suspicious:false};
+  const title=String(normalized.title||"").trim();
+  const suspicious=!title || /^\d{1,3}$/.test(title) || title.length<=2;
+  if(suspicious) return {state:"junk",usage,suspicious:true};
+  if(usage.count<=1) return {state:"dormant",usage,suspicious:false};
+  return {state:"useful",usage,suspicious:false};
+}
+function templateLearnedStateLabel(t, txs=null){
+  const info=templateLearnedState(t,txs);
+  return ({useful:"Useful learned",dormant:"Dormant learned",junk:"Junk candidate",custom:"Custom"})[info.state] || "Template";
+}
+function templateSuggestionEligible(t, query){
+  if(!t || t.archived) return false;
+  const info=templateLearnedState(t);
+  if(info.state==="custom" || info.state==="useful") return true;
+  if(info.state==="junk") return false;
+  // A one-use learned shortcut stays quiet during broad/partial autocomplete, but
+  // appears once the user types that exact merchant/title again. Saving that
+  // repeat promotes it naturally because its usage count becomes 2+.
+  return templateKey(t.title)===templateKey(query);
+}
+function templateLibraryVisible(t){
+  if(!t || t.archived) return false;
+  const state=templateLearnedState(t).state;
+  return state==="custom" || state==="useful";
 }
 function templateLastUsedLabel(date){
   if(!date) return "Never used";
@@ -6566,7 +6598,9 @@ function rememberTransactionTemplate(tx){
   const sig = templateSignature(tpl);
   const existing = data.settings.transactionTemplates.find(t => templateSignature(t) === sig);
   if(existing){
-    if(existing.source === "auto") Object.assign(existing, {...tpl, id:existing.id, isDefault:existing.isDefault, archived:false, createdAt:existing.createdAt || tpl.createdAt});
+    // Respect a deliberate archive. Auto-learning may refresh an active learned
+    // shortcut, but it must not silently resurrect one the user archived.
+    if(existing.source === "auto" && !existing.archived) Object.assign(existing, {...tpl, id:existing.id, isDefault:existing.isDefault, archived:false, createdAt:existing.createdAt || tpl.createdAt});
   } else {
     const familyExists = data.settings.transactionTemplates.some(t=>templateKey(t.title)===templateKey(tpl.title) && !t.archived);
     tpl.isDefault = !familyExists;
@@ -6601,7 +6635,7 @@ function matchingTransactionTemplates(query){
   const q = templateKey(query);
   if(!q) return [];
   return normalizeTransactionTemplates()
-    .filter(t => !t.archived && templateKey(t.title).includes(q))
+    .filter(t => !t.archived && templateKey(t.title).includes(q) && templateSuggestionEligible(t,q))
     .sort((a,b)=>{
       const aKey=templateKey(a.title), bKey=templateKey(b.title);
       const aExact=aKey===q?2:aKey.startsWith(q)?1:0;
@@ -6707,10 +6741,15 @@ function renderTransactionTemplates(){
   const list = document.getElementById("transactionTemplateList");
   if(!list) return;
   const families = transactionTemplateFamilies({includeArchived:true});
-  const activeFamilies = families.map(family=>({...family, active:family.templates.filter(t=>!t.archived)})).filter(family=>family.active.length);
+  const allTemplates=normalizeTransactionTemplates();
+  const quietLearned=allTemplates.filter(t=>!t.archived && t.source==="auto" && ["dormant","junk"].includes(templateLearnedState(t).state));
+  const quietDormantCount=quietLearned.filter(t=>templateLearnedState(t).state==="dormant").length;
+  const quietReviewFilter=quietDormantCount ? "dormant" : "junk";
+  const activeFamilies = families.map(family=>({...family, active:family.templates.filter(templateLibraryVisible)})).filter(family=>family.active.length);
   if(!activeFamilies.length){
-    const archivedCount = normalizeTransactionTemplates().filter(t=>t.archived).length;
-    list.innerHTML = `<div class="empty">No active templates yet. Saving a normal transaction automatically remembers a simple title + category + bucket shortcut.${archivedCount?` <button type="button" class="ghost small" data-template-open-manager>View ${archivedCount} archived</button>`:""}</div>`;
+    const archivedCount = allTemplates.filter(t=>t.archived).length;
+    const quietNote=quietLearned.length?` ${quietLearned.length} low-confidence learned shortcut${quietLearned.length===1?' is':'s are'} staying quiet until reviewed or repeated.`:"";
+    list.innerHTML = `<div class="empty">No promoted/custom templates yet.${quietNote}${(archivedCount||quietLearned.length)?` <button type="button" class="ghost small" data-template-open-manager>Manage templates</button>`:""}</div>`;
     list.querySelector("[data-template-open-manager]")?.addEventListener("click",()=>openTemplateCleanup());
     return;
   }
@@ -6724,8 +6763,9 @@ function renderTransactionTemplates(){
       <span class="template-library-meta"><b>${family.active.length}</b><small>option${family.active.length===1?'':'s'} • ${stats.count} use${stats.count===1?'':'s'}</small></span>
       <span class="template-library-chevron">›</span>
     </button>`;
-  }).join("");
+  }).join("") + (quietLearned.length?`<div class="empty template-library-quiet-note">${quietLearned.length} low-confidence learned shortcut${quietLearned.length===1?' is':'s are'} hidden from this quick library. <button type="button" class="ghost small" data-template-open-quiet>Review learned shortcuts</button></div>`:"");
   list.querySelectorAll("[data-template-manage-family]").forEach(btn=>btn.onclick=()=>openTemplateCleanup(btn.dataset.templateManageFamily || ""));
+  list.querySelector("[data-template-open-quiet]")?.addEventListener("click",()=>{openTemplateCleanup();templateManagerState.filter=quietReviewFilter;renderTemplateCleanup();});
 }
 function deleteTemplate(id){
   if(!confirm("Delete this transaction template? This does not delete any transactions.")) return;
@@ -6926,9 +6966,13 @@ function templateManagerVisibleTemplates(){
   const q=templateKey(templateManagerState.query);
   return normalizeTransactionTemplates().filter(t=>{
     if(templateManagerState.familyKey && templateKey(t.title)!==templateManagerState.familyKey) return false;
+    const learned=templateLearnedState(t);
     if(templateManagerState.filter==="active" && t.archived) return false;
     if(templateManagerState.filter==="archived" && !t.archived) return false;
-    if(templateManagerState.filter==="unused" && templateUsageStats(t).count!==0) return false;
+    if(templateManagerState.filter==="unused" && learned.usage.count!==0) return false;
+    if(templateManagerState.filter==="useful" && (t.archived || learned.state!=="useful")) return false;
+    if(templateManagerState.filter==="dormant" && (t.archived || learned.state!=="dormant")) return false;
+    if(templateManagerState.filter==="junk" && (t.archived || learned.state!=="junk")) return false;
     if(!templateUsesFilteredField(t,templateManagerState.fieldFilter)) return false;
     const recurringInfo=templateRecurringInfo(t);
     if(templateManagerState.hideRecurring && recurringInfo) return false;
@@ -7077,7 +7121,10 @@ function renderTemplateCleanup(){
   const unused=templates.filter(t=>templateUsageStats(t).count===0).length;
   const duplicateCount=exact.reduce((n,g)=>n+g.length-1,0);
   const activeCount=templates.filter(t=>!t.archived).length;
-  summary.innerHTML=`<span><b>${families.length}</b> titles</span><span><b>${activeCount}</b> active</span><span><b>${templates.length-activeCount}</b> archived</span><span><b>${unused}</b> unused</span><span><b>${duplicateCount}</b> exact duplicates</span>`;
+  const usefulLearned=templates.filter(t=>!t.archived && templateLearnedState(t).state==="useful").length;
+  const dormantLearned=templates.filter(t=>!t.archived && templateLearnedState(t).state==="dormant").length;
+  const junkLearned=templates.filter(t=>!t.archived && templateLearnedState(t).state==="junk").length;
+  summary.innerHTML=`<span><b>${families.length}</b> titles</span><span><b>${activeCount}</b> active</span><span><b>${usefulLearned}</b> useful learned</span><span><b>${dormantLearned}</b> dormant</span><span><b>${junkLearned}</b> junk candidates</span><span><b>${templates.length-activeCount}</b> archived</span><span><b>${unused}</b> unused</span><span><b>${duplicateCount}</b> exact duplicates</span>`;
 
   const familyFilter=document.getElementById("templateManagerFamilyFilter");
   if(familyFilter){
@@ -7094,12 +7141,14 @@ function renderTemplateCleanup(){
   const exactIds=new Set(exact.flatMap(group=>group.map(t=>t.id)));
   content.innerHTML=visible.length ? visible.map(t=>{
     const usage=templateUsageStats(t);
+    const learned=templateLearnedState(t);
     const optionLabel=String(t.variantLabel||"").trim();
     const recurringInfo=templateRecurringInfo(t);
+    const learnedBadge=t.source==="auto" ? `<span class="template-badge ${learned.state}">${escapeAttr(templateLearnedStateLabel(t))}</span>` : "";
     return `<div class="template-manager-row ${t.archived?'archived':''} ${templateManagerState.selected.has(t.id)?'selected':''}">
       <label class="template-manager-check" aria-label="Select ${escapeAttr(t.title)}"><input type="checkbox" data-template-manager-select value="${t.id}" ${templateManagerState.selected.has(t.id)?'checked':''}></label>
       <div class="template-manager-main">
-        <div class="template-manager-title"><b>${escapeAttr(t.title)}</b>${optionLabel?`<span>${escapeAttr(optionLabel)}</span>`:""}${t.isDefault&&!t.archived?'<span class="template-badge default">Default</span>':''}${t.archived?'<span class="template-badge archived">Archived</span>':''}${recurringInfo?`<span class="template-badge recurring" title="${escapeAttr(recurringInfo.description)}">Recurring</span>`:''}${exactIds.has(t.id)?'<span class="template-badge duplicate">Duplicate</span>':''}</div>
+        <div class="template-manager-title"><b>${escapeAttr(t.title)}</b>${optionLabel?`<span>${escapeAttr(optionLabel)}</span>`:""}${t.isDefault&&!t.archived?'<span class="template-badge default">Default</span>':''}${t.archived?'<span class="template-badge archived">Archived</span>':''}${learnedBadge}${recurringInfo?`<span class="template-badge recurring" title="${escapeAttr(recurringInfo.description)}">Recurring</span>`:''}${exactIds.has(t.id)?'<span class="template-badge duplicate">Duplicate</span>':''}</div>
         <small>${escapeAttr(templateManagerAutofillSummary(t))}</small>
         ${recurringInfo?`<small class="template-manager-recurring">↻ ${escapeAttr(recurringInfo.description)} • Managed in Bills</small>`:""}
         <small class="template-manager-usage">${usage.count} use${usage.count===1?'':'s'} • ${templateLastUsedLabel(usage.lastDate)} • ${t.source==='auto'?'Learned automatically':'Custom'}</small>
@@ -12261,8 +12310,7 @@ function formatDataSize(bytes){
 }
 function templateUsageStatsAgainstData(rawTemplate, txs){
   const t=normalizeTransactionTemplate(rawTemplate,{legacySafe:false});
-  const matches=(txs||[]).filter(tx=>templateMatchesTransaction(t,tx));
-  return {count:matches.length,lastDate:matches.map(tx=>String(tx.date||"")).filter(Boolean).sort().at(-1)||""};
+  return templateUsageStatsForTransactions(t,txs||[]);
 }
 function maintenanceDataScan(){
   const root=moneyNestRootData();
@@ -12309,12 +12357,13 @@ function maintenanceDataScan(){
     return {raw,normalized,usage};
   });
   const activeAuto=templateDetails.filter(x=>!x.normalized.archived && x.normalized.source==="auto");
+  activeAuto.forEach(x=>{x.learnedState=templateLearnedState(x.normalized,transactions).state;});
+  const usefulAuto=activeAuto.filter(x=>x.learnedState==="useful");
+  const dormantAuto=activeAuto.filter(x=>x.learnedState==="dormant");
+  const junkAuto=activeAuto.filter(x=>x.learnedState==="junk");
   const lowUseAuto=activeAuto.filter(x=>x.usage.count<=1);
   const unusedAuto=activeAuto.filter(x=>x.usage.count===0);
-  const suspiciousAuto=activeAuto.filter(x=>{
-    const title=String(x.normalized.title||"").trim();
-    return !title || /^\d{1,3}$/.test(title) || title.length<=2;
-  });
+  const suspiciousAuto=junkAuto;
 
   const signatureGroups=new Map();
   templateDetails.forEach(x=>{
@@ -12338,7 +12387,7 @@ function maintenanceDataScan(){
 
   return {
     transactions,templates,planningScenarios,storageBytes,planningBytes,storageRatio,archivedDebtRecords,
-    brokenReferences,historicalDebtLinks,lowUseAuto,unusedAuto,suspiciousAuto,
+    brokenReferences,historicalDebtLinks,lowUseAuto,unusedAuto,suspiciousAuto,usefulAuto,dormantAuto,junkAuto,
     exactTemplateDuplicates,exactTemplateDuplicateCount
   };
 }
@@ -12347,7 +12396,7 @@ window.maintenanceDataScan=maintenanceDataScan;
 function maintenanceStatusLabel(scan){
   if(scan.brokenReferences.length) return `${scan.brokenReferences.length} fix`;
   if(scan.storageRatio>=0.75) return "storage high";
-  const cleanup=scan.lowUseAuto.length+scan.exactTemplateDuplicateCount;
+  const cleanup=scan.dormantAuto.length+scan.junkAuto.length+scan.exactTemplateDuplicateCount;
   return cleanup ? `${cleanup} cleanup` : "healthy";
 }
 function maintenanceTxReviewButton(tx,label="Review"){
@@ -12368,7 +12417,7 @@ function renderMaintenanceCenter(){
     <div class="maintenance-stat-grid">
       <article><b>${formatDataSize(s.storageBytes)}</b><span>Saved data</span><small class="${storageTone}">~${storagePct}% of a conservative 5 MB browser-storage budget</small></article>
       <article><b>${s.transactions.length}</b><span>Transactions</span><small>${s.planningScenarios.length} planning scenario${s.planningScenarios.length===1?"":"s"}</small></article>
-      <article><b>${s.templates.length}</b><span>Templates</span><small>${s.lowUseAuto.length} low-use learned shortcut${s.lowUseAuto.length===1?"":"s"}</small></article>
+      <article><b>${s.templates.length}</b><span>Templates</span><small>${s.usefulAuto.length} useful learned • ${s.dormantAuto.length} dormant • ${s.junkAuto.length} junk candidate${s.junkAuto.length===1?"":"s"}</small></article>
       <article><b>${formatDataSize(s.planningBytes)}</b><span>Planning data</span><small>Included in JSON/cloud backup</small></article>
     </div>`;
 
@@ -12385,9 +12434,8 @@ function renderMaintenanceCenter(){
   if(s.archivedDebtRecords.length){
     sections.push(`<div class="maintenance-section informational"><div class="maintenance-section-head"><div><b>Archived debts</b><small>${s.archivedDebtRecords.length} debt record${s.archivedDebtRecords.length===1?"":"s"} preserved outside active totals</small></div><button class="ghost small" type="button" onclick="setView('accounts')">Open Accounts</button></div><p class="hint">Archived records stay available to historical transactions and can be restored from the collapsed Archived debts section.</p></div>`);
   }
-  if(s.lowUseAuto.length || s.exactTemplateDuplicateCount){
-    const suspiciousNote=s.suspiciousAuto.length?` • ${s.suspiciousAuto.length} very short/numeric learned title${s.suspiciousAuto.length===1?"":"s"}`:"";
-    sections.push(`<div class="maintenance-section"><div class="maintenance-section-head"><div><b>Template cleanup</b><small>${s.lowUseAuto.length} learned template${s.lowUseAuto.length===1?"":"s"} used 0–1 times • ${s.exactTemplateDuplicateCount} exact duplicate${s.exactTemplateDuplicateCount===1?"":"s"}${suspiciousNote}</small></div><button class="ghost small" type="button" onclick="openTemplateMaintenance()">Manage templates</button></div><p class="hint">Nothing is removed automatically. The existing Template Manager is still the place to archive, merge, or delete shortcuts after reviewing them.</p></div>`);
+  if(s.dormantAuto.length || s.junkAuto.length || s.exactTemplateDuplicateCount){
+    sections.push(`<div class="maintenance-section"><div class="maintenance-section-head"><div><b>Template cleanup</b><small>${s.usefulAuto.length} useful learned • ${s.dormantAuto.length} dormant learned • ${s.junkAuto.length} junk candidate${s.junkAuto.length===1?"":"s"} • ${s.exactTemplateDuplicateCount} exact duplicate${s.exactTemplateDuplicateCount===1?"":"s"}</small></div><button class="ghost small" type="button" onclick="openTemplateMaintenance()">Manage templates</button></div><p class="hint">Learned shortcuts are now confidence-aware: useful repeated ones stay prominent, one-use learned shortcuts stay quiet during partial autocomplete, and suspicious short/numeric titles are excluded from normal suggestions. Nothing is deleted automatically.</p></div>`);
   }
   if(s.storageRatio>=0.5){
     sections.push(`<div class="maintenance-section ${s.storageRatio>=0.75?"warning":""}"><div class="maintenance-section-head"><div><b>Storage growth</b><small>${formatDataSize(s.storageBytes)} saved locally</small></div></div><p class="hint">Money Nest is still within the conservative browser-storage budget, but this is the point where keeping JSON backups and planning an eventual IndexedDB migration becomes more valuable.</p></div>`);
@@ -12400,11 +12448,13 @@ function renderMaintenanceCenter(){
 window.renderMaintenanceCenter=renderMaintenanceCenter;
 window.refreshMaintenanceCenter=()=>{renderMaintenanceCenter();renderNeedsReview();};
 window.openTemplateMaintenance=()=>{
-  templateManagerState.filter="unused";
+  openTemplateCleanup("");
+  const scan=maintenanceDataScan();
+  templateManagerState.filter=scan.dormantAuto.length ? "dormant" : (scan.junkAuto.length ? "junk" : "active");
   templateManagerState.familyKey="";
   templateManagerState.query="";
   templateManagerState.selected.clear();
-  openTemplateCleanup("");
+  renderTemplateCleanup();
 };
 
 function regressionResult(name,fn){
@@ -12708,6 +12758,40 @@ function runMoneyNestRegressionTests(options={}){
       return "Jan 20 removed; Jan 13/27 preserved after context menu closes";
     }));
 
+    results.push(regressionResult("Template intelligence quiets one-use learning without mutating money data",()=>{
+      const ds=regressionDataset({
+        accounts:[{id:"cash",name:"Cash",owner:"Mak",type:"cash",startingBalance:100}],
+        transactions:[
+          {id:"r1",date:"2027-01-01",title:"Rare Shop",amount:10,type:"expense",status:"cleared",accountId:"cash",categoryId:"utilities",recurrence:{type:"none",interval:1}},
+          {id:"p1",date:"2027-01-02",title:"Repeat Shop",amount:12,type:"expense",status:"cleared",accountId:"cash",categoryId:"utilities",recurrence:{type:"none",interval:1}},
+          {id:"p2",date:"2027-01-03",title:"Repeat Shop",amount:13,type:"expense",status:"cleared",accountId:"cash",categoryId:"utilities",recurrence:{type:"none",interval:1}},
+          {id:"j1",date:"2027-01-04",title:"1",amount:5,type:"expense",status:"cleared",accountId:"cash",categoryId:"utilities",recurrence:{type:"none",interval:1}},
+          {id:"m1",date:"2027-01-05",title:"Manual Shop",amount:7,type:"expense",status:"cleared",accountId:"cash",categoryId:"utilities",recurrence:{type:"none",interval:1}}
+        ]
+      });
+      ds.settings.transactionTemplates=[
+        normalizeTransactionTemplate({id:"rare",title:"Rare Shop",categoryId:"utilities",source:"auto",fields:{...AUTO_TEMPLATE_FIELDS},isDefault:true},{legacySafe:false}),
+        normalizeTransactionTemplate({id:"repeat",title:"Repeat Shop",categoryId:"utilities",source:"auto",fields:{...AUTO_TEMPLATE_FIELDS},isDefault:true},{legacySafe:false}),
+        normalizeTransactionTemplate({id:"junk",title:"1",categoryId:"utilities",source:"auto",fields:{...AUTO_TEMPLATE_FIELDS},isDefault:true},{legacySafe:false}),
+        normalizeTransactionTemplate({id:"manual",title:"Manual Shop",categoryId:"utilities",source:"manual",fields:{...AUTO_TEMPLATE_FIELDS},isDefault:true},{legacySafe:false}),
+        normalizeTransactionTemplate({id:"archived",title:"Old Shop",categoryId:"utilities",source:"auto",archived:true,fields:{...AUTO_TEMPLATE_FIELDS},isDefault:false},{legacySafe:false})
+      ];
+      setSynthetic(ds,false);
+      const moneyBefore=JSON.stringify(ds.transactions);
+      regressionAssert(templateLearnedState(ds.settings.transactionTemplates.find(t=>t.id==="rare")).state==="dormant","One-use learned template was not dormant");
+      regressionAssert(templateLearnedState(ds.settings.transactionTemplates.find(t=>t.id==="repeat")).state==="useful","Repeated learned template was not useful");
+      regressionAssert(templateLearnedState(ds.settings.transactionTemplates.find(t=>t.id==="junk")).state==="junk","Numeric learned title was not marked junk candidate");
+      regressionAssert(!templateSuggestionEligible(ds.settings.transactionTemplates.find(t=>t.id==="rare"),"Ra"),"Dormant learned template leaked into partial suggestions");
+      regressionAssert(templateSuggestionEligible(ds.settings.transactionTemplates.find(t=>t.id==="rare"),"Rare Shop"),"Dormant learned template was unavailable on exact repeat");
+      regressionAssert(templateSuggestionEligible(ds.settings.transactionTemplates.find(t=>t.id==="repeat"),"Rep"),"Useful repeated template was hidden from partial suggestions");
+      regressionAssert(!templateSuggestionEligible(ds.settings.transactionTemplates.find(t=>t.id==="junk"),"1"),"Junk candidate leaked into normal suggestions");
+      regressionAssert(templateSuggestionEligible(ds.settings.transactionTemplates.find(t=>t.id==="manual"),"Man"),"Manual template was quieted unexpectedly");
+      rememberTransactionTemplate({id:"new-old",date:"2027-01-06",title:"Old Shop",amount:9,type:"expense",status:"cleared",accountId:"cash",categoryId:"utilities",spendingBucketId:"",recurrence:{type:"none",interval:1}});
+      regressionAssert(ds.settings.transactionTemplates.find(t=>t.id==="archived")?.archived===true,"Archived learned template was silently reactivated");
+      regressionAssert(JSON.stringify(ds.transactions)===moneyBefore,"Template intelligence mutated saved transactions");
+      return "Useful repeated stays prominent; one-use exact-only; junk hidden; archived stays archived";
+    }));
+
     results.push(regressionResult("JSON normalization preserves planning scenarios",()=>{
       const raw=regressionDataset({
         accounts:[{id:"a",name:"A",owner:"Mak",type:"cash",startingBalance:10}],
@@ -12927,3 +13011,5 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 // v2-308: Debt records can be archived/restored without breaking historical links; active debt views exclude archived records and permanent deletion is explicit.
 // v2-309: Newly archived debts auto-open the Archived debts section so the Restore path is immediately visible; archive rendering has direct regression coverage.
 // v2-310: Right-click/long-press recurring delete snapshots occurrence metadata before closing the context menu so deleting one occurrence targets the clicked date.
+
+// v2-311: Learned transaction templates are confidence-aware: repeated learned shortcuts stay prominent, one-use learned shortcuts are exact-match-only, suspicious short/numeric learned titles stay out of normal suggestions, and archived learned templates do not auto-reactivate.
