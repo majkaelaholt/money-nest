@@ -2313,380 +2313,83 @@ body.dragging-tx .day-hover-list{
   cursor:default;
 }
 
-/* v2.100 Calendar planned vs cleared visibility */
-.calendar .tx-chip.planned,
-.calendar-grid .tx-chip.planned{
-  background:#fffaf3;
-  border-style:dashed;
-  border-color:rgba(80,60,40,.48);
-  box-shadow:0 1px 0 rgba(80,60,40,.22);
-  opacity:.92;
-}
-.calendar .tx-chip.planned .tx-name,
-.calendar-grid .tx-chip.planned .tx-name{
-  color:var(--muted);
-}
-.calendar .tx-chip.planned .tx-chip-amount,
-.calendar-grid .tx-chip.planned .tx-chip-amount{
-  color:var(--muted);
-}
-.calendar .tx-chip.cleared,
-.calendar-grid .tx-chip.cleared{
-  background:#fbf3e9;
-  border-style:solid;
-  border-color:rgba(80,60,40,.68);
-  opacity:1;
-}
-.calendar .tx-chip.cleared::before,
-.calendar-grid .tx-chip.cleared::before{
-  content:"✓";
-  font-size:10px;
-  font-weight:900;
-  color:#4d7a52;
-  margin-right:3px;
-}
-.calendar .tx-chip.planned::before,
-.calendar-grid .tx-chip.planned::before{
-  content:"○";
-  font-size:10px;
-  font-weight:900;
-  color:#b27720;
-  margin-right:3px;
-}
-
-/* v2.101 fix: keep calendar chips compact */
+/* v2-312 calendar chip consolidation
+   Preserves the final v2.108 visual state while removing superseded v2.100-v2.106 rollback layers. */
 .calendar .tx-chip,
 .calendar-grid .tx-chip{
+  box-sizing:border-box !important;
+  margin-top:4px !important;
+  padding:2px 5px !important;
+  border-radius:7px !important;
+  font-size:10.5px !important;
+  font-weight:850 !important;
+  display:flex !important;
+  justify-content:space-between !important;
+  align-items:center !important;
+  gap:4px !important;
+  cursor:pointer !important;
   min-height:0 !important;
   height:auto !important;
-  line-height:1.15 !important;
-  padding:3px 6px !important;
-  align-items:center !important;
-}
-
-.calendar .tx-chip::before,
-.calendar-grid .tx-chip::before{
-  content:none !important;
-  display:none !important;
-  margin:0 !important;
-}
-
-.calendar .tx-chip.planned,
-.calendar-grid .tx-chip.planned{
-  background:#fff7ee !important;
-  border-style:solid !important;
-  border-color:rgba(80,60,40,.45) !important;
-  border-left-style:solid !important;
-  opacity:.78 !important;
+  line-height:1.05 !important;
   box-shadow:none !important;
-  outline:1px dashed rgba(80,60,40,.28);
-  outline-offset:-2px;
-}
-
-.calendar .tx-chip.cleared,
-.calendar-grid .tx-chip.cleared{
-  background:#eadac6 !important;
-  border-style:solid !important;
-  border-color:rgba(80,60,40,.62) !important;
-  opacity:1 !important;
   outline:none !important;
 }
-
+.calendar .tx-chip::before,
+.calendar-grid .tx-chip::before,
+.calendar .tx-chip::after,
+.calendar-grid .tx-chip::after{
+  content:none !important;
+  display:none !important;
+}
+.calendar .tx-chip.planned,
+.calendar-grid .tx-chip.planned{
+  background:var(--chip-bg, inherit) !important;
+  opacity:.78 !important;
+  border-color:rgba(80,60,40,.45) !important;
+  border-style:none !important;
+  box-shadow:none !important;
+  outline:none !important;
+  outline-offset:-2px !important;
+  border-top:1px dashed var(--chip-outline, rgba(80,60,40,.42)) !important;
+  border-right:1px dashed var(--chip-outline, rgba(80,60,40,.42)) !important;
+  border-bottom:1px dashed var(--chip-outline, rgba(80,60,40,.42)) !important;
+  border-left-width:4px !important;
+  border-left-style:solid !important;
+  border-left-color:var(--chip-outline, currentColor) !important;
+}
+.calendar .tx-chip.cleared,
+.calendar-grid .tx-chip.cleared{
+  background:var(--chip-bg, inherit) !important;
+  opacity:1 !important;
+  border-color:rgba(80,60,40,.62) !important;
+  border-style:none !important;
+  box-shadow:none !important;
+  outline:none !important;
+  border-top:1px solid var(--chip-outline, rgba(80,60,40,.35)) !important;
+  border-right:1px solid var(--chip-outline, rgba(80,60,40,.35)) !important;
+  border-bottom:1px solid var(--chip-outline, rgba(80,60,40,.35)) !important;
+  border-left-width:4px !important;
+  border-left-style:solid !important;
+  border-left-color:var(--chip-outline, currentColor) !important;
+}
 .calendar .tx-chip.planned .tx-name,
 .calendar-grid .tx-chip.planned .tx-name,
 .calendar .tx-chip.planned .tx-chip-amount,
 .calendar-grid .tx-chip.planned .tx-chip-amount{
   color:inherit !important;
 }
-
-.calendar .tx-chip .tx-name,
-.calendar-grid .tx-chip .tx-name{
-  min-width:0;
-}
-
-.calendar .tx-chip .tx-chip-amount,
-.calendar-grid .tx-chip .tx-chip-amount{
-  white-space:nowrap;
-}
-
-/* v2.102 restore compact category-colored planned chips */
-.calendar .tx-chip,
-.calendar-grid .tx-chip{
-  padding:3px 6px !important;
-  min-height:0 !important;
-  height:auto !important;
-  line-height:1.15 !important;
-  align-items:center !important;
-}
-
-.calendar .tx-chip::before,
-.calendar-grid .tx-chip::before{
-  content:none !important;
-  display:none !important;
-}
-
-.calendar .tx-chip.planned,
-.calendar-grid .tx-chip.planned{
-  background:var(--chip-bg, #fff7ee) !important;
-  opacity:.82 !important;
-  box-shadow:none !important;
-  outline:1px dashed var(--chip-outline, rgba(80,60,40,.38)) !important;
-  outline-offset:-2px !important;
-  border-style:solid !important;
-  border-left-style:solid !important;
-}
-
-.calendar .tx-chip.cleared,
-.calendar-grid .tx-chip.cleared{
-  background:var(--chip-bg, #eadac6) !important;
-  opacity:1 !important;
-  outline:none !important;
-  border-style:solid !important;
-  border-left-style:solid !important;
-}
-
-.calendar .tx-chip .tx-name,
-.calendar-grid .tx-chip .tx-name{
-  min-width:0;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
-}
-
-.calendar .tx-chip .tx-chip-amount,
-.calendar-grid .tx-chip .tx-chip-amount{
-  white-space:nowrap;
-}
-
-/* v2.103 rollback: restore original compact calendar chip look */
-.calendar .tx-chip,
-.calendar-grid .tx-chip{
-  margin-top:6px !important;
-  padding:5px 7px !important;
-  border-radius:9px !important;
-  font-size:11px !important;
-  font-weight:850 !important;
-  display:flex !important;
-  justify-content:space-between !important;
-  gap:6px !important;
-  cursor:pointer !important;
-  border-left-width:5px !important;
-  border-left-style:solid !important;
-  min-height:0 !important;
-  height:auto !important;
-  line-height:normal !important;
-  align-items:center !important;
-  box-shadow:none !important;
-  outline:none !important;
-}
-
-.calendar .tx-chip::before,
-.calendar-grid .tx-chip::before{
-  content:none !important;
-  display:none !important;
-}
-
-.calendar .tx-chip.planned,
-.calendar-grid .tx-chip.planned{
-  opacity:.72 !important;
-  border-style:dashed !important;
-  border-left-style:solid !important;
-  outline:none !important;
-  box-shadow:none !important;
-}
-
-.calendar .tx-chip.cleared,
-.calendar-grid .tx-chip.cleared{
-  opacity:1 !important;
-  border-style:solid !important;
-  border-left-style:solid !important;
-  outline:none !important;
-  box-shadow:none !important;
-}
-
 .calendar .tx-chip .tx-name,
 .calendar-grid .tx-chip .tx-name{
   overflow:hidden !important;
   text-overflow:ellipsis !important;
   white-space:nowrap !important;
   min-width:0 !important;
-}
-
-.calendar .tx-chip .tx-chip-amount,
-.calendar-grid .tx-chip .tx-chip-amount{
-  white-space:nowrap !important;
-}
-
-/* v2.104 true rollback: no dotted/dashed full boxes on calendar chips */
-.calendar .tx-chip,
-.calendar-grid .tx-chip{
-  margin-top:6px !important;
-  padding:5px 7px !important;
-  border-radius:9px !important;
-  font-size:11px !important;
-  font-weight:850 !important;
-  display:flex !important;
-  justify-content:space-between !important;
-  align-items:center !important;
-  gap:6px !important;
-  min-height:0 !important;
-  height:auto !important;
-  line-height:1.15 !important;
-  outline:none !important;
-  box-shadow:none !important;
-  border-top:0 !important;
-  border-right:0 !important;
-  border-bottom:0 !important;
-  border-left-width:5px !important;
-  border-left-style:solid !important;
-}
-
-.calendar .tx-chip::before,
-.calendar-grid .tx-chip::before,
-.calendar .tx-chip::after,
-.calendar-grid .tx-chip::after{
-  content:none !important;
-  display:none !important;
-}
-
-.calendar .tx-chip.planned,
-.calendar-grid .tx-chip.planned{
-  opacity:.72 !important;
-  border-style:none !important;
-  border-left-style:solid !important;
-  outline:none !important;
-  box-shadow:none !important;
-}
-
-.calendar .tx-chip.cleared,
-.calendar-grid .tx-chip.cleared{
-  opacity:1 !important;
-  border-style:none !important;
-  border-left-style:solid !important;
-  outline:none !important;
-  box-shadow:none !important;
-}
-
-.calendar .tx-chip .tx-name,
-.calendar-grid .tx-chip .tx-name{
-  overflow:hidden !important;
-  text-overflow:ellipsis !important;
-  white-space:nowrap !important;
-  min-width:0 !important;
-}
-
-.calendar .tx-chip .tx-chip-amount,
-.calendar-grid .tx-chip .tx-chip-amount{
-  white-space:nowrap !important;
-}
-
-/* v2.105 compact planned chips: dashed outline, category color, no bulk */
-.calendar .tx-chip,
-.calendar-grid .tx-chip{
-  box-sizing:border-box !important;
-  margin-top:6px !important;
-  padding:4px 7px !important;
-  border-radius:8px !important;
-  font-size:11px !important;
-  font-weight:850 !important;
-  display:flex !important;
-  justify-content:space-between !important;
-  align-items:center !important;
-  gap:6px !important;
-  min-height:0 !important;
-  height:auto !important;
-  line-height:1.1 !important;
-  box-shadow:none !important;
-  outline:none !important;
-}
-
-.calendar .tx-chip::before,
-.calendar-grid .tx-chip::before,
-.calendar .tx-chip::after,
-.calendar-grid .tx-chip::after{
-  content:none !important;
-  display:none !important;
-}
-
-.calendar .tx-chip.planned,
-.calendar-grid .tx-chip.planned{
-  opacity:.78 !important;
-  border-top:1px dashed var(--chip-outline, rgba(80,60,40,.42)) !important;
-  border-right:1px dashed var(--chip-outline, rgba(80,60,40,.42)) !important;
-  border-bottom:1px dashed var(--chip-outline, rgba(80,60,40,.42)) !important;
-  border-left-width:5px !important;
-  border-left-style:solid !important;
-  border-left-color:var(--chip-outline, rgba(80,60,40,.42)) !important;
-}
-
-.calendar .tx-chip.cleared,
-.calendar-grid .tx-chip.cleared{
-  opacity:1 !important;
-  border-top:1px solid rgba(80,60,40,.35) !important;
-  border-right:1px solid rgba(80,60,40,.35) !important;
-  border-bottom:1px solid rgba(80,60,40,.35) !important;
-  border-left-width:5px !important;
-  border-left-style:solid !important;
-}
-
-.calendar .tx-chip .tx-name,
-.calendar-grid .tx-chip .tx-name{
-  overflow:hidden !important;
-  text-overflow:ellipsis !important;
-  white-space:nowrap !important;
-  min-width:0 !important;
-}
-
-.calendar .tx-chip .tx-chip-amount,
-.calendar-grid .tx-chip .tx-chip-amount{
-  white-space:nowrap !important;
-}
-
-/* v2.106 slightly more compact calendar chips */
-.calendar .tx-chip,
-.calendar-grid .tx-chip{
-  margin-top:4px !important;
-  padding:2px 5px !important;
-  border-radius:7px !important;
-  font-size:10.5px !important;
-  line-height:1.05 !important;
-  gap:4px !important;
-}
-
-.calendar .tx-chip.planned,
-.calendar-grid .tx-chip.planned,
-.calendar .tx-chip.cleared,
-.calendar-grid .tx-chip.cleared{
-  border-left-width:4px !important;
-}
-
-.calendar .tx-chip .tx-name,
-.calendar-grid .tx-chip .tx-name{
   max-width:100%;
 }
-
-.calendar .tx-chip-amount,
-.calendar-grid .tx-chip-amount{
+.calendar .tx-chip .tx-chip-amount,
+.calendar-grid .tx-chip .tx-chip-amount{
+  white-space:nowrap !important;
   font-size:10.5px !important;
-}
-
-/* v2.108 cleared calendar chips keep category color */
-.calendar .tx-chip.cleared,
-.calendar-grid .tx-chip.cleared{
-  background:var(--chip-bg, inherit) !important;
-  border-left-color:var(--chip-outline, currentColor) !important;
-  border-top:1px solid var(--chip-outline, rgba(80,60,40,.35)) !important;
-  border-right:1px solid var(--chip-outline, rgba(80,60,40,.35)) !important;
-  border-bottom:1px solid var(--chip-outline, rgba(80,60,40,.35)) !important;
-  border-left-width:4px !important;
-  border-left-style:solid !important;
-  opacity:1 !important;
-}
-
-.calendar .tx-chip.planned,
-.calendar-grid .tx-chip.planned{
-  background:var(--chip-bg, inherit) !important;
-  border-left-color:var(--chip-outline, currentColor) !important;
 }
 
 /* v2.110 BNPL installment loan metrics */
@@ -6498,8 +6201,6 @@ button.budget-review-row:hover,button.budget-review-row:focus-visible{
   .template-variant-row{grid-template-columns:minmax(0,1fr) auto auto!important}
   .cleanup-family-actions{grid-template-columns:1fr}
   .cleanup-family-actions .inline-actions{justify-content:flex-start}
-}
-@media(max-width:700px){
   html:not(.money-nest-ipad) #transactionModal.mobile-quick-add .form-details:first-of-type summary{
     font-size:11px!important;
   }
@@ -6525,6 +6226,7 @@ button.budget-review-row:hover,button.budget-review-row:focus-visible{
   width:100%;
   max-width:100%;
   min-width:0;
+  overflow-x:hidden;
 }
 #transactionModal .tx-primary-section,
 #transactionModal .form-details,
@@ -6539,9 +6241,6 @@ button.budget-review-row:hover,button.budget-review-row:focus-visible{
 #transactionModal .tx-account-category-grid,
 #transactionModal .tx-type-status-grid{
   grid-template-columns:minmax(0,1fr) minmax(0,1fr);
-}
-#transactionModal .transaction-modal-card{
-  overflow-x:hidden;
 }
 
 /* Settings now stays scan-first: one row per title family. */

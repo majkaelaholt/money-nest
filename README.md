@@ -1,5 +1,16 @@
 # Money Nest
 
+## v2-312
+
+### Stabilization: Calendar CSS consolidation pass 1
+
+- Consolidated the final Calendar transaction-chip styling into one canonical block and removed the superseded v2.100-v2.106 rollback/override layers that were still sitting earlier in the stylesheet. The effective planned/cleared chip styling is intentionally unchanged.
+- Preserved the existing desktop, iPhone, and iPad cascade contract while reducing duplicate declarations and fragile override depth.
+- Performed a small transaction-modal cleanup by merging adjacent identical mobile media-query scope and combining a duplicate `transaction-modal-card` base rule without changing the resulting styles.
+- Stylesheet shrank from 8,134 to 7,833 lines, `!important` usage dropped from 1,177 to 1,065, and top-level CSS rule-block count dropped from 1,709 to 1,671.
+- Static cascade parity checks confirmed identical winning Calendar chip declarations for planned/cleared desktop and mobile states, and identical transaction-modal card/field declarations across desktop/mobile samples.
+- No saved-data, JSON/CSV, finance-calculation, or schema changes. Schema remains **226** and storage key remains `moneyNest.v2.113`. Regression suite remains 14 checks.
+
 ## v2-311
 
 ### Stabilization: template intelligence + clutter control

@@ -161,7 +161,15 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-311`
+Latest known version: `money-nest-v2-312`
+
+### v2-312 CSS consolidation guardrails
+
+- First CSS cleanup pass intentionally preserves the existing visual result; do not use this work as permission for a broad visual redesign.
+- Calendar transaction-chip final state now lives in the `v2-312 calendar chip consolidation` block rather than the old v2.100-v2.106 rollback stack. Preserve planned/cleared opacity, borders, category colors, compact sizing, and desktop/iPhone/iPad overrides.
+- When cleaning CSS, prefer proving cascade parity and deleting superseded layers over changing selectors/styles wholesale. Keep platform-specific iPhone/iPad rules intact unless a visual change is explicitly requested.
+- Transaction-modal cleanup in this release is structural only (merged duplicate base/media declarations); resulting desktop/mobile/iPad styles must remain equivalent.
+- No schema/data changes. Schema remains 226; storage key remains `moneyNest.v2.113`; regression suite remains 14 checks.
 
 ### v2-311 template intelligence / cleanup guardrails
 

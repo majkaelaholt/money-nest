@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-311";
+const APP_VERSION = "2-312";
 const CURRENT_SCHEMA_VERSION = 226;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -13013,3 +13013,5 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 // v2-310: Right-click/long-press recurring delete snapshots occurrence metadata before closing the context menu so deleting one occurrence targets the clicked date.
 
 // v2-311: Learned transaction templates are confidence-aware: repeated learned shortcuts stay prominent, one-use learned shortcuts are exact-match-only, suspicious short/numeric learned titles stay out of normal suggestions, and archived learned templates do not auto-reactivate.
+
+// v2-312: First CSS consolidation pass removes superseded Calendar chip rollback layers and merges duplicate transaction-modal rules while preserving the existing visual cascade.
