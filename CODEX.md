@@ -1,3 +1,11 @@
+## v2-318 budget exclusion rules
+
+- Budgets may store optional `excludedCategoryIds`. These are negative selectors layered on top of the existing account/category/spending-bucket selectors; exclusion wins if a malformed/imported budget contains the same category in both include and exclude sets.
+- Exclusions are not positive selectors by themselves. A budget still needs at least one included category or a Spending bucket.
+- Preserve `excludedCategoryIds` through JSON normalization, Budget CSV import/export, category merge/delete maintenance, Budget Manager/detail summaries, and any future budget duplication/edit paths. Older backups normalize missing exclusions to `[]`. Schema 228.
+- Personal-spending ownership rules remain unchanged: bucketed transactions require the matching budget Spending bucket. A bucket-specific budget may additionally include and/or exclude purchase categories.
+- Regression suite baseline is 21 checks, including Ty Spending excluding Food while Ty Food requires both Food and the Ty Spending bucket.
+
 ## v2-317 maintenance rules
 
 - Recent Changes/undo storage is browser-local convenience data and must stay byte-capped (`CHANGE_HISTORY_MAX_BYTES`) so it cannot crowd out the primary finance blob. Preserve the newest full undo snapshot when it fits; older entries may degrade to storage-limited breadcrumbs.
@@ -179,7 +187,7 @@ Money Nest is a custom static GitHub Pages app for personal budgeting, debts, bi
 
 ## Current expected version
 
-Latest known version: `money-nest-v2-317`
+Latest known version: `money-nest-v2-318`
 
 ### v2-315 Settings + shared controls/forms CSS consolidation guardrails
 

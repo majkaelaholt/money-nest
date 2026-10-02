@@ -1,6 +1,6 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-317";
-const CURRENT_SCHEMA_VERSION = 227;
+const APP_VERSION = "2-318";
+const CURRENT_SCHEMA_VERSION = 228;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
 // v2-239: reliably detect iPad/tablet Safari and touch-capable layouts.
@@ -1433,7 +1433,11 @@ function normalizeData(raw){
     b.categoryIds = Array.isArray(b.categoryIds) ? [...new Set(b.categoryIds.filter(Boolean))] : [];
     if(!b.categoryIds.length && b.categoryId) b.categoryIds = [b.categoryId];
     b.categoryIds = b.categoryIds.filter(id => id && !isBudgetExcludedCategory(id));
-    b.categoryId = b.categoryIds[0] || b.categoryId || ""; // legacy fallback for older versions
+    b.excludedCategoryIds = Array.isArray(b.excludedCategoryIds) ? [...new Set(b.excludedCategoryIds.filter(Boolean))] : [];
+    b.excludedCategoryIds = b.excludedCategoryIds.filter(id => id && !isBudgetExcludedCategory(id));
+    const excludedBudgetCategoryIds = new Set(b.excludedCategoryIds);
+    b.categoryIds = b.categoryIds.filter(id => !excludedBudgetCategoryIds.has(id));
+    b.categoryId = b.categoryIds[0] || ""; // legacy fallback for older versions
     b.spendingBucketId = normalizedSpendingBucketId(b.spendingBucketId);
     b.spendingType = ["auto","bills","extra"].includes(b.spendingType) ? b.spendingType : "auto";
     b.amountMethod = ["fixed","occurrence","paycheck"].includes(b.amountMethod) ? b.amountMethod : "fixed";
@@ -4977,16 +4981,19 @@ function categorySpendingTypeOverrideForTransaction(tx){
 function budgetOverrideSpecificity(budget){
   const categoryIds = budgetCategoryIds(budget);
   const categoryCount = categoryIds.length || 999;
+  const exclusionCount = budgetExcludedCategoryIds(budget).length;
   const bucketRank = budgetSpendingBucketId(budget) ? 1 : 0;
   const scope = budget?.accountScope || (budget?.accountId ? "single" : "all");
   const accountCount = scope === "all" ? 999 : Math.max(1, budgetScopeAccountIds(budget).length);
   const scopeRank = scope === "single" ? 3 : (scope === "selected" ? 2 : 1);
   // Narrow category/bucket/account scopes should beat broad grouping budgets.
-  return {categoryCount, bucketRank, scopeRank, accountCount};
+  // More explicit exclusions also make an otherwise-equal selector narrower.
+  return {categoryCount, exclusionCount, bucketRank, scopeRank, accountCount};
 }
 function compareBudgetOverrideSpecificity(a,b){
   const sa=budgetOverrideSpecificity(a), sb=budgetOverrideSpecificity(b);
   if(sa.categoryCount !== sb.categoryCount) return sa.categoryCount - sb.categoryCount;
+  if(sa.exclusionCount !== sb.exclusionCount) return sb.exclusionCount - sa.exclusionCount;
   if(sa.bucketRank !== sb.bucketRank) return sb.bucketRank - sa.bucketRank;
   if(sa.scopeRank !== sb.scopeRank) return sb.scopeRank - sa.scopeRank;
   if(sa.accountCount !== sb.accountCount) return sa.accountCount - sb.accountCount;
@@ -5033,7 +5040,12 @@ function budgetCategoryIds(budget){
     : (budget.categoryId ? [budget.categoryId] : []);
   return [...new Set(ids.filter(id => id && !isBudgetExcludedCategory(id)))];
 }
+function budgetExcludedCategoryIds(budget){
+  if(!budget || !Array.isArray(budget.excludedCategoryIds)) return [];
+  return [...new Set(budget.excludedCategoryIds.filter(id => id && !isBudgetExcludedCategory(id)))];
+}
 function txMatchesBudgetCategories(tx, budget){
+  if(budgetExcludedCategoryIds(budget).includes(tx?.categoryId)) return false;
   const ids = budgetCategoryIds(budget);
   return !ids.length || ids.includes(tx?.categoryId);
 }
@@ -5505,15 +5517,21 @@ function renderBudgets(){
 }
 function budgetManagerCategoryText(budget){
   const ids = budgetCategoryIds(budget);
+  const excludedIds = budgetExcludedCategoryIds(budget);
   const bucketId = budgetSpendingBucketId(budget);
   const bucketText = bucketId ? spendingBucketLabel(bucketId, "") : "";
-  if(!ids.length) return bucketText ? `All categories • ${bucketText}` : "No categories";
   const labels = ids.map(id=>{
     const cat=categoryById(id);
     return cat ? `${cat.emoji || "🏷️"} ${cat.name}` : "Unknown category";
   });
-  const categoryText = labels.length <= 3 ? labels.join(" • ") : `${labels.slice(0,3).join(" • ")} +${labels.length-3} more`;
-  return bucketText ? `${bucketText} • ${categoryText}` : categoryText;
+  const excludedLabels = excludedIds.map(id=>{
+    const cat=categoryById(id);
+    return cat ? `${cat.emoji || "🏷️"} ${cat.name}` : "Unknown category";
+  });
+  const categoryText = !labels.length ? "All categories" : (labels.length <= 3 ? labels.join(" • ") : `${labels.slice(0,3).join(" • ")} +${labels.length-3} more`);
+  const base = bucketText ? `${bucketText} • ${categoryText}` : (labels.length ? categoryText : "No categories");
+  const exclusionText = excludedLabels.length ? ` • except ${excludedLabels.length <= 3 ? excludedLabels.join(" • ") : `${excludedLabels.slice(0,3).join(" • ")} +${excludedLabels.length-3} more`}` : "";
+  return `${base}${exclusionText}`;
 }
 function renderBudgetManager(){
   const list=document.getElementById("budgetManagerList");
@@ -5588,7 +5606,8 @@ function openBudgetDetailView({categoryId, categoryIds=null, budget=null, accoun
   const topAccount = accounts[0]?.label || "No spending yet";
   const topMerchant = merchants[0]?.label || "No spending yet";
   document.getElementById("budgetDetailTitle").textContent = `${cat.emoji || "📊"} ${cat.text || cat.name}${budget ? " budget" : " spending"}`;
-  document.getElementById("budgetDetailSub").textContent = `${range.label} • ${budget ? budgetScopeLabel(budget) : budgetReviewAccountLabel(accountId)}`;
+  const excludedBudgetLabels = budget ? budgetExcludedCategoryIds(budget).map(id=>categoryById(id)?.name || id) : [];
+  document.getElementById("budgetDetailSub").textContent = `${range.label} • ${budget ? budgetScopeLabel(budget) : budgetReviewAccountLabel(accountId)}${excludedBudgetLabels.length ? ` • excludes ${excludedBudgetLabels.join(", ")}` : ""}`;
   content.innerHTML = `
     <div class="budget-detail-summary ${budget ? "" : "category-only"}">
       <article class="mini-card"><span>Total spent</span><b>${money(total)}</b><small>${txs.length} included transaction${txs.length===1?"":"s"}</small></article>
@@ -8854,6 +8873,13 @@ window.simpleBudget = (id=null, preset={}, options={})=>{
       ${sortedCategories().filter(c=>!isBudgetExcludedCategory(c.id)).map(c=>`<label class="budget-account-check"><input type="checkbox" name="sBudgetCategoryIds" value="${c.id}"> <span>${c.emoji} ${c.name}</span></label>`).join("")}
       <p class="hint">Optional when a Spending bucket is selected. Leave all unchecked to include every category in that bucket; if both are set, transactions must match both.</p>
     </div>
+    <details class="form-details" ${budgetExcludedCategoryIds(b).length ? "open" : ""}>
+      <summary>Exclude categories (optional)</summary>
+      <div class="details-inner budget-account-picker">
+        ${sortedCategories().filter(c=>!isBudgetExcludedCategory(c.id)).map(c=>`<label class="budget-account-check"><input type="checkbox" name="sBudgetExcludedCategoryIds" value="${c.id}"> <span>${c.emoji} ${c.name}</span></label>`).join("")}
+        <p class="hint">Matching transactions in these categories will not count toward this budget. Useful for rules like Ty Spending = Ty Spending bucket except Food.</p>
+      </div>
+    </details>
     <label>Spending view
       <select id="sBudgetSpendingType">
         <option value="auto" ${(b?.spendingType || "auto")==="auto"?"selected":""}>Auto — recurring decides</option>
@@ -8905,7 +8931,23 @@ window.simpleBudget = (id=null, preset={}, options={})=>{
   setTimeout(()=>{
     document.querySelectorAll('input[name="sBudgetAccountIds"]').forEach(input=>{ input.checked = initialIds.includes(input.value); });
     const initialCategoryIds = b ? budgetCategoryIds(b) : (preset.categoryId ? [preset.categoryId] : []);
-    document.querySelectorAll('input[name="sBudgetCategoryIds"]').forEach(input=>{ input.checked = initialCategoryIds.includes(input.value); });
+    const initialExcludedCategoryIds = b ? budgetExcludedCategoryIds(b) : [];
+    document.querySelectorAll('input[name="sBudgetCategoryIds"]').forEach(input=>{
+      input.checked = initialCategoryIds.includes(input.value);
+      input.addEventListener("change",()=>{
+        if(!input.checked) return;
+        const counterpart=document.querySelector(`input[name="sBudgetExcludedCategoryIds"][value="${CSS.escape(input.value)}"]`);
+        if(counterpart) counterpart.checked=false;
+      });
+    });
+    document.querySelectorAll('input[name="sBudgetExcludedCategoryIds"]').forEach(input=>{
+      input.checked = initialExcludedCategoryIds.includes(input.value);
+      input.addEventListener("change",()=>{
+        if(!input.checked) return;
+        const counterpart=document.querySelector(`input[name="sBudgetCategoryIds"][value="${CSS.escape(input.value)}"]`);
+        if(counterpart) counterpart.checked=false;
+      });
+    });
   },0);
   simpleSubmit = ()=>{
     let accountIds = [...document.querySelectorAll('input[name="sBudgetAccountIds"]:checked')].map(input=>input.value);
@@ -8915,7 +8957,9 @@ window.simpleBudget = (id=null, preset={}, options={})=>{
     }
     const scope = accountIds.length === allAccountIds.length ? "all" : (accountIds.length === 1 ? "single" : "selected");
     const accountId = scope === "all" ? "" : accountIds[0];
-    const categoryIds = [...document.querySelectorAll('input[name="sBudgetCategoryIds"]:checked')].map(input=>input.value).filter(id=>!isBudgetExcludedCategory(id));
+    const excludedCategoryIds = [...document.querySelectorAll('input[name="sBudgetExcludedCategoryIds"]:checked')].map(input=>input.value).filter(id=>!isBudgetExcludedCategory(id));
+    const excludedSet = new Set(excludedCategoryIds);
+    const categoryIds = [...document.querySelectorAll('input[name="sBudgetCategoryIds"]:checked')].map(input=>input.value).filter(id=>!isBudgetExcludedCategory(id) && !excludedSet.has(id));
     const spendingBucketId = normalizedSpendingBucketId(document.getElementById("sBudgetSpendingBucket")?.value);
     if(!categoryIds.length && !spendingBucketId){
       alert("Choose at least one category or a Spending bucket for this budget.");
@@ -8929,6 +8973,7 @@ window.simpleBudget = (id=null, preset={}, options={})=>{
     target.accountIds = scope === "all" ? [] : accountIds;
     target.categoryIds = categoryIds;
     target.categoryId = categoryIds[0] || ""; // legacy fallback for older app versions
+    target.excludedCategoryIds = excludedCategoryIds;
     target.spendingBucketId = spendingBucketId;
     target.spendingType = ["bills","extra"].includes(document.getElementById("sBudgetSpendingType")?.value) ? document.getElementById("sBudgetSpendingType").value : "auto";
     target.amountMethod = normalizedBudgetAmountMethod({amountMethod:document.getElementById("sBudgetAmountMethod")?.value});
@@ -10225,6 +10270,11 @@ window.simpleCategory = (id=null)=>{
     if(confirm("Delete this category? Existing transactions will become unassigned.")){
       data.transactions.forEach(tx=>{ if(tx.categoryId === id) tx.categoryId = "unassigned"; });
       (data.settings?.transactionTemplates || []).forEach(t=>{ if(t.categoryId === id) t.categoryId = "unassigned"; });
+      (data.budgets || []).forEach(b=>{
+        b.categoryIds = budgetCategoryIds(b).filter(categoryId=>categoryId!==id);
+        b.categoryId = b.categoryIds[0] || "";
+        b.excludedCategoryIds = budgetExcludedCategoryIds(b).filter(categoryId=>categoryId!==id);
+      });
       data.categories = data.categories.filter(x=>x.id!==id);
     }
   } : null;
@@ -10238,10 +10288,7 @@ function categoryUsageStats(category){
   const id=category.id;
   const txs=(data.transactions||[]).filter(tx=>tx.categoryId===id);
   const templates=(data.settings?.transactionTemplates||[]).filter(t=>t.categoryId===id);
-  const budgets=(data.budgets||[]).filter(b=>{
-    const ids=Array.isArray(b.categoryIds)&&b.categoryIds.length?b.categoryIds:[b.categoryId].filter(Boolean);
-    return ids.includes(id);
-  });
+  const budgets=(data.budgets||[]).filter(b=>budgetCategoryIds(b).includes(id) || budgetExcludedCategoryIds(b).includes(id));
   const bucketTxs=(data.transactions||[]).filter(tx=>normalizedSpendingBucketId(tx.spendingBucketId)===id);
   const bucketTemplates=(data.settings?.transactionTemplates||[]).filter(t=>normalizedSpendingBucketId(t.spendingBucketId)===id);
   const bucketBudgets=(data.budgets||[]).filter(b=>budgetSpendingBucketId(b)===id);
@@ -10282,9 +10329,12 @@ function mergeCategoryInto(sourceId,targetId){
   (data.transactions||[]).forEach(tx=>{if(tx.categoryId===sourceId)tx.categoryId=targetId;});
   (data.settings?.transactionTemplates||[]).forEach(t=>{if(t.categoryId===sourceId)t.categoryId=targetId;});
   (data.budgets||[]).forEach(b=>{
-    let ids=Array.isArray(b.categoryIds)&&b.categoryIds.length?[...b.categoryIds]:[b.categoryId].filter(Boolean);
+    let ids=budgetCategoryIds(b);
     ids=[...new Set(ids.map(id=>id===sourceId?targetId:id))];
-    b.categoryIds=ids;b.categoryId=ids[0]||targetId;
+    b.excludedCategoryIds=[...new Set(budgetExcludedCategoryIds(b).map(id=>id===sourceId?targetId:id))];
+    const excludedSet=new Set(b.excludedCategoryIds);
+    ids=ids.filter(id=>!excludedSet.has(id));
+    b.categoryIds=ids;b.categoryId=ids[0]||"";
   });
   data.categories=data.categories.filter(c=>c.id!==sourceId);
   if(Array.isArray(calendarHighlightCategories))calendarHighlightCategories=calendarHighlightCategories.map(id=>id===sourceId?targetId:id);
@@ -11840,10 +11890,10 @@ function exportEditableCSVs(){
     frozenLocked:!!d.frozenLocked, archived:!!d.archived, archivedAt:d.archivedAt || "", notes:d.notes || ""
   }));
 
-  const budgetHeaders = ["id","name","emoji","accountScope","accountId","accountIdsJSON","categoryId","categoryIdsJSON","spendingBucketId","spendingType","amount","amountMethod","occurrenceWeekday","paycheckOwner","monthlyAmountOverridesJSON","period","notes"];
+  const budgetHeaders = ["id","name","emoji","accountScope","accountId","accountIdsJSON","categoryId","categoryIdsJSON","excludedCategoryIdsJSON","spendingBucketId","spendingType","amount","amountMethod","occurrenceWeekday","paycheckOwner","monthlyAmountOverridesJSON","period","notes"];
   const budgetRows = (data.budgets || []).map(b=>({
     id:b.id, name:b.name || "", emoji:b.emoji || "", accountScope:b.accountScope || (b.accountId ? "single" : "all"), accountId:b.accountId || "",
-    accountIdsJSON:JSON.stringify(budgetScopeAccountIds(b)), categoryId:budgetCategoryIds(b)[0] || b.categoryId || "", categoryIdsJSON:JSON.stringify(budgetCategoryIds(b)), spendingBucketId:budgetSpendingBucketId(b), spendingType:normalizedBudgetSpendingType(b), amount:b.amount ?? "", amountMethod:normalizedBudgetAmountMethod(b), occurrenceWeekday:b.occurrenceWeekday ?? 3, paycheckOwner:b.paycheckOwner || "Ty", monthlyAmountOverridesJSON:JSON.stringify(budgetMonthlyAmountOverrides(b)),
+    accountIdsJSON:JSON.stringify(budgetScopeAccountIds(b)), categoryId:budgetCategoryIds(b)[0] || b.categoryId || "", categoryIdsJSON:JSON.stringify(budgetCategoryIds(b)), excludedCategoryIdsJSON:JSON.stringify(budgetExcludedCategoryIds(b)), spendingBucketId:budgetSpendingBucketId(b), spendingType:normalizedBudgetSpendingType(b), amount:b.amount ?? "", amountMethod:normalizedBudgetAmountMethod(b), occurrenceWeekday:b.occurrenceWeekday ?? 3, paycheckOwner:b.paycheckOwner || "Ty", monthlyAmountOverridesJSON:JSON.stringify(budgetMonthlyAmountOverrides(b)),
     period:b.period || "monthly", notes:b.notes || ""
   }));
 
@@ -11946,9 +11996,14 @@ function importEditedCSV(file){
         try{ categoryIds = JSON.parse(row.categoryIdsJSON || "[]"); }catch(e){ categoryIds = String(row.categoryIds || "").split(/[|;]/).map(v=>v.trim()).filter(Boolean); }
         if(!categoryIds.length && row.categoryId) categoryIds = [row.categoryId];
         categoryIds = [...new Set(categoryIds.filter(id=>id && !isBudgetExcludedCategory(id)))];
+        let excludedCategoryIds = [];
+        try{ excludedCategoryIds = JSON.parse(row.excludedCategoryIdsJSON || "[]"); }catch(e){ excludedCategoryIds = String(row.excludedCategoryIds || "").split(/[|;]/).map(v=>v.trim()).filter(Boolean); }
+        excludedCategoryIds = [...new Set((Array.isArray(excludedCategoryIds) ? excludedCategoryIds : []).filter(id=>id && !isBudgetExcludedCategory(id)))];
+        const excludedSet = new Set(excludedCategoryIds);
+        categoryIds = categoryIds.filter(id=>!excludedSet.has(id));
         return {
           id: row.id || uid(), name: row.name || "", emoji: row.emoji || "", accountScope, accountId: accountScope === "all" ? "" : (accountId || accountIds[0] || ""), accountIds,
-          categoryId: categoryIds[0] || row.categoryId || "", categoryIds, spendingBucketId:normalizedSpendingBucketId(row.spendingBucketId), spendingType:["bills","extra"].includes(row.spendingType) ? row.spendingType : "auto", amount: Number(row.amount || 0), amountMethod:["occurrence","paycheck"].includes(row.amountMethod) ? row.amountMethod : "fixed", occurrenceWeekday:Math.min(6,Math.max(0,Number(row.occurrenceWeekday ?? 3))), paycheckOwner:["Mak","Ty"].includes(row.paycheckOwner) ? row.paycheckOwner : "Ty", monthlyAmountOverrides:(()=>{try{const parsed=JSON.parse(row.monthlyAmountOverridesJSON || "{}");return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? Object.fromEntries(Object.entries(parsed).filter(([month,value])=>/^\d{4}-\d{2}$/.test(month) && Number.isFinite(Number(value)) && Number(value)>=0).map(([month,value])=>[month,Number(value)])) : {};}catch(e){return {};}})(), period: row.period || "monthly", notes: row.notes || ""
+          categoryId: categoryIds[0] || "", categoryIds, excludedCategoryIds, spendingBucketId:normalizedSpendingBucketId(row.spendingBucketId), spendingType:["bills","extra"].includes(row.spendingType) ? row.spendingType : "auto", amount: Number(row.amount || 0), amountMethod:["occurrence","paycheck"].includes(row.amountMethod) ? row.amountMethod : "fixed", occurrenceWeekday:Math.min(6,Math.max(0,Number(row.occurrenceWeekday ?? 3))), paycheckOwner:["Mak","Ty"].includes(row.paycheckOwner) ? row.paycheckOwner : "Ty", monthlyAmountOverrides:(()=>{try{const parsed=JSON.parse(row.monthlyAmountOverridesJSON || "{}");return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? Object.fromEntries(Object.entries(parsed).filter(([month,value])=>/^\d{4}-\d{2}$/.test(month) && Number.isFinite(Number(value)) && Number(value)>=0).map(([month,value])=>[month,Number(value)])) : {};}catch(e){return {};}})(), period: row.period || "monthly", notes: row.notes || ""
         };
       });
       saveData();
@@ -13018,6 +13073,40 @@ function runMoneyNestRegressionTests(options={}){
       return "Useful repeated stays prominent; one-use exact-only; junk hidden; archived stays archived";
     }));
 
+    results.push(regressionResult("Budget exclusions prevent personal-bucket overlap",()=>{
+      const ds=regressionDataset({
+        accounts:[{id:"joint",name:"Joint",owner:"Joint",type:"cash",startingBalance:100}],
+        transactions:[
+          {id:"ty-food",date:"2027-01-05",title:"McDonald's",amount:10,type:"expense",status:"cleared",accountId:"joint",categoryId:"food",spendingBucketId:"ty-spending",recurrence:{type:"none",interval:1}},
+          {id:"ty-shopping",date:"2027-01-06",title:"Game",amount:20,type:"expense",status:"cleared",accountId:"joint",categoryId:"shopping",spendingBucketId:"ty-spending",recurrence:{type:"none",interval:1}},
+          {id:"shared-food",date:"2027-01-07",title:"DoorDash",amount:30,type:"expense",status:"cleared",accountId:"joint",categoryId:"food",spendingBucketId:"",recurrence:{type:"none",interval:1}}
+        ]
+      });
+      ds.categories.push(
+        {id:"food",name:"Food",emoji:"🍔",color:"#888"},
+        {id:"shopping",name:"Shopping",emoji:"🛍️",color:"#888"},
+        {id:"ty-spending",name:"Ty Spending",emoji:"🎱",color:"#888"}
+      );
+      ds.budgets=[
+        {id:"personal",name:"Ty Spending",accountScope:"all",accountId:"",accountIds:[],categoryId:"",categoryIds:[],excludedCategoryIds:["food"],spendingBucketId:"ty-spending",amount:200,amountMethod:"fixed",period:"monthly"},
+        {id:"food-budget",name:"Ty Food",accountScope:"all",accountId:"",accountIds:[],categoryId:"food",categoryIds:["food"],excludedCategoryIds:[],spendingBucketId:"ty-spending",amount:100,amountMethod:"fixed",period:"monthly"}
+      ];
+      setSynthetic(ds,false);
+      const personal=ds.budgets[0], foodBudget=ds.budgets[1];
+      const foodTx=ds.transactions[0], shoppingTx=ds.transactions[1], sharedFoodTx=ds.transactions[2];
+      regressionAssert(!txMatchesBudgetDefinition(foodTx,personal),"Food in Ty Spending still matched the budget that excludes Food");
+      regressionAssert(txMatchesBudgetDefinition(foodTx,foodBudget),"Food in Ty Spending did not match the dedicated Ty Food budget");
+      regressionAssert(txMatchesBudgetDefinition(shoppingTx,personal),"Non-Food Ty Spending purchase was incorrectly excluded");
+      regressionAssert(!txMatchesBudgetDefinition(shoppingTx,foodBudget),"Non-Food Ty Spending purchase leaked into Ty Food");
+      regressionAssert(!txMatchesBudgetDefinition(sharedFoodTx,foodBudget),"Shared Food without Ty Spending bucket leaked into Ty Food");
+      const range=budgetMonthRange("2027-01");
+      regressionApprox(budgetActualSpent(personal,range),20,0.001,"Ty Spending exclusion total");
+      regressionApprox(budgetActualSpent(foodBudget,range),10,0.001,"Ty Food total");
+      const roundTrip=normalizeData(JSON.parse(JSON.stringify(ds)));
+      regressionAssert(roundTrip.budgets.find(b=>b.id==="personal")?.excludedCategoryIds?.includes("food"),"Budget exclusions were lost during JSON normalization");
+      return "Food routes to Ty Food; other Ty-bucket purchases stay in Ty Spending";
+    }));
+
     results.push(regressionResult("Primary local save wins over undo history under quota pressure",()=>{
       const store=new Map([[STORAGE_KEY,"old-data"],[CHANGE_HISTORY_KEY,"large-undo-history"]]);
       const fakeStorage={
@@ -13357,3 +13446,4 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 
 // v2-316: Final stabilization baseline adds verified/quota-resilient primary saves, whole-Money-Nest storage diagnostics, expanded backup/planning/cloud/bill regression coverage, and the final safe dead-selector/app-shell CSS cleanup.
 // v2-317: Maintenance can compact/clear browser-only Recent Changes storage, undo snapshots are byte-capped, and pre-archive dangling debt pointers can be resolved into preserved legacy metadata.
+// v2-318: Budgets support optional excludedCategoryIds so a spending-bucket budget can omit categories (for example Ty Spending except Food) without changing transaction categorization.
