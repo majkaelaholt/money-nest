@@ -1,3 +1,11 @@
+## v2-319 ledger recurrence visibility rules
+
+- Account/debt transaction ledgers may materialize recurring projections only to a bounded horizon. “All available dates” means all saved history plus a one-year future recurrence projection; never imply an infinite series was fully materialized.
+- Preserve Custom range and Next 12 months transaction-filter behavior. A custom end date may extend the recurrence expansion horizon beyond the normal one-year ledger horizon.
+- The farthest currently shown row for each recurring series should identify whether the source series **Repeats forever** or **Repeats until [date]**. This is informational and must not alter recurrence math.
+- **End repeat…** is a series-wide quick action. It must update the canonical transaction's `recurrenceUntil` directly no matter which generated occurrence was clicked; do not split the series merely to change its end date.
+- Schema remains 228. Regression suite baseline is 22 checks.
+
 ## v2-318 budget exclusion rules
 
 - Budgets may store optional `excludedCategoryIds`. These are negative selectors layered on top of the existing account/category/spending-bucket selectors; exclusion wins if a malformed/imported budget contains the same category in both include and exclude sets.

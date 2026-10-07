@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-318";
+const APP_VERSION = "2-319";
 const CURRENT_SCHEMA_VERSION = 228;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -368,7 +368,7 @@ function maybeQueueCloudAutoSave(){
 
 // v2.80: compatibility shim for browsers that do not expose element IDs as global variables.
 (function bindDomIdGlobals(){
-  const ids = ['accountDetail', 'accountDetailContent', 'accountList', 'accounts', 'addAccountBtn', 'addBillBtn', 'addBudgetBtn', 'addCategoryBtn', 'addDayTransactionBtn', 'addDebtBtn', 'autoPaycheckHint', 'autoPaycheckLabel', 'backupBtn', 'financialPictureBtn', 'extendedFinancialPictureBtn', 'billAccountFilter', 'billCategoryFilter', 'billRecurrenceFilter', 'billSort', 'billTypeFilter', 'bills', 'billsList', 'budgetReview', 'bulkEditCategoriesBtn', 'budgets', 'calendar', 'calendarAccountFilter', 'calendarCategoryHighlight', 'calendarCategoryHighlightDropdown', 'calendarCategoryHighlightBtn', 'calendarCategoryHighlightMenu', 'calendarGrid', 'cancelDayModal', 'cancelSimple', 'cancelTxBtn', 'categoryList', 'clearRecentBtn', 'closeDayModal', 'closeModal', 'closeSimple', 'csvExportBtn', 'csvImportInput', 'ctxDelete', 'ctxDuplicate', 'ctxEdit', 'ctxCreateCardPayment', 'ctxMarkReimbursed', 'ctxToggleCleared', 'ctxUseCardInstead', 'dashboard', 'dayModal', 'dayModalSub', 'dayModalTitle', 'dayModalTransactions', 'debtDetail', 'debtDetailContent', 'debtGroups', 'debtSnapshot', 'debts', 'deleteSimpleBtn', 'deleteTxBtn', 'duplicateTxBtn', 'importInput', 'modalTitle', 'monthLabel', 'nextMonth', 'prevMonth', 'quickAddBtn', 'recentPlacesList', 'recentChangesList', 'undoLastChangeBtn', 'clearChangeHistoryBtn', 'recurrenceDetails', 'repeatIntervalUnitLabel', 'safeSpendList', 'saveTxBtn', 'settings', 'settingsClearAllBtn', 'simpleFields', 'simpleForm', 'simpleModal', 'simpleTitle', 'summaryCards', 'todayBtn', 'transactionForm', 'transactionModal', 'txAccount', 'txAmount', 'txAutoPaycheck', 'txCategory', 'txContextMenu', 'txDate', 'txDebt', 'txDebtAccount', 'txLoanBreakdownWrap', 'txLoanPrincipal', 'txLoanInterest', 'txLoanFees', 'txLoanBreakdownHint', 'txDeleteAll', 'txDeleteOne', 'txDeleteScopeWrap', 'txId', 'txNotes', 'txRepeatInterval', 'txRepeatIntervalUnit', 'txRepeatOrdinal', 'txRepeatRule', 'txRepeatWeekday', 'txSaveScopeHint', 'txSaveScopeWrap', 'txScopeFuture', 'txScopeOne', 'txStatus', 'txTitle', 'txSpendingBucket', 'txTransferTo', 'txType', 'txWeekendHandling', 'upcomingList', 'viewTitle', 'settingsPaycheckCount', 'paycheckProfileList', 'makHourlyRate', 'makHoursPerWorkday', 'makDeductionPercent', 'makFixedDeduction', 'tyHourlyRate', 'tyDefaultHours', 'tyDeductionPercent', 'tyFixedDeduction', 'paycheckHoursWrap', 'txPaycheckHoursOverride', 'billCategoryDropdown', 'billCategoryDropdownBtn', 'billCategoryDropdownMenu'];
+  const ids = ['accountDetail', 'accountDetailContent', 'accountList', 'accounts', 'addAccountBtn', 'addBillBtn', 'addBudgetBtn', 'addCategoryBtn', 'addDayTransactionBtn', 'addDebtBtn', 'autoPaycheckHint', 'autoPaycheckLabel', 'backupBtn', 'financialPictureBtn', 'extendedFinancialPictureBtn', 'billAccountFilter', 'billCategoryFilter', 'billRecurrenceFilter', 'billSort', 'billTypeFilter', 'bills', 'billsList', 'budgetReview', 'bulkEditCategoriesBtn', 'budgets', 'calendar', 'calendarAccountFilter', 'calendarCategoryHighlight', 'calendarCategoryHighlightDropdown', 'calendarCategoryHighlightBtn', 'calendarCategoryHighlightMenu', 'calendarGrid', 'cancelDayModal', 'cancelSimple', 'cancelTxBtn', 'categoryList', 'clearRecentBtn', 'closeDayModal', 'closeModal', 'closeSimple', 'csvExportBtn', 'csvImportInput', 'ctxDelete', 'ctxDuplicate', 'ctxEdit', 'ctxEndRepeat', 'ctxCreateCardPayment', 'ctxMarkReimbursed', 'ctxToggleCleared', 'ctxUseCardInstead', 'dashboard', 'dayModal', 'dayModalSub', 'dayModalTitle', 'dayModalTransactions', 'debtDetail', 'debtDetailContent', 'debtGroups', 'debtSnapshot', 'debts', 'deleteSimpleBtn', 'deleteTxBtn', 'duplicateTxBtn', 'importInput', 'modalTitle', 'monthLabel', 'nextMonth', 'prevMonth', 'quickAddBtn', 'recentPlacesList', 'recentChangesList', 'undoLastChangeBtn', 'clearChangeHistoryBtn', 'recurrenceDetails', 'repeatIntervalUnitLabel', 'safeSpendList', 'saveTxBtn', 'settings', 'settingsClearAllBtn', 'simpleFields', 'simpleForm', 'simpleModal', 'simpleTitle', 'summaryCards', 'todayBtn', 'transactionForm', 'transactionModal', 'txAccount', 'txAmount', 'txAutoPaycheck', 'txCategory', 'txContextMenu', 'txDate', 'txDebt', 'txDebtAccount', 'txLoanBreakdownWrap', 'txLoanPrincipal', 'txLoanInterest', 'txLoanFees', 'txLoanBreakdownHint', 'txDeleteAll', 'txDeleteOne', 'txDeleteScopeWrap', 'txId', 'txNotes', 'txRepeatInterval', 'txRepeatIntervalUnit', 'txRepeatOrdinal', 'txRepeatRule', 'txRepeatWeekday', 'txSaveScopeHint', 'txSaveScopeWrap', 'txScopeFuture', 'txScopeOne', 'txStatus', 'txTitle', 'txSpendingBucket', 'txTransferTo', 'txType', 'txWeekendHandling', 'upcomingList', 'viewTitle', 'settingsPaycheckCount', 'paycheckProfileList', 'makHourlyRate', 'makHoursPerWorkday', 'makDeductionPercent', 'makFixedDeduction', 'tyHourlyRate', 'tyDefaultHours', 'tyDeductionPercent', 'tyFixedDeduction', 'paycheckHoursWrap', 'txPaycheckHoursOverride', 'billCategoryDropdown', 'billCategoryDropdownBtn', 'billCategoryDropdownMenu'];
   ids.forEach(id=>{
     if(!/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(id)) return;
     try{
@@ -547,7 +547,7 @@ const defaultUiPrefs = {
   calendarMode: "real",
   planningScenarioId: "",
   billFilters: { account:"all", categories:["all"], type:"all", recurrence:"all", sort:"date" },
-  transactionFilters: { status:"all", category:"all", type:"all", sort:"date-asc", dateRange:"upcoming-90", search:"" },
+  transactionFilters: { status:"all", category:"all", type:"all", sort:"date-asc", dateRange:"upcoming-90", customStart:"", customEnd:"", search:"" },
   transactionFilterDefaults: { status:"all", category:"all", type:"all", sort:"date-asc", dateRange:"upcoming-90" },
   accountDetailMode: "bank",
   accountForecastRange: "next-90",
@@ -3387,6 +3387,14 @@ function setupContextMenuEvents(){
     }
   };
 
+  const endRepeat = document.getElementById("ctxEndRepeat");
+  if(endRepeat) endRepeat.onclick = (e)=>{
+    e.stopPropagation();
+    const id = contextTxId;
+    const meta = {...contextTxMeta};
+    if(id){ hideTxContextMenu(); openEndRecurringSeries(id, meta); }
+  };
+
   const del = document.getElementById("ctxDelete");
   if(del) del.onclick = (e)=>{
     e.stopPropagation();
@@ -4615,11 +4623,64 @@ function renderAccountBalanceCards(accountId){
   </div>`;
 }
 
+function ledgerProjectionEndISO(){
+  const today = todayISO();
+  if(transactionFilters.dateRange === "custom" && transactionFilters.customEnd){
+    return transactionFilters.customEnd;
+  }
+  if(transactionFilters.dateRange === "this-month") return toISO(endOfMonth(parseDate(today)));
+  if(transactionFilters.dateRange === "past-90") return today;
+  if(transactionFilters.dateRange === "upcoming-90") return toISO(addDays(parseDate(today), 90));
+  if(transactionFilters.dateRange === "next-12") return toISO(addMonths(parseDate(today), 12));
+  // "All available" intentionally means all saved history plus a bounded
+  // projection of open-ended recurring rules. Infinite series cannot be fully
+  // materialized in a ledger, so use a generous one-year future horizon and
+  // label the visible tail of each series with its actual repeat status.
+  return toISO(addMonths(parseDate(today), 12));
+}
+function ledgerDateRangeSummary(projectionEndISO){
+  if(transactionFilters.dateRange !== "all") return "";
+  const label = parseDate(projectionEndISO).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"});
+  return `All saved history is shown. Open-ended recurring series are projected through ${label}; their farthest shown occurrence says whether they repeat forever or end on a set date.`;
+}
+function recurringSeriesSource(tx){
+  if(!tx) return null;
+  const sourceId = tx.originalId || tx.recurrenceSourceId || tx.recurringSourceId || tx.id;
+  const source = data.transactions.find(item=>item.id===sourceId) || tx;
+  return isRecurring(source) ? source : null;
+}
+function recurringSeriesTailKeys(txs){
+  const tails = new Map();
+  (txs || []).forEach(tx=>{
+    const source = recurringSeriesSource(tx);
+    if(!source) return;
+    const current = tails.get(source.id);
+    if(!current || String(tx.date || "") > String(current.date || "")) tails.set(source.id, tx);
+  });
+  return tails;
+}
+function recurrenceSeriesStatusText(source){
+  if(!source || !isRecurring(source)) return "";
+  if(source.recurrenceUntil){
+    const label = parseDate(source.recurrenceUntil).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"});
+    return `Repeats until ${label}`;
+  }
+  return "Repeats forever";
+}
+function isRecurringTailRow(tx, tails){
+  const source = recurringSeriesSource(tx);
+  const tail = source ? tails.get(source.id) : null;
+  if(!source || !tail) return false;
+  return (tail.originalId || tail.id) === (tx.originalId || tx.id) &&
+    (tail.originalDate || tail.date) === (tx.originalDate || tx.date) &&
+    tail.date === tx.date;
+}
+
 function renderAccountDetail(){
   const a = accountById(selectedAccountId);
   if(!a){ setView("accounts"); return; }
 
-  const throughISO = toISO(addMonths(parseDate(todayISO()), 12));
+  const throughISO = ledgerProjectionEndISO();
   const txs = visibleTransactionsForAccount(a.id, throughISO);
   const filtered = filteredLedgerTransactions(txs);
   const balances = transactionFilters.status === "cleared"
@@ -4658,7 +4719,8 @@ function renderAccountDetail(){
         <div><h3>Transactions</h3><span class="hint">${filtered.length} shown of ${txs.length}</span></div>
         <button type="button" class="ghost small" onclick="toggleLedgerFilters()">${ledgerFiltersOpen ? "Hide filters" : "Filters"}</button>
       </div>
-      ${ledgerFiltersOpen ? renderTransactionFilters() : ""}
+      ${ledgerFiltersOpen ? renderTransactionFilters({projectionEnd:throughISO}) : ""}
+      ${ledgerDateRangeSummary(throughISO) ? `<p class="hint ledger-projection-hint">${ledgerDateRangeSummary(throughISO)}</p>` : ""}
       ${renderLedger(filtered, {accountId:a.id, runningBalances:balances, mode:"timeline"})}
     </section>`;
   attachTransactionContextMenus();
@@ -4708,12 +4770,19 @@ function filteredLedgerTransactions(txs){
     if(transactionFilters.dateRange === "upcoming-90"){
       const end = toISO(addDays(parseDate(today), 90));
       dateMatch = tx.date >= today && tx.date <= end;
+    } else if(transactionFilters.dateRange === "next-12"){
+      const end = toISO(addMonths(parseDate(today), 12));
+      dateMatch = tx.date >= today && tx.date <= end;
     } else if(transactionFilters.dateRange === "past-90"){
       const start = toISO(addDays(parseDate(today), -90));
       dateMatch = tx.date >= start && tx.date <= today;
     } else if(transactionFilters.dateRange === "this-month"){
-      const start = toISO(startOfMonth(new Date()));
-      const end = toISO(endOfMonth(new Date()));
+      const start = toISO(startOfMonth(parseDate(today)));
+      const end = toISO(endOfMonth(parseDate(today)));
+      dateMatch = tx.date >= start && tx.date <= end;
+    } else if(transactionFilters.dateRange === "custom"){
+      const start = transactionFilters.customStart || "0000-01-01";
+      const end = transactionFilters.customEnd || "9999-12-31";
       dateMatch = tx.date >= start && tx.date <= end;
     } else if(transactionFilters.dateRange === "all"){
       dateMatch = true;
@@ -4746,6 +4815,10 @@ function filteredLedgerTransactions(txs){
 
 function setTransactionFilter(key, value){
   transactionFilters[key] = value;
+  if(key === "dateRange" && value === "custom"){
+    if(!transactionFilters.customStart) transactionFilters.customStart = todayISO();
+    if(!transactionFilters.customEnd) transactionFilters.customEnd = toISO(addDays(parseDate(todayISO()), 90));
+  }
   if(key !== "search") saveUiPrefs();
   render();
 }
@@ -4793,11 +4866,19 @@ function renderTransactionFilters(options={}){
     <label>Date range
       <select onchange="setTransactionFilter('dateRange', this.value)">
         <option value="upcoming-90" ${transactionFilters.dateRange==="upcoming-90"?"selected":""}>Upcoming 90 days</option>
+        <option value="next-12" ${transactionFilters.dateRange==="next-12"?"selected":""}>Next 12 months</option>
         <option value="this-month" ${transactionFilters.dateRange==="this-month"?"selected":""}>This month</option>
         <option value="past-90" ${transactionFilters.dateRange==="past-90"?"selected":""}>Past 90 days</option>
-        <option value="all" ${transactionFilters.dateRange==="all"?"selected":""}>All dates</option>
+        <option value="custom" ${transactionFilters.dateRange==="custom"?"selected":""}>Custom range…</option>
+        <option value="all" ${transactionFilters.dateRange==="all"?"selected":""}>All available dates</option>
       </select>
-    </label>    ${hideSort ? "" : `<label>Sort
+    </label>
+    ${transactionFilters.dateRange === "custom" ? `<label>From
+      <input type="date" value="${transactionFilters.customStart || ""}" onchange="setTransactionFilter('customStart', this.value)">
+    </label><label>Through
+      <input type="date" value="${transactionFilters.customEnd || ""}" onchange="setTransactionFilter('customEnd', this.value)">
+    </label>` : ""}
+    ${hideSort ? "" : `<label>Sort
       <select onchange="setTransactionFilter('sort', this.value)">
         <option value="date-asc" ${transactionFilters.sort==="date-asc"?"selected":""}>Date: soonest first</option>
         <option value="date-desc" ${transactionFilters.sort==="date-desc"?"selected":""}>Date: newest / farthest first</option>
@@ -4815,6 +4896,7 @@ function renderTransactionFilters(options={}){
 function renderLedger(txs, options={}){
   if(!txs.length) return `<div class="empty">No transactions yet.</div>`;
   const showBalance = !!options.accountId;
+  const recurringTails = recurringSeriesTailKeys(txs);
   return `<div class="ledger ${showBalance ? "with-balance" : ""}">
     <div class="ledger-row header">
       <div>Date</div><div>Title</div><div>Category</div><div>Status</div><div>Amount</div>${showBalance ? `<div>${options.mode === "bank" ? "Balance" : "Balance after"}</div>` : ""}
@@ -4861,11 +4943,17 @@ function renderLedger(txs, options={}){
         }
       }
 
+      const sourceSeries = recurringSeriesSource(tx);
+      if(sourceSeries && isRecurringTailRow(tx, recurringTails)){
+        const repeatStatus = recurrenceSeriesStatusText(sourceSeries);
+        if(repeatStatus) context = context ? `${context} • ${repeatStatus}` : repeatStatus;
+      }
+
       const editId = tx.originalId || tx.id;
       const balanceKey = txOccurrenceKey(tx);
       const balanceAfter = showBalance ? options.runningBalances?.[balanceKey] : null;
 
-      return `<div class="ledger-row" data-tx="${editId}" onclick="openTransaction('${editId}',{generated:${!!tx.generated}, occurrenceOriginalDate:'${tx.originalDate || tx.date}', occurrenceDate:'${tx.date}'})">
+      return `<div class="ledger-row" data-tx="${editId}" data-original-date="${tx.originalDate || tx.date}" data-occurrence-date="${tx.date}" onclick="openTransaction('${editId}',{generated:${!!tx.generated}, occurrenceOriginalDate:'${tx.originalDate || tx.date}', occurrenceDate:'${tx.date}'})">
         <div>${tx.date}</div><div><b>${tx.title}</b><div class="row-sub">${context}</div></div>
         <div><span class="cat-preview" style="background:${hexToSoft(cat.color)}">${cat.emoji} ${cat.name}</span>${spendingBucketMarkerForTransaction(tx,"ledger-bucket-marker")}</div>
         <div class="ledger-status-cell">${statusButton(tx)}</div>
@@ -6464,7 +6552,8 @@ window.openLoanBalanceAdjustment = openLoanBalanceAdjustment;
 function renderDebtDetail(){
   const d = debtById(selectedDebtId);
   if(!d){ setView("accounts"); return; }
-  const txs = visibleTransactionsForDebt(d.id, toISO(addMonths(new Date(),3))).sort((a,b)=>b.date.localeCompare(a.date));
+  const throughISO = ledgerProjectionEndISO();
+  const txs = visibleTransactionsForDebt(d.id, throughISO).sort((a,b)=>b.date.localeCompare(a.date));
   const currentBal = debtAmountLeftNow(d);
   const util = debtUtilization(d);
 
@@ -6500,7 +6589,8 @@ function renderDebtDetail(){
         <div><h3>Transactions</h3><span class="hint">${filteredLedgerTransactions(txs).length} shown of ${txs.length}</span></div>
         <button type="button" class="ghost small" onclick="toggleLedgerFilters()">${ledgerFiltersOpen ? "Hide filters" : "Filters"}</button>
       </div>
-      ${ledgerFiltersOpen ? renderTransactionFilters() : ""}
+      ${ledgerFiltersOpen ? renderTransactionFilters({projectionEnd:throughISO}) : ""}
+      ${ledgerDateRangeSummary(throughISO) ? `<p class="hint ledger-projection-hint">${ledgerDateRangeSummary(throughISO)}</p>` : ""}
       ${renderLedger(filteredLedgerTransactions(txs))}
     </section>`;
   attachTransactionContextMenus();
@@ -7552,9 +7642,10 @@ function renderDropdownDefaultsSettings(){
       <label>Date range
         <select id="defaultTxDateRange">
           <option value="upcoming-90" ${d.dateRange==="upcoming-90"?"selected":""}>Upcoming 90 days</option>
+          <option value="next-12" ${d.dateRange==="next-12"?"selected":""}>Next 12 months</option>
           <option value="this-month" ${d.dateRange==="this-month"?"selected":""}>This month</option>
           <option value="past-90" ${d.dateRange==="past-90"?"selected":""}>Past 90 days</option>
-          <option value="all" ${d.dateRange==="all"?"selected":""}>All dates</option>
+          <option value="all" ${d.dateRange==="all"?"selected":""}>All available dates</option>
         </select>
       </label>
       <label>Sort
@@ -8206,10 +8297,16 @@ function showTxContextMenu(event, id, meta={}){
   }
   const markReimbursed = document.getElementById("ctxMarkReimbursed");
   if(markReimbursed) markReimbursed.style.display = "none";
+  const endRepeat = document.getElementById("ctxEndRepeat");
+  if(endRepeat && tx){
+    const canEndRepeat = isRecurring(tx) && !tx.billArchived;
+    endRepeat.style.display = canEndRepeat ? "block" : "none";
+    endRepeat.textContent = tx.recurrenceUntil ? "⏹ Change repeat end…" : "⏹ End repeat…";
+  }
   menu.classList.add("open");
 
   const menuWidth = 235;
-  const menuHeight = 235;
+  const menuHeight = Math.max(235, menu.offsetHeight || 0);
   const x = Math.min(event.clientX, window.innerWidth - menuWidth - 8);
   const y = Math.min(event.clientY, window.innerHeight - menuHeight - 8);
   menu.style.left = `${Math.max(8, x)}px`;
@@ -8747,6 +8844,42 @@ window.openTransaction = (id=null, defaults={})=>{
     },50);
   }
 };
+
+function setRecurringSeriesEndDate(tx, endDate){
+  if(!tx || !isRecurring(tx) || !endDate || endDate < tx.date) return false;
+  tx.recurrenceUntil = endDate;
+  return true;
+}
+
+function openEndRecurringSeries(id, meta={}){
+  const tx = data.transactions.find(item=>item.id===id);
+  if(!tx || !isRecurring(tx)){
+    alert("That transaction is not part of a recurring series.");
+    return;
+  }
+  const clickedDate = meta.occurrenceDate || meta.originalDate || tx.recurrenceUntil || tx.date || todayISO();
+  const currentEnd = tx.recurrenceUntil || "";
+  simpleTitle.textContent = currentEnd ? "Change repeat end" : "End recurring series";
+  simpleFields.innerHTML = `
+    <p class="hint">This changes the recurring series itself, so it does not matter which occurrence you opened. The clicked occurrence is only used as the suggested date.</p>
+    <label>Repeat through
+      <input id="seriesEndDate" type="date" min="${tx.date}" value="${currentEnd || clickedDate}" required>
+    </label>
+    <p class="hint">The selected date is the last date the rule is allowed to generate. Saved/cleared history before it stays intact.</p>`;
+  simpleSubmit = ()=>{
+    const endDate = document.getElementById("seriesEndDate")?.value || "";
+    if(!endDate) return false;
+    if(!setRecurringSeriesEndDate(tx, endDate)){
+      alert(`Choose ${tx.date} or later.`);
+      return false;
+    }
+    return true;
+  };
+  simpleDelete = null;
+  deleteSimpleBtn.style.display = "none";
+  simpleModal.showModal();
+}
+window.openEndRecurringSeries = openEndRecurringSeries;
 
 const simpleModal = document.getElementById("simpleModal");
 let simpleSubmit = null, simpleDelete = null, simpleAfterClose = null;
@@ -12774,7 +12907,7 @@ function regressionDataset({planning=false,accounts=[],debts=[],transactions=[],
   };
 }
 function runMoneyNestRegressionTests(options={}){
-  const saved={data,rootData,calendarMode,planningScenarioId,calendarFilter,archivedDebtsOpen:debtOpenState.archivedDebtsOpen};
+  const saved={data,rootData,calendarMode,planningScenarioId,calendarFilter,transactionFilters:{...transactionFilters},archivedDebtsOpen:debtOpenState.archivedDebtsOpen};
   const results=[];
   const setSynthetic=(dataset,planning=false)=>{
     invalidateExpandedTransactionsCache();
@@ -13218,6 +13351,26 @@ function runMoneyNestRegressionTests(options={}){
       return "Dead pointer cleared; removed ID preserved; cash effect unchanged";
     }));
 
+    results.push(regressionResult("Ledger range and repeat-end helpers stay bounded and series-wide",()=>{
+      const ds=regressionDataset({
+        accounts:[{id:"joint",name:"Joint",owner:"Joint",type:"cash",startingBalance:0}],
+        transactions:[{id:"repeat",date:"2027-01-07",title:"Repeat",amount:10,type:"expense",status:"planned",accountId:"joint",categoryId:"utilities",recurrence:{type:"monthly",interval:1,weekendHandling:"none"},recurrenceUntil:"",occurrenceOverrides:{},dateOverrides:{}}]
+      });
+      setSynthetic(ds,false);
+      const source=ds.transactions[0];
+      regressionAssert(recurrenceSeriesStatusText(source)==="Repeats forever","Open-ended series label was wrong");
+      transactionFilters={...transactionFilters,dateRange:"custom",customStart:"2027-01-01",customEnd:"2027-08-31"};
+      regressionAssert(ledgerProjectionEndISO()==="2027-08-31","Custom ledger range did not extend the projection horizon");
+      regressionAssert(setRecurringSeriesEndDate(source,"2027-04-07"),"Series-wide end-date helper rejected a valid end date");
+      regressionAssert(/Repeats until/.test(recurrenceSeriesStatusText(source)),"Finite series label was missing");
+      const rows=expandedTransactions("2027-04-30").filter(tx=>(tx.originalId||tx.id)==="repeat");
+      const tails=recurringSeriesTailKeys(rows);
+      regressionAssert(rows.filter(tx=>isRecurringTailRow(tx,tails)).length===1,"Ledger did not identify exactly one farthest shown occurrence");
+      regressionAssert(rows.some(tx=>tx.date==="2027-04-07"),"Series end date did not preserve the final valid occurrence");
+      regressionAssert(!rows.some(tx=>tx.date>"2027-04-07"),"Series generated past recurrenceUntil");
+      return "One visible tail is labeled; recurrence stops at the series-wide end date";
+    }));
+
     results.push(regressionResult("JSON normalization preserves planning scenarios",()=>{
       const raw=regressionDataset({
         accounts:[{id:"a",name:"A",owner:"Mak",type:"cash",startingBalance:10}],
@@ -13237,6 +13390,7 @@ function runMoneyNestRegressionTests(options={}){
     calendarMode=saved.calendarMode;
     planningScenarioId=saved.planningScenarioId;
     calendarFilter=saved.calendarFilter;
+    transactionFilters={...saved.transactionFilters};
     debtOpenState.archivedDebtsOpen=saved.archivedDebtsOpen;
   }
 
@@ -13447,3 +13601,5 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 // v2-316: Final stabilization baseline adds verified/quota-resilient primary saves, whole-Money-Nest storage diagnostics, expanded backup/planning/cloud/bill regression coverage, and the final safe dead-selector/app-shell CSS cleanup.
 // v2-317: Maintenance can compact/clear browser-only Recent Changes storage, undo snapshots are byte-capped, and pre-archive dangling debt pointers can be resolved into preserved legacy metadata.
 // v2-318: Budgets support optional excludedCategoryIds so a spending-bucket budget can omit categories (for example Ty Spending except Food) without changing transaction categorization.
+
+// v2-319: Account/debt ledgers support custom/12-month date windows, label the farthest shown recurring occurrence with repeat status, and allow ending the canonical series from any occurrence via quick actions.

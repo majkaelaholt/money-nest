@@ -1,3 +1,7 @@
+## v2-319
+
+Transaction-ledger recurrence clarity: account/debt ledgers now offer a custom date range plus a Next 12 months preset. “All dates” is renamed “All available dates” because open-ended recurring rules are intentionally projected only one year into the future; the ledger explains that horizon and labels the farthest shown occurrence of each recurring series as **Repeats forever** or **Repeats until [date]**. Right-click/long-press any recurring occurrence now offers **End repeat…**, which edits the canonical series end date directly regardless of which occurrence was clicked. Data schema remains 228. Regression coverage expands to 22 checks.
+
 ## v2-318
 
 Budget category exclusions: budgets can now keep their existing account/category/spending-bucket selectors while explicitly excluding one or more categories via `excludedCategoryIds`. This supports non-overlapping personal budgets such as **Ty Spending = Ty Spending bucket except Food** alongside **Ty Food = Ty Spending bucket + Food** without adding another spending bucket or changing transaction categorization. The Budget editor, manager/detail summaries, JSON normalization, category merge/delete maintenance, and editable Budget CSV import/export all preserve exclusions. Data schema 228 adds the optional exclusion array and remains backward-compatible with older backups, which normalize missing exclusions to an empty list. Regression coverage expands to 21 checks.
