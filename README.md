@@ -1,3 +1,7 @@
+## v2-320
+
+Budget set-aside credits: cleared **Banking** transactions with an explicit Mak/Ty Spending bucket now act as budget-only reserve adjustments. A bucketed Banking expense (for example **Set Aside**) uses that bucket's allowance in the month the money is reserved; a bucketed Banking income/paycheck (for example **Had Set Aside**) releases prior reserved money as a negative budget adjustment in the later month. Ordinary Spending and Income analysis still excludes these internal envelope moves, so a $160 hair deposit paired with an $80 prior set-aside credit uses $80 of the current month's Mak Spending budget while actual spending remains $160. Budget Performance/detail views surface the set-aside credit explicitly. No new saved fields or migration are required; schema remains 228. Regression coverage expands to 23 checks.
+
 ## v2-319
 
 Transaction-ledger recurrence clarity: account/debt ledgers now offer a custom date range plus a Next 12 months preset. “All dates” is renamed “All available dates” because open-ended recurring rules are intentionally projected only one year into the future; the ledger explains that horizon and labels the farthest shown occurrence of each recurring series as **Repeats forever** or **Repeats until [date]**. Right-click/long-press any recurring occurrence now offers **End repeat…**, which edits the canonical series end date directly regardless of which occurrence was clicked. Data schema remains 228. Regression coverage expands to 22 checks.

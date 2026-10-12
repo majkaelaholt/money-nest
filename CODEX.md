@@ -1,3 +1,11 @@
+## v2-320 budget set-aside rules
+
+- A cleared `banking` transaction with an explicit `spendingBucketId` is budget-envelope bookkeeping, not ordinary spending analysis. Preserve this distinction.
+- Bucketed Banking **expense** rows reserve allowance in that month and add to the matching bucket budget's usage. Bucketed Banking **income/paycheck** rows release prior set-aside money and subtract from the matching bucket budget's usage.
+- These reserve adjustments must not inflate the general Spending or Income summary/trend totals. Budget Performance and budget detail may show them because they change allowance usage, while category spending remains gross real spending.
+- Budget ownership still follows the existing spending-bucket/category/account selector rules; no bucket means no reserve adjustment. Do not make all Banking transactions affect budgets.
+- No data-shape change; schema remains 228. Regression suite baseline is 23 checks.
+
 ## v2-319 ledger recurrence visibility rules
 
 - Account/debt transaction ledgers may materialize recurring projections only to a bounded horizon. “All available dates” means all saved history plus a one-year future recurrence projection; never imply an infinite series was fully materialized.

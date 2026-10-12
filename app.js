@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-319";
+const APP_VERSION = "2-320";
 const CURRENT_SCHEMA_VERSION = 228;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -5189,8 +5189,33 @@ function budgetTransactionAmount(tx){
   }
   return amount;
 }
+function isBudgetReserveAdjustment(tx){
+  if(!tx || tx.status !== "cleared") return false;
+  if(tx.categoryId !== "banking") return false;
+  if(!accountById(tx.accountId)) return false;
+  if(!normalizedSpendingBucketId(tx.spendingBucketId)) return false;
+  if(!["expense","income","paycheck"].includes(tx.type)) return false;
+  return Number(tx.amount || 0) > 0;
+}
+function budgetReserveAdjustmentAmount(tx){
+  if(!isBudgetReserveAdjustment(tx)) return 0;
+  const amount = Number(tx.amount || 0);
+  return tx.type === "expense" ? amount : -amount;
+}
+function budgetPerformanceActivityAmount(tx){
+  if(isBudgetReserveAdjustment(tx)) return budgetReserveAdjustmentAmount(tx);
+  if(isBudgetReviewOutflow(tx)) return budgetTransactionAmount(tx);
+  return 0;
+}
+function budgetPerformanceIncludesTransaction(tx, budget){
+  if(!tx || !budget) return false;
+  if(!txMatchesBudgetDefinition(tx, budget)) return false;
+  if(!txMatchesBudgetScope(tx, budget)) return false;
+  return isBudgetReviewOutflow(tx) || isBudgetReserveAdjustment(tx);
+}
 function isBudgetReviewIncome(tx){
   if(!tx || tx.status !== "cleared") return false;
+  if(isBudgetReserveAdjustment(tx)) return false;
   return (tx.type === "income" || tx.type === "paycheck") && Number(tx.amount || 0) > 0;
 }
 function normalizedBudgetReviewAccountIds(accountIds=budgetReviewAccountIds){
@@ -5355,22 +5380,30 @@ function budgetTargetForMonth(budget, monthValue=budgetReviewMonth){
   }
   return {amount:unitAmount, method:"fixed", baseAmount:unitAmount, count:1, formula:"Fixed monthly", detail:"Fixed monthly target"};
 }
-function budgetActualSpent(budget, monthRange){
+function budgetActualActivity(budget, monthRange){
   // Budget performance is the monthly plan itself. Quick-view Bills/Extra and
   // account-analysis filters must not change how much a configured budget used.
-  return expandedTransactions(monthRange.end)
+  // Banking stays excluded from ordinary spending analysis, but an explicitly
+  // bucketed Banking entry acts like envelope bookkeeping: an expense reserves
+  // allowance in that month, while income/paycheck releases prior set-aside money
+  // as a credit against the matching personal-spending budget.
+  const transactions = expandedTransactions(monthRange.end)
     .filter(tx => tx.date >= monthRange.start && tx.date <= monthRange.end)
-    .filter(isBudgetReviewOutflow)
-    .filter(tx => txMatchesBudgetDefinition(tx, budget))
-    .filter(tx => txMatchesBudgetScope(tx, budget))
-    .reduce((sum, tx)=>sum + budgetTransactionAmount(tx), 0);
+    .filter(tx => budgetPerformanceIncludesTransaction(tx, budget));
+  const grossSpent = transactions.filter(isBudgetReviewOutflow).reduce((sum, tx)=>sum + budgetTransactionAmount(tx), 0);
+  const reserveAdjustment = transactions.filter(isBudgetReserveAdjustment).reduce((sum, tx)=>sum + budgetReserveAdjustmentAmount(tx), 0);
+  return {transactions, grossSpent, reserveAdjustment, used:grossSpent + reserveAdjustment};
+}
+function budgetActualSpent(budget, monthRange){
+  return budgetActualActivity(budget, monthRange).used;
 }
 
 function budgetPerformanceStats(monthValue=budgetReviewMonth){
   const range = budgetMonthRange(monthValue);
   const budgets = (data.budgets || []).filter(b => budgetHasSelector(b));
   const budgetRows = budgets.map(b=>{
-    const spent = budgetActualSpent(b, range);
+    const activity = budgetActualActivity(b, range);
+    const spent = activity.used;
     const target = budgetTargetForMonth(b, range.month);
     const amount = target.amount;
     return {
@@ -5379,9 +5412,11 @@ function budgetPerformanceStats(monthValue=budgetReviewMonth){
       scopeLabel:budgetScopeLabel(b),
       cat:budgetCategoryLabel(b),
       spent,
+      grossSpent:activity.grossSpent,
+      reserveAdjustment:activity.reserveAdjustment,
       amount,
       left: amount - spent,
-      pct: amount ? Math.round((spent / amount) * 100) : 0,
+      pct: amount ? Math.max(0, Math.round((spent / amount) * 100)) : 0,
       target
     };
   }).sort((a,b)=>compareBudgetsByTitle(a.budget,b.budget));
@@ -5484,7 +5519,7 @@ function budgetMonthComparison(){
 function explainBudgetTotals(){
  const stats=budgetReviewStats(); const comp=budgetMonthComparison(); const modal=document.getElementById('budgetDetailModal'); const content=document.getElementById('budgetDetailContent');
  document.getElementById('budgetDetailTitle').textContent='🧮 Why these totals?'; document.getElementById('budgetDetailSub').textContent=`${stats.range.label} • ${budgetReviewAccountLabel()}`;
- content.innerHTML=`<section class="budget-insight-card"><h4>Spending includes</h4><p>Cleared cash-account expenses and categorized cash transfers, excluding Banking. Savings transfers are netted by direction.</p><h4>Current spending filters</h4><p><b>View:</b> ${budgetReviewMode==='extra'?'Extra spending only':budgetReviewMode==='bills'?'Bills only (recurring + budget/category overrides)':'All spending'}<br><b>Account:</b> ${budgetReviewAccountLabel()}</p><p class="hint"><b>Budget performance is separate:</b> How you did vs budget always uses the full selected month and each budget's configured account/category/bucket scope, regardless of these spending-view filters.</p><h4>Counted activity</h4><p>${stats.expenses.length} transactions total ${money(stats.totalSpent)}. Income is displayed separately and does not reduce spending totals.</p></section>`;
+ content.innerHTML=`<section class="budget-insight-card"><h4>Spending includes</h4><p>Cleared cash-account expenses and categorized cash transfers, excluding Banking. Savings transfers are netted by direction.</p><h4>Current spending filters</h4><p><b>View:</b> ${budgetReviewMode==='extra'?'Extra spending only':budgetReviewMode==='bills'?'Bills only (recurring + budget/category overrides)':'All spending'}<br><b>Account:</b> ${budgetReviewAccountLabel()}</p><p class="hint"><b>Budget performance is separate:</b> How you did vs budget always uses the full selected month and each budget's configured account/category/bucket scope, regardless of these spending-view filters. A cleared Banking transaction with an explicit Mak/Ty Spending bucket is treated only as a budget set-aside adjustment: expense reserves allowance now; income releases prior set-aside money as a credit. Those adjustments do not change Spending or Income analysis totals.</p><h4>Counted activity</h4><p>${stats.expenses.length} transactions total ${money(stats.totalSpent)}. Ordinary income is displayed separately and does not reduce spending totals.</p></section>`;
  if(!modal.open)modal.showModal();
 }
 window.explainBudgetTotals=explainBudgetTotals;
@@ -5547,11 +5582,14 @@ function renderBudgetReview(){
   const budgetRows = performance.budgetRows.map(r=>{
     const pct = Math.min(140, Math.max(0, r.pct));
     const status = r.left < -0.005 ? `Over by ${money(Math.abs(r.left))}` : `${money(r.left)} left`;
+    const reserveNote = r.reserveAdjustment < -0.005
+      ? ` • ${money(Math.abs(r.reserveAdjustment))} prior set-aside credit`
+      : (r.reserveAdjustment > 0.005 ? ` • ${money(r.reserveAdjustment)} set aside this month` : "");
     return `<button type="button" class="budget-review-row budget-drill-row ${r.left < -0.005 ? "over" : ""}" onclick="openBudgetDetail('${r.budget.id}')">
       <div class="budget-review-main budget-target-main">
         <div class="budget-category-title"><span class="cat-preview" style="background:${hexToSoft(r.cat.color)}">${r.cat.emoji} ${r.cat.text}</span></div>
         <div class="budget-account-sub">${escapeAttr(r.scopeLabel)}</div>
-        <div class="row-sub">${money(r.spent)} spent of ${money(r.amount)} • ${r.pct}% used</div>
+        <div class="row-sub">${money(r.spent)} used of ${money(r.amount)} • ${r.pct}% used${reserveNote}</div>
         ${r.target?.method !== "fixed" ? `<div class="row-sub budget-target-formula">${escapeAttr(r.target.formula)}</div>` : ""}
         <div class="progress"><span style="width:${Math.min(100,pct)}%"></span></div>
       </div>
@@ -5653,7 +5691,7 @@ function budgetBreakdown(items, keyFn, labelFn){
   const totals = new Map();
   items.forEach(tx=>{
     const key = keyFn(tx) || "unknown";
-    totals.set(key, (totals.get(key) || 0) + budgetTransactionAmount(tx));
+    totals.set(key, (totals.get(key) || 0) + budgetPerformanceActivityAmount(tx));
   });
   return [...totals.entries()].map(([key, amount])=>({key, label:labelFn(key), amount})).sort((a,b)=>b.amount-a.amount);
 }
@@ -5674,11 +5712,13 @@ function openBudgetDetailView({categoryId, categoryIds=null, budget=null, accoun
   const cat = budget ? budgetCategoryLabel(budget) : budgetCategoryLabel({categoryIds:selectedCategoryIds});
   const txs = expandedTransactions(range.end)
     .filter(tx=>tx.date >= range.start && tx.date <= range.end)
-    .filter(tx=>budget ? isBudgetReviewOutflow(tx) : budgetIncludesTransaction(tx, budgetReviewIncludeRecurringBills))
-    .filter(tx=>budget ? txMatchesBudgetDefinition(tx, budget) : transactionMatchesCategorySelection(tx, selectedCategoryIds))
-    .filter(tx=>budget ? txMatchesBudgetScope(tx, budget) : txMatchesBudgetAccount(tx, accountId))
+    .filter(tx=>budget ? budgetPerformanceIncludesTransaction(tx, budget) : budgetIncludesTransaction(tx, budgetReviewIncludeRecurringBills))
+    .filter(tx=>budget ? true : transactionMatchesCategorySelection(tx, selectedCategoryIds))
+    .filter(tx=>budget ? true : txMatchesBudgetAccount(tx, accountId))
     .sort((a,b)=>String(b.date).localeCompare(String(a.date)) || String(a.title || "").localeCompare(String(b.title || "")));
-  const total = txs.reduce((sum,tx)=>sum+budgetTransactionAmount(tx),0);
+  const total = txs.reduce((sum,tx)=>sum+(budget ? budgetPerformanceActivityAmount(tx) : budgetTransactionAmount(tx)),0);
+  const grossSpent = budget ? txs.filter(isBudgetReviewOutflow).reduce((sum,tx)=>sum+budgetTransactionAmount(tx),0) : total;
+  const reserveAdjustment = budget ? txs.filter(isBudgetReserveAdjustment).reduce((sum,tx)=>sum+budgetReserveAdjustmentAmount(tx),0) : 0;
   const budgetTarget = budget ? budgetTargetForMonth(budget, range.month) : null;
   const amount = budgetTarget ? budgetTarget.amount : null;
   const remaining = amount === null ? null : amount-total;
@@ -5698,7 +5738,7 @@ function openBudgetDetailView({categoryId, categoryIds=null, budget=null, accoun
   document.getElementById("budgetDetailSub").textContent = `${range.label} • ${budget ? budgetScopeLabel(budget) : budgetReviewAccountLabel(accountId)}${excludedBudgetLabels.length ? ` • excludes ${excludedBudgetLabels.join(", ")}` : ""}`;
   content.innerHTML = `
     <div class="budget-detail-summary ${budget ? "" : "category-only"}">
-      <article class="mini-card"><span>Total spent</span><b>${money(total)}</b><small>${txs.length} included transaction${txs.length===1?"":"s"}</small></article>
+      <article class="mini-card"><span>${budget ? "Budget used" : "Total spent"}</span><b>${money(total)}</b><small>${budget && Math.abs(reserveAdjustment) > 0.005 ? `${money(grossSpent)} actual spending • ${reserveAdjustment < 0 ? `${money(Math.abs(reserveAdjustment))} prior set-aside credit` : `${money(reserveAdjustment)} set aside this month`}` : `${txs.length} included transaction${txs.length===1?"":"s"}`}</small></article>
       ${budget ? `<article class="mini-card"><span>Budget amount</span><b>${money(amount)}</b><small>${escapeAttr(budgetTarget?.detail || "Monthly target")}</small></article>
       <article class="mini-card"><span>${remaining < -0.005 ? "Over budget" : "Remaining"}</span><b class="${remaining < -0.005 ? "bad" : "good"}">${money(Math.abs(remaining))}</b><small>${amount ? Math.round(total/amount*100) : 0}% used</small></article>` : ""}
       <article class="mini-card"><span>Top account</span><b>${escapeAttr(topAccount)}</b><small>${accounts[0] ? money(accounts[0].amount) : "—"}</small></article>
@@ -5713,9 +5753,11 @@ function openBudgetDetailView({categoryId, categoryIds=null, budget=null, accoun
       <div class="section-kicker">Included activity</div><h4>Transactions in this total</h4>
       ${txs.length ? `<div class="budget-detail-tx-list">${txs.map(tx=>{
         const a=accountById(tx.accountId), c=categoryById(tx.categoryId);
+        const activityAmount = budget ? budgetPerformanceActivityAmount(tx) : budgetTransactionAmount(tx);
+        const reserveLabel = budget && isBudgetReserveAdjustment(tx) ? `<span>${activityAmount < 0 ? "↩ Prior set-aside credit" : "🔒 Set aside"}</span>` : "";
         return `<article class="budget-detail-tx-card">
-          <div class="budget-detail-tx-top"><div><b>${escapeAttr(tx.title || "Untitled")}</b><span>${parseDate(tx.date).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})}</span></div><strong>${money(budgetTransactionAmount(tx))}</strong></div>
-          <div class="budget-detail-tx-meta"><span>${a?.emoji || "💵"} ${escapeAttr(a?.name || "Unknown account")}</span><span>${c?.emoji || "🏷️"} ${escapeAttr(c?.name || "Unassigned")}</span>${spendingBucketMarkerForTransaction(tx,"budget-bucket-marker")}<span class="status-pill ${tx.status || "planned"}">${tx.status === "cleared" ? "✓ Cleared" : "○ Planned"}</span></div>
+          <div class="budget-detail-tx-top"><div><b>${escapeAttr(tx.title || "Untitled")}</b><span>${parseDate(tx.date).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})}</span></div><strong>${money(activityAmount)}</strong></div>
+          <div class="budget-detail-tx-meta"><span>${a?.emoji || "💵"} ${escapeAttr(a?.name || "Unknown account")}</span><span>${c?.emoji || "🏷️"} ${escapeAttr(c?.name || "Unassigned")}</span>${spendingBucketMarkerForTransaction(tx,"budget-bucket-marker")}${reserveLabel}<span class="status-pill ${tx.status || "planned"}">${tx.status === "cleared" ? "✓ Cleared" : "○ Planned"}</span></div>
         </article>`;
       }).join("")}</div>` : `<div class="empty-state">No included transactions for ${range.label}.</div>`}
     </section>`;
@@ -13371,6 +13413,33 @@ function runMoneyNestRegressionTests(options={}){
       return "One visible tail is labeled; recurrence stops at the series-wide end date";
     }));
 
+    results.push(regressionResult("Budget set-asides carry allowance across months",()=>{
+      const ds=regressionDataset({
+        accounts:[{id:"mak",name:"Mak Checking",owner:"Mak",type:"cash",startingBalance:500}],
+        transactions:[
+          {id:"reserve",date:"2027-09-23",title:"Set Aside",amount:80,type:"expense",status:"cleared",accountId:"mak",categoryId:"banking",spendingBucketId:"mak-spending",recurrence:{type:"none",interval:1}},
+          {id:"release",date:"2027-10-08",title:"Had Set Aside",amount:80,type:"income",status:"cleared",accountId:"mak",categoryId:"banking",spendingBucketId:"mak-spending",recurrence:{type:"none",interval:1}},
+          {id:"hair",date:"2027-10-09",title:"Hair deposit",amount:160,type:"expense",status:"cleared",accountId:"mak",categoryId:"beauty",spendingBucketId:"mak-spending",recurrence:{type:"none",interval:1}}
+        ]
+      });
+      ds.categories.push(
+        {id:"beauty",name:"Beauty",emoji:"💄",color:"#888"},
+        {id:"mak-spending",name:"Mak Spending",emoji:"🎀",color:"#888"}
+      );
+      ds.budgets=[{id:"mak-budget",name:"Mak Spending",accountScope:"all",accountId:"",accountIds:[],categoryId:"",categoryIds:[],excludedCategoryIds:[],spendingBucketId:"mak-spending",amount:200,amountMethod:"fixed",period:"monthly"}];
+      setSynthetic(ds,false);
+      const budget=ds.budgets[0];
+      regressionApprox(budgetActualSpent(budget,budgetMonthRange("2027-09")),80,0.001,"September set-aside budget use");
+      regressionApprox(budgetActualSpent(budget,budgetMonthRange("2027-10")),80,0.001,"October net budget use");
+      const october=budgetActualActivity(budget,budgetMonthRange("2027-10"));
+      regressionApprox(october.grossSpent,160,0.001,"October actual hair spending");
+      regressionApprox(october.reserveAdjustment,-80,0.001,"October prior set-aside credit");
+      const review=budgetReviewStats("2027-10",[]);
+      regressionApprox(review.totalSpent,160,0.001,"Spending analysis should stay gross");
+      regressionApprox(review.totalIncome,0,0.001,"Set-aside release should not inflate income analysis");
+      return "Sep reserves $80; Oct $160 hair minus $80 prior set-aside = $80 budget use";
+    }));
+
     results.push(regressionResult("JSON normalization preserves planning scenarios",()=>{
       const raw=regressionDataset({
         accounts:[{id:"a",name:"A",owner:"Mak",type:"cash",startingBalance:10}],
@@ -13603,3 +13672,5 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 // v2-318: Budgets support optional excludedCategoryIds so a spending-bucket budget can omit categories (for example Ty Spending except Food) without changing transaction categorization.
 
 // v2-319: Account/debt ledgers support custom/12-month date windows, label the farthest shown recurring occurrence with repeat status, and allow ending the canonical series from any occurrence via quick actions.
+
+// v2-320: Bucket-tagged Banking Set Aside/Had Set Aside entries act as budget reserve adjustments without changing ordinary Spending/Income analysis.
