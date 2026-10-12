@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-321";
+const APP_VERSION = "2-322";
 const CURRENT_SCHEMA_VERSION = 228;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -3826,6 +3826,8 @@ function renderMobileHome({attention=[]}={}){
     .filter(tx=>tx.date>=todayISO() && tx.status!=="cleared")
     .sort((a,b)=>a.date.localeCompare(b.date) || String(a.title||"").localeCompare(String(b.title||"")))
     .slice(0,4);
+  const reviewItems=collectNeedsReview();
+  const reviewPreview=reviewItems.slice(0,2).map(item=>item.title).join(" • ");
   const accountRows=accounts.map(a=>{
     const snap=mobileAccountSnapshot(a);
     return `<button type="button" class="mobile-account-row" onclick="openAccountDetail('${a.id}', 'dashboard')">
@@ -3846,6 +3848,8 @@ function renderMobileHome({attention=[]}={}){
       <button type="button" onclick="openGlobalSearch()"><span>⌕</span><b>Search</b></button>
     </section>
 
+    <button id="mobileReviewStrip" type="button" class="mobile-attention-strip mobile-review-strip" onclick="openNeedsReview()" ${reviewItems.length?'':'hidden'}><span>📥</span><span><b>${reviewItems.length} item${reviewItems.length===1?'':'s'} in Needs Review</b><small>${escapeAttr(reviewPreview || 'Tap to see what Money Nest found')}</small></span><span>›</span></button>
+
     <section class="mobile-home-section">
       <div class="mobile-home-section-head"><div><small>COMING UP</small><h3>Next transactions</h3></div><button type="button" class="mobile-text-btn" onclick="setView('calendar')">Calendar</button></div>
       <div class="mobile-home-list">${upcoming.length ? upcoming.map(tx=>{
@@ -3855,13 +3859,59 @@ function renderMobileHome({attention=[]}={}){
       }).join("") : '<div class="mobile-home-empty">Nothing planned in the next 14 days.</div>'}</div>
     </section>
 
-    ${attention.length ? `<button type="button" class="mobile-attention-strip" onclick="toggleMobileDashboardDetails()"><span>⚠️</span><span><b>${attention.length} item${attention.length===1?'':'s'} need attention</b><small>Tap to show review tools</small></span><span>›</span></button>` : ""}
+    ${attention.length ? `<button type="button" class="mobile-attention-strip mobile-dashboard-alert-strip" onclick="toggleMobileDashboardDetails()"><span>⚠️</span><span><b>${attention.length} dashboard alert${attention.length===1?'':'s'}</b><small>Cash cushion, due-date, or payment follow-up</small></span><span>›</span></button>` : ""}
   `;
 }
 function toggleMobileDashboardDetails(){
   document.getElementById("dashboard")?.classList.toggle("mobile-dashboard-details-open");
 }
 window.toggleMobileDashboardDetails=toggleMobileDashboardDetails;
+
+function mobileReviewPreviewText(items){
+  return (items||[]).slice(0,2).map(item=>item.title).join(" • ") || "Tap to see what Money Nest found";
+}
+function updateMobileReviewStrip(items=collectNeedsReview()){
+  const strip=document.getElementById("mobileReviewStrip");
+  if(!strip) return;
+  strip.hidden=!items.length;
+  if(!items.length) return;
+  strip.innerHTML=`<span>📥</span><span><b>${items.length} item${items.length===1?'':'s'} in Needs Review</b><small>${escapeAttr(mobileReviewPreviewText(items))}</small></span><span>›</span>`;
+}
+function renderMobileNeedsReview(){
+  const modal=document.getElementById("mobileNeedsReviewModal");
+  const list=document.getElementById("mobileNeedsReviewList");
+  const summary=document.getElementById("mobileNeedsReviewSummary");
+  const subtitle=document.getElementById("mobileNeedsReviewSubtitle");
+  const items=collectNeedsReview();
+  updateMobileReviewStrip(items);
+  if(subtitle) subtitle.textContent=items.length ? `${items.length} item${items.length===1?'':'s'} worth checking. Nothing changes until you choose an action.` : "Nothing needs review right now.";
+  if(summary){
+    const cleanup=items.filter(x=>["bill","duplicate","stale"].includes(x.kind)).length;
+    const broken=items.filter(x=>["account","route","category"].includes(x.kind)).length;
+    const planned=items.filter(x=>x.kind==="past").length;
+    const loan=items.filter(x=>x.kind==="loanBreakdown").length;
+    summary.innerHTML=`<article><b>${items.length}</b><span>Total</span></article><article><b>${cleanup}</b><span>Cleanup</span></article><article><b>${planned+loan}</b><span>Follow-ups</span></article><article><b>${broken}</b><span>Broken refs</span></article>`;
+  }
+  if(list) list.innerHTML=items.length ? items.map(x=>`<div class="review-item mobile-review-item"><span><b>${escapeAttr(x.title)}</b><small>${escapeAttr(x.sub)}</small></span><div class="review-actions"><button class="ghost small" type="button" onclick="closeMobileNeedsReview();${x.action}">Review</button>${x.secondary?`<button class="ghost small" type="button" onclick="closeMobileNeedsReview();${x.secondary}">${escapeAttr(x.secondaryLabel||'Review second')}</button>`:''}<button class="ghost small" type="button" onclick="dismissReviewItem('${escapeAttr(x.key)}')">Dismiss</button></div></div>`).join('') : `<div class="empty-state">Nothing needs review right now. 🎉</div>`;
+  return items;
+}
+function openNeedsReview(){
+  if(moneyNestIsPhone()){
+    renderMobileNeedsReview();
+    const modal=document.getElementById("mobileNeedsReviewModal");
+    if(modal && !modal.open) modal.showModal();
+    return;
+  }
+  setView("dashboard");
+  requestAnimationFrame(()=>{
+    const panel=document.getElementById("dashboardReviewPanel");
+    if(panel){ panel.open=true; panel.scrollIntoView({behavior:"smooth",block:"start"}); }
+  });
+}
+function closeMobileNeedsReview(){ document.getElementById("mobileNeedsReviewModal")?.close(); }
+window.openNeedsReview=openNeedsReview;
+window.closeMobileNeedsReview=closeMobileNeedsReview;
+window.renderMobileNeedsReview=renderMobileNeedsReview;
 function renderMobileFuture(){
   const el=document.getElementById("mobileFutureContent");
   if(!el) return;
@@ -11760,6 +11810,10 @@ window.closeDayModalNow = function(){
 
 setupContextMenuEvents();
 document.querySelectorAll(".nav-btn").forEach(btn=>btn.addEventListener("click",()=>{ if(btn.dataset.view) setView(btn.dataset.view); }));
+const reviewNavBadge=document.getElementById("reviewNavBadge");
+if(reviewNavBadge) reviewNavBadge.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();openNeedsReview();});
+const closeMobileNeedsReviewBtn=document.getElementById("closeMobileNeedsReviewBtn");
+if(closeMobileNeedsReviewBtn) closeMobileNeedsReviewBtn.addEventListener("click",closeMobileNeedsReview);
 const mobileMoreNavBtn=document.getElementById("mobileMoreNavBtn");
 if(mobileMoreNavBtn) mobileMoreNavBtn.addEventListener("click",openMobileMore);
 const closeMobileMoreBtn=document.getElementById("closeMobileMoreBtn");
@@ -12736,6 +12790,7 @@ window.renderNeedsReview=function(){
   const dashboardCount=document.getElementById('dashboardReviewCount');if(dashboardCount)dashboardCount.textContent=items.length?`${items.length} found`:'clear';
   if(summary)summary.innerHTML=`<article><b>${items.length}</b><span>Total findings</span></article><article><b>${groups.past||0}</b><span>Past planned</span></article><article><b>${groups.loanBreakdown||0}</b><span>Loan breakdowns</span></article><article><b>${(groups.account||0)+(groups.route||0)+(groups.category||0)}</b><span>Broken references</span></article><article><b>${(groups.bill||0)+(groups.duplicate||0)+(groups.stale||0)}</b><span>Cleanup suggestions</span></article>`;
   if(list)list.innerHTML=items.length?items.map(x=>`<div class="review-item"><span><b>${escapeAttr(x.title)}</b><small>${escapeAttr(x.sub)}</small></span><div class="review-actions"><button class="ghost small" onclick="${x.action}">Review</button>${x.secondary?`<button class="ghost small" onclick="${x.secondary}">${x.secondaryLabel}</button>`:''}<button class="ghost small" onclick="dismissReviewItem('${escapeAttr(x.key)}')">Dismiss</button></div></div>`).join(''):`<div class="empty-state">Nothing needs review right now. 🎉 <button class="ghost small" onclick="restoreReviewDismissals()">Restore dismissed</button></div>`;
+  renderMobileNeedsReview();
 };
 const _render214=render; render=function(){_render214();renderNeedsReview();};
 
@@ -13735,3 +13790,5 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 // v2-320: Bucket-tagged Banking Set Aside/Had Set Aside entries act as budget reserve adjustments without changing ordinary Spending/Income analysis.
 
 // v2-321: Dashboard debt-due badges preserve explicit non-card payment states such as Autopay instead of replacing them with the linked occurrence's Planned status.
+
+// v2-322: iPhone bottom navigation shows Calendar, Home, Accounts, Budgets, Bills, and Settings directly; Needs Review has a visible mobile preview and tappable review sheet.

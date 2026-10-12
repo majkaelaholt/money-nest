@@ -7051,3 +7051,97 @@ body.money-nest-planning-mode #calendarGrid .tx-chip::after{
 .template-badge.dormant{background:color-mix(in srgb,var(--muted) 12%,var(--panel));color:var(--muted)}
 .template-badge.junk{background:color-mix(in srgb,var(--yellow) 16%,var(--panel));color:var(--yellow)}
 .template-library-quiet-note{margin-top:6px}
+
+/* v2-322: iPhone navigation + Needs Review visibility cleanup. */
+@media(max-width:700px){
+  html:not(.money-nest-ipad) .desktop-secondary-nav{display:flex!important}
+  html:not(.money-nest-ipad) .mobile-more-nav{display:none!important}
+  html:not(.money-nest-ipad) .sidebar{
+    left:8px!important;
+    right:8px!important;
+    bottom:max(8px,env(safe-area-inset-bottom))!important;
+    max-width:calc(100vw - 16px)!important;
+    max-height:74px!important;
+    padding:5px 6px!important;
+    border-radius:24px!important;
+  }
+  html:not(.money-nest-ipad) .sidebar .nav{
+    grid-template-columns:repeat(6,minmax(0,1fr))!important;
+    height:54px!important;
+    gap:2px!important;
+  }
+  html:not(.money-nest-ipad) .sidebar .nav-btn{
+    height:50px!important;
+    min-height:50px!important;
+    max-height:50px!important;
+    padding:4px 1px!important;
+    border-radius:14px!important;
+    gap:3px!important;
+    flex-direction:column!important;
+  }
+  html:not(.money-nest-ipad) .sidebar .nav-emoji{font-size:18px!important;line-height:1!important}
+  html:not(.money-nest-ipad) .sidebar .mobile-nav-text{
+    display:block!important;
+    font-size:8px!important;
+    line-height:1!important;
+    font-weight:850!important;
+    letter-spacing:-.01em;
+    white-space:nowrap;
+  }
+  html:not(.money-nest-ipad) .sidebar .nav-btn[data-view="calendar"]{order:1}
+  html:not(.money-nest-ipad) .sidebar .nav-btn[data-view="dashboard"]{order:2}
+  html:not(.money-nest-ipad) .sidebar .nav-btn[data-view="accounts"]{order:3}
+  html:not(.money-nest-ipad) .sidebar .nav-btn[data-view="budgets"]{order:4}
+  html:not(.money-nest-ipad) .sidebar .nav-btn[data-view="bills"]{order:5}
+  html:not(.money-nest-ipad) .sidebar .nav-btn[data-view="settings"]{order:6}
+  html:not(.money-nest-ipad) .sidebar .nav-btn.active{
+    background:color-mix(in srgb,var(--accent) 12%,transparent)!important;
+    box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 22%,transparent)!important;
+  }
+  html:not(.money-nest-ipad) .sidebar .nav-count{
+    top:1px;
+    right:3px;
+    min-width:16px;
+    height:16px;
+    padding:0 4px;
+    font-size:9px;
+    cursor:pointer;
+  }
+  html:not(.money-nest-ipad) .side-card.recent-card{bottom:calc(72px + env(safe-area-inset-bottom))!important}
+
+  html:not(.money-nest-ipad) .mobile-review-strip{margin-top:1px}
+  html:not(.money-nest-ipad) .mobile-review-strip small{
+    max-width:calc(100vw - 112px);
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  html:not(.money-nest-ipad) .mobile-dashboard-alert-strip{margin-top:4px}
+
+  html:not(.money-nest-ipad) .mobile-review-modal{width:100vw;max-width:none;padding:0;margin:0;inset:auto 0 0 0}
+  html:not(.money-nest-ipad) .mobile-review-card{
+    width:100%;
+    max-height:82dvh;
+    border-radius:24px 24px 0 0;
+    padding:16px 14px calc(18px + env(safe-area-inset-bottom));
+    overflow:auto;
+    gap:12px;
+  }
+  html:not(.money-nest-ipad) .mobile-review-summary{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+  html:not(.money-nest-ipad) .mobile-review-summary article{min-width:0;padding:8px 5px}
+  html:not(.money-nest-ipad) .mobile-review-summary article b{font-size:16px}
+  html:not(.money-nest-ipad) .mobile-review-summary article span{font-size:8px}
+  html:not(.money-nest-ipad) .mobile-review-list{display:grid;gap:8px}
+  html:not(.money-nest-ipad) .mobile-review-item{padding:10px;border:1px solid var(--line);border-radius:14px;background:var(--panel-secondary)}
+  html:not(.money-nest-ipad) .mobile-review-item>span{display:grid;gap:3px}
+  html:not(.money-nest-ipad) .mobile-review-item>span b{font-size:12px}
+  html:not(.money-nest-ipad) .mobile-review-item>span small{font-size:9.5px;line-height:1.35;color:var(--muted)}
+  html:not(.money-nest-ipad) .mobile-review-footer{justify-content:space-between}
+}
+
+@media(max-width:370px){
+  html:not(.money-nest-ipad) .sidebar{left:5px!important;right:5px!important;max-width:calc(100vw - 10px)!important;padding-left:4px!important;padding-right:4px!important}
+  html:not(.money-nest-ipad) .sidebar .nav{gap:1px!important}
+  html:not(.money-nest-ipad) .sidebar .nav-btn{padding-left:0!important;padding-right:0!important}
+  html:not(.money-nest-ipad) .sidebar .mobile-nav-text{font-size:7.5px!important}
+}

@@ -1,3 +1,7 @@
+## v2-322
+
+iPhone navigation + Needs Review visibility cleanup. The phone dock once again exposes all six primary destinations directly: Calendar, Home, Accounts, Budgets, Bills, and Settings; the v2-247 More launcher remains in source for backward safety but is hidden on phones. Needs Review is no longer a mystery badge: the Home screen shows a compact review callout with the current count and finding titles, the red Home badge is tappable, and both open a dedicated mobile review sheet with Review/Review second/Dismiss actions. Desktop/iPad behavior and finance/data logic are unchanged. Schema remains 228 and regression baseline remains 24 checks.
+
 ## v2-321
 
 Dashboard debt-status consistency: the **Debt payments due soon** list now preserves meaningful user-managed payment states for non-credit-card debts (Medical, Loan, and BNPL) instead of overwriting them with the status of the linked future transaction occurrence. A Medical debt marked **Autopay** therefore stays **Autopay** on Dashboard even though its upcoming transfer remains internally Planned until it clears. Credit-card automatic status derivation is unchanged. No saved-data/schema change; schema remains 228. Regression coverage expands to 24 checks.

@@ -1,3 +1,10 @@
+## v2-322 mobile navigation and Needs Review rules
+
+- On iPhone-width layouts, expose all six primary views directly in the bottom dock: Calendar, Home/Dashboard, Accounts, Budgets, Bills, and Settings. Do not hide Budgets/Bills/Settings behind the legacy More sheet.
+- The Home review badge count is sourced from `collectNeedsReview()` and must have an obvious mobile destination. The Home callout and red nav badge open the dedicated Needs Review sheet, which uses the same findings/actions/dismissals as the desktop Needs Review panel.
+- Keep `dashboardNeedsAttention()` conceptually separate from `collectNeedsReview()`: cash/due-date alerts may still surface as Dashboard alerts, but they must not masquerade as the red Needs Review badge count.
+- Mobile review actions may open the underlying transaction/debt but must not mutate anything merely by opening the sheet. Desktop/iPad layout and saved finance data stay unchanged. Schema remains 228; regression baseline remains 24 checks.
+
 ## v2-321 dashboard debt-status rules
 
 - Dashboard **Debt payments due soon** must distinguish debt-level payment state from occurrence clearing state. For non-credit-card debts, meaningful explicit states (`autopay`, `scheduled`, `paid`, `skip`) take display precedence over the linked occurrence's `planned` state.
