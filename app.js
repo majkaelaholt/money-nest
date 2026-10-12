@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-320";
+const APP_VERSION = "2-321";
 const CURRENT_SCHEMA_VERSION = 228;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -3570,6 +3570,56 @@ function debtPaymentsDueSoon(days=30){
     .sort((a,b)=>a.nextDue.localeCompare(b.nextDue));
 }
 
+function dashboardDebtPaymentBadgeInfo(d, dueISO){
+  if(!d) return {status:"not-set",label:debtPaymentStatusLabel("not-set"),paymentTx:null,routeTx:null};
+
+  if(d.type === "Credit Card"){
+    const autoInfo = automaticCreditCardPaymentInfo(d);
+    return {
+      status:autoInfo.status,
+      label:debtPaymentStatusLabel(autoInfo.status),
+      paymentTx:autoInfo.paymentTx || null,
+      routeTx:autoInfo.paymentTx || autoInfo.recurringTx || null
+    };
+  }
+
+  const plannedTx = plannedDebtPaymentInfo(d, dueISO);
+  const explicitStatus = debtDisplayPaymentStatus(d);
+
+  // Non-card debt paymentStatus is user-managed. When it carries a meaningful
+  // handled state, keep that status visible on Dashboard even though the linked
+  // future transaction remains Planned until it actually clears. This keeps
+  // Medical/Loan/BNPL rows consistent with their debt detail status (for example
+  // AccessOne marked Autopay should not be relabeled Planned merely because its
+  // next recurring transfer is still a planned occurrence).
+  if(["autopay","scheduled","paid","skip"].includes(explicitStatus)){
+    return {
+      status:explicitStatus,
+      label:debtPaymentStatusLabel(explicitStatus),
+      paymentTx:plannedTx,
+      routeTx:plannedTx
+    };
+  }
+
+  if(plannedTx){
+    const paidEarly = plannedTx.status === "cleared";
+    const plannedEarly = !paidEarly && plannedTx.date && dueISO && plannedTx.date < dueISO;
+    return {
+      status:paidEarly ? "paid" : "scheduled",
+      label:paidEarly ? "Paid early" : plannedEarly ? "Planned early" : "Planned",
+      paymentTx:plannedTx,
+      routeTx:plannedTx
+    };
+  }
+
+  return {
+    status:explicitStatus,
+    label:debtPaymentStatusLabel(explicitStatus),
+    paymentTx:null,
+    routeTx:null
+  };
+}
+
 function nextCreditCardStatementDate(d, fromISO=todayISO()){
   if(!d || d.type !== "Credit Card" || !d.statementDate) return "";
   // A statement reminder should mean "the next statement after the statement date you entered."
@@ -3962,18 +4012,11 @@ function renderDashboard(){
           <div class="dashboard-action-body">
             <div class="action-list-v2 dashboard-flat-list">
               ${dueSoonRows.length ? dueSoonRows.map(d=>{
-                const isCard = d.type === "Credit Card";
-                const autoInfo = isCard ? automaticCreditCardPaymentInfo(d) : null;
-                const plannedTx = isCard ? autoInfo?.paymentTx : plannedDebtPaymentInfo(d, d.nextDue);
-                const planned = !!plannedTx;
-                const paidEarly = plannedTx?.status === "cleared";
-                const plannedEarly = plannedTx?.status !== "cleared" && plannedTx?.date && d.nextDue && plannedTx.date < d.nextDue;
-                const displayStatus = isCard ? autoInfo.status : (planned ? (paidEarly ? "paid" : "scheduled") : debtDisplayPaymentStatus(d));
-                const route = debtAttentionAccountText(d, plannedTx || autoInfo?.recurringTx);
-                const label = isCard ? debtPaymentStatusLabel(displayStatus) : (planned ? (paidEarly ? "Paid early" : plannedEarly ? "Planned early" : "Planned") : debtPaymentStatusLabel(displayStatus));
+                const badge = dashboardDebtPaymentBadgeInfo(d, d.nextDue);
+                const route = debtAttentionAccountText(d, badge.routeTx);
                 return `<button type="button" class="action-row-v2 dashboard-action-row debt-due" onclick="openDebtDetail('${d.id}')">
                   <span class="action-left"><span class="action-symbol">${d.emoji || "💳"}</span><span><b class="row-title">${d.name}</b><small class="row-sub">Due ${d.nextDue} • Min ${debtMinDueText(d)}</small><small class="row-sub">${route}</small></span></span>
-                  <span class="debt-status-pill ${debtPaymentStatusClass(displayStatus)}">${label}</span>
+                  <span class="debt-status-pill ${debtPaymentStatusClass(badge.status)}">${badge.label}</span>
                 </button>`;
               }).join("") : `<div class="empty">No debt due dates in the next 30 days.</div>`}
             </div>
@@ -13440,6 +13483,22 @@ function runMoneyNestRegressionTests(options={}){
       return "Sep reserves $80; Oct $160 hair minus $80 prior set-aside = $80 budget use";
     }));
 
+    results.push(regressionResult("Dashboard preserves explicit autopay for non-card debts",()=>{
+      const ds=regressionDataset({
+        accounts:[{id:"mak",name:"Mak Checking",owner:"Mak",type:"cash",startingBalance:500}],
+        debts:[{id:"medical",name:"Medical Plan",type:"Medical",owner:"Mak",startingBalance:500,balance:500,minDue:50,totalMonthlyPayment:50,dueDate:"2027-01-10",paymentStatus:"autopay"}],
+        transactions:[{id:"medical-pay",date:"2027-01-10",title:"Medical Plan",amount:50,type:"transfer",status:"planned",accountId:"mak",categoryId:"utilities",linkedDebtId:"medical",transferToAccountId:"",recurrence:{type:"monthly",interval:1,weekendHandling:"none"},occurrenceOverrides:{},dateOverrides:{}}]
+      });
+      setSynthetic(ds,false);
+      const debt=ds.debts[0];
+      const badge=dashboardDebtPaymentBadgeInfo(debt,"2027-01-10");
+      regressionAssert(!!badge.paymentTx,"Synthetic medical payment occurrence was not found");
+      regressionAssert(badge.status==="autopay",`Expected Autopay status, got ${badge.status}`);
+      regressionAssert(badge.label==="Autopay",`Expected Autopay label, got ${badge.label}`);
+      regressionAssert(badge.paymentTx.status==="planned","Underlying future payment should remain planned");
+      return "Medical Autopay stays Autopay while its future transfer remains planned";
+    }));
+
     results.push(regressionResult("JSON normalization preserves planning scenarios",()=>{
       const raw=regressionDataset({
         accounts:[{id:"a",name:"A",owner:"Mak",type:"cash",startingBalance:10}],
@@ -13674,3 +13733,5 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 // v2-319: Account/debt ledgers support custom/12-month date windows, label the farthest shown recurring occurrence with repeat status, and allow ending the canonical series from any occurrence via quick actions.
 
 // v2-320: Bucket-tagged Banking Set Aside/Had Set Aside entries act as budget reserve adjustments without changing ordinary Spending/Income analysis.
+
+// v2-321: Dashboard debt-due badges preserve explicit non-card payment states such as Autopay instead of replacing them with the linked occurrence's Planned status.

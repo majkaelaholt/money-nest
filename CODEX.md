@@ -1,3 +1,11 @@
+## v2-321 dashboard debt-status rules
+
+- Dashboard **Debt payments due soon** must distinguish debt-level payment state from occurrence clearing state. For non-credit-card debts, meaningful explicit states (`autopay`, `scheduled`, `paid`, `skip`) take display precedence over the linked occurrence's `planned` state.
+- The linked payment transaction remains the source for date/route/forecasting and remains `planned` until cleared; do not mutate transaction status merely to make the badge match.
+- Credit cards keep their automatic status derivation from statement/minimum due plus linked recurring/planned/cleared payments.
+- If a non-card debt has no meaningful handled state, an actual linked planned/cleared payment may still drive the Dashboard badge (including Planned early/Paid early).
+- No data-shape change; schema remains 228. Regression suite baseline is 24 checks.
+
 ## v2-320 budget set-aside rules
 
 - A cleared `banking` transaction with an explicit `spendingBucketId` is budget-envelope bookkeeping, not ordinary spending analysis. Preserve this distinction.

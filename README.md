@@ -1,3 +1,7 @@
+## v2-321
+
+Dashboard debt-status consistency: the **Debt payments due soon** list now preserves meaningful user-managed payment states for non-credit-card debts (Medical, Loan, and BNPL) instead of overwriting them with the status of the linked future transaction occurrence. A Medical debt marked **Autopay** therefore stays **Autopay** on Dashboard even though its upcoming transfer remains internally Planned until it clears. Credit-card automatic status derivation is unchanged. No saved-data/schema change; schema remains 228. Regression coverage expands to 24 checks.
+
 ## v2-320
 
 Budget set-aside credits: cleared **Banking** transactions with an explicit Mak/Ty Spending bucket now act as budget-only reserve adjustments. A bucketed Banking expense (for example **Set Aside**) uses that bucket's allowance in the month the money is reserved; a bucketed Banking income/paycheck (for example **Had Set Aside**) releases prior reserved money as a negative budget adjustment in the later month. Ordinary Spending and Income analysis still excludes these internal envelope moves, so a $160 hair deposit paired with an $80 prior set-aside credit uses $80 of the current month's Mak Spending budget while actual spending remains $160. Budget Performance/detail views surface the set-aside credit explicitly. No new saved fields or migration are required; schema remains 228. Regression coverage expands to 23 checks.
