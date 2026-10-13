@@ -1,3 +1,9 @@
+## v2-328 Cloud Sync disclosure default
+
+- Cloud Sync **Connection details & sign-in** must start CLOSED on desktop, iPad and iPhone when Settings is rendered, even after leaving/returning or saving/loading cloud data. Keep Save/Load buttons visible above it; do not change Supabase auth, payload, sync mode or backup safety logic.
+- Desktop Save/Load buttons must have visual space above the connection disclosure. Do not compress phone-specific styling or alter app data/schema for this UI-only update.
+- Schema remains 230; regression suite remains 27 checks.
+
 ## v2-327 iPhone review, calendar navigation, and compact Settings
 
 - Empty Needs Review badge and mobile strip must be truly hidden even when their default CSS has `display:grid`. Keep the review modal and indicator counts synchronized, including at zero. Do not auto-dismiss or alter findings.
@@ -714,7 +720,7 @@ Example README note:
 ### v2-200
 - Banking is excluded from budgeting. Savings transfers net contributions by direction.
 
-- Current version: money-nest-v2-327. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
+- Current version: money-nest-v2-328. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
 
 
 ### v2-205

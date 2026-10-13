@@ -7265,3 +7265,9 @@ body.money-nest-planning-mode #calendarGrid .tx-chip::after{
   html:not(.money-nest-ipad) #settings .version-save-indicator .schema-warning{grid-column:1/-1}
   html:not(.money-nest-ipad) #settings .settings-overview>div:last-child{min-width:0}
 }
+
+/* v2-328: Cloud configuration is opt-in on every device; give Save/Load
+   clear breathing room above the collapsed connection settings. */
+@media (min-width:701px){
+  #settings .cloud-sync-panel .cloud-primary-actions{margin:5px 0 15px;}
+}

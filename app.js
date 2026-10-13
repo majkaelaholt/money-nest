@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-327";
+const APP_VERSION = "2-328";
 const CURRENT_SCHEMA_VERSION = 230;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -109,7 +109,7 @@ async function renderCloudSyncSettings(){
       <button class="primary small" type="button" onclick="cloudSaveNow()">Save to cloud</button>
       <button class="ghost small" type="button" onclick="cloudLoadNow()">Load from cloud</button>
     </div>
-    <details class="cloud-advanced" ${moneyNestIsPhone() ? "" : "open"}>
+    <details class="cloud-advanced">
       <summary>${cloudUser?.email ? "Connection details & sign-in" : "Log in & connection details"}</summary>
       <div class="cloud-advanced-body">
     <div class="two-col">

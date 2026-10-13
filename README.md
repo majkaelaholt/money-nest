@@ -1,3 +1,10 @@
+## v2-328
+
+- Desktop and tablet Cloud Sync's **Connection details & sign-in** starts collapsed rather than opening automatically on every Settings visit, cloud save or cloud load. iPhone behavior remains collapsed as before. Save/Load actions remain directly visible above the disclosure.
+- Added comfortable vertical separation between desktop Save/Load buttons and the connection disclosure to prevent cramped controls.
+- No budgeting, debt, transaction, backup, cloud save/load logic, or schema changes. OnePay reimbursement cleanup is a user-data categorization decision; this release deliberately does not edit personal finance records.
+- Data schema remains 230; existing 27 synthetic regression checks retained.
+
 ## v2-327
 
 - iPhone Needs Review: fixes hidden-empty badge/strip CSS, synchronizes the review sheet and Home count from the same scan, and avoids leaving a red “0” when everything is clear. No findings, dismissals, or financial records are changed.
@@ -687,7 +694,7 @@ Maintenance follow-up: Recent Changes is now capped by bytes instead of only ite
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-327`
+Current version: `money-nest-v2-328`
 
 ## Important Notes
 
