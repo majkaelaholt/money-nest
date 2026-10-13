@@ -1,3 +1,10 @@
+## v2-327 iPhone review, calendar navigation, and compact Settings
+
+- Empty Needs Review badge and mobile strip must be truly hidden even when their default CSS has `display:grid`. Keep the review modal and indicator counts synchronized, including at zero. Do not auto-dismiss or alter findings.
+- On iPhone, the Calendar has an unobtrusive floating ↑ Top shortcut after scrolling ~380px; do not show it on desktop/iPad or over the top-of-calendar controls.
+- iPhone Cloud Sync keeps Save/Load visible, but URL, key, mode, login and related setup are in a collapsed disclosure. Desktop Cloud Sync connection fields remain expanded. Manual-first sync and actual cloud behavior stay unchanged.
+- Data schema stays 230. Preserve 27 synthetic regression checks and run before delivery.
+
 ## v2-326 unbudgeted + Net Saved rules
 
 - Budget Review **Unbudgeted** means cleared activity in the current spending/account view that matches no ordinary budget.
@@ -707,7 +714,7 @@ Example README note:
 ### v2-200
 - Banking is excluded from budgeting. Savings transfers net contributions by direction.
 
-- Current version: money-nest-v2-324. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
+- Current version: money-nest-v2-327. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
 
 
 ### v2-205

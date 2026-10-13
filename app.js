@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-326";
+const APP_VERSION = "2-327";
 const CURRENT_SCHEMA_VERSION = 230;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -73,6 +73,12 @@ function fmtCloudTime(iso){
   if(!iso) return "Never";
   try{ return new Date(iso).toLocaleString(); } catch(err){ return iso; }
 }
+function cloudSummaryLabel(config=loadCloudConfig()){
+  if(!moneyNestIsPhone()) return cloudStatusText(config);
+  if(config.mode === "off") return "Off";
+  if(!cloudConfigReady(config)) return "Setup needed";
+  return cloudUser?.email ? (config.mode === "auto" ? "Auto" : "Manual") : "Sign in";
+}
 function cloudStatusText(config=loadCloudConfig()){
   if(config.mode === "off") return "Off";
   if(!cloudConfigReady(config)) return "Setup needed";
@@ -85,7 +91,7 @@ async function renderCloudSyncSettings(){
   if(!wrap) return;
   const config = loadCloudConfig();
   const renderLocalPanel = ()=>{
-    if(pill) pill.textContent = cloudStatusText(config);
+    if(pill) pill.textContent = cloudSummaryLabel(config);
     wrap.innerHTML = `
     <div class="cloud-status-card">
       <div>
@@ -99,6 +105,13 @@ async function renderCloudSyncSettings(){
         <p class="sub">Last cloud load: ${fmtCloudTime(config.lastCloudLoad)}</p>
       </div>
     </div>
+    <div class="inline-actions cloud-primary-actions">
+      <button class="primary small" type="button" onclick="cloudSaveNow()">Save to cloud</button>
+      <button class="ghost small" type="button" onclick="cloudLoadNow()">Load from cloud</button>
+    </div>
+    <details class="cloud-advanced" ${moneyNestIsPhone() ? "" : "open"}>
+      <summary>${cloudUser?.email ? "Connection details & sign-in" : "Log in & connection details"}</summary>
+      <div class="cloud-advanced-body">
     <div class="two-col">
       <label>Supabase project URL
         <input id="cloudSupabaseUrl" type="url" value="${escapeAttr(config.url || "")}" placeholder="https://your-project.supabase.co">
@@ -132,10 +145,10 @@ async function renderCloudSyncSettings(){
       <button class="primary small" type="button" onclick="cloudSignUpFromForm()">Create login</button>
       <button class="primary small" type="button" onclick="cloudLoginFromForm()">Log in</button>
       <button class="ghost small" type="button" onclick="cloudLogout()">Log out</button>
-      <button class="ghost small" type="button" onclick="cloudSaveNow()">Save to cloud</button>
-      <button class="ghost small" type="button" onclick="cloudLoadNow()">Load from cloud</button>
     </div>
     <p class="hint"><b>Safety:</b> Manual only is safest while testing. Money Nest warns before saving over newer cloud data or loading an older cloud copy over newer local edits. Keep JSON backups as your emergency save file.</p>
+      </div>
+    </details>
   `;
   };
 
@@ -145,7 +158,7 @@ async function renderCloudSyncSettings(){
 
   try{ await getCloudUser(true); } catch(err){ cloudUser = null; }
   if(!wrap.isConnected) return;
-  if(pill) pill.textContent = cloudStatusText(config);
+  if(pill) pill.textContent = cloudSummaryLabel(config);
   const status = document.getElementById("cloudAuthStatus");
   const sub = document.getElementById("cloudAuthSub");
   const email = document.getElementById("cloudEmail");
@@ -3304,6 +3317,18 @@ function renderRecentPlaces(){
   }
 }
 
+function scrollCalendarToTop(){
+  window.scrollTo({top:0,left:0,behavior:"smooth"});
+}
+function updateCalendarBackToTop(){
+  const btn=document.getElementById("calendarBackToTop");
+  if(!btn) return;
+  const visible=moneyNestIsPhone() && currentView === "calendar" && window.scrollY > 380;
+  btn.hidden=!visible;
+}
+window.scrollCalendarToTop=scrollCalendarToTop;
+window.addEventListener("scroll",updateCalendarBackToTop,{passive:true});
+window.addEventListener("resize",updateCalendarBackToTop,{passive:true});
 function setView(view){
   try{
     // v2-212: Debts is now part of Accounts. Keep old internal links/back targets working.
@@ -3325,6 +3350,7 @@ function setView(view){
     const titleEl = document.getElementById("viewTitle");
     if(titleEl) titleEl.textContent = titles[view] || view[0].toUpperCase()+view.slice(1);
     render();
+    updateCalendarBackToTop();
     // Desktop Calendar can follow a long page. Reset its document position so a browser
     // that preserved the previous page scroll never opens Calendar clipped off-screen.
     if(view === "calendar" && window.innerWidth > 980){
@@ -3888,15 +3914,13 @@ function updateMobileReviewStrip(items=collectNeedsReview()){
   const strip=document.getElementById("mobileReviewStrip");
   if(!strip) return;
   strip.hidden=!items.length;
-  if(!items.length) return;
   strip.innerHTML=`<span>📥</span><span><b>${items.length} item${items.length===1?'':'s'} in Needs Review</b><small>${escapeAttr(mobileReviewPreviewText(items))}</small></span><span>›</span>`;
 }
-function renderMobileNeedsReview(){
+function renderMobileNeedsReview(items=collectNeedsReview()){
   const modal=document.getElementById("mobileNeedsReviewModal");
   const list=document.getElementById("mobileNeedsReviewList");
   const summary=document.getElementById("mobileNeedsReviewSummary");
   const subtitle=document.getElementById("mobileNeedsReviewSubtitle");
-  const items=collectNeedsReview();
   updateMobileReviewStrip(items);
   if(subtitle) subtitle.textContent=items.length ? `${items.length} item${items.length===1?'':'s'} worth checking. Nothing changes until you choose an action.` : "Nothing needs review right now.";
   if(summary){
@@ -4440,6 +4464,7 @@ function renderCalendar(){
   calGrid.addEventListener("drop", handleDrop);
 
   attachTransactionContextMenus();
+  updateCalendarBackToTop();
 }
 
 function renderCalendarFilter(){
@@ -13001,7 +13026,7 @@ window.renderNeedsReview=function(){
   const dashboardCount=document.getElementById('dashboardReviewCount');if(dashboardCount)dashboardCount.textContent=items.length?`${items.length} found`:'clear';
   if(summary)summary.innerHTML=`<article><b>${items.length}</b><span>Total findings</span></article><article><b>${groups.past||0}</b><span>Past planned</span></article><article><b>${groups.loanBreakdown||0}</b><span>Loan breakdowns</span></article><article><b>${(groups.account||0)+(groups.route||0)+(groups.category||0)}</b><span>Broken references</span></article><article><b>${(groups.bill||0)+(groups.duplicate||0)+(groups.stale||0)}</b><span>Cleanup suggestions</span></article>`;
   if(list)list.innerHTML=items.length?items.map(x=>`<div class="review-item"><span><b>${escapeAttr(x.title)}</b><small>${escapeAttr(x.sub)}</small></span><div class="review-actions"><button class="ghost small" onclick="${x.action}">Review</button>${x.secondary?`<button class="ghost small" onclick="${x.secondary}">${x.secondaryLabel}</button>`:''}<button class="ghost small" onclick="dismissReviewItem('${escapeAttr(x.key)}')">Dismiss</button></div></div>`).join(''):`<div class="empty-state">Nothing needs review right now. 🎉 <button class="ghost small" onclick="restoreReviewDismissals()">Restore dismissed</button></div>`;
-  renderMobileNeedsReview();
+  renderMobileNeedsReview(items);
 };
 const _render214=render; render=function(){_render214();renderNeedsReview();};
 

@@ -1,3 +1,10 @@
+## v2-327
+
+- iPhone Needs Review: fixes hidden-empty badge/strip CSS, synchronizes the review sheet and Home count from the same scan, and avoids leaving a red “0” when everything is clear. No findings, dismissals, or financial records are changed.
+- iPhone Calendar: a floating **↑ Top** shortcut appears once you scroll several days down, sits above bottom navigation, and smoothly returns to the calendar controls. Desktop/iPad layout is unaffected.
+- iPhone Settings: reduces nested card spacing and oversized Cloud Sync pill; keeps **Save to cloud / Load from cloud** handy while moving credentials, mode, and connection setup into **Connection details & sign-in**. Desktop connection settings stay expanded by default.
+- Maintenance-only documentation alignment: version references updated; no finance rules or saved-data/schema change. Schema remains **230**. Existing 27-regression suite retained.
+
 ## v2-326
 
 - Fixes Budget Review **Unbudgeted** so transactions already explained by a **Net saved** tracking goal are not counted as unbudgeted activity. Savings-account deposits/withdrawals stay visible in the Net Saved goal instead of distorting the mystery/unmatched total.
@@ -680,7 +687,7 @@ Maintenance follow-up: Recent Changes is now capped by bytes instead of only ite
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-324`
+Current version: `money-nest-v2-327`
 
 ## Important Notes
 

@@ -7178,3 +7178,90 @@ body.money-nest-planning-mode #calendarGrid .tx-chip::after{
 /* v2-323: contribution-goal budgets invert success semantics: short is bad, target/excess is good. */
 #budgets .budget-review-row.goal-short .progress span{background:var(--red)}
 #budgets .budget-review-row.goal-met .progress span{background:var(--green)}
+
+/* v2-327 — hide empty review indicators even when layout display rules use grid. */
+#reviewNavBadge[hidden], #mobileReviewStrip[hidden], #calendarBackToTop[hidden]{display:none!important}
+
+/* Calendar jump button stays above the iPhone navigation dock. */
+.calendar-back-to-top{display:none}
+@media(max-width:700px){
+  html:not(.money-nest-ipad) .calendar-back-to-top:not([hidden]){
+    display:flex;
+    position:fixed;
+    right:16px;
+    bottom:calc(92px + env(safe-area-inset-bottom));
+    z-index:44;
+    align-items:center;
+    justify-content:center;
+    gap:5px;
+    min-height:42px;
+    padding:9px 14px;
+    border-radius:999px;
+    border:1px solid var(--line);
+    color:var(--ink);
+    background:var(--panel);
+    box-shadow:0 5px 20px rgba(42,34,25,.22);
+    font-size:15px;
+    font-weight:850;
+  }
+  html:not(.money-nest-ipad) .calendar-back-to-top span{font-size:12px}
+
+  /* Settings: cards stay readable without nesting wide padding four levels deep. */
+  html:not(.money-nest-ipad) #settings .settings-stack{gap:9px}
+  html:not(.money-nest-ipad) #settings .settings-master-group>summary{padding:12px}
+  html:not(.money-nest-ipad) #settings .settings-master-group>.settings-collapse-body{padding:7px;gap:7px}
+  html:not(.money-nest-ipad) #settings .settings-master-body>details.panel>summary{padding:11px 10px;gap:7px}
+  html:not(.money-nest-ipad) #settings .settings-master-body>details.panel>.settings-collapse-body{padding:10px}
+  html:not(.money-nest-ipad) #settings .settings-emoji{width:31px;height:31px;border-radius:10px}
+  html:not(.money-nest-ipad) #settings .settings-summary-main{gap:9px;flex:1;min-width:0}
+  html:not(.money-nest-ipad) #settings .settings-summary-main>span:last-child{min-width:0}
+  html:not(.money-nest-ipad) #settings .settings-collapsible>summary b{font-size:15px;line-height:1.2}
+  html:not(.money-nest-ipad) #settings .settings-collapsible>summary small{font-size:10px;line-height:1.3}
+  html:not(.money-nest-ipad) #settings .settings-collapsible>summary .summary-pill{font-size:10px;flex:0 0 auto;max-width:84px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  html:not(.money-nest-ipad) #settings .settings-master-group>summary>.summary-pill{display:none}
+  html:not(.money-nest-ipad) #settings .settings-overview{padding:12px}
+  html:not(.money-nest-ipad) #settings .settings-overview .hint{font-size:10px}
+  html:not(.money-nest-ipad) #settings .cloud-sync-panel .cloud-status-card{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:10px;margin:0}
+  html:not(.money-nest-ipad) #settings .cloud-sync-panel .cloud-status-card>div{min-width:0}
+  html:not(.money-nest-ipad) #settings .cloud-sync-panel .cloud-status-card .small-value{font-size:13px;overflow-wrap:anywhere;line-height:1.25}
+  html:not(.money-nest-ipad) #settings .cloud-sync-panel .cloud-status-card .sub{font-size:10px;overflow-wrap:anywhere;line-height:1.3}
+  html:not(.money-nest-ipad) #settings .cloud-sync-panel{display:grid;gap:9px;min-width:0}
+  html:not(.money-nest-ipad) #settings .cloud-primary-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0}
+  html:not(.money-nest-ipad) #settings .cloud-primary-actions button{padding:10px 5px;font-size:12px;min-width:0}
+  html:not(.money-nest-ipad) #settings .settings-sync-card>.settings-collapse-body>p.hint{font-size:10px;line-height:1.35;margin:0}
+}
+
+/* Advanced cloud configuration is available in one disclosure instead of always taking up a full phone screen. */
+.cloud-advanced{min-width:0;border:1px solid var(--line);border-radius:13px;overflow:hidden}
+.cloud-advanced>summary{cursor:pointer;list-style:none;padding:11px 12px;color:var(--muted);font-size:12px;font-weight:850;user-select:none}
+.cloud-advanced>summary::-webkit-details-marker{display:none}
+.cloud-advanced>summary::after{content:"⌄";float:right}
+.cloud-advanced[open]>summary::after{content:"⌃"}
+.cloud-advanced-body{padding:10px 12px 12px;border-top:1px solid var(--line);display:grid;gap:10px}
+.cloud-advanced-body .two-col{min-width:0}
+.cloud-advanced-body label{min-width:0}
+.cloud-advanced-body input,.cloud-advanced-body select{max-width:100%;min-width:0}
+.cloud-advanced-body .cloud-actions{margin-top:0}
+
+/* Keep the phone Settings map useful without requiring a screen of scrolling. */
+@media(max-width:700px){
+  html:not(.money-nest-ipad) #settings .version-save-indicator,
+  html:not(.money-nest-ipad) #settings .backup-health-indicator{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:6px;
+    margin:5px 0 0;
+  }
+  html:not(.money-nest-ipad) #settings .version-save-indicator article,
+  html:not(.money-nest-ipad) #settings .backup-health-indicator article{
+    min-width:0;
+    padding:8px 9px;
+    border-radius:11px;
+  }
+  html:not(.money-nest-ipad) #settings .version-save-indicator article b,
+  html:not(.money-nest-ipad) #settings .backup-health-indicator article b{font-size:11px;line-height:1.25;overflow-wrap:anywhere}
+  html:not(.money-nest-ipad) #settings .version-save-indicator article span,
+  html:not(.money-nest-ipad) #settings .backup-health-indicator article span{font-size:9px;line-height:1.3}
+  html:not(.money-nest-ipad) #settings .version-save-indicator .schema-warning{grid-column:1/-1}
+  html:not(.money-nest-ipad) #settings .settings-overview>div:last-child{min-width:0}
+}
