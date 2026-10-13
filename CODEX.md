@@ -1,3 +1,9 @@
+## v2-325 budget bucket-label clarity
+
+- In the Budget editor, an empty Spending bucket means **Not bucket-specific**, not “Any.” Keep the UI wording explicit.
+- A not-bucket-specific budget must continue to reject transactions with an effective Mak/Ty Spending bucket. Bucketed transactions are owned only by budgets targeting that same bucket; ordinary category-only budgets match only unbucketed/shared activity.
+- Schema remains 230 and the regression suite remains 26 checks.
+
 ## v2-324 net-savings + compact budget editor rules
 
 - Budget `measurement` defaults to `activity`. `net-saved` is an explicit alternative and requires `savingsAccountId`.

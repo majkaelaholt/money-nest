@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-324";
+const APP_VERSION = "2-325";
 const CURRENT_SCHEMA_VERSION = 230;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -9268,10 +9268,10 @@ window.simpleBudget = (id=null, preset={}, options={})=>{
       </div>
       <label>Spending bucket
         <select id="sBudgetSpendingBucket">
-          <option value="">Any / not bucket-specific</option>
+          <option value="">Not bucket-specific</option>
           ${SPENDING_BUCKET_IDS.map(bucketId=>`<option value="${bucketId}" ${budgetSpendingBucketId(b)===bucketId?"selected":""}>${escapeAttr(spendingBucketLabel(bucketId,bucketId))}</option>`).join("")}
         </select>
-        <span class="hint">Use this for a personal allowance such as Mak Spending or Ty Spending. Category still records what the purchase actually was.</span>
+        <span class="hint">Leave this as Not bucket-specific to count only transactions with no Mak/Ty Spending bucket. Choose a bucket for a personal allowance such as Mak Spending or Ty Spending; Category still records what the purchase actually was.</span>
       </label>
       ${budgetCategoryPickerHTML({id:"sBudgetIncludeCategoryPicker",name:"sBudgetCategoryIds",label:"Include categories",selectedIds:initialCategoryIds,emptyLabel:"All categories",hint:"Optional when a Spending bucket is selected. Leave all unchecked to include every category in that bucket; if both are set, transactions must match both."})}
       ${budgetCategoryPickerHTML({id:"sBudgetExcludeCategoryPicker",name:"sBudgetExcludedCategoryIds",label:"Exclude categories (optional)",selectedIds:initialExcludedCategoryIds,emptyLabel:"None",hint:"Matching transactions in these categories will not count toward this budget. Useful for rules like Ty Spending = Ty Spending bucket except Food."})}
@@ -13532,16 +13532,19 @@ function runMoneyNestRegressionTests(options={}){
       );
       ds.budgets=[
         {id:"personal",name:"Ty Spending",accountScope:"all",accountId:"",accountIds:[],categoryId:"",categoryIds:[],excludedCategoryIds:["food"],spendingBucketId:"ty-spending",amount:200,amountMethod:"fixed",period:"monthly"},
-        {id:"food-budget",name:"Ty Food",accountScope:"all",accountId:"",accountIds:[],categoryId:"food",categoryIds:["food"],excludedCategoryIds:[],spendingBucketId:"ty-spending",amount:100,amountMethod:"fixed",period:"monthly"}
+        {id:"food-budget",name:"Ty Food",accountScope:"all",accountId:"",accountIds:[],categoryId:"food",categoryIds:["food"],excludedCategoryIds:[],spendingBucketId:"ty-spending",amount:100,amountMethod:"fixed",period:"monthly"},
+        {id:"shared-food-budget",name:"Shared Food",accountScope:"all",accountId:"",accountIds:[],categoryId:"food",categoryIds:["food"],excludedCategoryIds:[],spendingBucketId:"",amount:100,amountMethod:"fixed",period:"monthly"}
       ];
       setSynthetic(ds,false);
-      const personal=ds.budgets[0], foodBudget=ds.budgets[1];
+      const personal=ds.budgets[0], foodBudget=ds.budgets[1], sharedFoodBudget=ds.budgets[2];
       const foodTx=ds.transactions[0], shoppingTx=ds.transactions[1], sharedFoodTx=ds.transactions[2];
       regressionAssert(!txMatchesBudgetDefinition(foodTx,personal),"Food in Ty Spending still matched the budget that excludes Food");
       regressionAssert(txMatchesBudgetDefinition(foodTx,foodBudget),"Food in Ty Spending did not match the dedicated Ty Food budget");
       regressionAssert(txMatchesBudgetDefinition(shoppingTx,personal),"Non-Food Ty Spending purchase was incorrectly excluded");
       regressionAssert(!txMatchesBudgetDefinition(shoppingTx,foodBudget),"Non-Food Ty Spending purchase leaked into Ty Food");
       regressionAssert(!txMatchesBudgetDefinition(sharedFoodTx,foodBudget),"Shared Food without Ty Spending bucket leaked into Ty Food");
+      regressionAssert(txMatchesBudgetDefinition(sharedFoodTx,sharedFoodBudget),"Not-bucket-specific Food did not match the shared Food budget");
+      regressionAssert(!txMatchesBudgetDefinition(foodTx,sharedFoodBudget),"Ty-bucket Food leaked into the not-bucket-specific shared Food budget");
       const range=budgetMonthRange("2027-01");
       regressionApprox(budgetActualSpent(personal,range),20,0.001,"Ty Spending exclusion total");
       regressionApprox(budgetActualSpent(foodBudget,range),10,0.001,"Ty Food total");

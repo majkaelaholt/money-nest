@@ -1,3 +1,9 @@
+## v2-325
+
+- Clarifies Budget editor Spending bucket semantics. The blank option is now **Not bucket-specific** instead of the misleading **Any / not bucket-specific**.
+- A budget with no Spending bucket continues to match only transactions that have no effective Mak/Ty Spending bucket; bucketed personal purchases are intentionally owned only by budgets targeting that same bucket.
+- Added regression assertions locking the no-bucket/shared-budget behavior. No finance logic, schema, or saved-data changes; schema remains 230 and regression count remains 26.
+
 ## v2-324
 
 - Budgets can use a **Net saved** measurement that tracks actual growth in a chosen savings account: deposits/income increase progress, withdrawals/spending reduce it, and planned activity is excluded until cleared.
