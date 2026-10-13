@@ -1,3 +1,11 @@
+## v2-324
+
+- Budgets can use a **Net saved** measurement that tracks actual growth in a chosen savings account: deposits/income increase progress, withdrawals/spending reduce it, and planned activity is excluded until cleared.
+- Net-saved goals are always **Reach at least** targets and show deposited, withdrawn, and net-saved amounts in Budget details.
+- Budget category inclusion/exclusion uses compact dropdown-style multi-selects instead of permanently expanded checkbox lists.
+- Edit Budgets rows use individual card borders instead of full-width divider lines that could visually cut through amounts/icons.
+- Budget CSV/JSON persistence includes the new measurement and savings-account fields. Schema 230.
+
 ## v2-323
 
 - Adds a per-budget **Target behavior** toggle: **Stay under** for normal spending limits or **Reach at least** for savings/contribution goals.
@@ -660,7 +668,7 @@ Maintenance follow-up: Recent Changes is now capped by bytes instead of only ite
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-323`
+Current version: `money-nest-v2-324`
 
 ## Important Notes
 

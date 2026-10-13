@@ -1,3 +1,12 @@
+## v2-324 net-savings + compact budget editor rules
+
+- Budget `measurement` defaults to `activity`. `net-saved` is an explicit alternative and requires `savingsAccountId`.
+- Net-saved performance uses the canonical cash-account effect for the selected savings account and only cleared activity: money in is positive, money out is negative. Category, spending-bucket, and source-account filters do not alter a net-saved goal.
+- Net-saved budgets are always reach-at-least (`targetDirection=min`) so withdrawals can create/expand a shortfall while excess net growth remains good.
+- Existing Mak/Ty savings contribution budgets remain contribution goals unless the user explicitly creates/changes a budget to Net saved. Do not infer ownership of pooled-savings withdrawals.
+- Include/Exclude category selectors are compact dropdown multi-selects; the same category cannot remain selected in both.
+- Budget Manager list rows use self-contained card borders; do not reintroduce full-width row dividers that cross the amount/status area.
+
 ## v2-323 budget target-direction rules
 
 - `budget.targetDirection` is optional/backward-compatible. Normalize to `"max"` unless explicitly `"min"`.
@@ -685,7 +694,7 @@ Example README note:
 ### v2-200
 - Banking is excluded from budgeting. Savings transfers net contributions by direction.
 
-- Current version: money-nest-v2-323. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
+- Current version: money-nest-v2-324. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
 
 
 ### v2-205

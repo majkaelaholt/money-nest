@@ -1,6 +1,6 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-323";
-const CURRENT_SCHEMA_VERSION = 229;
+const APP_VERSION = "2-324";
+const CURRENT_SCHEMA_VERSION = 230;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
 // v2-239: reliably detect iPad/tablet Safari and touch-capable layouts.
@@ -1211,7 +1211,17 @@ window.openPlanningScenarioSettings=openPlanningScenarioSettings;
 function budgetSpendingBucketId(budget){
   return normalizedSpendingBucketId(budget?.spendingBucketId);
 }
+function normalizedBudgetMeasurement(budget){
+  return budget?.measurement === "net-saved" ? "net-saved" : "activity";
+}
+function budgetSavingsAccountId(budget){
+  return typeof budget?.savingsAccountId === "string" ? budget.savingsAccountId : "";
+}
+function isNetSavedBudget(budget){
+  return normalizedBudgetMeasurement(budget) === "net-saved";
+}
 function budgetHasSelector(budget){
+  if(isNetSavedBudget(budget)) return !!budgetSavingsAccountId(budget);
   return budgetCategoryIds(budget).length > 0 || !!budgetSpendingBucketId(budget);
 }
 
@@ -1440,7 +1450,10 @@ function normalizeData(raw){
     b.categoryId = b.categoryIds[0] || ""; // legacy fallback for older versions
     b.spendingBucketId = normalizedSpendingBucketId(b.spendingBucketId);
     b.spendingType = ["auto","bills","extra"].includes(b.spendingType) ? b.spendingType : "auto";
+    b.measurement = b.measurement === "net-saved" ? "net-saved" : "activity";
+    b.savingsAccountId = typeof b.savingsAccountId === "string" ? b.savingsAccountId : "";
     b.targetDirection = b.targetDirection === "min" ? "min" : "max";
+    if(b.measurement === "net-saved") b.targetDirection = "min";
     b.amountMethod = ["fixed","occurrence","paycheck"].includes(b.amountMethod) ? b.amountMethod : "fixed";
     b.occurrenceWeekday = Math.min(6, Math.max(0, Number.isFinite(Number(b.occurrenceWeekday)) ? Number(b.occurrenceWeekday) : 3));
     b.paycheckOwner = ["Mak","Ty"].includes(b.paycheckOwner) ? b.paycheckOwner : "Ty";
@@ -2996,7 +3009,7 @@ function nextPaycheckDate(accountId, includeToday=true){
 }
 
 function isSavingsAccount(account){
-  return account?.name?.toLowerCase().includes("savings");
+  return account?.type === "savings" || account?.name?.toLowerCase().includes("savings");
 }
 function savingsGoalAmount(account){
   return Number(account?.goalAmount || 0);
@@ -5237,6 +5250,7 @@ function txMatchesBudgetSpendingBucket(tx, budget){
   return !bucketId || effectiveTransactionSpendingBucketId(tx) === bucketId;
 }
 function txMatchesBudgetDefinition(tx, budget){
+  if(isNetSavedBudget(budget)) return false;
   const txBucketId = effectiveTransactionSpendingBucketId(tx);
   const budgetBucketId = budgetSpendingBucketId(budget);
 
@@ -5254,10 +5268,14 @@ function txMatchesBudgetDefinition(tx, budget){
   return txMatchesBudgetCategories(tx, budget) && txMatchesBudgetSpendingBucket(tx, budget);
 }
 function budgetCategoryLabel(budget){
-  const cats = budgetCategoryIds(budget).map(categoryById).filter(Boolean);
-  const bucket = spendingBucketCategory(budgetSpendingBucketId(budget));
   const customName = String(budget?.name || "").trim();
   const customEmoji = String(budget?.emoji || "").trim();
+  if(isNetSavedBudget(budget)){
+    const account = accountById(budgetSavingsAccountId(budget));
+    return {text:customName || `${account?.name || "Savings"} growth`, emoji:customEmoji || account?.emoji || "🏦", color:account?.color || "#5a8443", cats:[], bucket:null};
+  }
+  const cats = budgetCategoryIds(budget).map(categoryById).filter(Boolean);
+  const bucket = spendingBucketCategory(budgetSpendingBucketId(budget));
   if(!cats.length && bucket) return {text:customName || bucket.name, emoji:customEmoji || bucket.emoji || "🎯", color:bucket.color || "#8c6f4d", cats:[], bucket};
   if(!cats.length) return {text:customName || "Unassigned", emoji:customEmoji || "🏷️", color:"#8c6f4d", cats:[], bucket:null};
   if(cats.length === 1) return {text:customName || cats[0].name, emoji:customEmoji || cats[0].emoji || "🏷️", color:cats[0].color || "#8c6f4d", cats, bucket};
@@ -5297,13 +5315,21 @@ function budgetReserveAdjustmentAmount(tx){
   const amount = Number(tx.amount || 0);
   return tx.type === "expense" ? amount : -amount;
 }
-function budgetPerformanceActivityAmount(tx){
+function budgetNetSavedEffect(tx, budget){
+  if(!tx || !budget || !isNetSavedBudget(budget) || tx.status !== "cleared") return 0;
+  const savingsAccountId = budgetSavingsAccountId(budget);
+  if(!savingsAccountId) return 0;
+  return cashAccountPerspective(tx, savingsAccountId).effect;
+}
+function budgetPerformanceActivityAmount(tx, budget=null){
+  if(isNetSavedBudget(budget)) return budgetNetSavedEffect(tx, budget);
   if(isBudgetReserveAdjustment(tx)) return budgetReserveAdjustmentAmount(tx);
   if(isBudgetReviewOutflow(tx)) return budgetTransactionAmount(tx);
   return 0;
 }
 function budgetPerformanceIncludesTransaction(tx, budget){
   if(!tx || !budget) return false;
+  if(isNetSavedBudget(budget)) return Math.abs(budgetNetSavedEffect(tx, budget)) > 0.005;
   if(!txMatchesBudgetDefinition(tx, budget)) return false;
   if(!txMatchesBudgetScope(tx, budget)) return false;
   return isBudgetReviewOutflow(tx) || isBudgetReserveAdjustment(tx);
@@ -5335,10 +5361,15 @@ function txMatchesBudgetScope(tx, budget){
 function budgetMatchesReviewAccount(budget, accountIds=budgetReviewAccountIds){
   const ids = normalizedBudgetReviewAccountIds(accountIds);
   if(!ids.length) return true;
+  if(isNetSavedBudget(budget)) return ids.includes(budgetSavingsAccountId(budget));
   if(!budget || budget.accountScope === "all" || (!budget.accountScope && !budget.accountId)) return true;
   return budgetScopeAccountIds(budget).some(id=>ids.includes(id));
 }
 function budgetScopeLabel(budget){
+  if(isNetSavedBudget(budget)){
+    const account=accountById(budgetSavingsAccountId(budget));
+    return account ? `${account.emoji || "🏦"} ${account.name} net change` : "🏦 Savings net change";
+  }
   if(!budget || budget.accountScope === "all" || (!budget.accountScope && !budget.accountId)) return "🌐 All accounts";
   const ids = budgetScopeAccountIds(budget);
   const accounts = ids.map(accountById).filter(Boolean);
@@ -5507,9 +5538,14 @@ function budgetActualActivity(budget, monthRange){
   const transactions = expandedTransactions(monthRange.end)
     .filter(tx => tx.date >= monthRange.start && tx.date <= monthRange.end)
     .filter(tx => budgetPerformanceIncludesTransaction(tx, budget));
+  if(isNetSavedBudget(budget)){
+    const deposits = transactions.reduce((sum,tx)=>sum + Math.max(0,budgetNetSavedEffect(tx,budget)),0);
+    const withdrawals = transactions.reduce((sum,tx)=>sum + Math.max(0,-budgetNetSavedEffect(tx,budget)),0);
+    return {transactions, grossSpent:deposits, reserveAdjustment:-withdrawals, deposits, withdrawals, used:deposits-withdrawals, measurement:"net-saved"};
+  }
   const grossSpent = transactions.filter(isBudgetReviewOutflow).reduce((sum, tx)=>sum + budgetTransactionAmount(tx), 0);
   const reserveAdjustment = transactions.filter(isBudgetReserveAdjustment).reduce((sum, tx)=>sum + budgetReserveAdjustmentAmount(tx), 0);
-  return {transactions, grossSpent, reserveAdjustment, used:grossSpent + reserveAdjustment};
+  return {transactions, grossSpent, reserveAdjustment, deposits:0, withdrawals:0, used:grossSpent + reserveAdjustment, measurement:"activity"};
 }
 function budgetActualSpent(budget, monthRange){
   return budgetActualActivity(budget, monthRange).used;
@@ -5532,6 +5568,9 @@ function budgetPerformanceStats(monthValue=budgetReviewMonth){
       spent,
       grossSpent:activity.grossSpent,
       reserveAdjustment:activity.reserveAdjustment,
+      deposits:activity.deposits || 0,
+      withdrawals:activity.withdrawals || 0,
+      measurement:normalizedBudgetMeasurement(b),
       amount,
       left: amount - spent,
       pct: amount ? Math.max(0, Math.round((spent / amount) * 100)) : 0,
@@ -5544,7 +5583,8 @@ function budgetPerformanceStats(monthValue=budgetReviewMonth){
     range,
     budgets,
     budgetRows,
-    totalBudgeted:budgetRows.reduce((s,row)=>s+Number(row.amount || 0),0),
+    totalBudgeted:budgetRows.filter(row=>row.measurement !== "net-saved").reduce((s,row)=>s+Number(row.amount || 0),0),
+    trackingTargetCount:budgetRows.filter(row=>row.measurement === "net-saved").length,
     overBudgetCount:budgetRows.filter(r=>r.targetDirection === "max" && r.evaluation?.state === "bad").length,
     needsAttentionCount:budgetRows.filter(r=>r.evaluation?.state === "bad").length
   };
@@ -5709,13 +5749,15 @@ function renderBudgetReview(){
       ? ` • ${money(Math.abs(r.reserveAdjustment))} prior set-aside credit`
       : (r.reserveAdjustment > 0.005 ? ` • ${money(r.reserveAdjustment)} set aside this month` : "");
     const rowClass = isContributionGoal ? (state === "bad" ? "goal-short" : "goal-met") : (state === "bad" ? "over" : "");
-    const activityText = isContributionGoal
-      ? `${money(r.spent)} contributed of ${money(r.amount)} • ${r.pct}% of goal${reserveNote}`
-      : `${money(r.spent)} used of ${money(r.amount)} • ${r.pct}% used${reserveNote}`;
+    const activityText = r.measurement === "net-saved"
+      ? `${money(r.spent)} net saved of ${money(r.amount)} • ${money(r.deposits)} in − ${money(r.withdrawals)} out`
+      : (isContributionGoal
+        ? `${money(r.spent)} contributed of ${money(r.amount)} • ${r.pct}% of goal${reserveNote}`
+        : `${money(r.spent)} used of ${money(r.amount)} • ${r.pct}% used${reserveNote}`);
     return `<button type="button" class="budget-review-row budget-drill-row ${rowClass}" onclick="openBudgetDetail('${r.budget.id}')">
       <div class="budget-review-main budget-target-main">
         <div class="budget-category-title"><span class="cat-preview" style="background:${hexToSoft(r.cat.color)}">${r.cat.emoji} ${r.cat.text}</span></div>
-        <div class="budget-account-sub">${escapeAttr(r.scopeLabel)} • ${isContributionGoal ? "Reach at least" : "Stay under"}</div>
+        <div class="budget-account-sub">${escapeAttr(r.scopeLabel)} • ${r.measurement === "net-saved" ? "Net saved • Reach at least" : (isContributionGoal ? "Reach at least" : "Stay under")}</div>
         <div class="row-sub">${activityText}</div>
         ${r.target?.method !== "fixed" ? `<div class="row-sub budget-target-formula">${escapeAttr(r.target.formula)}</div>` : ""}
         <div class="progress"><span style="width:${Math.min(100,pct)}%"></span></div>
@@ -5737,7 +5779,7 @@ function renderBudgetReview(){
     <section class="budget-summary-strip" aria-label="Budget review summary">
       <article><span>💸 Spending</span><b>${money(stats.totalSpent)}</b></article>
       <article><span>💰 Income</span><b>${money(stats.totalIncome)}</b></article>
-      <article><span>🎯 Monthly targets</span><b>${money(performance.totalBudgeted)}</b><small>${budgetMood}</small></article>
+      <article><span>🎯 Monthly targets</span><b>${money(performance.totalBudgeted)}</b><small>${budgetMood}${performance.trackingTargetCount ? ` • ${performance.trackingTargetCount} net-saved tracking goal${performance.trackingTargetCount===1?"":"s"} excluded from assigned total` : ""}</small></article>
       <article><span>🕵️ Unbudgeted</span><b>${money(stats.unbudgetedSpent)}</b></article>
     </section>
     <details class="budget-more-insights">
@@ -5769,6 +5811,10 @@ function renderBudgets(){
   renderBudgetReview();
 }
 function budgetManagerCategoryText(budget){
+  if(isNetSavedBudget(budget)){
+    const account=accountById(budgetSavingsAccountId(budget));
+    return `Net saved in ${account?.name || "Savings"} • deposits − withdrawals`;
+  }
   const ids = budgetCategoryIds(budget);
   const excludedIds = budgetExcludedCategoryIds(budget);
   const bucketId = budgetSpendingBucketId(budget);
@@ -5800,7 +5846,7 @@ function renderBudgetManager(){
         <span class="budget-category-title"><span class="cat-preview" style="background:${hexToSoft(cat.color)}">${cat.emoji} ${escapeAttr(cat.text)}</span></span>
         <small>${escapeAttr(budgetScopeLabel(b))}</small>
         <small>${escapeAttr(budgetManagerCategoryText(b))}</small>
-        <small>${normalizedBudgetTargetDirection(b)==="min" ? "🎯 Reach at least target" : "🧾 Stay under target"}</small>
+        <small>${isNetSavedBudget(b) ? "🏦 Net saved • reach at least" : (normalizedBudgetTargetDirection(b)==="min" ? "🎯 Reach at least target" : "🧾 Stay under target")}</small>
         ${target.method !== "fixed" ? `<small>${escapeAttr(target.formula)}</small>` : ""}
       </span>
       <span class="budget-manager-side"><strong>${money(target.amount)}</strong><small>${spendingLabel}</small><span aria-hidden="true">›</span></span>
@@ -5815,11 +5861,11 @@ window.openBudgetManager=()=>{
 };
 
 
-function budgetBreakdown(items, keyFn, labelFn){
+function budgetBreakdown(items, keyFn, labelFn, budget=null){
   const totals = new Map();
   items.forEach(tx=>{
     const key = keyFn(tx) || "unknown";
-    totals.set(key, (totals.get(key) || 0) + budgetPerformanceActivityAmount(tx));
+    totals.set(key, (totals.get(key) || 0) + budgetPerformanceActivityAmount(tx,budget));
   });
   return [...totals.entries()].map(([key, amount])=>({key, label:labelFn(key), amount})).sort((a,b)=>b.amount-a.amount);
 }
@@ -5835,18 +5881,22 @@ function openBudgetDetailView({categoryId, categoryIds=null, budget=null, accoun
   const modal = document.getElementById("budgetDetailModal");
   const content = document.getElementById("budgetDetailContent");
   const selectedCategoryIds = budget ? budgetCategoryIds(budget) : (Array.isArray(categoryIds) ? categoryIds : [categoryId]).filter(Boolean);
-  if((!selectedCategoryIds.length && !budgetSpendingBucketId(budget)) || !modal || !content) return;
+  if((!budget && !selectedCategoryIds.length) || (budget && !budgetHasSelector(budget)) || !modal || !content) return;
   const range = budgetMonthRange(budgetReviewMonth);
   const cat = budget ? budgetCategoryLabel(budget) : budgetCategoryLabel({categoryIds:selectedCategoryIds});
-  const txs = expandedTransactions(range.end)
+  const activity = budget ? budgetActualActivity(budget, range) : null;
+  const txs = (budget ? [...activity.transactions] : expandedTransactions(range.end)
     .filter(tx=>tx.date >= range.start && tx.date <= range.end)
-    .filter(tx=>budget ? budgetPerformanceIncludesTransaction(tx, budget) : budgetIncludesTransaction(tx, budgetReviewIncludeRecurringBills))
-    .filter(tx=>budget ? true : transactionMatchesCategorySelection(tx, selectedCategoryIds))
-    .filter(tx=>budget ? true : txMatchesBudgetAccount(tx, accountId))
+    .filter(tx=>budgetIncludesTransaction(tx, budgetReviewIncludeRecurringBills))
+    .filter(tx=>transactionMatchesCategorySelection(tx, selectedCategoryIds))
+    .filter(tx=>txMatchesBudgetAccount(tx, accountId)))
     .sort((a,b)=>String(b.date).localeCompare(String(a.date)) || String(a.title || "").localeCompare(String(b.title || "")));
-  const total = txs.reduce((sum,tx)=>sum+(budget ? budgetPerformanceActivityAmount(tx) : budgetTransactionAmount(tx)),0);
-  const grossSpent = budget ? txs.filter(isBudgetReviewOutflow).reduce((sum,tx)=>sum+budgetTransactionAmount(tx),0) : total;
-  const reserveAdjustment = budget ? txs.filter(isBudgetReserveAdjustment).reduce((sum,tx)=>sum+budgetReserveAdjustmentAmount(tx),0) : 0;
+  const total = budget ? activity.used : txs.reduce((sum,tx)=>sum+budgetTransactionAmount(tx),0);
+  const grossSpent = budget ? activity.grossSpent : total;
+  const reserveAdjustment = budget ? activity.reserveAdjustment : 0;
+  const netSaved = !!(budget && isNetSavedBudget(budget));
+  const deposits = netSaved ? activity.deposits : 0;
+  const withdrawals = netSaved ? activity.withdrawals : 0;
   const budgetTarget = budget ? budgetTargetForMonth(budget, range.month) : null;
   const amount = budgetTarget ? budgetTarget.amount : null;
   const remaining = amount === null ? null : amount-total;
@@ -5854,39 +5904,40 @@ function openBudgetDetailView({categoryId, categoryIds=null, budget=null, accoun
   const performanceEvaluation = budget ? budgetPerformanceEvaluation(total, amount, budget) : null;
   const accounts = budgetBreakdown(txs, tx=>tx.accountId || "unknown", id=>{
     const a=accountById(id); return a ? `${a.emoji || "💵"} ${a.name}` : "Unknown account";
-  });
+  }, budget);
   const merchants = budgetBreakdown(txs, tx=>String(tx.title || "Untitled").trim().toLowerCase(), key=>{
     const match=txs.find(tx=>String(tx.title || "Untitled").trim().toLowerCase()===key); return match?.title || "Untitled";
-  });
+  }, budget);
   const categories = budgetBreakdown(txs, tx=>tx.categoryId || "unassigned", id=>{
     const c=categoryById(id); return c ? `${c.emoji || "🏷️"} ${c.name}` : "Unassigned";
-  });
+  }, budget);
   const topAccount = accounts[0]?.label || "No spending yet";
   const topMerchant = merchants[0]?.label || "No spending yet";
   document.getElementById("budgetDetailTitle").textContent = `${cat.emoji || "📊"} ${cat.text || cat.name}${budget ? " budget" : " spending"}`;
   const excludedBudgetLabels = budget ? budgetExcludedCategoryIds(budget).map(id=>categoryById(id)?.name || id) : [];
-  document.getElementById("budgetDetailSub").textContent = `${range.label} • ${budget ? budgetScopeLabel(budget) : budgetReviewAccountLabel(accountId)}${excludedBudgetLabels.length ? ` • excludes ${excludedBudgetLabels.join(", ")}` : ""}`;
+  document.getElementById("budgetDetailSub").textContent = `${range.label} • ${budget ? budgetScopeLabel(budget) : budgetReviewAccountLabel(accountId)}${!netSaved && excludedBudgetLabels.length ? ` • excludes ${excludedBudgetLabels.join(", ")}` : ""}`;
   content.innerHTML = `
     <div class="budget-detail-summary ${budget ? "" : "category-only"}">
-      <article class="mini-card"><span>${budget ? (targetDirection === "min" ? "Contributed" : "Budget used") : "Total spent"}</span><b>${money(total)}</b><small>${budget && Math.abs(reserveAdjustment) > 0.005 ? `${money(grossSpent)} actual spending • ${reserveAdjustment < 0 ? `${money(Math.abs(reserveAdjustment))} prior set-aside credit` : `${money(reserveAdjustment)} set aside this month`}` : `${txs.length} included transaction${txs.length===1?"":"s"}`}</small></article>
+      <article class="mini-card"><span>${netSaved ? "Net saved" : (budget ? (targetDirection === "min" ? "Contributed" : "Budget used") : "Total spent")}</span><b>${money(total)}</b><small>${netSaved ? `${money(deposits)} deposited • ${money(withdrawals)} withdrawn` : (budget && Math.abs(reserveAdjustment) > 0.005 ? `${money(grossSpent)} actual spending • ${reserveAdjustment < 0 ? `${money(Math.abs(reserveAdjustment))} prior set-aside credit` : `${money(reserveAdjustment)} set aside this month`}` : `${txs.length} included transaction${txs.length===1?"":"s"}`)}</small></article>
       ${budget ? `<article class="mini-card"><span>${targetDirection === "min" ? "Goal amount" : "Budget amount"}</span><b>${money(amount)}</b><small>${escapeAttr(budgetTarget?.detail || "Monthly target")} • ${targetDirection === "min" ? "reach at least" : "stay under"}</small></article>
       ${targetDirection === "min"
         ? `<article class="mini-card"><span>Goal status</span><b class="${performanceEvaluation.state}">${escapeAttr(performanceEvaluation.label)}</b><small>${amount ? Math.round(total/amount*100) : 0}% of goal</small></article>`
         : `<article class="mini-card"><span>${remaining < -0.005 ? "Over budget" : "Remaining"}</span><b class="${remaining < -0.005 ? "bad" : "good"}">${money(Math.abs(remaining))}</b><small>${amount ? Math.round(total/amount*100) : 0}% used</small></article>`}` : ""}
-      <article class="mini-card"><span>Top account</span><b>${escapeAttr(topAccount)}</b><small>${accounts[0] ? money(accounts[0].amount) : "—"}</small></article>
-      <article class="mini-card"><span>Top place</span><b>${escapeAttr(topMerchant)}</b><small>${merchants[0] ? money(merchants[0].amount) : "—"}</small></article>
+      ${netSaved
+        ? `<article class="mini-card"><span>Deposited</span><b class="good">${money(deposits)}</b><small>Money into ${escapeAttr(accountById(budgetSavingsAccountId(budget))?.name || "Savings")}</small></article><article class="mini-card"><span>Withdrawn</span><b class="${withdrawals > 0.005 ? "bad" : "good"}">${money(withdrawals)}</b><small>Money taken back out</small></article>`
+        : `<article class="mini-card"><span>Top account</span><b>${escapeAttr(topAccount)}</b><small>${accounts[0] ? money(accounts[0].amount) : "—"}</small></article><article class="mini-card"><span>Top place</span><b>${escapeAttr(topMerchant)}</b><small>${merchants[0] ? money(merchants[0].amount) : "—"}</small></article>`}
     </div>
-    <div class="budget-detail-grid">
+    ${netSaved ? "" : `<div class="budget-detail-grid">
       ${budgetSpendingBucketId(budget) ? `<section class="budget-insight-card"><div class="section-kicker">What it was for</div><h4>Category breakdown</h4>${renderBudgetBreakdown(categories,"No categorized spending in this personal bucket yet.")}</section>` : ""}
       <section class="budget-insight-card"><div class="section-kicker">By place</div><h4>Merchant/place breakdown</h4>${renderBudgetBreakdown(merchants,"No merchant spending in this category yet.")}</section>
       <section class="budget-insight-card"><div class="section-kicker">By account</div><h4>Account breakdown</h4>${renderBudgetBreakdown(accounts,"No account spending in this category yet.")}</section>
-    </div>
+    </div>`}
     <section class="budget-insight-card budget-detail-transactions">
       <div class="section-kicker">Included activity</div><h4>Transactions in this total</h4>
       ${txs.length ? `<div class="budget-detail-tx-list">${txs.map(tx=>{
         const a=accountById(tx.accountId), c=categoryById(tx.categoryId);
-        const activityAmount = budget ? budgetPerformanceActivityAmount(tx) : budgetTransactionAmount(tx);
-        const reserveLabel = budget && isBudgetReserveAdjustment(tx) ? `<span>${activityAmount < 0 ? "↩ Prior set-aside credit" : "🔒 Set aside"}</span>` : "";
+        const activityAmount = budget ? budgetPerformanceActivityAmount(tx,budget) : budgetTransactionAmount(tx);
+        const reserveLabel = netSaved ? `<span>${activityAmount < 0 ? "↩ Withdrawal" : "🏦 Deposit"}</span>` : (budget && isBudgetReserveAdjustment(tx) ? `<span>${activityAmount < 0 ? "↩ Prior set-aside credit" : "🔒 Set aside"}</span>` : "");
         return `<article class="budget-detail-tx-card">
           <div class="budget-detail-tx-top"><div><b>${escapeAttr(tx.title || "Untitled")}</b><span>${parseDate(tx.date).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})}</span></div><strong>${money(activityAmount)}</strong></div>
           <div class="budget-detail-tx-meta"><span>${a?.emoji || "💵"} ${escapeAttr(a?.name || "Unknown account")}</span><span>${c?.emoji || "🏷️"} ${escapeAttr(c?.name || "Unassigned")}</span>${spendingBucketMarkerForTransaction(tx,"budget-bucket-marker")}${reserveLabel}<span class="status-pill ${tx.status || "planned"}">${tx.status === "cleared" ? "✓ Cleared" : "○ Planned"}</span></div>
@@ -9145,6 +9196,32 @@ if(closeBudgetManagerBtn) closeBudgetManagerBtn.onclick = () => budgetManagerMod
 if(closeBudgetManagerFooterBtn) closeBudgetManagerFooterBtn.onclick = () => budgetManagerModal?.close();
 if(addBudgetBtn) addBudgetBtn.onclick = () => simpleBudget(null, {}, {returnToBudgetManager:!!budgetManagerModal?.open});
 addBillBtn.onclick = () => openTransaction(null, { recurrence:{type:"monthly", interval:1} });
+
+function budgetCategoryPickerSummary(ids, emptyLabel="All categories"){
+  const selected=[...new Set((ids || []).filter(Boolean))];
+  if(!selected.length) return emptyLabel;
+  const labels=selected.map(id=>categoryById(id)).filter(Boolean).map(c=>`${c.emoji || "🏷️"} ${c.name}`);
+  if(!labels.length) return `${selected.length} selected`;
+  if(labels.length <= 2) return labels.join(" • ");
+  return `${labels.slice(0,2).join(" • ")} +${labels.length-2}`;
+}
+function budgetCategoryPickerHTML({id,name,label,selectedIds=[],emptyLabel="All categories",hint=""}){
+  const selected=new Set(selectedIds || []);
+  const options=sortedCategories().filter(c=>!isBudgetExcludedCategory(c.id)).map(c=>`<label class="budget-category-option"><input type="checkbox" name="${name}" value="${c.id}" ${selected.has(c.id)?"checked":""}> <span>${c.emoji || "🏷️"} ${escapeAttr(c.name)}</span></label>`).join("");
+  return `<details class="budget-category-dropdown" id="${id}">
+    <summary><span>${label}</span><span class="budget-category-dropdown-value" data-budget-picker-value>${escapeAttr(budgetCategoryPickerSummary(selectedIds,emptyLabel))}</span></summary>
+    <div class="budget-category-dropdown-panel">${options}</div>
+    ${hint ? `<p class="hint">${hint}</p>` : ""}
+  </details>`;
+}
+function refreshBudgetCategoryPicker(detailsId, inputName, emptyLabel){
+  const details=document.getElementById(detailsId);
+  if(!details) return;
+  const ids=[...details.querySelectorAll(`input[name="${inputName}"]:checked`)].map(input=>input.value);
+  const value=details.querySelector("[data-budget-picker-value]");
+  if(value) value.textContent=budgetCategoryPickerSummary(ids,emptyLabel);
+}
+
 window.simpleBudget = (id=null, preset={}, options={})=>{
   if(options?.returnToBudgetManager){
     simpleAfterClose=()=>{
@@ -9157,44 +9234,56 @@ window.simpleBudget = (id=null, preset={}, options={})=>{
   const allAccountIds = orderedAccounts().map(a=>a.id);
   let initialIds = b ? budgetScopeAccountIds(b) : (preset.accountId && preset.accountId !== "all" ? [preset.accountId] : allAccountIds);
   if(b?.accountScope === "all" || (!b && preset.accountId === "all")) initialIds = allAccountIds;
+  const initialCategoryIds = b ? budgetCategoryIds(b) : (preset.categoryId ? [preset.categoryId] : []);
+  const initialExcludedCategoryIds = b ? budgetExcludedCategoryIds(b) : [];
+  const initialMeasurement = normalizedBudgetMeasurement(b);
+  const savingsAccounts = orderedAccounts().filter(isSavingsAccount);
+  const initialSavingsAccountId = budgetSavingsAccountId(b) || savingsAccounts[0]?.id || "";
   simpleTitle.textContent = b ? "Edit budget" : "Add budget";
   simpleFields.innerHTML = `
     <div class="form-grid two">
       <label>Budget/group name <input id="sBudgetName" value="${escapeAttr(b?.name || "")}" placeholder="Optional — e.g. Necessary bills"></label>
       <label>Budget emoji <input id="sBudgetEmoji" value="${escapeAttr(b?.emoji || "")}" maxlength="12" placeholder="Optional — e.g. 🏠"></label>
     </div>
-    <div class="budget-account-picker">
-      <span class="field-label">Include accounts</span>
-      ${orderedAccounts().map(a=>`<label class="budget-account-check"><input type="checkbox" name="sBudgetAccountIds" value="${a.id}"> <span>${a.emoji || "💵"} ${a.name}</span></label>`).join("")}
-      <p class="hint">Select one, several, or every account. Spending from unchecked accounts will be excluded.</p>
-    </div>
-    <label>Spending bucket
-      <select id="sBudgetSpendingBucket">
-        <option value="">Any / not bucket-specific</option>
-        ${SPENDING_BUCKET_IDS.map(bucketId=>`<option value="${bucketId}" ${budgetSpendingBucketId(b)===bucketId?"selected":""}>${escapeAttr(spendingBucketLabel(bucketId,bucketId))}</option>`).join("")}
+    <label>Measurement
+      <select id="sBudgetMeasurement">
+        <option value="activity" ${initialMeasurement==="activity"?"selected":""}>Matching transactions — normal budget</option>
+        <option value="net-saved" ${initialMeasurement==="net-saved"?"selected":""}>Net saved — deposits minus withdrawals</option>
       </select>
-      <span class="hint">Use this for a personal allowance such as Mak Spending or Ty Spending. Category still records what the purchase actually was.</span>
+      <span class="hint">Use Net saved for a household savings-growth goal. It measures the real change flowing through one savings account, regardless of which checking account contributed or received a withdrawal.</span>
     </label>
-    <div class="budget-account-picker">
-      <span class="field-label">Include categories</span>
-      ${sortedCategories().filter(c=>!isBudgetExcludedCategory(c.id)).map(c=>`<label class="budget-account-check"><input type="checkbox" name="sBudgetCategoryIds" value="${c.id}"> <span>${c.emoji} ${c.name}</span></label>`).join("")}
-      <p class="hint">Optional when a Spending bucket is selected. Leave all unchecked to include every category in that bucket; if both are set, transactions must match both.</p>
+    <div id="sBudgetNetSavedFields" class="budget-measurement-fields">
+      <label>Savings account
+        <select id="sBudgetSavingsAccount">
+          ${savingsAccounts.length ? savingsAccounts.map(a=>`<option value="${a.id}" ${initialSavingsAccountId===a.id?"selected":""}>${a.emoji || "🏦"} ${escapeAttr(a.name)}</option>`).join("") : `<option value="">No savings account found</option>`}
+        </select>
+        <span class="hint">Deposits increase the goal; withdrawals or spending from this account reduce it. Transfers within the same account have no effect.</span>
+      </label>
     </div>
-    <details class="form-details" ${budgetExcludedCategoryIds(b).length ? "open" : ""}>
-      <summary>Exclude categories (optional)</summary>
-      <div class="details-inner budget-account-picker">
-        ${sortedCategories().filter(c=>!isBudgetExcludedCategory(c.id)).map(c=>`<label class="budget-account-check"><input type="checkbox" name="sBudgetExcludedCategoryIds" value="${c.id}"> <span>${c.emoji} ${c.name}</span></label>`).join("")}
-        <p class="hint">Matching transactions in these categories will not count toward this budget. Useful for rules like Ty Spending = Ty Spending bucket except Food.</p>
+    <div id="sBudgetActivityFields" class="budget-measurement-fields">
+      <div class="budget-account-picker">
+        <span class="field-label">Include accounts</span>
+        ${orderedAccounts().map(a=>`<label class="budget-account-check"><input type="checkbox" name="sBudgetAccountIds" value="${a.id}"> <span>${a.emoji || "💵"} ${a.name}</span></label>`).join("")}
+        <p class="hint">Select one, several, or every account. Spending from unchecked accounts will be excluded.</p>
       </div>
-    </details>
-    <label>Spending view
-      <select id="sBudgetSpendingType">
-        <option value="auto" ${(b?.spendingType || "auto")==="auto"?"selected":""}>Auto — recurring decides</option>
-        <option value="bills" ${b?.spendingType==="bills"?"selected":""}>Bills</option>
-        <option value="extra" ${b?.spendingType==="extra"?"selected":""}>Extra spending</option>
-      </select>
-      <span class="hint">Controls where matching transactions appear in Budget Quick Views only. It does not change the transaction, recurring series, or Bills page.</span>
-    </label>
+      <label>Spending bucket
+        <select id="sBudgetSpendingBucket">
+          <option value="">Any / not bucket-specific</option>
+          ${SPENDING_BUCKET_IDS.map(bucketId=>`<option value="${bucketId}" ${budgetSpendingBucketId(b)===bucketId?"selected":""}>${escapeAttr(spendingBucketLabel(bucketId,bucketId))}</option>`).join("")}
+        </select>
+        <span class="hint">Use this for a personal allowance such as Mak Spending or Ty Spending. Category still records what the purchase actually was.</span>
+      </label>
+      ${budgetCategoryPickerHTML({id:"sBudgetIncludeCategoryPicker",name:"sBudgetCategoryIds",label:"Include categories",selectedIds:initialCategoryIds,emptyLabel:"All categories",hint:"Optional when a Spending bucket is selected. Leave all unchecked to include every category in that bucket; if both are set, transactions must match both."})}
+      ${budgetCategoryPickerHTML({id:"sBudgetExcludeCategoryPicker",name:"sBudgetExcludedCategoryIds",label:"Exclude categories (optional)",selectedIds:initialExcludedCategoryIds,emptyLabel:"None",hint:"Matching transactions in these categories will not count toward this budget. Useful for rules like Ty Spending = Ty Spending bucket except Food."})}
+      <label>Spending view
+        <select id="sBudgetSpendingType">
+          <option value="auto" ${(b?.spendingType || "auto")==="auto"?"selected":""}>Auto — recurring decides</option>
+          <option value="bills" ${b?.spendingType==="bills"?"selected":""}>Bills</option>
+          <option value="extra" ${b?.spendingType==="extra"?"selected":""}>Extra spending</option>
+        </select>
+        <span class="hint">Controls where matching transactions appear in Budget Quick Views only. It does not change the transaction, recurring series, or Bills page.</span>
+      </label>
+    </div>
     <label>Target behavior
       <select id="sBudgetTargetDirection">
         <option value="max" ${normalizedBudgetTargetDirection(b)==="max"?"selected":""}>Stay under — spending limit</option>
@@ -9220,6 +9309,7 @@ window.simpleBudget = (id=null, preset={}, options={})=>{
   let budgetAmountDraft = b?.amount ?? "";
   let budgetOccurrenceWeekdayDraft = Math.min(6,Math.max(0,Number(b?.occurrenceWeekday ?? 3)));
   let budgetPaycheckOwnerDraft = ["Mak","Ty"].includes(b?.paycheckOwner) ? b.paycheckOwner : "Ty";
+  let budgetTargetDirectionDraft = normalizedBudgetTargetDirection(b);
   const captureBudgetAmountRuleDraft = ()=>{
     if(document.getElementById("sAmount")) budgetAmountDraft=document.getElementById("sAmount").value;
     if(document.getElementById("sBudgetOccurrenceWeekday")) budgetOccurrenceWeekdayDraft=Math.min(6,Math.max(0,Number(document.getElementById("sBudgetOccurrenceWeekday").value)));
@@ -9242,31 +9332,62 @@ window.simpleBudget = (id=null, preset={}, options={})=>{
     captureBudgetAmountRuleDraft();
     renderBudgetAmountRuleFields();
   });
+  const updateBudgetMeasurementFields=()=>{
+    const isNet=document.getElementById("sBudgetMeasurement")?.value === "net-saved";
+    const activityFields=document.getElementById("sBudgetActivityFields");
+    const netFields=document.getElementById("sBudgetNetSavedFields");
+    const direction=document.getElementById("sBudgetTargetDirection");
+    if(activityFields) activityFields.hidden=isNet;
+    if(netFields) netFields.hidden=!isNet;
+    if(direction){
+      if(isNet){
+        if(!direction.disabled) budgetTargetDirectionDraft=direction.value === "min" ? "min" : "max";
+        direction.value="min";
+        direction.disabled=true;
+      } else {
+        direction.disabled=false;
+        direction.value=budgetTargetDirectionDraft;
+      }
+    }
+  };
+  document.getElementById("sBudgetTargetDirection")?.addEventListener("change",event=>{ budgetTargetDirectionDraft=event.target.value === "min" ? "min" : "max"; });
+  document.getElementById("sBudgetMeasurement")?.addEventListener("change",updateBudgetMeasurementFields);
+  updateBudgetMeasurementFields();
   setTimeout(()=>{
     document.querySelectorAll('input[name="sBudgetAccountIds"]').forEach(input=>{ input.checked = initialIds.includes(input.value); });
-    const initialCategoryIds = b ? budgetCategoryIds(b) : (preset.categoryId ? [preset.categoryId] : []);
-    const initialExcludedCategoryIds = b ? budgetExcludedCategoryIds(b) : [];
     document.querySelectorAll('input[name="sBudgetCategoryIds"]').forEach(input=>{
-      input.checked = initialCategoryIds.includes(input.value);
       input.addEventListener("change",()=>{
-        if(!input.checked) return;
-        const counterpart=document.querySelector(`input[name="sBudgetExcludedCategoryIds"][value="${CSS.escape(input.value)}"]`);
-        if(counterpart) counterpart.checked=false;
+        if(input.checked){
+          const counterpart=document.querySelector(`input[name="sBudgetExcludedCategoryIds"][value="${CSS.escape(input.value)}"]`);
+          if(counterpart) counterpart.checked=false;
+        }
+        refreshBudgetCategoryPicker("sBudgetIncludeCategoryPicker","sBudgetCategoryIds","All categories");
+        refreshBudgetCategoryPicker("sBudgetExcludeCategoryPicker","sBudgetExcludedCategoryIds","None");
       });
     });
     document.querySelectorAll('input[name="sBudgetExcludedCategoryIds"]').forEach(input=>{
-      input.checked = initialExcludedCategoryIds.includes(input.value);
       input.addEventListener("change",()=>{
-        if(!input.checked) return;
-        const counterpart=document.querySelector(`input[name="sBudgetCategoryIds"][value="${CSS.escape(input.value)}"]`);
-        if(counterpart) counterpart.checked=false;
+        if(input.checked){
+          const counterpart=document.querySelector(`input[name="sBudgetCategoryIds"][value="${CSS.escape(input.value)}"]`);
+          if(counterpart) counterpart.checked=false;
+        }
+        refreshBudgetCategoryPicker("sBudgetIncludeCategoryPicker","sBudgetCategoryIds","All categories");
+        refreshBudgetCategoryPicker("sBudgetExcludeCategoryPicker","sBudgetExcludedCategoryIds","None");
       });
     });
+    refreshBudgetCategoryPicker("sBudgetIncludeCategoryPicker","sBudgetCategoryIds","All categories");
+    refreshBudgetCategoryPicker("sBudgetExcludeCategoryPicker","sBudgetExcludedCategoryIds","None");
   },0);
   simpleSubmit = ()=>{
+    const measurement = document.getElementById("sBudgetMeasurement")?.value === "net-saved" ? "net-saved" : "activity";
+    const savingsAccountId = String(document.getElementById("sBudgetSavingsAccount")?.value || "");
     let accountIds = [...document.querySelectorAll('input[name="sBudgetAccountIds"]:checked')].map(input=>input.value);
-    if(!accountIds.length){
+    if(measurement === "activity" && !accountIds.length){
       alert("Choose at least one account for this budget.");
+      return false;
+    }
+    if(measurement === "net-saved" && !savingsAccountId){
+      alert("Choose a savings account for the Net saved goal.");
       return false;
     }
     const scope = accountIds.length === allAccountIds.length ? "all" : (accountIds.length === 1 ? "single" : "selected");
@@ -9275,7 +9396,7 @@ window.simpleBudget = (id=null, preset={}, options={})=>{
     const excludedSet = new Set(excludedCategoryIds);
     const categoryIds = [...document.querySelectorAll('input[name="sBudgetCategoryIds"]:checked')].map(input=>input.value).filter(id=>!isBudgetExcludedCategory(id) && !excludedSet.has(id));
     const spendingBucketId = normalizedSpendingBucketId(document.getElementById("sBudgetSpendingBucket")?.value);
-    if(!categoryIds.length && !spendingBucketId){
+    if(measurement === "activity" && !categoryIds.length && !spendingBucketId){
       alert("Choose at least one category or a Spending bucket for this budget.");
       return false;
     }
@@ -9289,8 +9410,10 @@ window.simpleBudget = (id=null, preset={}, options={})=>{
     target.categoryId = categoryIds[0] || ""; // legacy fallback for older app versions
     target.excludedCategoryIds = excludedCategoryIds;
     target.spendingBucketId = spendingBucketId;
-    target.spendingType = ["bills","extra"].includes(document.getElementById("sBudgetSpendingType")?.value) ? document.getElementById("sBudgetSpendingType").value : "auto";
-    target.targetDirection = document.getElementById("sBudgetTargetDirection")?.value === "min" ? "min" : "max";
+    target.spendingType = measurement === "net-saved" ? "auto" : (["bills","extra"].includes(document.getElementById("sBudgetSpendingType")?.value) ? document.getElementById("sBudgetSpendingType").value : "auto");
+    target.measurement = measurement;
+    target.savingsAccountId = measurement === "net-saved" ? savingsAccountId : "";
+    target.targetDirection = measurement === "net-saved" ? "min" : (document.getElementById("sBudgetTargetDirection")?.value === "min" ? "min" : "max");
     target.amountMethod = normalizedBudgetAmountMethod({amountMethod:document.getElementById("sBudgetAmountMethod")?.value});
     captureBudgetAmountRuleDraft();
     target.amount = Math.max(0, Number(budgetAmountDraft || 0));
@@ -12209,10 +12332,10 @@ function exportEditableCSVs(){
     frozenLocked:!!d.frozenLocked, archived:!!d.archived, archivedAt:d.archivedAt || "", notes:d.notes || ""
   }));
 
-  const budgetHeaders = ["id","name","emoji","accountScope","accountId","accountIdsJSON","categoryId","categoryIdsJSON","excludedCategoryIdsJSON","spendingBucketId","spendingType","targetDirection","amount","amountMethod","occurrenceWeekday","paycheckOwner","monthlyAmountOverridesJSON","period","notes"];
+  const budgetHeaders = ["id","name","emoji","accountScope","accountId","accountIdsJSON","categoryId","categoryIdsJSON","excludedCategoryIdsJSON","spendingBucketId","spendingType","targetDirection","measurement","savingsAccountId","amount","amountMethod","occurrenceWeekday","paycheckOwner","monthlyAmountOverridesJSON","period","notes"];
   const budgetRows = (data.budgets || []).map(b=>({
     id:b.id, name:b.name || "", emoji:b.emoji || "", accountScope:b.accountScope || (b.accountId ? "single" : "all"), accountId:b.accountId || "",
-    accountIdsJSON:JSON.stringify(budgetScopeAccountIds(b)), categoryId:budgetCategoryIds(b)[0] || b.categoryId || "", categoryIdsJSON:JSON.stringify(budgetCategoryIds(b)), excludedCategoryIdsJSON:JSON.stringify(budgetExcludedCategoryIds(b)), spendingBucketId:budgetSpendingBucketId(b), spendingType:normalizedBudgetSpendingType(b), targetDirection:normalizedBudgetTargetDirection(b), amount:b.amount ?? "", amountMethod:normalizedBudgetAmountMethod(b), occurrenceWeekday:b.occurrenceWeekday ?? 3, paycheckOwner:b.paycheckOwner || "Ty", monthlyAmountOverridesJSON:JSON.stringify(budgetMonthlyAmountOverrides(b)),
+    accountIdsJSON:JSON.stringify(budgetScopeAccountIds(b)), categoryId:budgetCategoryIds(b)[0] || b.categoryId || "", categoryIdsJSON:JSON.stringify(budgetCategoryIds(b)), excludedCategoryIdsJSON:JSON.stringify(budgetExcludedCategoryIds(b)), spendingBucketId:budgetSpendingBucketId(b), spendingType:normalizedBudgetSpendingType(b), targetDirection:normalizedBudgetTargetDirection(b), measurement:normalizedBudgetMeasurement(b), savingsAccountId:budgetSavingsAccountId(b), amount:b.amount ?? "", amountMethod:normalizedBudgetAmountMethod(b), occurrenceWeekday:b.occurrenceWeekday ?? 3, paycheckOwner:b.paycheckOwner || "Ty", monthlyAmountOverridesJSON:JSON.stringify(budgetMonthlyAmountOverrides(b)),
     period:b.period || "monthly", notes:b.notes || ""
   }));
 
@@ -12322,7 +12445,7 @@ function importEditedCSV(file){
         categoryIds = categoryIds.filter(id=>!excludedSet.has(id));
         return {
           id: row.id || uid(), name: row.name || "", emoji: row.emoji || "", accountScope, accountId: accountScope === "all" ? "" : (accountId || accountIds[0] || ""), accountIds,
-          categoryId: categoryIds[0] || "", categoryIds, excludedCategoryIds, spendingBucketId:normalizedSpendingBucketId(row.spendingBucketId), spendingType:["bills","extra"].includes(row.spendingType) ? row.spendingType : "auto", targetDirection:row.targetDirection === "min" ? "min" : "max", amount: Number(row.amount || 0), amountMethod:["occurrence","paycheck"].includes(row.amountMethod) ? row.amountMethod : "fixed", occurrenceWeekday:Math.min(6,Math.max(0,Number(row.occurrenceWeekday ?? 3))), paycheckOwner:["Mak","Ty"].includes(row.paycheckOwner) ? row.paycheckOwner : "Ty", monthlyAmountOverrides:(()=>{try{const parsed=JSON.parse(row.monthlyAmountOverridesJSON || "{}");return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? Object.fromEntries(Object.entries(parsed).filter(([month,value])=>/^\d{4}-\d{2}$/.test(month) && Number.isFinite(Number(value)) && Number(value)>=0).map(([month,value])=>[month,Number(value)])) : {};}catch(e){return {};}})(), period: row.period || "monthly", notes: row.notes || ""
+          categoryId: categoryIds[0] || "", categoryIds, excludedCategoryIds, spendingBucketId:normalizedSpendingBucketId(row.spendingBucketId), spendingType:["bills","extra"].includes(row.spendingType) ? row.spendingType : "auto", targetDirection:row.targetDirection === "min" ? "min" : "max", measurement:row.measurement === "net-saved" ? "net-saved" : "activity", savingsAccountId:String(row.savingsAccountId || ""), amount: Number(row.amount || 0), amountMethod:["occurrence","paycheck"].includes(row.amountMethod) ? row.amountMethod : "fixed", occurrenceWeekday:Math.min(6,Math.max(0,Number(row.occurrenceWeekday ?? 3))), paycheckOwner:["Mak","Ty"].includes(row.paycheckOwner) ? row.paycheckOwner : "Ty", monthlyAmountOverrides:(()=>{try{const parsed=JSON.parse(row.monthlyAmountOverridesJSON || "{}");return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? Object.fromEntries(Object.entries(parsed).filter(([month,value])=>/^\d{4}-\d{2}$/.test(month) && Number.isFinite(Number(value)) && Number(value)>=0).map(([month,value])=>[month,Number(value)])) : {};}catch(e){return {};}})(), period: row.period || "monthly", notes: row.notes || ""
         };
       });
       saveData();
@@ -13633,6 +13756,44 @@ function runMoneyNestRegressionTests(options={}){
       return "Jan $20 short is bad; Feb $30 extra is good; legacy budgets stay normal";
     }));
 
+    results.push(regressionResult("Net-saved budgets count deposits minus withdrawals",()=>{
+      const ds=regressionDataset({
+        accounts:[
+          {id:"mak",name:"Mak Checking",owner:"Mak",type:"cash",startingBalance:500},
+          {id:"ty",name:"Ty Checking",owner:"Ty",type:"cash",startingBalance:500},
+          {id:"joint",name:"Joint Checking",owner:"Joint",type:"cash",startingBalance:500},
+          {id:"savings",name:"Savings",owner:"Joint",type:"cash",startingBalance:1000}
+        ],
+        transactions:[
+          {id:"mak-save",date:"2027-03-05",title:"Mak to Savings",amount:325,type:"transfer",status:"cleared",accountId:"mak",transferToAccountId:"savings",categoryId:"savings",recurrence:{type:"none",interval:1}},
+          {id:"ty-save",date:"2027-03-12",title:"Ty to Savings",amount:200,type:"transfer",status:"cleared",accountId:"ty",transferToAccountId:"savings",categoryId:"savings",recurrence:{type:"none",interval:1}},
+          {id:"withdraw",date:"2027-03-20",title:"Savings to Joint",amount:175,type:"transfer",status:"cleared",accountId:"savings",transferToAccountId:"joint",categoryId:"banking",recurrence:{type:"none",interval:1}},
+          {id:"interest",date:"2027-03-31",title:"Savings interest",amount:5,type:"income",status:"cleared",accountId:"savings",categoryId:"income",recurrence:{type:"none",interval:1}},
+          {id:"planned",date:"2027-03-28",title:"Future withdrawal",amount:50,type:"transfer",status:"planned",accountId:"savings",transferToAccountId:"mak",categoryId:"savings",recurrence:{type:"none",interval:1}}
+        ]
+      });
+      ds.budgets=[{id:"net",name:"Household Net Savings",measurement:"net-saved",savingsAccountId:"savings",accountScope:"all",accountId:"",accountIds:[],categoryId:"",categoryIds:[],excludedCategoryIds:[],spendingBucketId:"",amount:400,amountMethod:"fixed",targetDirection:"min",period:"monthly"}];
+      setSynthetic(ds,false);
+      const budget=ds.budgets[0];
+      const activity=budgetActualActivity(budget,budgetMonthRange("2027-03"));
+      regressionApprox(activity.deposits,530,0.001,"Net-saved deposits");
+      regressionApprox(activity.withdrawals,175,0.001,"Net-saved withdrawals");
+      regressionApprox(activity.used,355,0.001,"Net-saved result");
+      regressionAssert(activity.transactions.length===4,"Planned savings activity should not count toward net saved");
+      const evaluation=budgetPerformanceEvaluation(activity.used,400,budget);
+      regressionAssert(evaluation.state==="bad" && evaluation.label===`${money(45)} short`,`Expected $45 short, got ${evaluation.label}`);
+      const stats=budgetPerformanceStats("2027-03");
+      regressionAssert(stats.trackingTargetCount===1,"Net-saved goal was not marked as a tracking target");
+      regressionApprox(stats.totalBudgeted,0,0.001,"Net-saved goal should not double-count the assigned budget total");
+      const roundTrip=normalizeData(JSON.parse(JSON.stringify(ds)));
+      regressionAssert(roundTrip.budgets[0]?.measurement==="net-saved","Net-saved measurement was lost during normalization");
+      regressionAssert(roundTrip.budgets[0]?.savingsAccountId==="savings","Net-saved account was lost during normalization");
+      regressionAssert(roundTrip.budgets[0]?.targetDirection==="min","Net-saved budget did not remain reach-at-least");
+      const legacy=normalizeData({...regressionDataset(),budgets:[{id:"legacy",name:"Legacy",categoryId:"utilities",categoryIds:["utilities"],amount:100}]});
+      regressionAssert(legacy.budgets[0]?.measurement==="activity","Legacy budget did not default to normal transaction measurement");
+      return "$530 in − $175 out = $355 net saved; planned activity excluded";
+    }));
+
     results.push(regressionResult("JSON normalization preserves planning scenarios",()=>{
       const raw=regressionDataset({
         accounts:[{id:"a",name:"A",owner:"Mak",type:"cash",startingBalance:10}],
@@ -13873,3 +14034,5 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 // v2-322: iPhone bottom navigation shows Calendar, Home, Accounts, Budgets, Bills, and Settings directly; Needs Review has a visible mobile preview and tappable review sheet.
 
 // v2-323: Budgets can be normal stay-under spending limits or reach-at-least contribution goals; savings goals flag shortfalls red and extra contributions green.
+
+// v2-324: Budgets can measure net savings growth (deposits minus withdrawals in a chosen savings account); category selectors use compact dropdown multi-selects and Budget Manager rows use card dividers that do not cross row content.
