@@ -1,3 +1,11 @@
+## v2-323
+
+- Adds a per-budget **Target behavior** toggle: **Stay under** for normal spending limits or **Reach at least** for savings/contribution goals.
+- Reach-at-least budgets show shortfalls in red until the target is met, then show **Goal met** or the extra contribution in green.
+- Budget summaries, detail views, manager rows, Dashboard attention counts, JSON normalization, and budget CSV import/export all preserve the chosen direction.
+- Existing budgets default to **Stay under**, so older backups keep their prior behavior.
+- Data schema: 229.
+
 ## v2-322
 
 iPhone navigation + Needs Review visibility cleanup. The phone dock once again exposes all six primary destinations directly: Calendar, Home, Accounts, Budgets, Bills, and Settings; the v2-247 More launcher remains in source for backward safety but is hidden on phones. Needs Review is no longer a mystery badge: the Home screen shows a compact review callout with the current count and finding titles, the red Home badge is tappable, and both open a dedicated mobile review sheet with Review/Review second/Dismiss actions. Desktop/iPad behavior and finance/data logic are unchanged. Schema remains 228 and regression baseline remains 24 checks.
@@ -652,7 +660,7 @@ Maintenance follow-up: Recent Changes is now capped by bytes instead of only ite
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-269`
+Current version: `money-nest-v2-323`
 
 ## Important Notes
 

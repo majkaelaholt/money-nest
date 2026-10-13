@@ -7145,3 +7145,7 @@ body.money-nest-planning-mode #calendarGrid .tx-chip::after{
   html:not(.money-nest-ipad) .sidebar .nav-btn{padding-left:0!important;padding-right:0!important}
   html:not(.money-nest-ipad) .sidebar .mobile-nav-text{font-size:7.5px!important}
 }
+
+/* v2-323: contribution-goal budgets invert success semantics: short is bad, target/excess is good. */
+#budgets .budget-review-row.goal-short .progress span{background:var(--red)}
+#budgets .budget-review-row.goal-met .progress span{background:var(--green)}

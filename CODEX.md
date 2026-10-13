@@ -1,3 +1,13 @@
+## v2-323 budget target-direction rules
+
+- `budget.targetDirection` is optional/backward-compatible. Normalize to `"max"` unless explicitly `"min"`.
+- `"max"` means a normal spending limit: at/below target is good; above target is bad.
+- `"min"` means a contribution/savings goal: below target is bad; at/above target is good.
+- Never infer target direction from category/name; the user controls it per budget.
+- Preserve target direction through JSON and budget CSV flows, month overrides, per-occurrence targets, and per-paycheck targets.
+- Dashboard budget-attention counts must use direction-aware status, not raw `spent > target`.
+- Data schema is 229.
+
 ## v2-322 mobile navigation and Needs Review rules
 
 - On iPhone-width layouts, expose all six primary views directly in the bottom dock: Calendar, Home/Dashboard, Accounts, Budgets, Bills, and Settings. Do not hide Budgets/Bills/Settings behind the legacy More sheet.
@@ -675,7 +685,7 @@ Example README note:
 ### v2-200
 - Banking is excluded from budgeting. Savings transfers net contributions by direction.
 
-- Current version: money-nest-v2-269. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
+- Current version: money-nest-v2-323. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
 
 
 ### v2-205

@@ -1,6 +1,6 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-322";
-const CURRENT_SCHEMA_VERSION = 228;
+const APP_VERSION = "2-323";
+const CURRENT_SCHEMA_VERSION = 229;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
 // v2-239: reliably detect iPad/tablet Safari and touch-capable layouts.
@@ -1440,6 +1440,7 @@ function normalizeData(raw){
     b.categoryId = b.categoryIds[0] || ""; // legacy fallback for older versions
     b.spendingBucketId = normalizedSpendingBucketId(b.spendingBucketId);
     b.spendingType = ["auto","bills","extra"].includes(b.spendingType) ? b.spendingType : "auto";
+    b.targetDirection = b.targetDirection === "min" ? "min" : "max";
     b.amountMethod = ["fixed","occurrence","paycheck"].includes(b.amountMethod) ? b.amountMethod : "fixed";
     b.occurrenceWeekday = Math.min(6, Math.max(0, Number.isFinite(Number(b.occurrenceWeekday)) ? Number(b.occurrenceWeekday) : 3));
     b.paycheckOwner = ["Mak","Ty"].includes(b.paycheckOwner) ? b.paycheckOwner : "Ty";
@@ -4012,7 +4013,8 @@ function renderDashboard(){
     if(quick){
       const next=expandedTransactions(toISO(addDays(parseDate(todayISO()),14))).filter(t=>t.date>=todayISO()&&t.status!=="cleared"&&isBudgetReviewOutflow({...t,status:"cleared"})).sort((a,b)=>a.date.localeCompare(b.date))[0];
       const bs=budgetReviewStats(todayISO().slice(0,7),"all");
-      quick.innerHTML=`<button onclick="setView('accounts')"><span>Safe to spend</span><b>${lowestSafe?money(lowestSafe.s.amount):'—'}</b><small>${lowestSafe?.a.name||'No cash account'}</small></button><button onclick="setView('bills')"><span>Next bill</span><b>${next?money(next.amount):'—'}</b><small>${next?`${next.title} • ${next.date}`:'Nothing upcoming'}</small></button><button onclick="setView('budgets')"><span>Month spending</span><b>${money(bs.totalSpent)}</b><small>${bs.overBudgetCount} budget(s) over</small></button>`;
+      const bp=budgetPerformanceStats(todayISO().slice(0,7));
+      quick.innerHTML=`<button onclick="setView('accounts')"><span>Safe to spend</span><b>${lowestSafe?money(lowestSafe.s.amount):'—'}</b><small>${lowestSafe?.a.name||'No cash account'}</small></button><button onclick="setView('bills')"><span>Next bill</span><b>${next?money(next.amount):'—'}</b><small>${next?`${next.title} • ${next.date}`:'Nothing upcoming'}</small></button><button onclick="setView('budgets')"><span>Month spending</span><b>${money(bs.totalSpent)}</b><small>${bp.needsAttentionCount} budget(s) need attention</small></button>`;
     }
 
     renderMobileHome({attention});
@@ -5414,6 +5416,28 @@ function budgetReviewPieData(stats){
     note:`Categories $${minStandaloneAmount}+ or 3%+ of spending show separately; tiny categories roll into Other.`
   };
 }
+function normalizedBudgetTargetDirection(budget){
+  return budget?.targetDirection === "min" ? "min" : "max";
+}
+function budgetTargetDirectionLabel(budget){
+  return normalizedBudgetTargetDirection(budget) === "min" ? "Reach at least" : "Stay under";
+}
+function budgetPerformanceEvaluation(spent, amount, budgetOrDirection){
+  const direction = typeof budgetOrDirection === "string"
+    ? (budgetOrDirection === "min" ? "min" : "max")
+    : normalizedBudgetTargetDirection(budgetOrDirection);
+  const actual = Number(spent || 0);
+  const target = Math.max(0, Number(amount || 0));
+  const delta = actual - target;
+  const epsilon = 0.005;
+  if(direction === "min"){
+    if(delta < -epsilon) return {direction,state:"bad",met:false,label:`${money(Math.abs(delta))} short`,delta};
+    if(delta > epsilon) return {direction,state:"good",met:true,label:`${money(delta)} extra`,delta};
+    return {direction,state:"good",met:true,label:"Goal met",delta:0};
+  }
+  if(delta > epsilon) return {direction,state:"bad",met:false,label:`Over by ${money(delta)}`,delta};
+  return {direction,state:"good",met:true,label:`${money(Math.max(0,-delta))} left`,delta};
+}
 function normalizedBudgetAmountMethod(budget){
   return ["occurrence","paycheck"].includes(budget?.amountMethod) ? budget.amountMethod : "fixed";
 }
@@ -5499,6 +5523,7 @@ function budgetPerformanceStats(monthValue=budgetReviewMonth){
     const spent = activity.used;
     const target = budgetTargetForMonth(b, range.month);
     const amount = target.amount;
+    const evaluation = budgetPerformanceEvaluation(spent, amount, b);
     return {
       budget:b,
       account:accountById(b.accountId),
@@ -5510,6 +5535,8 @@ function budgetPerformanceStats(monthValue=budgetReviewMonth){
       amount,
       left: amount - spent,
       pct: amount ? Math.max(0, Math.round((spent / amount) * 100)) : 0,
+      targetDirection:normalizedBudgetTargetDirection(b),
+      evaluation,
       target
     };
   }).sort((a,b)=>compareBudgetsByTitle(a.budget,b.budget));
@@ -5518,7 +5545,8 @@ function budgetPerformanceStats(monthValue=budgetReviewMonth){
     budgets,
     budgetRows,
     totalBudgeted:budgetRows.reduce((s,row)=>s+Number(row.amount || 0),0),
-    overBudgetCount:budgetRows.filter(r=>r.left < -0.005).length
+    overBudgetCount:budgetRows.filter(r=>r.targetDirection === "max" && r.evaluation?.state === "bad").length,
+    needsAttentionCount:budgetRows.filter(r=>r.evaluation?.state === "bad").length
   };
 }
 
@@ -5634,9 +5662,9 @@ function renderBudgetReview(){
     const label = parseDate(`${value}-01`).toLocaleString(undefined,{month:"short", year:"numeric"});
     monthOptions.push(`<option value="${value}" ${value===budgetReviewMonth?"selected":""}>${label}</option>`);
   }
-  const budgetMood = performance.overBudgetCount
-    ? `${performance.overBudgetCount} over budget`
-    : (performance.budgetRows.length ? "all tracked budgets okay" : "no budgets set yet");
+  const budgetMood = performance.needsAttentionCount
+    ? `${performance.needsAttentionCount} target${performance.needsAttentionCount===1?"":"s"} need attention`
+    : (performance.budgetRows.length ? "all tracked budgets on target" : "no budgets set yet");
   const pieGroup = budgetReviewPieData(stats);
   const pieData = pieGroup.data;
   const pieTotal = Math.max(0, stats.totalSpent);
@@ -5674,19 +5702,25 @@ function renderBudgetReview(){
 
   const budgetRows = performance.budgetRows.map(r=>{
     const pct = Math.min(140, Math.max(0, r.pct));
-    const status = r.left < -0.005 ? `Over by ${money(Math.abs(r.left))}` : `${money(r.left)} left`;
+    const isContributionGoal = r.targetDirection === "min";
+    const status = r.evaluation?.label || budgetPerformanceEvaluation(r.spent,r.amount,r.budget).label;
+    const state = r.evaluation?.state || "good";
     const reserveNote = r.reserveAdjustment < -0.005
       ? ` • ${money(Math.abs(r.reserveAdjustment))} prior set-aside credit`
       : (r.reserveAdjustment > 0.005 ? ` • ${money(r.reserveAdjustment)} set aside this month` : "");
-    return `<button type="button" class="budget-review-row budget-drill-row ${r.left < -0.005 ? "over" : ""}" onclick="openBudgetDetail('${r.budget.id}')">
+    const rowClass = isContributionGoal ? (state === "bad" ? "goal-short" : "goal-met") : (state === "bad" ? "over" : "");
+    const activityText = isContributionGoal
+      ? `${money(r.spent)} contributed of ${money(r.amount)} • ${r.pct}% of goal${reserveNote}`
+      : `${money(r.spent)} used of ${money(r.amount)} • ${r.pct}% used${reserveNote}`;
+    return `<button type="button" class="budget-review-row budget-drill-row ${rowClass}" onclick="openBudgetDetail('${r.budget.id}')">
       <div class="budget-review-main budget-target-main">
         <div class="budget-category-title"><span class="cat-preview" style="background:${hexToSoft(r.cat.color)}">${r.cat.emoji} ${r.cat.text}</span></div>
-        <div class="budget-account-sub">${escapeAttr(r.scopeLabel)}</div>
-        <div class="row-sub">${money(r.spent)} used of ${money(r.amount)} • ${r.pct}% used${reserveNote}</div>
+        <div class="budget-account-sub">${escapeAttr(r.scopeLabel)} • ${isContributionGoal ? "Reach at least" : "Stay under"}</div>
+        <div class="row-sub">${activityText}</div>
         ${r.target?.method !== "fixed" ? `<div class="row-sub budget-target-formula">${escapeAttr(r.target.formula)}</div>` : ""}
         <div class="progress"><span style="width:${Math.min(100,pct)}%"></span></div>
       </div>
-      <div class="amount ${r.left < -0.005 ? "bad" : "good"}">${status}</div>
+      <div class="amount ${state}">${status}</div>
     </button>`;
   }).join("") || `<div class="empty-state">Add a budget to compare monthly targets against real spending.</div>`;
 
@@ -5766,6 +5800,7 @@ function renderBudgetManager(){
         <span class="budget-category-title"><span class="cat-preview" style="background:${hexToSoft(cat.color)}">${cat.emoji} ${escapeAttr(cat.text)}</span></span>
         <small>${escapeAttr(budgetScopeLabel(b))}</small>
         <small>${escapeAttr(budgetManagerCategoryText(b))}</small>
+        <small>${normalizedBudgetTargetDirection(b)==="min" ? "🎯 Reach at least target" : "🧾 Stay under target"}</small>
         ${target.method !== "fixed" ? `<small>${escapeAttr(target.formula)}</small>` : ""}
       </span>
       <span class="budget-manager-side"><strong>${money(target.amount)}</strong><small>${spendingLabel}</small><span aria-hidden="true">›</span></span>
@@ -5815,6 +5850,8 @@ function openBudgetDetailView({categoryId, categoryIds=null, budget=null, accoun
   const budgetTarget = budget ? budgetTargetForMonth(budget, range.month) : null;
   const amount = budgetTarget ? budgetTarget.amount : null;
   const remaining = amount === null ? null : amount-total;
+  const targetDirection = budget ? normalizedBudgetTargetDirection(budget) : "max";
+  const performanceEvaluation = budget ? budgetPerformanceEvaluation(total, amount, budget) : null;
   const accounts = budgetBreakdown(txs, tx=>tx.accountId || "unknown", id=>{
     const a=accountById(id); return a ? `${a.emoji || "💵"} ${a.name}` : "Unknown account";
   });
@@ -5831,9 +5868,11 @@ function openBudgetDetailView({categoryId, categoryIds=null, budget=null, accoun
   document.getElementById("budgetDetailSub").textContent = `${range.label} • ${budget ? budgetScopeLabel(budget) : budgetReviewAccountLabel(accountId)}${excludedBudgetLabels.length ? ` • excludes ${excludedBudgetLabels.join(", ")}` : ""}`;
   content.innerHTML = `
     <div class="budget-detail-summary ${budget ? "" : "category-only"}">
-      <article class="mini-card"><span>${budget ? "Budget used" : "Total spent"}</span><b>${money(total)}</b><small>${budget && Math.abs(reserveAdjustment) > 0.005 ? `${money(grossSpent)} actual spending • ${reserveAdjustment < 0 ? `${money(Math.abs(reserveAdjustment))} prior set-aside credit` : `${money(reserveAdjustment)} set aside this month`}` : `${txs.length} included transaction${txs.length===1?"":"s"}`}</small></article>
-      ${budget ? `<article class="mini-card"><span>Budget amount</span><b>${money(amount)}</b><small>${escapeAttr(budgetTarget?.detail || "Monthly target")}</small></article>
-      <article class="mini-card"><span>${remaining < -0.005 ? "Over budget" : "Remaining"}</span><b class="${remaining < -0.005 ? "bad" : "good"}">${money(Math.abs(remaining))}</b><small>${amount ? Math.round(total/amount*100) : 0}% used</small></article>` : ""}
+      <article class="mini-card"><span>${budget ? (targetDirection === "min" ? "Contributed" : "Budget used") : "Total spent"}</span><b>${money(total)}</b><small>${budget && Math.abs(reserveAdjustment) > 0.005 ? `${money(grossSpent)} actual spending • ${reserveAdjustment < 0 ? `${money(Math.abs(reserveAdjustment))} prior set-aside credit` : `${money(reserveAdjustment)} set aside this month`}` : `${txs.length} included transaction${txs.length===1?"":"s"}`}</small></article>
+      ${budget ? `<article class="mini-card"><span>${targetDirection === "min" ? "Goal amount" : "Budget amount"}</span><b>${money(amount)}</b><small>${escapeAttr(budgetTarget?.detail || "Monthly target")} • ${targetDirection === "min" ? "reach at least" : "stay under"}</small></article>
+      ${targetDirection === "min"
+        ? `<article class="mini-card"><span>Goal status</span><b class="${performanceEvaluation.state}">${escapeAttr(performanceEvaluation.label)}</b><small>${amount ? Math.round(total/amount*100) : 0}% of goal</small></article>`
+        : `<article class="mini-card"><span>${remaining < -0.005 ? "Over budget" : "Remaining"}</span><b class="${remaining < -0.005 ? "bad" : "good"}">${money(Math.abs(remaining))}</b><small>${amount ? Math.round(total/amount*100) : 0}% used</small></article>`}` : ""}
       <article class="mini-card"><span>Top account</span><b>${escapeAttr(topAccount)}</b><small>${accounts[0] ? money(accounts[0].amount) : "—"}</small></article>
       <article class="mini-card"><span>Top place</span><b>${escapeAttr(topMerchant)}</b><small>${merchants[0] ? money(merchants[0].amount) : "—"}</small></article>
     </div>
@@ -9156,6 +9195,13 @@ window.simpleBudget = (id=null, preset={}, options={})=>{
       </select>
       <span class="hint">Controls where matching transactions appear in Budget Quick Views only. It does not change the transaction, recurring series, or Bills page.</span>
     </label>
+    <label>Target behavior
+      <select id="sBudgetTargetDirection">
+        <option value="max" ${normalizedBudgetTargetDirection(b)==="max"?"selected":""}>Stay under — spending limit</option>
+        <option value="min" ${normalizedBudgetTargetDirection(b)==="min"?"selected":""}>Reach at least — contribution / savings goal</option>
+      </select>
+      <span class="hint">Normal spending budgets turn red when you go over. Contribution goals turn red while you are short, then green once the target is reached or exceeded.</span>
+    </label>
     <label>Amount method
       <select id="sBudgetAmountMethod">
         <option value="fixed" ${normalizedBudgetAmountMethod(b)==="fixed"?"selected":""}>Fixed monthly</option>
@@ -9244,6 +9290,7 @@ window.simpleBudget = (id=null, preset={}, options={})=>{
     target.excludedCategoryIds = excludedCategoryIds;
     target.spendingBucketId = spendingBucketId;
     target.spendingType = ["bills","extra"].includes(document.getElementById("sBudgetSpendingType")?.value) ? document.getElementById("sBudgetSpendingType").value : "auto";
+    target.targetDirection = document.getElementById("sBudgetTargetDirection")?.value === "min" ? "min" : "max";
     target.amountMethod = normalizedBudgetAmountMethod({amountMethod:document.getElementById("sBudgetAmountMethod")?.value});
     captureBudgetAmountRuleDraft();
     target.amount = Math.max(0, Number(budgetAmountDraft || 0));
@@ -12162,10 +12209,10 @@ function exportEditableCSVs(){
     frozenLocked:!!d.frozenLocked, archived:!!d.archived, archivedAt:d.archivedAt || "", notes:d.notes || ""
   }));
 
-  const budgetHeaders = ["id","name","emoji","accountScope","accountId","accountIdsJSON","categoryId","categoryIdsJSON","excludedCategoryIdsJSON","spendingBucketId","spendingType","amount","amountMethod","occurrenceWeekday","paycheckOwner","monthlyAmountOverridesJSON","period","notes"];
+  const budgetHeaders = ["id","name","emoji","accountScope","accountId","accountIdsJSON","categoryId","categoryIdsJSON","excludedCategoryIdsJSON","spendingBucketId","spendingType","targetDirection","amount","amountMethod","occurrenceWeekday","paycheckOwner","monthlyAmountOverridesJSON","period","notes"];
   const budgetRows = (data.budgets || []).map(b=>({
     id:b.id, name:b.name || "", emoji:b.emoji || "", accountScope:b.accountScope || (b.accountId ? "single" : "all"), accountId:b.accountId || "",
-    accountIdsJSON:JSON.stringify(budgetScopeAccountIds(b)), categoryId:budgetCategoryIds(b)[0] || b.categoryId || "", categoryIdsJSON:JSON.stringify(budgetCategoryIds(b)), excludedCategoryIdsJSON:JSON.stringify(budgetExcludedCategoryIds(b)), spendingBucketId:budgetSpendingBucketId(b), spendingType:normalizedBudgetSpendingType(b), amount:b.amount ?? "", amountMethod:normalizedBudgetAmountMethod(b), occurrenceWeekday:b.occurrenceWeekday ?? 3, paycheckOwner:b.paycheckOwner || "Ty", monthlyAmountOverridesJSON:JSON.stringify(budgetMonthlyAmountOverrides(b)),
+    accountIdsJSON:JSON.stringify(budgetScopeAccountIds(b)), categoryId:budgetCategoryIds(b)[0] || b.categoryId || "", categoryIdsJSON:JSON.stringify(budgetCategoryIds(b)), excludedCategoryIdsJSON:JSON.stringify(budgetExcludedCategoryIds(b)), spendingBucketId:budgetSpendingBucketId(b), spendingType:normalizedBudgetSpendingType(b), targetDirection:normalizedBudgetTargetDirection(b), amount:b.amount ?? "", amountMethod:normalizedBudgetAmountMethod(b), occurrenceWeekday:b.occurrenceWeekday ?? 3, paycheckOwner:b.paycheckOwner || "Ty", monthlyAmountOverridesJSON:JSON.stringify(budgetMonthlyAmountOverrides(b)),
     period:b.period || "monthly", notes:b.notes || ""
   }));
 
@@ -12275,7 +12322,7 @@ function importEditedCSV(file){
         categoryIds = categoryIds.filter(id=>!excludedSet.has(id));
         return {
           id: row.id || uid(), name: row.name || "", emoji: row.emoji || "", accountScope, accountId: accountScope === "all" ? "" : (accountId || accountIds[0] || ""), accountIds,
-          categoryId: categoryIds[0] || "", categoryIds, excludedCategoryIds, spendingBucketId:normalizedSpendingBucketId(row.spendingBucketId), spendingType:["bills","extra"].includes(row.spendingType) ? row.spendingType : "auto", amount: Number(row.amount || 0), amountMethod:["occurrence","paycheck"].includes(row.amountMethod) ? row.amountMethod : "fixed", occurrenceWeekday:Math.min(6,Math.max(0,Number(row.occurrenceWeekday ?? 3))), paycheckOwner:["Mak","Ty"].includes(row.paycheckOwner) ? row.paycheckOwner : "Ty", monthlyAmountOverrides:(()=>{try{const parsed=JSON.parse(row.monthlyAmountOverridesJSON || "{}");return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? Object.fromEntries(Object.entries(parsed).filter(([month,value])=>/^\d{4}-\d{2}$/.test(month) && Number.isFinite(Number(value)) && Number(value)>=0).map(([month,value])=>[month,Number(value)])) : {};}catch(e){return {};}})(), period: row.period || "monthly", notes: row.notes || ""
+          categoryId: categoryIds[0] || "", categoryIds, excludedCategoryIds, spendingBucketId:normalizedSpendingBucketId(row.spendingBucketId), spendingType:["bills","extra"].includes(row.spendingType) ? row.spendingType : "auto", targetDirection:row.targetDirection === "min" ? "min" : "max", amount: Number(row.amount || 0), amountMethod:["occurrence","paycheck"].includes(row.amountMethod) ? row.amountMethod : "fixed", occurrenceWeekday:Math.min(6,Math.max(0,Number(row.occurrenceWeekday ?? 3))), paycheckOwner:["Mak","Ty"].includes(row.paycheckOwner) ? row.paycheckOwner : "Ty", monthlyAmountOverrides:(()=>{try{const parsed=JSON.parse(row.monthlyAmountOverridesJSON || "{}");return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? Object.fromEntries(Object.entries(parsed).filter(([month,value])=>/^\d{4}-\d{2}$/.test(month) && Number.isFinite(Number(value)) && Number(value)>=0).map(([month,value])=>[month,Number(value)])) : {};}catch(e){return {};}})(), period: row.period || "monthly", notes: row.notes || ""
         };
       });
       saveData();
@@ -13554,6 +13601,38 @@ function runMoneyNestRegressionTests(options={}){
       return "Medical Autopay stays Autopay while its future transfer remains planned";
     }));
 
+    results.push(regressionResult("Contribution-goal budgets reward exceeding the target",()=>{
+      const ds=regressionDataset({
+        accounts:[
+          {id:"checking",name:"Checking",owner:"Mak",type:"cash",startingBalance:500},
+          {id:"savings",name:"Savings",owner:"Joint",type:"savings",startingBalance:0}
+        ],
+        transactions:[
+          {id:"jan-save",date:"2027-01-10",title:"Save",amount:80,type:"transfer",status:"cleared",accountId:"checking",transferToAccountId:"savings",categoryId:"savings",recurrence:{type:"none",interval:1}},
+          {id:"feb-save",date:"2027-02-10",title:"Save",amount:130,type:"transfer",status:"cleared",accountId:"checking",transferToAccountId:"savings",categoryId:"savings",recurrence:{type:"none",interval:1}}
+        ]
+      });
+      ds.categories.push({id:"savings",name:"Savings",emoji:"🏠",color:"#888"});
+      ds.budgets=[{id:"save-goal",name:"Savings",accountScope:"all",accountId:"",accountIds:[],categoryId:"savings",categoryIds:["savings"],excludedCategoryIds:[],spendingBucketId:"",amount:100,amountMethod:"fixed",targetDirection:"min",period:"monthly"}];
+      setSynthetic(ds,false);
+      const budget=ds.budgets[0];
+      const january=budgetPerformanceEvaluation(budgetActualSpent(budget,budgetMonthRange("2027-01")),100,budget);
+      const february=budgetPerformanceEvaluation(budgetActualSpent(budget,budgetMonthRange("2027-02")),100,budget);
+      regressionAssert(january.state==="bad" && january.label===`${money(20)} short`,`Expected January to be $20 short, got ${january.label}`);
+      regressionAssert(february.state==="good" && february.label===`${money(30)} extra`,`Expected February to be $30 extra, got ${february.label}`);
+      const janStats=budgetPerformanceStats("2027-01");
+      const febStats=budgetPerformanceStats("2027-02");
+      regressionAssert(janStats.needsAttentionCount===1,"Under-funded contribution goal did not need attention");
+      regressionAssert(febStats.needsAttentionCount===0,"Exceeded contribution goal was incorrectly flagged");
+      const roundTrip=normalizeData(JSON.parse(JSON.stringify(ds)));
+      regressionAssert(roundTrip.budgets[0]?.targetDirection==="min","Contribution-goal direction was lost during JSON normalization");
+      const legacyRaw=regressionDataset();
+      legacyRaw.budgets=[{id:"legacy",name:"Legacy",accountScope:"all",categoryId:"savings",categoryIds:["savings"],amount:100,amountMethod:"fixed"}];
+      const legacy=normalizeData(legacyRaw);
+      regressionAssert(legacy.budgets[0]?.targetDirection==="max","Legacy budget did not default to stay-under behavior");
+      return "Jan $20 short is bad; Feb $30 extra is good; legacy budgets stay normal";
+    }));
+
     results.push(regressionResult("JSON normalization preserves planning scenarios",()=>{
       const raw=regressionDataset({
         accounts:[{id:"a",name:"A",owner:"Mak",type:"cash",startingBalance:10}],
@@ -13792,3 +13871,5 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 // v2-321: Dashboard debt-due badges preserve explicit non-card payment states such as Autopay instead of replacing them with the linked occurrence's Planned status.
 
 // v2-322: iPhone bottom navigation shows Calendar, Home, Accounts, Budgets, Bills, and Settings directly; Needs Review has a visible mobile preview and tappable review sheet.
+
+// v2-323: Budgets can be normal stay-under spending limits or reach-at-least contribution goals; savings goals flag shortfalls red and extra contributions green.
