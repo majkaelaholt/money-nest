@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-325";
+const APP_VERSION = "2-326";
 const CURRENT_SCHEMA_VERSION = 230;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -5610,11 +5610,18 @@ function budgetReviewStats(monthValue=budgetReviewMonth, accountIds=budgetReview
   const totalSpent = expenses.reduce((s,tx)=>s+budgetTransactionAmount(tx),0);
   const totalIncome = income.reduce((s,tx)=>s+Number(tx.amount || 0),0);
   // A budget may now be bucket-only, so “unbudgeted” must be determined by
-  // actual transaction membership rather than category ids alone.
-  const unbudgetedSpent = expenses
-    .filter(tx=>!budgets.some(b=>txMatchesBudgetDefinition(tx,b) && txMatchesBudgetScope(tx,b)))
-    .reduce((sum,tx)=>sum+budgetTransactionAmount(tx),0);
-  return {range, monthTx, expenses, income, budgets, categories, totalSpent, totalIncome, unbudgetedSpent};
+  // actual transaction membership rather than category ids alone. Net-saved
+  // tracking goals are intentionally separate from assigned spending targets,
+  // but movements touching their selected savings accounts are still explained
+  // by that tracking goal and should not appear as mystery/unbudgeted activity.
+  const ordinaryUnmatched = expenses
+    .filter(tx=>!budgets.some(b=>txMatchesBudgetDefinition(tx,b) && txMatchesBudgetScope(tx,b)));
+  const netSavedTrackingBudgets = (data.budgets || []).filter(b=>isNetSavedBudget(b) && budgetHasSelector(b));
+  const isTrackedByNetSavedGoal = tx=>netSavedTrackingBudgets.some(b=>Math.abs(budgetNetSavedEffect(tx,b)) > 0.005);
+  const netSavedExcludedTransactions = ordinaryUnmatched.filter(isTrackedByNetSavedGoal);
+  const unbudgetedTransactions = ordinaryUnmatched.filter(tx=>!isTrackedByNetSavedGoal(tx));
+  const unbudgetedSpent = unbudgetedTransactions.reduce((sum,tx)=>sum+budgetTransactionAmount(tx),0);
+  return {range, monthTx, expenses, income, budgets, categories, totalSpent, totalIncome, unbudgetedSpent, unbudgetedTransactions, netSavedExcludedTransactions};
 }
 function budgetTrendMonths(count=6, accountIds=budgetReviewAccountIds){
   const selectedStart = parseDate(`${budgetReviewMonth}-01`);
@@ -5680,10 +5687,44 @@ function budgetMonthComparison(){
 function explainBudgetTotals(){
  const stats=budgetReviewStats(); const comp=budgetMonthComparison(); const modal=document.getElementById('budgetDetailModal'); const content=document.getElementById('budgetDetailContent');
  document.getElementById('budgetDetailTitle').textContent='🧮 Why these totals?'; document.getElementById('budgetDetailSub').textContent=`${stats.range.label} • ${budgetReviewAccountLabel()}`;
- content.innerHTML=`<section class="budget-insight-card"><h4>Spending includes</h4><p>Cleared cash-account expenses and categorized cash transfers, excluding Banking. Savings transfers are netted by direction.</p><h4>Current spending filters</h4><p><b>View:</b> ${budgetReviewMode==='extra'?'Extra spending only':budgetReviewMode==='bills'?'Bills only (recurring + budget/category overrides)':'All spending'}<br><b>Account:</b> ${budgetReviewAccountLabel()}</p><p class="hint"><b>Budget performance is separate:</b> How you did vs budget always uses the full selected month and each budget's configured account/category/bucket scope, regardless of these spending-view filters. A cleared Banking transaction with an explicit Mak/Ty Spending bucket is treated only as a budget set-aside adjustment: expense reserves allowance now; income releases prior set-aside money as a credit. Those adjustments do not change Spending or Income analysis totals.</p><h4>Counted activity</h4><p>${stats.expenses.length} transactions total ${money(stats.totalSpent)}. Ordinary income is displayed separately and does not reduce spending totals.</p></section>`;
+ content.innerHTML=`<section class="budget-insight-card"><h4>Spending includes</h4><p>Cleared cash-account expenses and categorized cash transfers, excluding Banking. Savings transfers are netted by direction.</p><h4>Current spending filters</h4><p><b>View:</b> ${budgetReviewMode==='extra'?'Extra spending only':budgetReviewMode==='bills'?'Bills only (recurring + budget/category overrides)':'All spending'}<br><b>Account:</b> ${budgetReviewAccountLabel()}</p><p class="hint"><b>Budget performance is separate:</b> How you did vs budget always uses the full selected month and each budget's configured account/category/bucket scope, regardless of these spending-view filters. A cleared Banking transaction with an explicit Mak/Ty Spending bucket is treated only as a budget set-aside adjustment: expense reserves allowance now; income releases prior set-aside money as a credit. Those adjustments do not change Spending or Income analysis totals.</p><h4>Unbudgeted</h4><p>Unbudgeted means cleared spending in this view that matches no ordinary budget. Money moving into or out of a savings account already tracked by a <b>Net saved</b> goal is excluded from Unbudgeted because that movement is explained by the savings goal instead.</p><h4>Counted activity</h4><p>${stats.expenses.length} transactions total ${money(stats.totalSpent)}. Ordinary income is displayed separately and does not reduce spending totals.</p></section>`;
  if(!modal.open)modal.showModal();
 }
 window.explainBudgetTotals=explainBudgetTotals;
+
+function openUnbudgetedBudgetDetail(){
+  const stats=budgetReviewStats();
+  const modal=document.getElementById("budgetDetailModal");
+  const content=document.getElementById("budgetDetailContent");
+  if(!modal || !content) return;
+  const txs=[...(stats.unbudgetedTransactions || [])].sort((a,b)=>String(b.date).localeCompare(String(a.date)) || String(a.title || "").localeCompare(String(b.title || "")));
+  const excludedCount=(stats.netSavedExcludedTransactions || []).length;
+  document.getElementById("budgetDetailTitle").textContent="🕵️ Unbudgeted activity";
+  document.getElementById("budgetDetailSub").textContent=`${stats.range.label} • ${budgetReviewAccountLabel()}`;
+  content.innerHTML=`
+    <div class="budget-detail-summary category-only">
+      <article class="mini-card"><span>Unbudgeted</span><b>${money(stats.unbudgetedSpent)}</b><small>${txs.length} unmatched transaction${txs.length===1?"":"s"}</small></article>
+      <article class="mini-card"><span>Net-saved movements excluded</span><b>${excludedCount}</b><small>Already explained by a Net saved tracking goal</small></article>
+      <article class="mini-card"><span>Selected view</span><b>${escapeAttr(budgetReviewAccountLabel())}</b><small>${escapeAttr(stats.range.label)}</small></article>
+    </div>
+    <section class="budget-insight-card"><div class="section-kicker">What this means</div><h4>Transactions with no matching budget</h4><p>These cleared transactions are included in the current spending view but do not match any ordinary budget's account/category/spending-bucket rules. Savings movements covered by a Net saved goal are intentionally left out here.</p></section>
+    <section class="budget-insight-card budget-detail-transactions">
+      <div class="section-kicker">Unbudgeted activity</div><h4>Tap a transaction to review it</h4>
+      ${txs.length ? `<div class="budget-detail-tx-list">${txs.map(tx=>{
+        const a=accountById(tx.accountId), c=categoryById(tx.categoryId);
+        const amount=budgetTransactionAmount(tx);
+        const editId=escapeAttr(tx.originalId || tx.id || "");
+        const originalDate=escapeAttr(tx.originalDate || tx.date || "");
+        const occurrenceDate=escapeAttr(tx.date || "");
+        return `<button type="button" class="budget-detail-tx-card budget-unbudgeted-tx" onclick="document.getElementById('budgetDetailModal').close();openTransaction('${editId}',{generated:${!!tx.generated},occurrenceOriginalDate:'${originalDate}',occurrenceDate:'${occurrenceDate}'})">
+          <div class="budget-detail-tx-top"><div><b>${escapeAttr(tx.title || "Untitled")}</b><span>${parseDate(tx.date).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})}</span></div><strong>${money(amount)}</strong></div>
+          <div class="budget-detail-tx-meta"><span>${a?.emoji || "💵"} ${escapeAttr(a?.name || "Unknown account")}</span><span>${c?.emoji || "🏷️"} ${escapeAttr(c?.name || "Unassigned")}</span>${spendingBucketMarkerForTransaction(tx,"budget-bucket-marker")}<span class="status-pill ${tx.status || "planned"}">${tx.status === "cleared" ? "✓ Cleared" : "○ Planned"}</span></div>
+        </button>`;
+      }).join("")}</div>` : `<div class="empty-state">Nothing is unbudgeted for ${stats.range.label}. 🎉</div>`}
+    </section>`;
+  if(!modal.open) modal.showModal();
+}
+window.openUnbudgetedBudgetDetail=openUnbudgetedBudgetDetail;
 
 function renderBudgetReview(){
   const el = document.getElementById("budgetReview");
@@ -5780,7 +5821,7 @@ function renderBudgetReview(){
       <article><span>💸 Spending</span><b>${money(stats.totalSpent)}</b></article>
       <article><span>💰 Income</span><b>${money(stats.totalIncome)}</b></article>
       <article><span>🎯 Monthly targets</span><b>${money(performance.totalBudgeted)}</b><small>${budgetMood}${performance.trackingTargetCount ? ` • ${performance.trackingTargetCount} net-saved tracking goal${performance.trackingTargetCount===1?"":"s"} excluded from assigned total` : ""}</small></article>
-      <article><span>🕵️ Unbudgeted</span><b>${money(stats.unbudgetedSpent)}</b></article>
+      <button type="button" class="budget-summary-action" onclick="openUnbudgetedBudgetDetail()"><span>🕵️ Unbudgeted</span><b>${money(stats.unbudgetedSpent)}</b><small>${stats.unbudgetedTransactions.length} item${stats.unbudgetedTransactions.length===1?"":"s"} • tap to review</small></button>
     </section>
     <details class="budget-more-insights">
       <summary><span><b>More insights</b><small>Month comparison and six-month trend</small></span><span aria-hidden="true">⌄</span></summary>
@@ -13797,6 +13838,28 @@ function runMoneyNestRegressionTests(options={}){
       return "$530 in − $175 out = $355 net saved; planned activity excluded";
     }));
 
+    results.push(regressionResult("Unbudgeted excludes activity already tracked by Net saved",()=>{
+      const ds=regressionDataset({
+        accounts:[
+          {id:"joint",name:"Joint Checking",owner:"Joint",type:"cash",startingBalance:500},
+          {id:"savings",name:"Savings",owner:"Joint",type:"cash",startingBalance:1000}
+        ],
+        transactions:[
+          {id:"deposit",date:"2027-04-05",title:"Joint to Savings",amount:100,type:"transfer",status:"cleared",accountId:"joint",transferToAccountId:"savings",categoryId:"savings",recurrence:{type:"none",interval:1}},
+          {id:"withdraw",date:"2027-04-10",title:"Savings to Joint",amount:200,type:"transfer",status:"cleared",accountId:"savings",transferToAccountId:"joint",categoryId:"savings",recurrence:{type:"none",interval:1}},
+          {id:"cash",date:"2027-04-12",title:"Cash Withdrawal",amount:40,type:"expense",status:"cleared",accountId:"joint",categoryId:"atm",recurrence:{type:"none",interval:1}}
+        ]
+      });
+      ds.categories.push({id:"savings",name:"Savings",emoji:"🏠",color:"#888"},{id:"atm",name:"ATM",emoji:"🏧",color:"#888"});
+      ds.budgets=[{id:"net",name:"Net Savings",measurement:"net-saved",savingsAccountId:"savings",accountScope:"single",accountId:"savings",accountIds:["savings"],categoryId:"",categoryIds:[],excludedCategoryIds:[],spendingBucketId:"",amount:100,amountMethod:"fixed",targetDirection:"min",period:"monthly"}];
+      setSynthetic(ds,false);
+      const review=budgetReviewStats("2027-04",[]);
+      regressionApprox(review.unbudgetedSpent,40,0.001,"Unbudgeted total should contain only the ATM expense");
+      regressionAssert(review.unbudgetedTransactions.length===1 && review.unbudgetedTransactions[0].id==="cash","Unbudgeted drill-down did not isolate the unmatched expense");
+      regressionAssert(review.netSavedExcludedTransactions.length===2,"Net-saved deposit/withdrawal were not excluded from unbudgeted activity");
+      return "$100 deposit and $200 withdrawal stay in Net saved; only $40 ATM remains unbudgeted";
+    }));
+
     results.push(regressionResult("JSON normalization preserves planning scenarios",()=>{
       const raw=regressionDataset({
         accounts:[{id:"a",name:"A",owner:"Mak",type:"cash",startingBalance:10}],
@@ -14039,3 +14102,5 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 // v2-323: Budgets can be normal stay-under spending limits or reach-at-least contribution goals; savings goals flag shortfalls red and extra contributions green.
 
 // v2-324: Budgets can measure net savings growth (deposits minus withdrawals in a chosen savings account); category selectors use compact dropdown multi-selects and Budget Manager rows use card dividers that do not cross row content.
+
+// v2-326: Budget Review excludes activity already explained by Net Saved tracking goals from Unbudgeted, and the Unbudgeted summary drills into the exact unmatched transactions.

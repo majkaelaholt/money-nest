@@ -1,3 +1,9 @@
+## v2-326
+
+- Fixes Budget Review **Unbudgeted** so transactions already explained by a **Net saved** tracking goal are not counted as unbudgeted activity. Savings-account deposits/withdrawals stay visible in the Net Saved goal instead of distorting the mystery/unmatched total.
+- The **Unbudgeted** summary card is now clickable and opens a drill-down listing every unmatched transaction for the selected month/view, with account/category/status and direct transaction review.
+- The totals explanation now documents the Net Saved exclusion. No saved-data/schema change; schema remains 230. Regression coverage expands to 27 checks.
+
 ## v2-325
 
 - Clarifies Budget editor Spending bucket semantics. The blank option is now **Not bucket-specific** instead of the misleading **Any / not bucket-specific**.

@@ -1,3 +1,10 @@
+## v2-326 unbudgeted + Net Saved rules
+
+- Budget Review **Unbudgeted** means cleared activity in the current spending/account view that matches no ordinary budget.
+- If an otherwise-unmatched transaction changes a savings account selected by any active `measurement="net-saved"` budget, exclude it from Unbudgeted. That movement is already explained by the Net Saved tracking goal; do not double-report it as mystery activity.
+- Preserve the actual Spending total semantics (savings transfers may still net by direction there); this rule only changes Unbudgeted classification/drill-down.
+- The Unbudgeted summary must remain drillable to the exact unmatched transactions. Schema remains 230; regression baseline is 27 checks.
+
 ## v2-325 budget bucket-label clarity
 
 - In the Budget editor, an empty Spending bucket means **Not bucket-specific**, not “Any.” Keep the UI wording explicit.
