@@ -7325,3 +7325,15 @@ body.money-nest-planning-mode #calendarGrid .tx-chip::after{
     min-height:42px;
   }
 }
+
+/* v2-330: Keep historical acknowledgments in advanced Bills tools, not healthy status. */
+.bill-reviewed-history-tools:empty{display:none!important}
+.bill-health-next{display:block;margin-top:5px;line-height:1.4!important}
+.bill-health-next b{font-size:inherit!important;color:var(--ink)}
+.review-item>span{display:grid;min-width:0;gap:4px}
+.review-item .review-next{margin-top:5px;padding:8px 10px;border-radius:10px;border:1px solid color-mix(in srgb,var(--line) 65%,transparent);background:color-mix(in srgb,var(--panel-2) 42%,var(--card));font-size:11px;line-height:1.45;color:var(--ink)}
+.review-item .review-next strong{font-weight:850}
+.review-item .review-why{margin-top:2px;font-size:11px;color:var(--muted)}
+.review-item .review-why>summary{cursor:pointer;font-weight:750;color:var(--accent);padding:3px 0}
+.review-item .review-why>p{margin:5px 0 2px;line-height:1.45}
+@media(max-width:700px){.review-item .review-next{font-size:11px;padding:7px 9px}}

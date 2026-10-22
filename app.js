@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-329";
+const APP_VERSION = "2-330";
 const CURRENT_SCHEMA_VERSION = 230;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -3930,7 +3930,7 @@ function renderMobileNeedsReview(items=collectNeedsReview()){
     const loan=items.filter(x=>x.kind==="loanBreakdown").length;
     summary.innerHTML=`<article><b>${items.length}</b><span>Total</span></article><article><b>${cleanup}</b><span>Cleanup</span></article><article><b>${planned+loan}</b><span>Follow-ups</span></article><article><b>${broken}</b><span>Broken refs</span></article>`;
   }
-  if(list) list.innerHTML=items.length ? items.map(x=>`<div class="review-item mobile-review-item"><span><b>${escapeAttr(x.title)}</b><small>${escapeAttr(x.sub)}</small></span><div class="review-actions"><button class="ghost small" type="button" onclick="closeMobileNeedsReview();${x.action}">Review</button>${x.secondary?`<button class="ghost small" type="button" onclick="closeMobileNeedsReview();${x.secondary}">${escapeAttr(x.secondaryLabel||'Review second')}</button>`:''}<button class="ghost small" type="button" onclick="dismissReviewItem('${escapeAttr(x.key)}')">Dismiss</button></div></div>`).join('') : `<div class="empty-state">Nothing needs review right now. 🎉</div>`;
+  if(list) list.innerHTML=items.length ? items.map(x=>`<div class="review-item mobile-review-item"><span><b>${escapeAttr(x.title)}</b><small>${escapeAttr(x.sub)}</small>${reviewFindingExplanationHTML(x)}</span><div class="review-actions"><button class="ghost small" type="button" onclick="closeMobileNeedsReview();${x.action}">Review</button>${x.secondary?`<button class="ghost small" type="button" onclick="closeMobileNeedsReview();${x.secondary}">${escapeAttr(x.secondaryLabel||'Review second')}</button>`:''}<button class="ghost small" type="button" title="Hide this suggestion without changing financial records" onclick="dismissReviewItem('${escapeAttr(x.key)}')">Dismiss</button></div></div>`).join('') : `<div class="empty-state">Nothing needs review right now. 🎉</div>`;
   return items;
 }
 function openNeedsReview(){
@@ -11696,7 +11696,8 @@ function recurringBillHealth(baseTx, allSeries=[], expandedRows=null){
     findings.push({
       kind:"past-planned",
       label:"Past planned",
-      detail:`${overdue.length} occurrence${overdue.length===1?" is":"s are"} more than 7 days past planned${overdue[0]?.date ? `; oldest ${overdue[0].date}` : ""}.`
+      detail:`${overdue.length} occurrence${overdue.length===1?" is":"s are"} more than 7 days past planned${overdue[0]?.date ? `; oldest ${overdue[0].date}` : ""}.`,
+      fix:"If paid, mark each occurrence Cleared with the actual date and amount. If it wasn't due, correct the date or edit/end the recurring rule; don't mark an unpaid charge cleared."
     });
   }
 
@@ -11710,7 +11711,8 @@ function recurringBillHealth(baseTx, allSeries=[], expandedRows=null){
       kind:"amount-drift",
       label:"Amount changed",
       detail:`Recent cleared payments are about ${money(drift.suggested)} while the series estimate is ${money(drift.baseAmount)}.`,
-      reviewValue:Number(drift.suggested.toFixed(2))
+      reviewValue:Number(drift.suggested.toFixed(2)),
+      fix:"If the amount really changed, edit the recurring series estimate. If the change was temporary or you already accounted for it, choose Mark reviewed to acknowledge the current amount without rewriting the schedule."
     });
   }
 
@@ -11725,7 +11727,8 @@ function recurringBillHealth(baseTx, allSeries=[], expandedRows=null){
     findings.push({
       kind:"possible-duplicate",
       label:"Possible duplicate",
-      detail:`Another active series has the same title, route, schedule, category, and amount.`
+      detail:`Another active series has the same title, route, schedule, category, and amount.`,
+      fix:"Check both series and their cleared histories first. If they're truly duplicated, archive or delete only the redundant series; if both are intentional, leave them."
     });
   }
 
@@ -11753,10 +11756,15 @@ function renderBillHealthSummary(rows, possibleRecurring=[]){
     counts["past-planned"] ? `<span class="bill-health-chip warn">${counts["past-planned"]} past planned</span>` : "",
     counts["amount-drift"] ? `<span class="bill-health-chip">${counts["amount-drift"]} amount changed</span>` : "",
     counts["possible-duplicate"] ? `<span class="bill-health-chip">${counts["possible-duplicate"]} duplicate match${counts["possible-duplicate"]===1?"":"es"}</span>` : "",
-    possibleCount ? `<span class="bill-health-chip warn">${possibleCount} possible recurring charge${possibleCount===1?"":"s"}</span>` : "",
-    reviewedCount ? `<span class="bill-health-chip ok">${reviewedCount} reviewed</span>` : ""
+    possibleCount ? `<span class="bill-health-chip warn">${possibleCount} possible recurring charge${possibleCount===1?"":"s"}</span>` : ""
   ].filter(Boolean).join("");
-  el.innerHTML = `<div class="bill-health-main"><span class="bill-health-icon" aria-hidden="true">${reviewTotal ? "⚠" : "✓"}</span><span><b>Recurring health</b><small>${reviewTotal ? `${reviewTotal} need review · ${healthy} active series look good` : `${healthy} active series checked · no obvious issues`}</small></span></div><div class="bill-health-actions"><div class="bill-health-chips">${chips}</div>${reviewTotal ? `<button type="button" class="ghost small" onclick="toggleBillHealthReviewOnly()">${billHealthReviewOnly ? "Show all" : "Show review only"}</button>` : ""}${reviewedCount ? `<button type="button" class="ghost small" onclick="restoreRecurringHealthReviews()">Restore reviewed</button>` : ""}</div>`;
+  // Previously acknowledged warnings are history, not outstanding problems. Keep
+  // their original suppression metadata but hide the lifetime count from health.
+  const historyTools = document.getElementById("billReviewedHistoryTools");
+  if(historyTools) historyTools.innerHTML = reviewedCount
+    ? `<span><b>Acknowledged warning history</b><small>${reviewedCount} previously reviewed amount-change warning${reviewedCount===1?" is":"s are"} being kept quiet. These aren't current findings; restoring them may make the same warning appear again.</small></span><div class="inline-actions"><button type="button" class="ghost small" onclick="restoreRecurringHealthReviews()">Restore reviewed warnings</button></div>`
+    : "";
+  el.innerHTML = `<div class="bill-health-main"><span class="bill-health-icon" aria-hidden="true">${reviewTotal ? "⚠" : "✓"}</span><span><b>Recurring health</b><small>${reviewTotal ? `${reviewTotal} need review · ${healthy} active series look good` : `${healthy} active series checked · no obvious issues`}</small></span></div><div class="bill-health-actions"><div class="bill-health-chips">${chips}</div>${reviewTotal ? `<button type="button" class="ghost small" onclick="toggleBillHealthReviewOnly()">${billHealthReviewOnly ? "Show all" : "Show review only"}</button>` : ""}</div>`;
 }
 
 function toggleBillHealthReviewOnly(){
@@ -11819,7 +11827,7 @@ function openBillDetails(txId){
     const activeSeries = dedupeRecurringBillRows((data.transactions || []).filter(isRecurring));
     const health = recurringBillHealth(tx, activeSeries);
     const reviewedKinds = Object.keys(recurringHealthSeriesReviews(tx));
-    const findingHTML = health.findings.map(f=>`<div class="bill-health-finding"><span>⚠</span><div><b>${escapeAttr(f.label)}</b><small>${escapeAttr(f.detail)}</small></div>${f.kind === "amount-drift" ? `<button type="button" class="ghost small bill-health-finding-action" onclick="markRecurringHealthReviewed('${tx.id}','amount-drift')">Mark reviewed</button>` : ""}</div>`).join("");
+    const findingHTML = health.findings.map(f=>`<div class="bill-health-finding"><span>⚠</span><div><b>${escapeAttr(f.label)}</b><small>${escapeAttr(f.detail)}</small>${f.fix ? `<small class="bill-health-next"><b>What to do:</b> ${escapeAttr(f.fix)}</small>` : ""}</div>${f.kind === "amount-drift" ? `<button type="button" class="ghost small bill-health-finding-action" onclick="markRecurringHealthReviewed('${tx.id}','amount-drift')">Mark reviewed</button>` : ""}</div>`).join("");
     const restoreHTML = reviewedKinds.length ? `<div class="bill-health-reviewed-note"><small>${reviewedKinds.length} reviewed warning${reviewedKinds.length===1?" is":"s are"} currently hidden.</small><button type="button" class="ghost small" onclick="restoreRecurringHealthReviews('${tx.id}')">Restore reviewed</button></div>` : "";
     healthEl.innerHTML = health.findings.length
       ? `<div class="bill-detail-health-head"><b>Recurring health</b><span>${health.findings.length} to review</span></div>${findingHTML}${restoreHTML}`
@@ -12911,7 +12919,20 @@ function healthScan(){
  data.transactions.forEach(tx=>{if(txIds.has(tx.id))issues.push({kind:'duplicate',label:`Duplicate transaction ID: ${tx.title||tx.id}`});txIds.add(tx.id);if(tx.accountId&&!accountById(tx.accountId)&&!debtById(tx.accountId))issues.push({kind:'account',label:`${tx.title||'Transaction'} references a missing account`});if(tx.categoryId&&!categoryById(tx.categoryId))issues.push({kind:'category',label:`${tx.title||'Transaction'} references a missing category`});});
  const recurring=data.transactions.filter(isRecurring); const likely=[];
  data.transactions.filter(t=>!isRecurring(t)&&!t.recurringSourceId&&!t.originalId&&!t.wasRecurringOccurrence&&t.status==='cleared').forEach(tx=>{const match=recurring.find(r=>String(r.title||'').trim().toLowerCase()===String(tx.title||'').trim().toLowerCase()&&r.categoryId===tx.categoryId&&r.accountId===tx.accountId&&Math.abs(Number(r.amount||0)-Number(tx.amount||0))<0.01);if(match)likely.push({tx,match});});
- const stale=recurring.filter(r=>{const latest=expandedTransactions(todayISO()).filter(t=>(t.originalId||t.id)===r.id&&t.date<=todayISO()).sort((a,b)=>b.date.localeCompare(a.date))[0];return latest&&((parseDate(todayISO())-parseDate(latest.date))/86400000)>120;});
+ // Stale means an ACTIVE rule has had no CLEARED matching occurrence in >120 days.
+ // Ended/archived series are history (not stale), and future-only rules aren't due yet.
+ const today=todayISO(), cutoff=toISO(addDays(parseDate(today),-120));
+ const lastClearedBySeries=new Map();
+ expandedTransactions(today).forEach(row=>{
+   if(row.status!=="cleared" || String(row.date||"")>today) return;
+   const id=row.originalId||row.id, previous=lastClearedBySeries.get(id);
+   if(!previous || String(row.date)>previous) lastClearedBySeries.set(id,String(row.date));
+ });
+ const stale=recurring.filter(r=>{
+   if(r.billArchived || billOccurrenceStatus(r)==="ended" || !r.date || r.date>cutoff) return false;
+   const lastCleared=lastClearedBySeries.get(r.id)||"";
+   return !lastCleared || lastCleared<cutoff;
+ }).map(r=>({...r, lastClearedDate:lastClearedBySeries.get(r.id)||""}));
  return {issues,likely,stale,duplicates:findLikelyDuplicateTransactions()};
 }
 function findLikelyDuplicateTransactions(){const map=new Map(),out=[];data.transactions.filter(t=>!isRecurring(t)).forEach(t=>{const key=[t.date,String(t.title||'').trim().toLowerCase(),Number(t.amount||0).toFixed(2),t.accountId].join('|');if(map.has(key))out.push([map.get(key),t]);else map.set(key,t)});return out;}
@@ -12925,7 +12946,7 @@ function renderMoneyNestHealthCenter(){
   if(s.likely.length) out += `<h4>Smart recurring matches</h4>` + s.likely.slice(0,12).map(x=>`<div class="health-row"><span><b>${escapeAttr(x.tx.title)}</b><small>${x.tx.date} looks like ${escapeAttr(x.match.title)}</small></span><button class="ghost small" onclick="linkLikelyRecurring('${x.tx.id}','${x.match.id}')">Link</button></div>`).join('');
   if(s.issues.length) out += `<h4>Data health</h4>` + s.issues.slice(0,12).map(x=>`<div class="health-row"><span>${escapeAttr(x.label)}</span></div>`).join('');
   if(s.duplicates.length) out += `<h4>Possible duplicates</h4>` + s.duplicates.slice(0,10).map(([a,b])=>`<div class="health-row"><span><b>${escapeAttr(a.title)}</b><small>${a.date} • ${money(a.amount)} • review before deleting</small></span></div>`).join('');
-  if(s.stale.length) out += `<h4>Recurring rules to review</h4>` + s.stale.slice(0,10).map(x=>`<div class="health-row"><span><b>${escapeAttr(x.title)}</b><small>No matched activity in roughly 120 days</small></span><button class="ghost small" onclick="openTransaction('${x.id}')">Review</button></div>`).join('');
+  if(s.stale.length) out += `<h4>Recurring rules to review</h4>` + s.stale.slice(0,10).map(x=>`<div class="health-row"><span><b>${escapeAttr(x.title)}</b><small>${x.lastClearedDate ? `Last cleared on ${escapeAttr(x.lastClearedDate)}; no cleared matching occurrence in 120+ days.` : `No cleared matching occurrence recorded in 120+ days.`} Check the series in Bills: catch up missing cleared payments or archive/end it if cancelled.</small></span><button class="ghost small" onclick="openTransaction('${x.id}')">Review</button></div>`).join('');
   if(!total) out += '<div class="empty-state">No obvious data-health problems found.</div>';
   el.innerHTML=out;
 }
@@ -12996,7 +13017,7 @@ renderMoneyNestHealthCenter=function(){
       return `<div class="health-row health-duplicate-row"><span><b>${escapeAttr(a.title||'Untitled')}</b><small>Two saved records match: ${a.date} • ${money(a.amount)}</small><small>1. ${escapeAttr(accountA)} • ${escapeAttr(a.categoryId?categoryById(a.categoryId)?.name||'Unassigned':'Unassigned')}</small><small>2. ${escapeAttr(accountB)} • ${escapeAttr(b.categoryId?categoryById(b.categoryId)?.name||'Unassigned':'Unassigned')}</small></span><div class="health-actions"><button class="ghost small" onclick="openTransaction('${a.id}')">Review 1</button><button class="ghost small" onclick="openTransaction('${b.id}')">Review 2</button><button class="ghost small" onclick="dismissHealthFinding('${key}')">Dismiss</button></div></div>`;
     }).join('');
   }
-  if(s.stale.length) out += `<h4>Recurring rules to review</h4>` + s.stale.slice(0,10).map(x=>`<div class="health-row"><span><b>${escapeAttr(x.title)}</b><small>No matched activity in roughly 120 days</small></span><button class="ghost small" onclick="openTransaction('${x.id}')">Review</button></div>`).join('');
+  if(s.stale.length) out += `<h4>Recurring rules to review</h4>` + s.stale.slice(0,10).map(x=>`<div class="health-row"><span><b>${escapeAttr(x.title)}</b><small>${x.lastClearedDate ? `Last cleared on ${escapeAttr(x.lastClearedDate)}; no cleared matching occurrence in 120+ days.` : `No cleared matching occurrence recorded in 120+ days.`} Check the series in Bills: catch up missing cleared payments or archive/end it if cancelled.</small></span><button class="ghost small" onclick="openTransaction('${x.id}')">Review</button></div>`).join('');
   if(!total) out += '<div class="empty-state">No obvious data-health problems found.</div>';
   el.innerHTML=out;
 };
@@ -13024,11 +13045,11 @@ function collectNeedsReview(){
   const today=todayISO();
   (data.transactions||[]).forEach(tx=>{
     const id=tx.id||uid();
-    if(!isRecurring(tx) && pastPlannedNeedsAttention(tx,7)) out.push({kind:'past',id,key:reviewKey('past',id),title:`Past planned: ${tx.title||'Untitled'}`,sub:`${tx.date} • ${money(tx.amount||0)} • ${transactionAccountText(tx)}`,action:`openTransaction('${id}')`});
-    if(tx.accountId && !accountById(tx.accountId) && !debtById(tx.accountId)) out.push({kind:'account',id,key:reviewKey('account',id),title:`Unknown account: ${tx.title||'Untitled'}`,sub:`${tx.date||''} • ${money(tx.amount||0)}`,action:`openTransaction('${id}')`});
-    if(tx.transferToAccountId && !accountById(tx.transferToAccountId)) out.push({kind:'route',id,key:reviewKey('route',id),title:`Unknown transfer destination: ${tx.title||'Untitled'}`,sub:`${tx.date||''} • ${money(tx.amount||0)} • destination ${tx.transferToAccountId}`,action:`openTransaction('${id}')`});
-    if(tx.reimbursementToAccountId && !accountById(tx.reimbursementToAccountId)) out.push({kind:'route',id,key:reviewKey('reimbursementRoute',id),title:`Unknown reimbursement destination: ${tx.title||'Untitled'}`,sub:`${tx.date||''} • ${money(tx.amount||0)} • destination ${tx.reimbursementToAccountId}`,action:`openTransaction('${id}')`});
-    if(tx.categoryId && !(data.categories||[]).some(c=>c.id===tx.categoryId)) out.push({kind:'category',id,key:reviewKey('category',id),title:`Unknown category: ${tx.title||'Untitled'}`,sub:`${tx.date||''} • ${money(tx.amount||0)}`,action:`openTransaction('${id}')`});
+    if(!isRecurring(tx) && pastPlannedNeedsAttention(tx,7)) out.push({kind:'past',id,key:reviewKey('past',id),title:`Past planned: ${tx.title||'Untitled'}`,sub:`${tx.date} • ${money(tx.amount||0)} • ${transactionAccountText(tx)}`,next:"Check whether this transaction actually happened; update its status/date, or cancel a plan that won't happen.",why:"The planned date passed by more than 7 days, but it was never cleared. Money Nest cannot tell whether the real payment happened.",action:`openTransaction('${id}')`});
+    if(tx.accountId && !accountById(tx.accountId) && !debtById(tx.accountId)) out.push({kind:'account',id,key:reviewKey('account',id),title:`Unknown account: ${tx.title||'Untitled'}`,sub:`${tx.date||''} • ${money(tx.amount||0)}`,next:"Open the transaction and choose the correct existing account. Do not delete it just to clear the warning.",why:"This record points to an account ID that doesn't exist in the current data. It may affect the account ledger or balance.",action:`openTransaction('${id}')`});
+    if(tx.transferToAccountId && !accountById(tx.transferToAccountId)) out.push({kind:'route',id,key:reviewKey('route',id),title:`Unknown transfer destination: ${tx.title||'Untitled'}`,sub:`${tx.date||''} • ${money(tx.amount||0)} • destination ${tx.transferToAccountId}`,next:"Update the transfer destination to the intended account, or check whether the old account was removed.",why:"Money Nest cannot find the receiving account, so one side of the transfer may not be reflected properly.",action:`openTransaction('${id}')`});
+    if(tx.reimbursementToAccountId && !accountById(tx.reimbursementToAccountId)) out.push({kind:'route',id,key:reviewKey('reimbursementRoute',id),title:`Unknown reimbursement destination: ${tx.title||'Untitled'}`,sub:`${tx.date||''} • ${money(tx.amount||0)} • destination ${tx.reimbursementToAccountId}`,next:"Open the reimbursement and choose the actual destination account.",why:"The reimbursement is routed to an account ID that is missing, which can make the account balances inaccurate.",action:`openTransaction('${id}')`});
+    if(tx.categoryId && !(data.categories||[]).some(c=>c.id===tx.categoryId)) out.push({kind:'category',id,key:reviewKey('category',id),title:`Unknown category: ${tx.title||'Untitled'}`,sub:`${tx.date||''} • ${money(tx.amount||0)}`,next:"Choose the appropriate existing category (or recreate it first if needed).",why:"This transaction references a category that's no longer defined. Spending/budget classification could be incomplete.",action:`openTransaction('${id}')`});
   });
   clearedLoanPaymentsMissingBreakdown().forEach(tx=>{
     const debt=debtById(tx.linkedDebtId);
@@ -13041,14 +13062,21 @@ function collectNeedsReview(){
       key:reviewKey('loanBreakdown',`${baseId}-${occurrenceKey}`),
       title:`Loan breakdown missing: ${tx.title || debt?.name || 'Loan payment'}`,
       sub:`${tx.date || ''} • ${debt?.name || 'Loan'} • ${money(tx.amount || 0)} • missing ${missing.join(', ')}`,
+      next:"Use your lender statement to enter the missing principal, interest, or fee amounts; keep the payment total unchanged.",
+      why:"This cleared loan payment doesn't have a complete breakdown. Cash movement can still be right, but principal/payoff projections may be incomplete.",
       action:loanPaymentReviewAction(tx)
     });
   });
   const h=healthScan();
-  h.likely.forEach(x=>out.push({kind:'bill',id:x.tx.id,key:reviewKey('bill',x.tx.id),title:`Possible unlinked bill: ${x.tx.title}`,sub:`${x.tx.date} looks like ${x.match.title}`,action:`openTransaction('${x.tx.id}')`,secondary:`linkLikelyRecurring('${x.tx.id}','${x.match.id}')`,secondaryLabel:'Link bill'}));
-  h.duplicates.forEach(([a,b])=>out.push({kind:'duplicate',id:`${a.id}-${b.id}`,key:reviewKey('duplicate',duplicatePairKey(a,b)),title:`Possible duplicate: ${a.title}`,sub:`${a.date} • ${money(a.amount)} • two matching saved records`,action:`openTransaction('${a.id}')`,secondary:`openTransaction('${b.id}')`,secondaryLabel:'Review second'}));
-  h.stale.forEach(x=>out.push({kind:'stale',id:x.id,key:reviewKey('stale',x.id),title:`Recurring rule may be stale: ${x.title}`,sub:'No matched activity in roughly 120 days',action:`openTransaction('${x.id}')`}));
+  h.likely.forEach(x=>out.push({kind:'bill',id:x.tx.id,key:reviewKey('bill',x.tx.id),title:`Possible unlinked bill: ${x.tx.title}`,sub:`${x.tx.date} looks like ${x.match.title}`,next:"If this payment belongs to that recurring bill, choose Link bill. Otherwise keep both and dismiss the suggestion.",why:"The merchant, account, category and amount match a recurring rule, but this cleared payment isn't linked to its series. It isn't necessarily an error.",action:`openTransaction('${x.tx.id}')`,secondary:`linkLikelyRecurring('${x.tx.id}','${x.match.id}')`,secondaryLabel:'Link bill'}));
+  h.duplicates.forEach(([a,b])=>out.push({kind:'duplicate',id:`${a.id}-${b.id}`,key:reviewKey('duplicate',duplicatePairKey(a,b)),title:`Possible duplicate: ${a.title}`,sub:`${a.date} • ${money(a.amount)} • two matching saved records`,next:"Compare both records with your statement. Delete only a confirmed duplicate; dismiss if they're separate real charges.",why:"The two records share a date, merchant, amount and source account. Matching details alone don't prove one is a duplicate.",action:`openTransaction('${a.id}')`,secondary:`openTransaction('${b.id}')`,secondaryLabel:'Review second'}));
+  h.stale.forEach(x=>out.push({kind:'stale',id:x.id,key:reviewKey('stale',x.id),title:`Recurring rule may be stale: ${x.title}`,sub:x.lastClearedDate ? `Last cleared on ${x.lastClearedDate} · no recent cleared payments` : 'No cleared matching payment recorded in 120+ days',next:"Open the bill's history. If it's active, update/clear missing payments; if cancelled, end or archive its series.",why:"This active recurring rule has no recorded cleared occurrence within 120 days. It may be a forgotten bill, missed tracking, or a legitimately paused charge; planned occurrences alone don't confirm payment.",action:`openBillDetails('${x.id}')`}));
   return out.filter(x=>!dismissed.has(x.key));
+}
+function reviewFindingExplanationHTML(x){
+  const next = x.next ? `<div class="review-next"><strong>Suggested next step:</strong> ${escapeAttr(x.next)}</div>` : "";
+  const why = x.why ? `<details class="review-why"><summary>Why did Money Nest flag this?</summary><p>${escapeAttr(x.why)}</p></details>` : "";
+  return next + why;
 }
 window.renderNeedsReview=function(){
   const list=document.getElementById('needsReviewList'),summary=document.getElementById('needsReviewSummary');
@@ -13056,7 +13084,7 @@ window.renderNeedsReview=function(){
   const badge=document.getElementById('reviewNavBadge');if(badge){badge.textContent=items.length;badge.hidden=!items.length;}
   const dashboardCount=document.getElementById('dashboardReviewCount');if(dashboardCount)dashboardCount.textContent=items.length?`${items.length} found`:'clear';
   if(summary)summary.innerHTML=`<article><b>${items.length}</b><span>Total findings</span></article><article><b>${groups.past||0}</b><span>Past planned</span></article><article><b>${groups.loanBreakdown||0}</b><span>Loan breakdowns</span></article><article><b>${(groups.account||0)+(groups.route||0)+(groups.category||0)}</b><span>Broken references</span></article><article><b>${(groups.bill||0)+(groups.duplicate||0)+(groups.stale||0)}</b><span>Cleanup suggestions</span></article>`;
-  if(list)list.innerHTML=items.length?items.map(x=>`<div class="review-item"><span><b>${escapeAttr(x.title)}</b><small>${escapeAttr(x.sub)}</small></span><div class="review-actions"><button class="ghost small" onclick="${x.action}">Review</button>${x.secondary?`<button class="ghost small" onclick="${x.secondary}">${x.secondaryLabel}</button>`:''}<button class="ghost small" onclick="dismissReviewItem('${escapeAttr(x.key)}')">Dismiss</button></div></div>`).join(''):`<div class="empty-state">Nothing needs review right now. 🎉 <button class="ghost small" onclick="restoreReviewDismissals()">Restore dismissed</button></div>`;
+  if(list)list.innerHTML=items.length?items.map(x=>`<div class="review-item"><span><b>${escapeAttr(x.title)}</b><small>${escapeAttr(x.sub)}</small>${reviewFindingExplanationHTML(x)}</span><div class="review-actions"><button class="ghost small" onclick="${x.action}">Review</button>${x.secondary?`<button class="ghost small" onclick="${x.secondary}">${x.secondaryLabel}</button>`:''}<button class="ghost small" title="Hide this suggestion without changing financial records" onclick="dismissReviewItem('${escapeAttr(x.key)}')">Dismiss</button></div></div>`).join(''):`<div class="empty-state">Nothing needs review right now. 🎉 <button class="ghost small" onclick="restoreReviewDismissals()">Restore dismissed</button></div>`;
   renderMobileNeedsReview(items);
 };
 const _render214=render; render=function(){_render214();renderNeedsReview();};
@@ -13937,6 +13965,37 @@ function runMoneyNestRegressionTests(options={}){
       regressionAssert(review.unbudgetedTransactions.length===1 && review.unbudgetedTransactions[0].id==="cash","Unbudgeted drill-down did not isolate the unmatched expense");
       regressionAssert(review.netSavedExcludedTransactions.length===2,"Net-saved deposit/withdrawal were not excluded from unbudgeted activity");
       return "$100 deposit and $200 withdrawal stay in Net saved; only $40 ATM remains unbudgeted";
+    }));
+
+    results.push(regressionResult("Needs Review ignores ended recurring rules and explains live findings",()=>{
+      const today=todayISO();
+      const oldDate=toISO(addDays(parseDate(today),-200));
+      const inactive={id:"old-espn",date:oldDate,title:"Old ESPN",amount:35,type:"expense",status:"planned",accountId:"joint",categoryId:"utilities",recurrenceUntil:toISO(addDays(parseDate(today),-145)),recurrence:{type:"monthly",interval:1,weekendHandling:"none"},occurrenceOverrides:{},dateOverrides:{}};
+      const active={id:"untracked-series",date:oldDate,title:"Untracked bill",amount:12,type:"expense",status:"planned",accountId:"joint",categoryId:"utilities",recurrence:{type:"monthly",interval:1,weekendHandling:"none"},occurrenceOverrides:{},dateOverrides:{}};
+      setSynthetic(regressionDataset({accounts:[{id:"joint",name:"Joint Checking",type:"cash",owner:"Joint",startingBalance:100}],transactions:[inactive,active]}),false);
+      regressionAssert(billOccurrenceStatus(inactive)==="ended","Synthetic old bill should be ended");
+      const stale=healthScan().stale;
+      regressionAssert(!stale.some(tx=>tx.id==="old-espn"),"Ended historic series incorrectly reported stale");
+      regressionAssert(stale.some(tx=>tx.id==="untracked-series"),"Active rule with no cleared activity should be reviewed");
+      const item=collectNeedsReview().find(item=>item.kind==="stale"&&item.id==="untracked-series");
+      regressionAssert(item?.action?.includes("openBillDetails") && !!item.next && !!item.why,"Stale warning does not direct user to Bills with guidance");
+      regressionAssert(reviewFindingExplanationHTML(item).includes("Suggested next step"),"Review card lost its visible suggested fix");
+      return "Old ended recurring rule excluded; active stale rule shows reason and resolution path";
+    }));
+
+    results.push(regressionResult("Reviewed Bills history doesn't masquerade as an open finding",()=>{
+      const active={id:"reviewed-series",date:"2026-01-01",title:"Reviewed bill",amount:10,type:"expense",status:"planned",accountId:"joint",categoryId:"utilities",recurrence:{type:"monthly",interval:1,weekendHandling:"none"},occurrenceOverrides:{},dateOverrides:{}};
+      const ds=regressionDataset({accounts:[{id:"joint",name:"Joint Checking",type:"cash",owner:"Joint",startingBalance:100}],transactions:[active]});
+      ds.settings.recurringHealthReviews={"reviewed-series":{"amount-drift":{reviewedAt:"2026-09-01T12:00:00Z",acceptedAmount:12}}};
+      setSynthetic(ds,false);
+      const row={...active,billInfo:{status:"planned"},recurringHealth:{needsReview:false,findings:[]}};
+      const healthEl=document.getElementById("billHealthSummary"),historyEl=document.getElementById("billReviewedHistoryTools");
+      regressionAssert(!!healthEl&&!!historyEl,"Bills history controls missing from HTML");
+      renderBillHealthSummary([row],[]);
+      regressionAssert(!healthEl.textContent.includes("reviewed")&&!healthEl.textContent.includes("Restore"),"Historical acknowledgement still looks like an active status");
+      regressionAssert(historyEl.textContent.includes("1 previously reviewed")&&historyEl.textContent.includes("Restore"),"Advanced tools did not preserve restoration of acknowledged warning");
+      regressionAssert(recurringHealthReviewedCount([row])===1,"Warning acknowledgement was altered instead of just moved");
+      return "Healthy summary stays clean; acknowledgement and recovery remain in advanced tools";
     }));
 
     results.push(regressionResult("JSON normalization preserves planning scenarios",()=>{

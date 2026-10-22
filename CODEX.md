@@ -1,3 +1,10 @@
+## v2-330 actionable review guidance and recurring health summary
+
+- Needs Review must give a clear, item-specific **next step** and an optional **why** explanation on both desktop and iPhone. Never imply that dismissing an issue fixes financial data; reviewing is read-only until the user edits/saves a record.
+- Stale rule detection must consider only *active*, nonarchived recurring series; check the most recent **cleared** occurrence, not just generated planned occurrences. Flag only after >120 days without a cleared match and not before the first due date has aged >120 days. Open the Bills detail screen for actionable repair/archive/end decisions. Ended legacy series like the previous ESPN+ rule are not current cleanup tasks.
+- Historical amount-drift acknowledgments in `settings.recurringHealthReviews` are retained for suppression and backup compatibility. Do not show persistent "N reviewed" or "Restore reviewed" in the green health banner. Keep global restore in collapsed Bills Filters & recurring tools and per-series restoration in Bill details. Acknowledged != unresolved; the state may persist indefinitely by design.
+- Bills health detail findings must include what to do next; do not automatically alter recurring series, clear payments or delete duplicates. No schema migration, no Supabase changes. Data schema remains 230; synthetic regression suite increases to 30 checks.
+
 ## v2-329 template suggestions + auto-learning rules
 
 - Never use a fixed-position/floating secondary variants menu in transaction suggestions. The options toggle expands a family inline within the autocomplete scroll surface so iPhone Save/Cancel stays clear. Always clear transient autocomplete/menu DOM on transaction modal close and before a new modal opens.

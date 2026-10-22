@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <title>Money Nest</title>
-  <link rel="stylesheet" href="styles.css?v=2-329"/>
+  <link rel="stylesheet" href="styles.css?v=2-330"/>
 
   <link rel="icon" href="favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
@@ -251,6 +251,7 @@
             </label>
               </div>
               <div class="bill-tools-row"><span><b>Series tools</b><small>Repair is only for older split-series problems.</small></span><div class="inline-actions"><button type="button" class="ghost small" onclick="repairRecurringSeriesData()">Repair split series</button><button type="button" class="ghost small" onclick="document.querySelector('.archived-bills-section')?.setAttribute('open','')">Show archived</button></div></div>
+              <div id="billReviewedHistoryTools" class="bill-tools-row bill-reviewed-history-tools"></div>
             </div>
           </details>
 
@@ -931,7 +932,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=2-329"></script>
+  <script src="app.js?v=2-330"></script>
   <dialog id="globalSearchModal" class="global-search-modal">
     <div class="global-search-shell">
       <div class="modal-head"><div><h3>🔎 Search Money Nest</h3><p class="hint">Transactions, merchants, categories, accounts, amounts, and dates.</p></div><button class="icon-btn" onclick="document.getElementById('globalSearchModal').close()">×</button></div>

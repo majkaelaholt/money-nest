@@ -1,3 +1,10 @@
+## v2-330
+
+- **Needs Review explains findings:** each desktop/mobile finding has a visible suggested next step plus an expandable reason. Guidance covers missed plans, missing accounts/transfer destinations/categories, incomplete loan breakdowns, possible unlinked recurring payments, possible duplicates, and stale recurring rules. Nothing is fixed or dismissed automatically.
+- **Stale recurring detection corrected:** archived/ended bills cannot be stale; an active rule must lack a *cleared* matching occurrence for over 120 days to be flagged (future-only rules are excluded). When flagged, the Review button opens Bills history/details, where the user can catch up cleared records or end/archive a cancelled rule. This also avoids false positives from older ended series when a new series has taken over.
+- **Bills reviewed badge decluttered:** previously acknowledged amount-change reviews remain saved (and continue suppressing the same warning), but their cumulative count no longer appears as an open problem in the green Recurring health summary. A restoration tool remains under **Filters & recurring tools → Acknowledged warning history**, and each individual bill detail retains its review history controls.
+- Bills series-health issues now give specific instructions before users acknowledge or edit them. Financial history, budgets, manual Supabase sync, JSON/CSV, and schema 230 are unchanged. Regression suite increases to 30 synthetic checks.
+
 ## v2-329
 
 - Transaction template suggestions now expand **inline within the autocomplete list** on desktop/iPad/iPhone. On phones, the list scrolls within the transaction sheet rather than opening a detached fixed-position menu over the Save/Cancel controls.
@@ -702,7 +709,7 @@ Maintenance follow-up: Recent Changes is now capped by bytes instead of only ite
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-329`
+Current version: `money-nest-v2-330`
 
 ## Important Notes
 
