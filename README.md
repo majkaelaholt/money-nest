@@ -1,3 +1,11 @@
+## v2-329
+
+- Transaction template suggestions now expand **inline within the autocomplete list** on desktop/iPad/iPhone. On phones, the list scrolls within the transaction sheet rather than opening a detached fixed-position menu over the Save/Cancel controls.
+- Closing an Add/Edit transaction or opening another one clears stale template suggestions and expanded options.
+- Auto-learned templates now remember **title + category only**, not a Spending bucket. Choosing a bucket no longer creates another auto variant, and old bucket-only learned duplicates are collapsed in autocomplete without deleting any saved templates.
+- Existing manually configured templates with an explicit Spending bucket still apply that field; old auto-learned variants will not overwrite the bucket when selected.
+- No changes to budget logic, personal transactions, Supabase storage shape or schema (still 230). Added one synthetic regression check (28 total).
+
 ## v2-328
 
 - Desktop and tablet Cloud Sync's **Connection details & sign-in** starts collapsed rather than opening automatically on every Settings visit, cloud save or cloud load. iPhone behavior remains collapsed as before. Save/Load actions remain directly visible above the disclosure.
@@ -694,7 +702,7 @@ Maintenance follow-up: Recent Changes is now capped by bytes instead of only ite
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-328`
+Current version: `money-nest-v2-329`
 
 ## Important Notes
 

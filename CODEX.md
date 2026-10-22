@@ -1,3 +1,9 @@
+## v2-329 template suggestions + auto-learning rules
+
+- Never use a fixed-position/floating secondary variants menu in transaction suggestions. The options toggle expands a family inline within the autocomplete scroll surface so iPhone Save/Cancel stays clear. Always clear transient autocomplete/menu DOM on transaction modal close and before a new modal opens.
+- Auto-learned transaction templates persist **title + category only**. Spending bucket is selected on the transaction, never part of an auto-learning signature or an automatically applied field. Existing auto variants that differed only by bucket must not multiply suggestions or create more variants, but their stored records must not be silently deleted, merged or archived.
+- Respect manually saved templates and explicit bucket autofill; keep their distinct variants visible. Template CSV/JSON backward compatibility preserved. Schema remains 230; regression suite increases to 28 checks.
+
 ## v2-328 Cloud Sync disclosure default
 
 - Cloud Sync **Connection details & sign-in** must start CLOSED on desktop, iPad and iPhone when Settings is rendered, even after leaving/returning or saving/loading cloud data. Keep Save/Load buttons visible above it; do not change Supabase auth, payload, sync mode or backup safety logic.
@@ -720,7 +726,7 @@ Example README note:
 ### v2-200
 - Banking is excluded from budgeting. Savings transfers net contributions by direction.
 
-- Current version: money-nest-v2-328. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
+- Current version: money-nest-v2-329. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
 
 
 ### v2-205

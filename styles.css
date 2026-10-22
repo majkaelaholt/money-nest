@@ -7271,3 +7271,57 @@ body.money-nest-planning-mode #calendarGrid .tx-chip::after{
 @media (min-width:701px){
   #settings .cloud-sync-panel .cloud-primary-actions{margin:5px 0 15px;}
 }
+
+/* v2-329: template variants expand within their own autocomplete list.
+   No detached/fixed option panel may escape the phone transaction sheet. */
+#txTemplateSuggestions .template-variants-toggle{
+  flex:none;
+  margin-right:8px;
+  padding:5px 9px;
+  border:1px solid var(--line);
+  border-radius:999px;
+  color:var(--muted);
+  font-size:11px;
+  font-weight:750;
+  white-space:nowrap;
+}
+#txTemplateSuggestions .template-variants-toggle[aria-expanded="true"]{
+  background:var(--soft-panel);
+}
+#txTemplateSuggestions .template-suggestion-variant-menu{
+  position:static;
+  z-index:auto;
+  display:grid;
+  box-shadow:none;
+  border:0;
+  border-top:1px solid var(--line);
+  border-radius:0 0 12px 12px;
+  background:var(--soft-panel);
+  padding:5px;
+  min-width:0;
+  max-width:none;
+  width:100%;
+  max-height:none;
+  overflow:visible;
+}
+#txTemplateSuggestions .template-suggestion-variant-menu[hidden]{display:none!important}
+#txTemplateSuggestions .template-suggestion-variant-menu button{width:100%;color:var(--ink)}
+#txTemplateSuggestions .template-suggestion-family.compact:last-child{border-bottom:0}
+@media(max-width:700px){
+  html:not(.money-nest-ipad) #transactionModal #txTemplateSuggestions{
+    max-height:min(43dvh,390px);
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch;
+  }
+  html:not(.money-nest-ipad) #transactionModal #txTemplateSuggestions .template-suggestion-variant-menu{
+    position:static;
+    inset:auto;
+    max-height:none;
+    width:100%;
+  }
+  html:not(.money-nest-ipad) #transactionModal #txTemplateSuggestions .template-suggestion-variant-menu button{
+    padding:10px 12px;
+    min-height:42px;
+  }
+}

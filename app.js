@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-328";
+const APP_VERSION = "2-329";
 const CURRENT_SCHEMA_VERSION = 230;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -6908,7 +6908,8 @@ const DEFAULT_TEMPLATE_FIELDS = {
 };
 const AUTO_TEMPLATE_FIELDS = {
   ...DEFAULT_TEMPLATE_FIELDS,
-  spendingBucketId:true,
+  // The spending bucket is a per-transaction choice, not a new learned shortcut.
+  spendingBucketId:false,
   notes:false
 };
 const TEMPLATE_FIELD_LABELS = {
@@ -6996,6 +6997,14 @@ function templateSignature(t){
     linkedDebtId: f.linkedDebtId ? n.linkedDebtId : "",
     fields: f
   });
+}
+// Treat legacy auto-learned variants that differ only by bucket as the same
+// shortcut without deleting or rewriting the user's saved template library.
+// Manual/legacy custom templates keep all of their explicitly selected fields.
+function learnedTemplateSignature(t){
+  if(t?.source !== "auto") return templateSignature(t);
+  const fields = {...normalizeTemplateFields(t.fields), spendingBucketId:false};
+  return templateSignature({...t, spendingBucketId:"", fields});
 }
 function templateMatchesTransaction(t, tx){
   if(!t || !tx || templateKey(t.title) !== templateKey(tx.title)) return false;
@@ -7099,16 +7108,15 @@ function transactionTemplateFamilies({includeArchived=true, templates=null}={}){
   return [...map.values()].sort((a,b)=>a.title.localeCompare(b.title));
 }
 function cleanTemplateFromTx(tx){
-  // Auto-saved shortcuts intentionally remember title + category + spending bucket. Routing,
-  // status, notes, and recurrence stay opt-in so ordinary entries do not create
-  // a swarm of almost-identical templates.
+  // Auto-saved shortcuts remember title + category only. Spending buckets and
+  // routing are always choices for the current transaction, not new variants.
   return normalizeTransactionTemplate({
     id: tx.templateId || uid(),
     title: String(tx.title || "").trim(),
     type: tx.type || "expense",
     status: tx.status || "planned",
     categoryId: tx.categoryId || "unassigned",
-    spendingBucketId: effectiveTransactionSpendingBucketId(tx),
+    spendingBucketId: "",
     accountId: tx.accountId || "",
     debtAccountId: tx.debtAccountId || "",
     transferToAccountId: tx.transferToAccountId || "",
@@ -7139,7 +7147,9 @@ function rememberTransactionTemplate(tx){
 
   const tpl = cleanTemplateFromTx(tx);
   const sig = templateSignature(tpl);
-  const existing = data.settings.transactionTemplates.find(t => templateSignature(t) === sig);
+  const existing = data.settings.transactionTemplates.find(t =>
+    templateSignature(t) === sig || (t.source === "auto" && learnedTemplateSignature(t) === sig)
+  );
   if(existing){
     // Respect a deliberate archive. Auto-learning may refresh an active learned
     // shortcut, but it must not silently resurrect one the user archived.
@@ -7190,7 +7200,17 @@ function matchingTransactionTemplateFamilies(query){
   const q = templateKey(query);
   if(!q) return [];
   const matches = matchingTransactionTemplates(query);
-  const families = transactionTemplateFamilies({includeArchived:false,templates:matches});
+  // Prefer a manually authored shortcut over a redundant learned one. Legacy
+  // learned bucket variants remain in backups/manager, but only one suggestion
+  // is shown for the same merchant/category behavior.
+  const seen = new Set();
+  const uniqueMatches = [...matches].sort((a,b)=>Number(a.source === "auto")-Number(b.source === "auto") || Number(b.isDefault)-Number(a.isDefault)).filter(t=>{
+    const sig = learnedTemplateSignature(t);
+    if(seen.has(sig)) return false;
+    seen.add(sig);
+    return true;
+  });
+  const families = transactionTemplateFamilies({includeArchived:false,templates:uniqueMatches});
   families.forEach(family=>family.templates.sort((a,b)=>templateContextScore(b)-templateContextScore(a) || Number(b.isDefault)-Number(a.isDefault) || templateVariantLabel(a).localeCompare(templateVariantLabel(b))));
   return families.sort((a,b)=>{
     const aKey=templateKey(a.title), bKey=templateKey(b.title);
@@ -7211,7 +7231,7 @@ function applyTransactionTemplate(templateId){
 
   if(fields.title && txTitleEl) txTitleEl.value = tpl.title || txTitleEl.value;
   if(fields.categoryId && txCategoryEl && tpl.categoryId) txCategoryEl.value = tpl.categoryId;
-  if(fields.spendingBucketId && txSpendingBucketEl) txSpendingBucketEl.value = normalizedSpendingBucketId(tpl.spendingBucketId);
+  if(fields.spendingBucketId && tpl.source !== "auto" && txSpendingBucketEl) txSpendingBucketEl.value = normalizedSpendingBucketId(tpl.spendingBucketId);
   if(fields.type && document.getElementById("txType")) txType.value = tpl.type || txType.value;
   if(fields.status && document.getElementById("txStatus")) txStatus.value = tpl.status || txStatus.value;
 
@@ -7234,8 +7254,7 @@ function renderTemplateSuggestions(){
 
     const families = matchingTransactionTemplateFamilies(txTitleEl.value);
     if(!families.length){
-      box.classList.remove("open", "variant-open");
-      box.innerHTML = "";
+      hideTemplateSuggestions();
       return;
     }
 
@@ -7251,21 +7270,26 @@ function renderTemplateSuggestions(){
           <button type="button" class="template-suggestion-main" data-template-id="${best.id}">
             <span><b>${escapeAttr(family.title)}</b>${bestMeta?`<small>${escapeAttr(bestMeta)}</small>`:""}</span>
           </button>
-          ${others.length?`<details class="template-suggestion-variants"><summary>${family.templates.length} options</summary><div class="template-suggestion-variant-menu">${family.templates.map(t=>{ const summary=templateFieldSummary(t); return `<button type="button" data-template-id="${t.id}"><b>${escapeAttr(templateVariantLabel(t))}${t.isDefault?' • Default':''}</b>${summary?`<small>${escapeAttr(summary)}</small>`:""}</button>`; }).join("")}</div></details>`:""}
+          ${others.length?`<button type="button" class="template-variants-toggle" aria-expanded="false" aria-label="Show ${family.templates.length} ${escapeAttr(family.title)} template options">${family.templates.length} options</button>`:""}
         </div>
+        ${others.length?`<div class="template-suggestion-variant-menu" hidden>${family.templates.map(t=>{ const summary=templateFieldSummary(t); return `<button type="button" data-template-id="${t.id}"><b>${escapeAttr(templateVariantLabel(t))}${t.isDefault?' • Default':''}</b>${summary?`<small>${escapeAttr(summary)}</small>`:""}</button>`; }).join("")}</div>`:""}
       </div>`;
     }).join("");
 
     box.querySelectorAll("[data-template-id]").forEach(btn=>{ btn.onclick = () => applyTransactionTemplate(btn.dataset.templateId); });
-    box.classList.remove("variant-open");
-    box.querySelectorAll(".template-suggestion-variants").forEach(details=>{
-      details.addEventListener("toggle", ()=>{
-        if(details.open){
-          box.querySelectorAll(".template-suggestion-variants[open]").forEach(other=>{
-            if(other !== details) other.open = false;
-          });
-        }
-        box.classList.toggle("variant-open", !!box.querySelector(".template-suggestion-variants[open]"));
+    box.querySelectorAll(".template-variants-toggle").forEach(toggle=>{
+      toggle.addEventListener("click",()=>{
+        const family=toggle.closest(".template-suggestion-family");
+        const menu=family?.querySelector(".template-suggestion-variant-menu");
+        if(!menu) return;
+        const willOpen = menu.hidden;
+        box.querySelectorAll(".template-suggestion-variant-menu").forEach(other=>other.hidden=true);
+        box.querySelectorAll(".template-variants-toggle").forEach(other=>other.setAttribute("aria-expanded","false"));
+        menu.hidden = !willOpen;
+        toggle.setAttribute("aria-expanded",String(willOpen));
+        // The options are part of the suggestion list, not a detached fixed
+        // overlay. A long family scrolls inside the suggestion panel on phones.
+        if(willOpen) toggle.scrollIntoView({block:"nearest"});
       });
     });
     box.classList.add("open");
@@ -7273,7 +7297,12 @@ function renderTemplateSuggestions(){
 }
 function hideTemplateSuggestions(){
   const box = document.getElementById("txTemplateSuggestions");
-  if(box) box.classList.remove("open", "variant-open");
+  if(box){
+    box.classList.remove("open", "variant-open");
+    // Reset nested option state; a closed transaction may never leave an
+    // expanded chooser floating over the next Add/Edit transaction.
+    box.innerHTML = "";
+  }
 }
 function templateFamilyUsageStats(family){
   const matching = (data.transactions || []).filter(tx=>templateKey(tx.title)===family.key);
@@ -8966,6 +8995,7 @@ document.getElementById("cancelTxBtn").onclick = () => { billSeriesEditId = ""; 
 // v2-274: Search remains open behind a transaction editor. When the editor closes,
 // refresh the same query in place so saving/editing never forces the user to restart Search.
 txModal.addEventListener("close", ()=>{
+  hideTemplateSuggestions();
   const searchModal = document.getElementById("globalSearchModal");
   if(!searchModal?.open) return;
   const searchInput = document.getElementById("globalSearchInput");
@@ -9054,6 +9084,7 @@ document.getElementById("duplicateTxBtn").onclick = ()=>{
   if(id){ txModal.close(); duplicateTransaction(id); }
 };
 window.openTransaction = (id=null, defaults={})=>{
+  hideTemplateSuggestions();
   const baseTx = data.transactions.find(t=>t.id===id);
   const occurrenceOriginalDate = defaults.occurrenceOriginalDate || baseTx?.date || defaults.date || todayISO();
   const occurrenceDate = defaults.occurrenceDate || defaults.date || baseTx?.date || todayISO();
@@ -13580,6 +13611,29 @@ function runMoneyNestRegressionTests(options={}){
       regressionAssert(ds.settings.transactionTemplates.find(t=>t.id==="archived")?.archived===true,"Archived learned template was silently reactivated");
       regressionAssert(JSON.stringify(ds.transactions)===moneyBefore,"Template intelligence mutated saved transactions");
       return "Useful repeated stays prominent; one-use exact-only; junk hidden; archived stays archived";
+    }));
+
+    results.push(regressionResult("Learned templates ignore buckets and collapse old bucket variants",()=>{
+      const ds=regressionDataset({accounts:[{id:"cash",name:"Cash",owner:"Mak",type:"cash",startingBalance:50}]});
+      const legacyFields={...AUTO_TEMPLATE_FIELDS,spendingBucketId:true};
+      ds.settings.transactionTemplates=[
+        normalizeTransactionTemplate({id:"legacy-shared",title:"Shell",categoryId:"utilities",spendingBucketId:"",source:"auto",fields:legacyFields},{legacySafe:false}),
+        normalizeTransactionTemplate({id:"legacy-ty",title:"Shell",categoryId:"utilities",spendingBucketId:"ty-spending",source:"auto",fields:legacyFields},{legacySafe:false}),
+        normalizeTransactionTemplate({id:"manual-ty",title:"Shell",categoryId:"utilities",spendingBucketId:"ty-spending",source:"manual",fields:{...legacyFields}},{legacySafe:false})
+      ];
+      setSynthetic(ds,false);
+      const originalTx=JSON.stringify(ds.transactions);
+      const storedCount=ds.settings.transactionTemplates.length;
+      const tx={title:"Shell",amount:23,type:"expense",status:"cleared",accountId:"cash",categoryId:"utilities",spendingBucketId:"mak-spending",recurrence:{type:"none",interval:1}};
+      const learned=cleanTemplateFromTx(tx);
+      regressionAssert(!learned.fields.spendingBucketId && !learned.spendingBucketId,"Learned shortcut captured the bucket");
+      rememberTransactionTemplate(tx);
+      regressionAssert(ds.settings.transactionTemplates.length===storedCount,"Saving with another bucket created an extra shortcut");
+      const suggestions=matchingTransactionTemplateFamilies("Shell").flatMap(f=>f.templates);
+      regressionAssert(suggestions.filter(t=>t.source==="auto").length===1,"Old learned bucket variants all appeared as options");
+      regressionAssert(suggestions.some(t=>t.id==="manual-ty"),"Explicit manually bucketed variant was hidden");
+      regressionAssert(JSON.stringify(ds.transactions)===originalTx,"Template consolidation mutated money transactions");
+      return "One learned option regardless of spending bucket; custom bucket shortcut preserved";
     }));
 
     results.push(regressionResult("Budget exclusions prevent personal-bucket overlap",()=>{
