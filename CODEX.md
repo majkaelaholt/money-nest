@@ -1,3 +1,11 @@
+## v2-332 live planning reconciliation
+
+- **Live by default for new scenarios:** `scenario.syncMode === "live"`. Prior snapshots without this value normalize to `"snapshot"` and remain unchanged. Do not silently migrate existing scenarios or discard saved scenario-only work.
+- `mirrorBaseline` is a compact fingerprint map keyed by original root transaction ID. `overriddenSourceIds` pins transaction/series edits in Planning Mode; `excludedSourceIds` provides durable tombstones for plan-side deletes. Plan-only new transaction IDs are not part of the mirror baseline and remain independent. Use `captureLivePlanningChanges()` before persisting planning edits and `refreshLivePlanningScenario()` whenever entering Planning Mode. New root transactions are cloned; untouched mirrors are updated or removed when real records change; overridden and excluded source IDs take priority.
+- Preserve the original recurring series when copying it into a future-start scenario so projected occurrences after the Plan starts date still generate. `deleteRecurringFuture()` must remain plan-local; when it sets `recurrenceUntil` on a copied series, the difference must be captured as an override so real recurring edits cannot resurrect it. A plan-level full delete generates an exclusion/tombstone. The real root must never be modified by plan-side actions.
+- Mirrored transactions must pass through `normalizePlanningTransaction` before fingerprinting or replacement so JSON serialization / normalization doesn't cause false positives on reload. Scenario accounts, categories and debt info refresh from real; scenario paycheck assumptions remain local. Do not overwrite the real/root Money Nest data pointer or root cloud payload with scenario data.
+- The existing verified save/restore, JSON and cloud sync shape (one per-user row), CSV, and schema 230 are unchanged. Regression coverage: 32 checks; live plan mirrors new and edited real transactions, respects sticky future deletions/whole-item exclusions and plan-only additions, survives JSON round-trip, and leaves legacy snapshots alone.
+
 ## v2-331 account types: Savings and HSA
 
 - Add/Edit Account offers Checking/cash (`type:"cash"`), Savings (`type:"savings"`) and Health Savings Account (`type:"hsa"`). Savings and HSA are reserved balances; show saved goal details/progress, not safe-to-spend. The goal field is per account and is optional. Do not automatically alter existing account types in persisted data or create/delete financial records.
@@ -740,7 +748,7 @@ Example README note:
 ### v2-200
 - Banking is excluded from budgeting. Savings transfers net contributions by direction.
 
-- Current version: money-nest-v2-331. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
+- Current version: money-nest-v2-332. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
 
 
 ### v2-205

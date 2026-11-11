@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-331";
+const APP_VERSION = "2-332";
 const CURRENT_SCHEMA_VERSION = 230;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -967,6 +967,7 @@ function syncCalendarDataContext(){
       // entering a scenario cannot temporarily replace the user's palette.
       scenario.dataset.settings ||= {};
       scenario.dataset.settings.appearance = JSON.parse(JSON.stringify(root.settings?.appearance || {}));
+      if(scenario.syncMode === "live") refreshLivePlanningScenario(scenario,root);
       data=scenario.dataset;
       if(calendarFilter!=="all" && !data.accounts.some(a=>a.id===calendarFilter)) calendarFilter="all";
       return scenario;
@@ -1004,6 +1005,116 @@ function clonePlanningTransaction(tx, selected){
   }
   copy.linkedTransactionIds=[];
   return copy;
+}
+// v2-332: Live-linked planning uses a baseline fingerprint for each real source
+// transaction. An edit/deletion inside the plan becomes a durable exception; only
+// untouched source transactions are refreshed from the real calendar.
+function planningTransactionFingerprint(tx){
+  // FNV-1a with length and two rounds: compact metadata rather than storing a
+  // second full copy of all the real transactions in the browser/cloud JSON.
+  const raw=JSON.stringify(tx);
+  let h1=2166136261, h2=2166136261;
+  for(let i=0;i<raw.length;i++){
+    const c=raw.charCodeAt(i);
+    h1=Math.imul(h1 ^ c,16777619);
+    h2=Math.imul(h2 ^ (c + (i&255)),16777619);
+  }
+  return `${raw.length}:${(h1>>>0).toString(36)}:${(h2>>>0).toString(36)}`;
+}
+function mirroredPlanningTransactions(root,scenario){
+  const selected=new Set(scenario.sourceAccountIds || []);
+  const date=scenario.snapshotDate;
+  return (root.transactions || [])
+    .filter(tx=>transactionTouchesPlanningAccounts(tx,selected)
+      && (planningSeriesStillActive(tx,date) || (!isRecurring(tx) && String(tx.date || "") >= date)))
+    .map(tx=>normalizePlanningTransaction(clonePlanningTransaction(tx,selected)));
+}
+function captureLivePlanningChanges(scenario){
+  if(scenario?.syncMode !== "live") return;
+  const baseline=scenario.mirrorBaseline || {};
+  const edited=new Set(scenario.overriddenSourceIds || []);
+  const excluded=new Set(scenario.excludedSourceIds || []);
+  const planTx=new Map((scenario.dataset?.transactions || []).map(tx=>[tx.id,tx]));
+  for(const [id,fingerprint] of Object.entries(baseline)){
+    if(edited.has(id) || excluded.has(id)) continue;
+    const current=planTx.get(id);
+    if(!current){ excluded.add(id); continue; }
+    if(planningTransactionFingerprint(current) !== fingerprint) edited.add(id);
+  }
+  scenario.overriddenSourceIds=[...edited];
+  scenario.excludedSourceIds=[...excluded];
+}
+function refreshLivePlanningScenario(scenario,root){
+  if(scenario?.syncMode !== "live") return;
+  // Capture unsaved plan-side edits as well, e.g. a direct UI action just before
+  // switching views. Never let a root refresh resurrect an excluded transaction.
+  captureLivePlanningChanges(scenario);
+  const previousBaseline=scenario.mirrorBaseline || {};
+  const edited=new Set(scenario.overriddenSourceIds || []);
+  const excluded=new Set(scenario.excludedSourceIds || []);
+  const inherited=new Map(mirroredPlanningTransactions(root,scenario).map(tx=>[tx.id,tx]));
+  const sourceIds=new Set(Object.keys(previousBaseline));
+  const merged=[];
+  const seen=new Set();
+  const nextBaseline={};
+  for(const tx of scenario.dataset.transactions || []){
+    const id=tx.id;
+    if(excluded.has(id)) continue;
+    if(!sourceIds.has(id)){
+      // A transaction created specifically inside Planning stays independent.
+      // The next uid() is unique within this dataset, so it won't overwrite a
+      // newly mirrored real transaction with a different identifier.
+      merged.push(tx);
+      seen.add(id);
+      continue;
+    }
+    if(!inherited.has(id)){
+      // Deleted/moved real transaction: remove the untouched mirror, retain a
+      // plan-specific edit if the user explicitly customized that occurrence.
+      if(edited.has(id)){ merged.push(tx); seen.add(id); }
+      continue;
+    }
+    if(edited.has(id)){
+      merged.push(tx);
+      seen.add(id);
+    }else{
+      const latest=inherited.get(id);
+      merged.push(latest);
+      seen.add(id);
+    }
+  }
+  for(const [id,tx] of inherited){
+    nextBaseline[id]=planningTransactionFingerprint(tx);
+    if(excluded.has(id) || seen.has(id)) continue;
+    merged.push(tx);
+    seen.add(id);
+  }
+  // Removed real transactions are no longer baselined unless their local edit
+  // is still retained. Keep tombstones independently so a deleted rule doesn't
+  // reappear if the real transaction gets edited later.
+  scenario.mirrorBaseline=nextBaseline;
+  scenario.dataset.transactions=merged;
+  const selected=new Set(scenario.sourceAccountIds || []);
+  const projectToStart=scenario.snapshotDate>todayISO();
+  const dayBefore=toISO(addDays(parseDate(scenario.snapshotDate),-1));
+  const previousData=data;
+  try{
+    data=root;
+    const byId=new Map((scenario.dataset.accounts || []).map(a=>[a.id,a]));
+    scenario.dataset.accounts=(root.accounts || []).filter(a=>selected.has(a.id)).map(a=>{
+      const existing=byId.get(a.id);
+      return {
+        ...JSON.parse(JSON.stringify(a)),
+        // Keep the opening snapshot in step with changes to real transactions
+        // that occur before the scenario's first day.
+        startingBalance:Number(accountBalance(a.id,projectToStart,dayBefore)),
+        ...(existing && existing._planningAccountOverrides ? existing._planningAccountOverrides : {})
+      };
+    });
+    scenario.dataset.debts=JSON.parse(JSON.stringify(root.debts || []));
+    scenario.dataset.categories=JSON.parse(JSON.stringify(root.categories || []));
+  }finally{ data=previousData; }
+  invalidateExpandedTransactionsCache();
 }
 function createPlanningScenario(name, accountIds, requestedStartDate=todayISO()){
   const root=moneyNestRootData();
@@ -1057,11 +1168,17 @@ function createPlanningScenario(name, accountIds, requestedStartDate=todayISO())
     createdAt:new Date().toISOString(),
     snapshotDate,
     sourceAccountIds:[...selected],
+    syncMode:"live",
+    mirrorBaseline:{},
+    overriddenSourceIds:[],
+    excludedSourceIds:[],
     dataset:normalizePlanningScenarioDataset(dataset,{id:scenarioId,name:scenarioName,snapshotDate},root)
   };
+  scenario.mirrorBaseline=Object.fromEntries(scenario.dataset.transactions.map(tx=>[tx.id,planningTransactionFingerprint(tx)]));
   planningScenarios().push(scenario);
   planningScenarioId=scenario.id;
   calendarMode="planning";
+  focusPlanningStartMonth(scenario);
   syncCalendarDataContext();
   saveUiPrefs();
   saveData();
@@ -1076,7 +1193,7 @@ function openCreatePlanningScenario(){
   if(!choices.length){ alert("Add at least one cash account before creating a planning scenario."); return; }
   simpleTitle.textContent="Create planning scenario";
   simpleFields.innerHTML=`
-    <p class="hint">Money Nest will make a one-time snapshot. After that, this plan is independent from your real finances.</p>
+    <p class="hint">New plans stay linked to real transactions. New/updated real activity automatically appears for the accounts you choose, while planning-only additions, edits, and deletions stay separate.</p>
     <label>Scenario name<input id="planningName" value="After Move" required></label>
     <label>Plan starts<input id="planningStartDate" type="date" value="${todayISO()}" required><small>Choose the first date you want included in this planning sandbox.</small></label>
     <div class="planning-account-picker">
@@ -1088,7 +1205,7 @@ function openCreatePlanningScenario(){
       }).join("")}
     </div>
     <div class="planning-copy-note">
-      <b>Copied once:</b> the balance entering your chosen start date, active recurring schedules, and transactions from that date forward. For a future start, the opening balance includes projected planned/recurring activity before the start date. Real Bills/Budgets stay untouched.
+      <b>Live-linked from the real calendar:</b> opening balances, active recurring schedules, and transactions from the start date forward. Planning-only changes override the matching real transaction; deleting a future recurring charge keeps it removed from that date onward. Real Bills/Budgets stay untouched.
     </div>`;
   simpleSubmit=()=>{
     const name=document.getElementById("planningName")?.value || "Planning";
@@ -1113,7 +1230,7 @@ function openPlanningScenarioSettings(){
     <div class="planning-scenario-card">
       <p class="eyebrow">🧪 Calendar sandbox</p>
       <label>Name<input id="planningEditName" value="${escapeAttr(scenario.name)}" required></label>
-      <p class="hint">Plan starts ${escapeAttr(scenario.snapshotDate)}. This is a one-time snapshot and does not auto-sync when real finances change.</p>
+      <p class="hint">Plan starts ${escapeAttr(scenario.snapshotDate)}. ${scenario.syncMode === "live" ? "Live-linked to real transactions; plan-only edits/deletions take priority. Changes here never modify real finances." : "Legacy one-time snapshot. Recreate it to enable automatic real-calendar updates and persistent exclusions."}</p>
       <div class="planning-scenario-accounts">${scenario.dataset.accounts.map(a=>`<span>${a.emoji||"💵"} ${escapeAttr(a.name)}</span>`).join("")}</div>
     </div>
     <div class="planning-scenario-card planning-paycheck-settings">
@@ -1190,6 +1307,12 @@ function openPlanningScenarioSettings(){
   deleteSimpleBtn.textContent="Delete";
   simpleModal.showModal();
 }
+function focusPlanningStartMonth(scenario){
+  const start=String(scenario?.snapshotDate || "");
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(start)) return;
+  const month=toISO(startOfMonth(calendarDate));
+  if(month < `${start.slice(0,7)}-01`) calendarDate=parseDate(start);
+}
 function setCalendarMode(mode){
   const next=mode==="planning" ? "planning" : "real";
   if(next==="planning" && !planningScenarios().length){
@@ -1198,6 +1321,7 @@ function setCalendarMode(mode){
     return;
   }
   calendarMode=next;
+  if(next==="planning") focusPlanningStartMonth(activePlanningScenario());
   syncCalendarDataContext();
   saveUiPrefs();
   applyMoneyNestPalette();
@@ -1209,6 +1333,7 @@ function setPlanningScenario(id){
   if(!scenario) return;
   planningScenarioId=scenario.id;
   calendarMode="planning";
+  focusPlanningStartMonth(scenario);
   syncCalendarDataContext();
   saveUiPrefs();
   applyMoneyNestPalette();
@@ -1310,26 +1435,8 @@ function normalizeLegacyDebtRefs(value){
   });
 }
 
-function normalizePlanningScenarioDataset(rawDataset, scenarioMeta={}, root=null){
-  const source = rawDataset && typeof rawDataset === "object" ? rawDataset : {};
-  const fallbackRoot = root && typeof root === "object" ? root : {};
-  const dataset = source;
-  dataset.schemaVersion = CURRENT_SCHEMA_VERSION;
-  dataset.accounts = Array.isArray(dataset.accounts) ? dataset.accounts.map((a,index)=>({
-    ...a,
-    id:String(a?.id || uid()),
-    name:String(a?.name || `Account ${index+1}`),
-    type:a?.type || "cash",
-    startingBalance:Number(a?.startingBalance || 0),
-    paycheckAccount:!!a?.paycheckAccount,
-    order:Number.isFinite(Number(a?.order)) ? Number(a.order) : index
-  })) : [];
-  dataset.debts = Array.isArray(dataset.debts) ? dataset.debts : JSON.parse(JSON.stringify(fallbackRoot.debts || []));
-  dataset.budgets = [];
-  dataset.categories = Array.isArray(dataset.categories) && dataset.categories.length
-    ? dataset.categories
-    : JSON.parse(JSON.stringify(fallbackRoot.categories || standardCategories()));
-  dataset.transactions = Array.isArray(dataset.transactions) ? dataset.transactions.map(tx=>({
+function normalizePlanningTransaction(tx){
+  return {
     ...tx,
     accountId:tx?.accountId || "",
     debtAccountId:tx?.debtAccountId || "",
@@ -1350,7 +1457,28 @@ function normalizePlanningScenarioDataset(rawDataset, scenarioMeta={}, root=null
     recurrenceSourceId:tx?.recurrenceSourceId || "",
     originalDate:tx?.originalDate || "",
     wasRecurringOccurrence:!!tx?.wasRecurringOccurrence
+  };
+}
+function normalizePlanningScenarioDataset(rawDataset, scenarioMeta={}, root=null){
+  const source = rawDataset && typeof rawDataset === "object" ? rawDataset : {};
+  const fallbackRoot = root && typeof root === "object" ? root : {};
+  const dataset = source;
+  dataset.schemaVersion = CURRENT_SCHEMA_VERSION;
+  dataset.accounts = Array.isArray(dataset.accounts) ? dataset.accounts.map((a,index)=>({
+    ...a,
+    id:String(a?.id || uid()),
+    name:String(a?.name || `Account ${index+1}`),
+    type:a?.type || "cash",
+    startingBalance:Number(a?.startingBalance || 0),
+    paycheckAccount:!!a?.paycheckAccount,
+    order:Number.isFinite(Number(a?.order)) ? Number(a.order) : index
   })) : [];
+  dataset.debts = Array.isArray(dataset.debts) ? dataset.debts : JSON.parse(JSON.stringify(fallbackRoot.debts || []));
+  dataset.budgets = [];
+  dataset.categories = Array.isArray(dataset.categories) && dataset.categories.length
+    ? dataset.categories
+    : JSON.parse(JSON.stringify(fallbackRoot.categories || standardCategories()));
+  dataset.transactions = Array.isArray(dataset.transactions) ? dataset.transactions.map(normalizePlanningTransaction) : [];
   dataset.settings = dataset.settings && typeof dataset.settings === "object" ? dataset.settings : {};
   dataset.settings.buffer = Number.isFinite(Number(dataset.settings.buffer)) ? Number(dataset.settings.buffer) : Number(fallbackRoot.settings?.buffer || 50);
   dataset.settings.transactionTemplates = Array.isArray(dataset.settings.transactionTemplates) ? dataset.settings.transactionTemplates : [];
@@ -1384,6 +1512,10 @@ function normalizePlanningScenarios(root){
       createdAt:scenario?.createdAt || new Date().toISOString(),
       snapshotDate,
       sourceAccountIds,
+      syncMode:scenario?.syncMode === "live" ? "live" : "snapshot",
+      mirrorBaseline:scenario?.syncMode === "live" && scenario?.mirrorBaseline && typeof scenario.mirrorBaseline === "object" ? {...scenario.mirrorBaseline} : {},
+      overriddenSourceIds:scenario?.syncMode === "live" && Array.isArray(scenario?.overriddenSourceIds) ? [...new Set(scenario.overriddenSourceIds.map(String))] : [],
+      excludedSourceIds:scenario?.syncMode === "live" && Array.isArray(scenario?.excludedSourceIds) ? [...new Set(scenario.excludedSourceIds.map(String))] : [],
       dataset:normalizePlanningScenarioDataset(scenario?.dataset || {}, {id,name,snapshotDate}, root)
     };
   });
@@ -1987,6 +2119,10 @@ function saveData(){
     alert("Money Nest did not load the saved browser copy correctly, so it blocked this save to protect your local data. Reload after updating Money Nest, or explicitly load cloud/JSON data first.");
     return false;
   }
+  // Plan-only edits are recognized against the last mirrored baseline before
+  // persisting. This also records a recurring deletion (one / future / whole)
+  // so subsequent live refreshes cannot reintroduce it.
+  if(isPlanningDataContext()) captureLivePlanningChanges(activePlanningScenario());
   // Data is usually mutated in-place before saveData() is called. Clear any
   // expanded-occurrence snapshots before the following render can reuse them.
   invalidateExpandedTransactionsCache();
@@ -4300,7 +4436,7 @@ function renderCalendarPlanningControls(){
   if(banner){
     if(calendarMode==="planning" && scenario){
       banner.hidden=false;
-      if(bannerCopy) bannerCopy.innerHTML=`<small>🧪 Planning mode • starts ${escapeAttr(scenario.snapshotDate)} • changes here do not affect real Bills, Budgets, or account history.</small>`;
+      if(bannerCopy) bannerCopy.innerHTML=`<small>🧪 ${scenario.syncMode === "live" ? "Live-linked planning" : "Snapshot planning"} • starts ${escapeAttr(scenario.snapshotDate)} • plan-only changes stay here and never affect real finances.</small>`;
     } else {
       banner.hidden=true;
       if(bannerCopy) bannerCopy.innerHTML="";
@@ -14068,6 +14204,51 @@ function runMoneyNestRegressionTests(options={}){
       return "Legacy HSA recognized; $100 transfer moves between accounts; $5,000 goal displays";
     }));
 
+    results.push(regressionResult("Live planning mirrors real changes but keeps scenario-only edits and deletions",()=>{
+      const joint={id:"joint",name:"Joint Checking",owner:"Joint",type:"cash",startingBalance:1000};
+      const utility={id:"storage",date:"2026-12-01",title:"Storage",amount:50,type:"expense",status:"planned",accountId:"joint",categoryId:"utilities",recurrence:{type:"monthly",interval:1}};
+      const expense={id:"once",date:"2027-01-16",title:"Groceries",amount:20,type:"expense",status:"planned",accountId:"joint",categoryId:"utilities",recurrence:{type:"none",interval:1}};
+      const real=regressionDataset({accounts:[joint],transactions:[utility,expense]});
+      setSynthetic(real,false);
+      const meta={id:"live",name:"After Move",snapshotDate:"2027-01-01"};
+      const seed=real.transactions.filter(tx=>transactionTouchesPlanningAccounts(tx,new Set(["joint"]))
+        && (planningSeriesStillActive(tx,meta.snapshotDate) || (!isRecurring(tx) && tx.date>=meta.snapshotDate)))
+        .map(tx=>clonePlanningTransaction(tx,new Set(["joint"])));
+      const plan={...meta,sourceAccountIds:["joint"],syncMode:"live",overriddenSourceIds:[],excludedSourceIds:[],
+        dataset:normalizePlanningScenarioDataset({accounts:[{...joint}],transactions:seed},meta,real)};
+      plan.mirrorBaseline=Object.fromEntries(plan.dataset.transactions.map(tx=>[tx.id,planningTransactionFingerprint(tx)]));
+      real.settings.planningScenarios=[plan];
+      data=plan.dataset;calendarMode="planning";planningScenarioId="live";
+      // Deliberately delete January and every later monthly Storage occurrence.
+      deleteTransactionWithScope("storage","future",{originalDate:"2027-01-01",occurrenceDate:"2027-01-01"});
+      plan.dataset.transactions.push({id:"plan-only",date:"2027-01-10",title:"New house expense",amount:42,type:"expense",status:"planned",accountId:"joint",categoryId:"utilities",recurrence:{type:"none",interval:1}});
+      captureLivePlanningChanges(plan);
+      regressionAssert(plan.overriddenSourceIds.includes("storage"),"Future-only deletion wasn't recorded as a planning override");
+      real.transactions.push({id:"new-real",date:"2027-01-25",title:"Real payment",amount:12,type:"expense",status:"planned",accountId:"joint",categoryId:"utilities",recurrence:{type:"none",interval:1}});
+      real.transactions.find(tx=>tx.id==="once").amount=27;
+      real.transactions.find(tx=>tx.id==="storage").amount=65;
+      refreshLivePlanningScenario(plan,real);
+      regressionAssert(plan.dataset.transactions.find(tx=>tx.id==="new-real")?.amount===12,"New real expense missing from the plan");
+      regressionAssert(plan.dataset.transactions.find(tx=>tx.id==="once")?.amount===27,"Untouched real expense didn't update in the plan");
+      regressionAssert(plan.dataset.transactions.find(tx=>tx.id==="storage")?.recurrenceUntil==="2026-12-31","Deleted future storage series was resurrected");
+      regressionAssert(plan.dataset.transactions.some(tx=>tx.id==="plan-only"),"Planning-only expense was overwritten");
+      // A deleted entire real-sourced transaction stays absent despite new edits
+      // on the real side. This also tests refreshing repeatedly.
+      deleteTransactionWithScope("new-real","all");
+      captureLivePlanningChanges(plan);
+      regressionAssert(plan.excludedSourceIds.includes("new-real"),"Deleted real-sourced transaction lacked a tombstone");
+      real.transactions.find(tx=>tx.id==="new-real").amount=99;
+      refreshLivePlanningScenario(plan,real);
+      regressionAssert(!plan.dataset.transactions.some(tx=>tx.id==="new-real"),"Deleted plan transaction was restored by the real mirror");
+      regressionAssert(plan.dataset.transactions.find(tx=>tx.id==="storage")?.recurrenceUntil==="2026-12-31","Recurring future deletion disappeared on repeated refresh");
+      const normalized=normalizeData(JSON.parse(JSON.stringify(real))).settings.planningScenarios[0];
+      regressionAssert(normalized.syncMode==="live" && normalized.excludedSourceIds.includes("new-real") && normalized.overriddenSourceIds.includes("storage"),"Plan-specific exceptions did not survive JSON/cloud normalization");
+      const legacy={...plan,syncMode:"snapshot",dataset:{transactions:[{id:"legacy-unchanged"}]}};
+      refreshLivePlanningScenario(legacy,real);
+      regressionAssert(legacy.dataset.transactions[0]?.id==="legacy-unchanged","Legacy snapshot was silently converted to live-linked");
+      return "New and edited real payments appear; recurring deletion, one-off deletion and plan-only expenses persist across refresh and JSON";
+    }));
+
     results.push(regressionResult("JSON normalization preserves planning scenarios",()=>{
       const raw=regressionDataset({
         accounts:[{id:"a",name:"A",owner:"Mak",type:"cash",startingBalance:10}],
@@ -14312,3 +14493,4 @@ const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 // v2-324: Budgets can measure net savings growth (deposits minus withdrawals in a chosen savings account); category selectors use compact dropdown multi-selects and Budget Manager rows use card dividers that do not cross row content.
 
 // v2-326: Budget Review excludes activity already explained by Net Saved tracking goals from Unbudgeted, and the Unbudgeted summary drills into the exact unmatched transactions.
+// v2-332: New Planning scenarios live-mirror real transactions and opening balances while respecting persistent plan-only edits, exclusions, and recurring future deletions. Existing snapshots remain static.

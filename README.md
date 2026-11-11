@@ -1,3 +1,11 @@
+## v2-332 — Live-linked Planning Mode
+
+- **New planning scenarios now mirror real activity** for their selected cash accounts from the chosen Plan starts date. When the real calendar receives a new payment, an edited transaction, or a changed recurring schedule, an unchanged copy is refreshed the next time the plan is opened. Opening balances before the start date also refresh.
+- **Plan-specific changes have priority:** add new transactions only in Planning Mode, edit a mirrored transaction, or delete one recurring occurrence / this and future / entire rule, and those differences stay in that plan—even when the real source is updated later. A recurring rule changed within a plan remains a planning override rather than silently inheriting later source-series edits. The real transaction and real Bills/Budgets are never changed.
+- **Delete future example:** deleting Joint Storage from January 2027 onward preserves the earlier part of its planned recurring series but does not allow any January or later instance to return after syncing. When the source is removed on the real side, untouched mirrored transactions disappear in Planning Mode as well.
+- **Existing snapshots remain static**, to avoid altering previously customized planning calendars. Create a new scenario to use live linking; Mak is comfortable rebuilding the previous scenario. New plans automatically jump to the start month if Calendar is showing an earlier month.
+- Live links and plan exceptions are stored within the existing root JSON backup / optional Supabase data blob. No new tables, storage keys, or schema version change (schema 230). No changes to real transactions, Budget calculations, or transfers. Regression suite includes a new live-planning test (32 total), and the November 11 backup was tested in an isolated browser.
+
 ## v2-331
 
 - **Cash account type selector:** Add/Edit Account now offers Checking/cash, Savings, and Health Savings Account (HSA). Savings/HSA accounts are reserved balances and show current goal progress rather than checking-style safe-to-spend. No change to real-world bank accounts or balances.
@@ -717,7 +725,7 @@ Maintenance follow-up: Recent Changes is now capped by bytes instead of only ite
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-331`
+Current version: `money-nest-v2-332`
 
 ## Important Notes
 
