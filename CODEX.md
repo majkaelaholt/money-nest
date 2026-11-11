@@ -1,3 +1,7 @@
+## v2-333 — Combined cash calendar view
+- Added Calendar → View → **Combined cash (checking + savings)** in Real and Planning modes. Running projected and cleared day balances sum selected checking/cash and savings account balances; HSA is excluded. Internal transfers cancel (and are hidden in this group), while a deposit/expense to or from outside the group affects the pooled total. It is neither true net worth (which subtracts liabilities) nor an assertion that the paying account has enough funds.
+- The selected group survives normal UI preferences and Real/Planning changes; no synthetic group ID may be used as a transaction account. Day detail and iPhone balance shortcut use the same group. No saved financial data, JSON/CSV, Supabase, or schema changes (230). Synthetic regression suite now includes combined-cash transfer accounting (33 checks).
+
 ## v2-332 live planning reconciliation
 
 - **Live by default for new scenarios:** `scenario.syncMode === "live"`. Prior snapshots without this value normalize to `"snapshot"` and remain unchanged. Do not silently migrate existing scenarios or discard saved scenario-only work.
@@ -748,7 +752,7 @@ Example README note:
 ### v2-200
 - Banking is excluded from budgeting. Savings transfers net contributions by direction.
 
-- Current version: money-nest-v2-332. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
+- Current version: money-nest-v2-333. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
 
 
 ### v2-205

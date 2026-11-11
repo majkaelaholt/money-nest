@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-332";
+const APP_VERSION = "2-333";
 const CURRENT_SCHEMA_VERSION = 230;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -969,14 +969,14 @@ function syncCalendarDataContext(){
       scenario.dataset.settings.appearance = JSON.parse(JSON.stringify(root.settings?.appearance || {}));
       if(scenario.syncMode === "live") refreshLivePlanningScenario(scenario,root);
       data=scenario.dataset;
-      if(calendarFilter!=="all" && !data.accounts.some(a=>a.id===calendarFilter)) calendarFilter="all";
+      if(!["all","combined"].includes(calendarFilter) && !data.accounts.some(a=>a.id===calendarFilter)) calendarFilter="all";
       return scenario;
     }
     calendarMode="real";
     planningScenarioId="";
   }
   data=root;
-  if(calendarFilter!=="all" && !data.accounts.some(a=>a.id===calendarFilter)) calendarFilter="all";
+  if(!["all","combined"].includes(calendarFilter) && !data.accounts.some(a=>a.id===calendarFilter)) calendarFilter="all";
   return null;
 }
 function realDataContext(){
@@ -3394,7 +3394,7 @@ function recentPlaceSub(place){
     return d ? `${d.type} • ${d.owner}` : "debt";
   }
   if(place.view === "calendar"){
-    return `${calendarDate.toLocaleString(undefined,{month:"long", year:"numeric"})}${calendarFilter !== "all" ? ` • ${accountById(calendarFilter)?.name || ""}` : ""}`;
+    return `${calendarDate.toLocaleString(undefined,{month:"long", year:"numeric"})}${calendarFilter !== "all" ? ` • ${calendarViewLabel()}` : ""}`;
   }
   return "page";
 }
@@ -4343,10 +4343,29 @@ function calendarHighlightSelectLabel(){
 }
 
 
-function calendarDisplayEntries(rawTxs){
-  const checkingAccountIds = data.accounts
+// v2-333: "Combined cash" means checking + unrestricted savings, not net worth.
+// HSA funds are excluded by design. Sum individual balances, so internal cash
+// transfers contribute zero and cannot create fictitious spending power.
+function calendarAccountIdsForFilter(filter=calendarFilter){
+  if(filter === "all") return data.accounts
     .filter(a => a.name.toLowerCase().includes("checking") && !a.name.toLowerCase().includes("savings"))
     .map(a => a.id);
+  if(filter === "combined") return data.accounts
+    .filter(a => accountKind(a) !== "hsa")
+    .map(a => a.id);
+  return accountById(filter) ? [filter] : [];
+}
+function calendarViewLabel(){
+  if(calendarFilter === "all") return "All checking accounts";
+  if(calendarFilter === "combined") return "Combined cash (checking + savings)";
+  return accountById(calendarFilter)?.name || "Selected account";
+}
+function calendarBalanceForFilter(projected, date){
+  return calendarAccountIdsForFilter().reduce((sum,id)=>sum+accountBalance(id,projected,date),0);
+}
+function calendarDisplayEntries(rawTxs){
+  const checkingAccountIds=calendarAccountIdsForFilter("all");
+  const combinedAccountIds=calendarFilter === "combined" ? calendarAccountIdsForFilter("combined") : [];
 
   const entries = [];
   const addPerspectiveEntry=(tx,accountId)=>{
@@ -4364,6 +4383,18 @@ function calendarDisplayEntries(rawTxs){
   rawTxs.forEach(tx=>{
     if(calendarFilter === "all"){
       checkingAccountIds.forEach(accountId=>addPerspectiveEntry(tx,accountId));
+      return;
+    }
+    if(calendarFilter === "combined"){
+      const netEffect=combinedAccountIds.reduce((sum,id)=>sum+cashAccountPerspective(tx,id).effect,0);
+      if(!netEffect) return; // Internal transfers are zero for combined cash.
+      entries.push({
+        ...tx,
+        calendarSide:transactionActsAsCashTransfer(tx) ? (netEffect>0?"in":"out") : "normal",
+        calendarAccountId:combinedAccountIds.includes(tx.accountId) ? tx.accountId : tx.transferToAccountId,
+        calendarAmountSign:netEffect>0?1:-1,
+        calendarCashEffect:netEffect
+      });
       return;
     }
     addPerspectiveEntry(tx,calendarFilter);
@@ -4395,12 +4426,23 @@ function setMobileCalendarAccount(accountId){
   renderCalendar();
 }
 window.setMobileCalendarAccount=setMobileCalendarAccount;
+function setCalendarGroupView(filter){
+  if(!["all","combined"].includes(filter)) return;
+  calendarFilter=filter;
+  saveUiPrefs();
+  renderCalendar();
+}
+window.setCalendarGroupView=setCalendarGroupView;
 function renderMobileCalendarBalances(){
   const el=document.getElementById("mobileCalendarBalances");
   if(!el) return;
   const accounts=orderedAccounts();
   if(!accounts.length){ el.innerHTML=""; return; }
-  el.innerHTML=accounts.map(a=>{
+  const groupSelected=calendarFilter==="combined";
+  const totalCash=calendarAccountIdsForFilter("combined")
+    .reduce((sum,id)=>sum+accountBalance(id,false,todayISO()),0);
+  const groupCard=`<button type="button" class="mobile-calendar-balance-card ${groupSelected?'selected':''}" onclick="setCalendarGroupView('combined')"><span>💵 Combined cash</span><b>${money(totalCash)}</b><small>Checking + Savings · excludes HSA</small></button>`;
+  el.innerHTML=groupCard+accounts.map(a=>{
     const actual=accountBalance(a.id,false,todayISO());
     const selected=!isSavingsAccount(a) && calendarFilter===a.id;
     if(isSavingsAccount(a)){
@@ -4454,9 +4496,6 @@ function renderCalendar(){
   const first = new Date(monthStart); first.setDate(first.getDate() - first.getDay());
   const last = new Date(first); last.setDate(first.getDate()+41);
   const heads = ["SUN","MON","TUE","WED","THU","FRI","SAT"].map(d=>`<div class="day-head">${d}</div>`).join("");
-  const checkingAccountIds = data.accounts
-    .filter(a => a.name.toLowerCase().includes("checking") && !a.name.toLowerCase().includes("savings"))
-    .map(a => a.id);
   const scenarioStart = planningScenarioSnapshotStartDate();
   // Expand every scenario recurrence first. Only then decide whether each concrete
   // occurrence touches the selected account by source OR destination. This order is
@@ -4464,7 +4503,7 @@ function renderCalendar(){
   // disagree about incoming recurring transfers.
   const calendarHorizon=toISO(addMonths(monthStart,2));
   const expandedForCalendar = expandedTransactions(calendarHorizon);
-  const calendarAccountIds=calendarFilter==="all" ? checkingAccountIds : [calendarFilter];
+  const calendarAccountIds=calendarAccountIdsForFilter();
   const rawTxs = cashAccountOccurrencesForAccounts(calendarAccountIds, calendarHorizon, expandedForCalendar)
     .filter(tx => !scenarioStart || tx.date >= scenarioStart);
   const txs = calendarDisplayEntries(rawTxs);
@@ -4485,14 +4524,9 @@ function renderCalendar(){
     </div>`;
   };
 
-  const checkingAccounts = data.accounts.filter(a => a.name.toLowerCase().includes("checking") && !a.name.toLowerCase().includes("savings"));
   const priorISO = toISO(addDays(first, -1));
-  let runningCalendarBalance = calendarFilter==="all"
-    ? checkingAccounts.reduce((s,a)=>s+accountBalance(a.id,true,priorISO),0)
-    : accountBalance(calendarFilter,true,priorISO);
-  let runningCalendarClearedBalance = calendarFilter==="all"
-    ? checkingAccounts.reduce((s,a)=>s+accountBalance(a.id,false,priorISO),0)
-    : accountBalance(calendarFilter,false,priorISO);
+  let runningCalendarBalance = calendarBalanceForFilter(true,priorISO);
+  let runningCalendarClearedBalance = calendarBalanceForFilter(false,priorISO);
 
   const calendarDays = [];
   let cursor = new Date(first);
@@ -4631,16 +4665,20 @@ function renderCalendarFilter(){
   });
 
   if(select){
-    const opts = [`<option value="all">All checking accounts</option>`]
-      .concat(calendarAccounts.map(a=>`<option value="${a.id}">${a.name}</option>`));
+    const opts = [
+      `<option value="all">All checking accounts</option>`,
+      `<option value="combined">Combined cash (checking + savings)</option>`
+    ].concat(calendarAccounts.map(a=>`<option value="${a.id}">${a.name}</option>`));
     select.innerHTML = opts.join("");
 
-    if(calendarFilter !== "all" && !calendarAccounts.some(a => a.id === calendarFilter)){
+    if(!["all","combined"].includes(calendarFilter) && !calendarAccounts.some(a => a.id === calendarFilter)){
       calendarFilter = "all";
       saveUiPrefs();
     }
     select.value = calendarFilter;
   }
+  const combinedHint=document.getElementById("calendarCombinedHint");
+  if(combinedHint) combinedHint.hidden=calendarFilter!=="combined";
 
   const normalizeCalendarHighlightCategories = ()=>{
     const validIds = data.categories.map(c=>c.id);
@@ -9134,7 +9172,7 @@ function updateSeriesFromDate(baseTx, formTx, occurrenceOriginalDate){
 const txModal = document.getElementById("transactionModal");
 document.getElementById("quickAddBtn").onclick = () => {
   const defaults = {};
-  if(moneyNestIsPhone() && currentView === "calendar" && calendarFilter !== "all") defaults.accountId = calendarFilter;
+  if(moneyNestIsPhone() && currentView === "calendar" && accountById(calendarFilter)) defaults.accountId = calendarFilter;
   openTransaction(null, defaults);
 };
 if(document.getElementById("clearRecentBtn")) clearRecentBtn.onclick = ()=>{
@@ -12220,20 +12258,15 @@ function openDayModal(dayISO){
   const daySub = document.getElementById("dayModalSub");
   const list = document.getElementById("dayModalTransactions");
 
-  const checkingAccountIds = data.accounts
-    .filter(a => a.name.toLowerCase().includes("checking") && !a.name.toLowerCase().includes("savings"))
-    .map(a => a.id);
-
   const scenarioStart = planningScenarioSnapshotStartDate();
+  const accountsInView=new Set(calendarAccountIdsForFilter());
   const rawDayTx = expandedTransactions(dayISO).filter(tx => {
-    const accountMatches = calendarFilter === "all"
-      ? (checkingAccountIds.includes(tx.accountId) || checkingAccountIds.includes(tx.transferToAccountId))
-      : (tx.accountId === calendarFilter || tx.transferToAccountId === calendarFilter);
+    const accountMatches=accountsInView.has(tx.accountId) || accountsInView.has(tx.transferToAccountId);
     return (!scenarioStart || tx.date >= scenarioStart) && tx.date === dayISO && accountMatches;
   });
   const dayTx = calendarDisplayEntries(rawDayTx);
 
-  const viewName = calendarFilter === "all" ? "All checking accounts" : accountById(calendarFilter)?.name || "Selected account";
+  const viewName = calendarViewLabel();
   dayTitle.textContent = new Date(dayISO + "T12:00:00").toLocaleDateString(undefined, {weekday:"long", month:"long", day:"numeric", year:"numeric"});
   daySub.textContent = `${viewName} • ${dayTx.length} transaction${dayTx.length === 1 ? "" : "s"}`;
 
@@ -12323,7 +12356,7 @@ if(document.getElementById("billSort")) if(document.getElementById("billSort")) 
 
 addDayTransactionBtn.onclick = ()=>{
   const defaults = { date: selectedDayISO };
-  if(calendarFilter !== "all") defaults.accountId = calendarFilter;
+  if(accountById(calendarFilter)) defaults.accountId = calendarFilter;
   document.getElementById('dayModal').close();
   openTransaction(null, defaults);
 };
@@ -12336,7 +12369,7 @@ document.getElementById("dayModal").addEventListener("click", (e)=>{
 });
 document.getElementById("addDayTransactionBtn").onclick = ()=>{
   const defaults = { date: selectedDayISO };
-  if(calendarFilter !== "all") defaults.accountId = calendarFilter;
+  if(accountById(calendarFilter)) defaults.accountId = calendarFilter;
   document.getElementById('dayModal').close();
   openTransaction(null, defaults);
 };
@@ -14202,6 +14235,34 @@ function runMoneyNestRegressionTests(options={}){
       regressionAssert(roundTrip.accounts.find(a=>a.id==="new-hsa")?.type==="hsa","JSON round trip lost explicit HSA type");
       regressionAssert(roundTrip.accounts.find(a=>a.id==="hsa")?.goalAmount===5000,"JSON round trip lost legacy HSA goal");
       return "Legacy HSA recognized; $100 transfer moves between accounts; $5,000 goal displays";
+    }));
+
+    results.push(regressionResult("Combined cash offsets internal transfers, excludes HSA and stays separate from checking",()=>{
+      const ds=regressionDataset({
+        accounts:[
+          {id:"mak",name:"Mak Checking",type:"cash",owner:"Mak",startingBalance:1000},
+          {id:"joint",name:"Joint Checking",type:"cash",owner:"Joint",startingBalance:300},
+          {id:"savings",name:"Savings",type:"savings",owner:"Joint",startingBalance:500},
+          {id:"hsa",name:"Fidelity HSA",type:"hsa",owner:"Mak",startingBalance:200}
+        ],
+        transactions:[
+          {id:"int-1",date:"2027-01-10",title:"Mak to Joint",type:"transfer",amount:100,status:"planned",accountId:"mak",transferToAccountId:"joint",categoryId:"banking"},
+          {id:"int-2",date:"2027-01-10",title:"Joint to Savings",type:"transfer",amount:200,status:"planned",accountId:"joint",transferToAccountId:"savings",categoryId:"banking"},
+          {id:"out",date:"2027-01-10",title:"HSA deposit",type:"transfer",amount:50,status:"planned",accountId:"mak",transferToAccountId:"hsa",categoryId:"banking"},
+          {id:"move",date:"2027-01-10",title:"Moving expense",type:"expense",amount:400,status:"planned",accountId:"joint",categoryId:"unassigned"},
+          {id:"income",date:"2027-01-10",title:"Bonus",type:"income",amount:100,status:"planned",accountId:"mak",categoryId:"income"}
+        ]
+      });
+      setSynthetic(ds,false);calendarFilter="combined";
+      regressionAssert(calendarAccountIdsForFilter().join(",")==="mak,joint,savings","Combined cash account membership incorrect");
+      regressionApprox(calendarBalanceForFilter(true,"2027-01-31"),1450,0.001,"Combined projected cash after moving expenses");
+      regressionApprox(calendarBalanceForFilter(false,"2027-01-31"),1800,0.001,"Combined cleared cash should ignore planned payments");
+      regressionApprox(accountBalance("joint",true,"2027-01-31"),-200,0.001,"Joint alone should be short even if household cash is sufficient");
+      const rows=calendarDisplayEntries(expandedTransactions("2027-01-31"));
+      regressionAssert(rows.length===3 && !rows.some(tx=>tx.id.startsWith("int-")),"Internal group transfers should be net-zero and hidden");
+      regressionApprox(rows.reduce((sum,tx)=>sum+tx.calendarCashEffect,0),-350,0.001,"Combined transaction delta");
+      regressionAssert(calendarViewLabel().includes("Combined cash"),"Combined cash label should be explicit");
+      return "Combined cash $1,450; Joint -$200; internal transfers cancel and HSA remains excluded";
     }));
 
     results.push(regressionResult("Live planning mirrors real changes but keeps scenario-only edits and deletions",()=>{

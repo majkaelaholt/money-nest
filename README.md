@@ -1,3 +1,7 @@
+## v2-333 — Combined cash calendar view
+- Added Calendar → View → **Combined cash (checking + savings)** in Real and Planning modes. Running projected and cleared day balances sum selected checking/cash and savings account balances; HSA is excluded. Internal transfers cancel (and are hidden in this group), while a deposit/expense to or from outside the group affects the pooled total. It is neither true net worth (which subtracts liabilities) nor an assertion that the paying account has enough funds.
+- The selected group survives normal UI preferences and Real/Planning changes; no synthetic group ID may be used as a transaction account. Day detail and iPhone balance shortcut use the same group. No saved financial data, JSON/CSV, Supabase, or schema changes (230). Synthetic regression suite now includes combined-cash transfer accounting (33 checks).
+
 ## v2-332 — Live-linked Planning Mode
 
 - **New planning scenarios now mirror real activity** for their selected cash accounts from the chosen Plan starts date. When the real calendar receives a new payment, an edited transaction, or a changed recurring schedule, an unchanged copy is refreshed the next time the plan is opened. Opening balances before the start date also refresh.
@@ -725,7 +729,7 @@ Maintenance follow-up: Recent Changes is now capped by bytes instead of only ite
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-332`
+Current version: `money-nest-v2-333`
 
 ## Important Notes
 
