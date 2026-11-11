@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-336";
+const APP_VERSION = "2-337";
 const CURRENT_SCHEMA_VERSION = 230;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -1343,6 +1343,90 @@ function applyPlanningMovingCostRules(scenario,oldRules,newRules,applicationDate
 function planningMoveCostHasOverrides(tx){
   return !!(Object.keys(tx?.occurrenceOverrides || {}).length || Object.keys(tx?.dateOverrides || {}).length);
 }
+// v2-337: A saved what-if baseline belongs to one planning scenario. Keep it
+// narrowly scoped to plan settings and plan-only moving costs, not to the full
+// dataset: live-linked real transactions must still be able to refresh.
+function normalizePlanningDefault(raw){
+  if(!raw || typeof raw!=="object" || Array.isArray(raw)) return null;
+  const validDate=value=>/^\d{4}-\d{2}-\d{2}$/.test(String(value||""));
+  const sourceRules=raw.movingCostRules && typeof raw.movingCostRules==="object" && !Array.isArray(raw.movingCostRules) ? raw.movingCostRules : {};
+  const rules=Object.fromEntries(Object.entries(sourceRules).filter(([id,rule])=>id && rule && PLANNING_COST_ANCHORS.includes(rule.anchor) && validDate(rule.originalDate))
+    .map(([id,rule])=>[String(id),{anchor:rule.anchor,offsetDays:Math.max(-365,Math.min(365,Math.trunc(Number(rule.offsetDays)||0))),originalDate:String(rule.originalDate)}]));
+  const sourceCosts=raw.movingCosts && typeof raw.movingCosts==="object" && !Array.isArray(raw.movingCosts) ? raw.movingCosts : {};
+  const costs=Object.fromEntries(Object.entries(sourceCosts).filter(([id,cost])=>id && cost && validDate(cost.date) && Number.isFinite(Number(cost.amount)) && Number(cost.amount)>=0 && Number(cost.amount)<=999999999)
+    .map(([id,cost])=>[String(id),{date:String(cost.date),amount:Math.round(Number(cost.amount)*100)/100}]));
+  const profiles=raw.paycheckProfiles && typeof raw.paycheckProfiles==="object" && !Array.isArray(raw.paycheckProfiles) ? raw.paycheckProfiles : {};
+  return {
+    savedAt:String(raw.savedAt||""),
+    name:String(raw.name||"Planning"),
+    hypotheticalApplicationDate:validDate(raw.hypotheticalApplicationDate)?String(raw.hypotheticalApplicationDate):"",
+    hypotheticalMoveDate:validDate(raw.hypotheticalMoveDate)?String(raw.hypotheticalMoveDate):"",
+    moveDateMode:raw.moveDateMode==="manual"?"manual":"next-month",
+    movingCostSetupDone:raw.movingCostSetupDone===true,
+    endOnMoveSeriesIds:Array.isArray(raw.endOnMoveSeriesIds)?[...new Set(raw.endOnMoveSeriesIds.filter(Boolean).map(String))]:[],
+    movingCostRules:rules,
+    movingCosts:costs,
+    paycheckProfiles:Object.fromEntries(["Mak","Ty"].filter(owner=>profiles[owner] && typeof profiles[owner]==="object" && !Array.isArray(profiles[owner]))
+      .map(owner=>[owner,JSON.parse(JSON.stringify(profiles[owner]))]))
+  };
+}
+function capturePlanningDefault(scenario){
+  const costs=Object.fromEntries(planningMovingCosts(scenario)
+    .filter(tx=>tx.status!=="cleared")
+    .map(tx=>[tx.id,{date:tx.date,amount:Number(tx.amount || 0)}]));
+  return normalizePlanningDefault({
+    savedAt:new Date().toISOString(),
+    name:scenario.name,
+    hypotheticalApplicationDate:scenario.hypotheticalApplicationDate || "",
+    hypotheticalMoveDate:scenario.hypotheticalMoveDate || "",
+    moveDateMode:scenario.moveDateMode || "next-month",
+    movingCostSetupDone:scenario.movingCostSetupDone===true,
+    endOnMoveSeriesIds:[...(scenario.endOnMoveSeriesIds || [])],
+    movingCostRules:JSON.parse(JSON.stringify(scenario.movingCostRules || {})),
+    movingCosts:costs,
+    paycheckProfiles:JSON.parse(JSON.stringify({
+      Mak:scenario.dataset?.settings?.paycheckProfiles?.Mak || {},
+      Ty:scenario.dataset?.settings?.paycheckProfiles?.Ty || {}
+    }))
+  });
+}
+function restorePlanningDefault(scenario){
+  const saved=normalizePlanningDefault(scenario?.planningDefault);
+  if(!scenario?.dataset || !saved) return false;
+  // Restore date links first. An item added since the default was saved is
+  // unlinked rather than deleted; its original (non-simulated) date returns.
+  applyPlanningMovingCostRules(scenario,scenario.movingCostRules || {},JSON.parse(JSON.stringify(saved.movingCostRules)),
+    saved.hypotheticalApplicationDate,saved.hypotheticalMoveDate);
+  const byId=new Map((scenario.dataset.transactions || []).map(tx=>[tx.id,tx]));
+  for(const [id,fields] of Object.entries(saved.movingCosts)){
+    const tx=byId.get(id);
+    // Protect transactions that actually cleared after this baseline was set.
+    if(!tx || tx.status==="cleared") continue;
+    tx.date=fields.date;
+    tx.amount=fields.amount;
+  }
+  scenario.name=saved.name;
+  scenario.hypotheticalApplicationDate=saved.hypotheticalApplicationDate;
+  scenario.hypotheticalMoveDate=saved.hypotheticalMoveDate;
+  scenario.moveDateMode=saved.moveDateMode;
+  scenario.movingCostSetupDone=saved.movingCostSetupDone;
+  scenario.endOnMoveSeriesIds=[...saved.endOnMoveSeriesIds];
+  scenario.dataset.settings ||= {};
+  scenario.dataset.settings.planningScenarioMeta ||= {};
+  scenario.dataset.settings.planningScenarioMeta.name=saved.name;
+  scenario.dataset.settings.paycheckProfiles ||= {};
+  for(const owner of ["Mak","Ty"]){
+    if(saved.paycheckProfiles[owner]) scenario.dataset.settings.paycheckProfiles[owner]=JSON.parse(JSON.stringify(saved.paycheckProfiles[owner]));
+  }
+  invalidateExpandedTransactionsCache();
+  return true;
+}
+function planningDefaultStatusText(scenario){
+  const saved=scenario?.planningDefault;
+  if(!saved) return "No default saved yet. Set everything up, then save it as your starting point.";
+  const date=new Date(saved.savedAt);
+  return `Default saved ${Number.isFinite(date.getTime())?date.toLocaleString():"for this plan"}. It stays unchanged until you replace it.`;
+}
 function openPlanningScenarioSettings(){
   const scenario=activePlanningScenario();
   if(!scenario){ openCreatePlanningScenario(); return; }
@@ -1371,6 +1455,18 @@ function openPlanningScenarioSettings(){
       <label>Name<input id="planningEditName" value="${escapeAttr(scenario.name)}" required></label>
       <p class="hint">Plan starts ${escapeAttr(scenario.snapshotDate)}. ${scenario.syncMode === "live" ? "Live-linked to real transactions; plan-only edits/deletions take priority. Changes here never modify real finances." : "Legacy one-time snapshot. Recreate it to enable automatic real-calendar updates and persistent exclusions."}</p>
       <div class="planning-scenario-accounts">${scenario.dataset.accounts.map(a=>`<span>${a.emoji||"💵"} ${escapeAttr(a.name)}</span>`).join("")}</div>
+    </div>
+    <div class="planning-scenario-card planning-default-settings">
+      <div>
+        <p class="eyebrow">📌 My planning default</p>
+        <p class="hint">Save the current dates, moving-cost amounts and timing, bills to stop, and paycheck assumptions as your baseline. Experiment freely, then restore it in one tap. The default is <b>only for this scenario</b>, not your live transactions.</p>
+      </div>
+      <div class="planning-default-actions">
+        <button type="button" id="planningSetDefaultBtn" class="primary small">📌 Set as default</button>
+        <button type="button" id="planningRestoreDefaultBtn" class="ghost small" ${scenario.planningDefault?"":"disabled"}>↶ Revert to default</button>
+      </div>
+      <small id="planningDefaultStatus" class="planning-default-status" role="status">${escapeAttr(planningDefaultStatusText(scenario))}</small>
+      <small class="hint">Setting a default also saves any edits currently shown in this form. Reverting does not delete other plan-only transactions, undo completed payments, or roll back new real activity.</small>
     </div>
     <div class="planning-scenario-card planning-move-settings">
       <div>
@@ -1582,6 +1678,25 @@ function openPlanningScenarioSettings(){
       fixedDeduction:Number(document.getElementById("planningTyFixedDeduction")?.value || 0)
     };
   };
+  document.getElementById("planningSetDefaultBtn")?.addEventListener("click",()=>{
+    if(scenario.planningDefault && !confirm("Replace this plan's saved default with the current settings and moving costs?")) return;
+    // Same validation and save as the regular Save button, including changes
+    // in collapsed cost rows. Users do not have to Save before setting default.
+    if(simpleSubmit && simpleSubmit()===false) return;
+    scenario.planningDefault=capturePlanningDefault(scenario);
+    if(saveData()===false) return;
+    document.getElementById("planningRestoreDefaultBtn").disabled=false;
+    document.getElementById("planningDefaultStatus").textContent=planningDefaultStatusText(scenario);
+  });
+  document.getElementById("planningRestoreDefaultBtn")?.addEventListener("click",()=>{
+    if(!scenario.planningDefault) return;
+    if(!confirm("Revert this plan to your saved default? Current what-if dates, cost amounts, timing and paycheck settings will be replaced. Real transactions and unrelated plan-only transactions stay unchanged.")) return;
+    if(!restorePlanningDefault(scenario)) return;
+    if(saveData()===false) return;
+    // Close to show the restored calendar immediately; reopening Settings
+    // displays restored values rather than an obsolete unsaved form.
+    simpleModal.close();
+  });
   simpleDelete=()=>{
     if(!confirm(`Delete the “${scenario.name}” planning scenario? Your real finances will not be affected.`)) return false;
     const root=moneyNestRootData();
@@ -1809,6 +1924,7 @@ function normalizePlanningScenarios(root){
       hypotheticalApplicationDate:/^\d{4}-\d{2}-\d{2}$/.test(String(scenario?.hypotheticalApplicationDate || "")) ? String(scenario.hypotheticalApplicationDate) : "",
       moveDateMode:scenario?.moveDateMode==="next-month" || (!scenario?.moveDateMode && !scenario?.hypotheticalMoveDate) ? "next-month" : "manual",
       movingCostSetupDone:scenario?.movingCostSetupDone === true,
+      planningDefault:normalizePlanningDefault(scenario?.planningDefault),
       movingCostRules:Object.fromEntries(Object.entries(scenario?.movingCostRules && typeof scenario.movingCostRules==="object" && !Array.isArray(scenario.movingCostRules) ? scenario.movingCostRules : {})
         .filter(([id,rule])=>id && rule && PLANNING_COST_ANCHORS.includes(rule.anchor) && /^\d{4}-\d{2}-\d{2}$/.test(String(rule.originalDate || "")))
         .map(([id,rule])=>[String(id),{anchor:rule.anchor,offsetDays:Math.max(-365,Math.min(365,Math.trunc(Number(rule.offsetDays)||0))),originalDate:String(rule.originalDate)}])),
@@ -14790,6 +14906,53 @@ function runMoneyNestRegressionTests(options={}){
       data=root;calendarMode="real";invalidateExpandedTransactionsCache();
       regressionAssert(root.transactions.length===1 && root.transactions[0].amount===450 && root.transactions[0].date==="2026-11-01","Editing a plan amount affected real recurring rent");
       return "Plan-only monthly and one-time amounts stay edited after moving date changes, unlink, JSON save; real series unchanged";
+    }));
+
+    results.push(regressionResult("Set planning default and revert restores dates, amounts, bill stops, and paychecks without touching real data",()=>{
+      const joint={id:"joint",name:"Joint Checking",owner:"Joint",type:"cash",startingBalance:3000};
+      const storage={id:"storage",date:"2026-11-01",title:"Storage",amount:85,type:"expense",status:"planned",accountId:"joint",categoryId:"utilities",recurrence:{type:"monthly",interval:1}};
+      const root=regressionDataset({accounts:[joint],transactions:[storage]});
+      setSynthetic(root,false);
+      const meta={id:"default-plan",name:"Moving",snapshotDate:"2026-11-01"};
+      const inherited=mirroredPlanningTransactions(root,{...meta,sourceAccountIds:["joint"]});
+      const application={id:"app-fee",date:"2026-12-28",title:"Application Fees",amount:300,type:"expense",status:"planned",accountId:"joint",categoryId:"unassigned",notes:"Keep my note",recurrence:{type:"none",interval:1}};
+      const rent={id:"rent",date:"2027-03-01",title:"Rent",amount:1620,type:"expense",status:"planned",accountId:"joint",categoryId:"unassigned",recurrence:{type:"monthly",interval:1}};
+      const plan={...meta,sourceAccountIds:["joint"],syncMode:"live",mirrorBaseline:Object.fromEntries(inherited.map(tx=>[tx.id,planningTransactionFingerprint(tx)])),overriddenSourceIds:[],excludedSourceIds:[],hypotheticalApplicationDate:"2026-11-12",hypotheticalMoveDate:"2026-12-01",moveDateMode:"next-month",movingCostSetupDone:true,endOnMoveSeriesIds:["storage"],movingCostRules:{},dataset:normalizePlanningScenarioDataset({accounts:[{...joint}],transactions:[...inherited,application,rent],settings:{paycheckProfiles:{Mak:{hourlyRate:26},Ty:{hourlyRate:24}}}},meta,root)};
+      root.settings.planningScenarios=[plan];rootData=root;data=plan.dataset;calendarMode="planning";planningScenarioId=plan.id;
+      const ruleApp={anchor:"application",offsetDays:0,originalDate:application.date};
+      const ruleRent={anchor:"month-after-move",offsetDays:0,originalDate:rent.date};
+      applyPlanningMovingCostRules(plan,{}, {"app-fee":ruleApp,"rent":ruleRent},plan.hypotheticalApplicationDate,plan.hypotheticalMoveDate);
+      plan.dataset.transactions.find(tx=>tx.id==="rent").amount=1700;
+      plan.planningDefault=capturePlanningDefault(plan);
+      regressionAssert(plan.planningDefault.movingCosts.rent.amount===1700 && plan.planningDefault.movingCosts.rent.date==="2027-01-01", "Default didn't capture current moving costs and calculated dates");
+      // Experiment: unlink a cost, change amounts/dates, and alter bill/paycheck.
+      plan.hypotheticalApplicationDate="2027-01-12";
+      plan.hypotheticalMoveDate="2027-02-01";
+      plan.endOnMoveSeriesIds=[];
+      plan.dataset.settings.paycheckProfiles.Mak.hourlyRate=30;
+      plan.dataset.transactions.find(tx=>tx.id==="rent").amount=2200;
+      applyPlanningMovingCostRules(plan,plan.movingCostRules,{"rent":{...ruleRent,offsetDays:4}},plan.hypotheticalApplicationDate,plan.hypotheticalMoveDate);
+      plan.dataset.transactions.push({id:"new-plan-only",date:"2027-01-06",title:"Different plan expense",amount:77,type:"expense",status:"planned",accountId:"joint",categoryId:"unassigned",recurrence:{type:"none",interval:1}});
+      // A real series changed while the user was experimenting; it must still refresh.
+      root.transactions.find(tx=>tx.id==="storage").amount=99;
+      refreshLivePlanningScenario(plan,root);
+      regressionAssert(restorePlanningDefault(plan)===true,"Could not restore a saved planning default");
+      const appTx=plan.dataset.transactions.find(tx=>tx.id==="app-fee");
+      const rentTx=plan.dataset.transactions.find(tx=>tx.id==="rent");
+      regressionAssert(plan.hypotheticalApplicationDate==="2026-11-12" && plan.hypotheticalMoveDate==="2026-12-01" && plan.moveDateMode==="next-month","Default move dates or mode were not restored");
+      regressionAssert(appTx.date==="2026-11-12" && appTx.amount===300 && rentTx.date==="2027-01-01" && rentTx.amount===1700,"Default date links or amounts were not restored");
+      regressionAssert(plan.endOnMoveSeriesIds.includes("storage") && plan.dataset.settings.paycheckProfiles.Mak.hourlyRate===26,"Default recurring stop or paycheck assumption missing");
+      regressionAssert(plan.dataset.transactions.find(tx=>tx.id==="storage").amount===99 && plan.dataset.transactions.some(tx=>tx.id==="new-plan-only"),"Reverting a default overwrote live real activity or deleted a new plan-only transaction");
+      regressionAssert(root.transactions[0].amount===99 && appTx.notes==="Keep my note","Revert changed real transactions or moving notes");
+      const roundTrip=normalizeData(JSON.parse(JSON.stringify(root))).settings.planningScenarios[0];
+      regressionAssert(roundTrip.planningDefault?.movingCosts?.rent?.amount===1700 && roundTrip.planningDefault?.endOnMoveSeriesIds?.includes("storage"),"Saved default lost during JSON/cloud normalization");
+      // After a transaction clears, a revert must not rewrite history.
+      const alreadyPaid=plan.dataset.transactions.find(tx=>tx.id==="app-fee");
+      alreadyPaid.status="cleared";alreadyPaid.amount=315;alreadyPaid.date="2026-11-13";
+      restorePlanningDefault(plan);
+      regressionAssert(alreadyPaid.amount===315 && alreadyPaid.date==="2026-11-13","Restoring default changed a cleared transaction");
+      data=root;calendarMode="real";invalidateExpandedTransactionsCache();
+      return "Saved baseline survives JSON, restores scenario amounts/dates/paychecks/cancellations, respects cleared history and live real updates";
     }));
 
     results.push(regressionResult("JSON normalization preserves planning scenarios",()=>{

@@ -1,3 +1,10 @@
+## v2-337 — Save and revert a Planning scenario default
+
+- Added **Set as default** and **Revert to default** under Calendar → Planning → Plan settings. Set as default first applies and validates the currently edited form (no separate Save required), then captures a stable per-scenario baseline. Replacing an existing default asks for confirmation; subsequent normal Saves do not overwrite it. Revert asks for confirmation and returns to the calendar showing the restored projection.
+- The default preserves the scenario name, application date, calculated/manual move-in date, list of real recurring bills to stop on moving, plan-only moving-cost date links/anchors/day offsets and edited amounts, and Mak/Ty paycheck assumptions. Linked costs restore their exact saved effective dates, while unlinked cost rows return to the saved unlinked dates.
+- Revert stays **planning-only**: it does not roll back live-linked real transactions, edit real balances/recurring rules, resurrect deleted transactions, remove unrelated new plan-only items, or rewrite cleared transactions. Costs added after saving a baseline are unlinked (without deletion) on revert. Different planning scenarios have independent defaults.
+- Stored in optional `planningDefault` metadata inside the existing scenario JSON/optional Supabase blob; schema stays **230**, no new storage keys or tables. Old backups with no default continue to work. Validated **37/37** synthetic regressions and the November 11 Moving backup in desktop/iPhone browser tests (Set, normal Save with changed values, Revert, JSON persistence, mobile width), with no page errors.
+
 ## v2-336 — Moving plan now responds to date changes, with bulk amount edits
 
 - Fixed a confusing v2-335 setup requirement: moving costs appeared unchanged unless each transaction was separately linked. On first opening an unconfigured Moving Cost Schedule, recognized plan-only moving expenses are PRESELECTED, and saving a date automatically links them. After saving, the `movingCostSetupDone` flag respects explicit unchecked/unlinked costs. No date is changed just by opening settings; press Save.
@@ -753,7 +760,7 @@ Maintenance follow-up: Recent Changes is now capped by bytes instead of only ite
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-336`
+Current version: `money-nest-v2-337`
 
 ## Important Notes
 

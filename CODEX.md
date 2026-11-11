@@ -1,3 +1,10 @@
+## v2-337 — Save and revert a Planning scenario default
+
+- Added **Set as default** and **Revert to default** under Calendar → Planning → Plan settings. Set as default first applies and validates the currently edited form (no separate Save required), then captures a stable per-scenario baseline. Replacing an existing default asks for confirmation; subsequent normal Saves do not overwrite it. Revert asks for confirmation and returns to the calendar showing the restored projection.
+- The default preserves the scenario name, application date, calculated/manual move-in date, list of real recurring bills to stop on moving, plan-only moving-cost date links/anchors/day offsets and edited amounts, and Mak/Ty paycheck assumptions. Linked costs restore their exact saved effective dates, while unlinked cost rows return to the saved unlinked dates.
+- Revert stays **planning-only**: it does not roll back live-linked real transactions, edit real balances/recurring rules, resurrect deleted transactions, remove unrelated new plan-only items, or rewrite cleared transactions. Costs added after saving a baseline are unlinked (without deletion) on revert. Different planning scenarios have independent defaults.
+- Stored in optional `planningDefault` metadata inside the existing scenario JSON/optional Supabase blob; schema stays **230**, no new storage keys or tables. Old backups with no default continue to work. Validated **37/37** synthetic regressions and the November 11 Moving backup in desktop/iPhone browser tests (Set, normal Save with changed values, Revert, JSON persistence, mobile width), with no page errors.
+
 ## v2-336 — Moving date usability + planning-only amount editor
 
 - v2-335 only shifted already-linked moving expenses, leading to a silent no-op for dates. On first setup (`movingCostSetupDone` absent/false and no saved rules), show recognized plan-only moving costs as checked by default. A Save persists those suggested rules and flips `movingCostSetupDone=true`, so deliberate later unlinks remain unlinked. If saved rules exist, preserve checked state as-is.
@@ -773,7 +780,7 @@ Example README note:
 ### v2-200
 - Banking is excluded from budgeting. Savings transfers net contributions by direction.
 
-- Current version: money-nest-v2-336. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
+- Current version: money-nest-v2-337. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
 
 
 ### v2-205
