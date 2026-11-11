@@ -1,3 +1,17 @@
+## v2-335 — Scenario-linked moving-cost timing rules
+
+- Plan settings now have `hypotheticalApplicationDate` and `moveDateMode` (`next-month` or `manual`) alongside `hypotheticalMoveDate`. The existing recurring stop-on-move setting uses the computed move date.
+- `movingCostRules` is an optional scenario-level map keyed by **plan-only transaction IDs**, with `{anchor,offsetDays,originalDate}`. Valid anchors are `application`, `move`, `month-after-application`, `month-after-move`. Only explicitly linked scenario transactions have their `date` changed; amounts, notes, source routing, recurrence and real data remain intact. Unlinking restores `originalDate` for still-planned entries, and missing date inputs also fall back to original dates; never shift an already-cleared transaction.
+- The suggestion picker auto-selects existing moving-related costs, never adds transaction duplicates. The original November 11 Moving plan contains 10 one-time expenses plus 3 plan-only recurring rent/utilities/insurance rules. Do not confuse these with real-sourced recurring Leesa/Storage; the latter use `endOnMoveSeriesIds` and stay live-linked to Real.
+- Transactions with individual `dateOverrides` / `occurrenceOverrides` are blocked from linking, because changing a series anchor with those overrides could misapply occurrence-specific history. Schema remains 230 and JSON/cloud payload/storage keys are unchanged. Run `node --check app.js`, 35 synthetic regression checks and desktop/iPhone real-backup test after updates.
+
+## v2-334 — Reversible plan-only recurring stop on hypothetical move date
+
+- Add optional per-scenario `hypotheticalMoveDate` (valid ISO date or empty) and `endOnMoveSeriesIds` (recurring source transaction IDs). Show a date input plus searchable compact checkbox list in Planning scenario settings. Provide calendar transaction context-menu toggle; when no date is set, open settings to configure. A scenario with the date unset must show all selected recurring transactions normally.
+- Implement via `planMoveSuppressesRecurringOccurrence(sourceTx, concreteOccurrence)` at the end of canonical `materializeRecurrenceOccurrence`, using effective/post-weekend `occurrence.date`; suppress only **planned** occurrences whose effective date is on/after the move date. Never mutate underlying `recurrenceUntil`, `occurrenceOverrides`, real records, or mirror baseline fingerprints. The data context guard restricts the feature to Planning; real mode is unaffected. Cleared history is protected.
+- `normalizePlanningScenarios` preserves the two optional scenario fields through JSON/cloud round-trips. Changing/unsetting the date or selecting/unselecting series invalidates expanded-transaction caches through `saveData()`. Newly edited real recurring series still mirror into live plans because hypothetical move controls do not create plan-specific transaction overrides.
+- Real November 11 Moving scenario has one recurring Storage rule and two Leesa rules; the picker distinguishes identical titles by source account, amount and start date. Avoid accidentally limiting the stop to one Leesa rule. No financial schema bump, backup conversion, new Supabase tables, or cash-account changes. Regression suite 34 checks, tested desktop and iPhone.
+
 ## v2-333 — Combined cash calendar view
 - Added Calendar → View → **Combined cash (checking + savings)** in Real and Planning modes. Running projected and cleared day balances sum selected checking/cash and savings account balances; HSA is excluded. Internal transfers cancel (and are hidden in this group), while a deposit/expense to or from outside the group affects the pooled total. It is neither true net worth (which subtracts liabilities) nor an assertion that the paying account has enough funds.
 - The selected group survives normal UI preferences and Real/Planning changes; no synthetic group ID may be used as a transaction account. Day detail and iPhone balance shortcut use the same group. No saved financial data, JSON/CSV, Supabase, or schema changes (230). Synthetic regression suite now includes combined-cash transfer accounting (33 checks).
@@ -752,7 +766,7 @@ Example README note:
 ### v2-200
 - Banking is excluded from budgeting. Savings transfers net contributions by direction.
 
-- Current version: money-nest-v2-333. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
+- Current version: money-nest-v2-335. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
 
 
 ### v2-205

@@ -1,3 +1,20 @@
+## v2-335 — Planning Mode moving-cost schedule linked to application and move dates
+
+- **Planning → Moving → Plan settings** now includes an optional application date and move-in date rule. Move-in can automatically be the **first day of the month after applying** or a manually selected date. The existing reversible **Stop recurring bills when moving** checklist uses the same effective move-in date.
+- Added **Moving cost schedule → Manage moving expenses** for *existing planning-only expenses*. A single **Link suggested moving costs** action selects the 13 matching items in the user's November 11 Moving plan (10 one-time charges plus 3 recurring costs), without adding duplicate transactions or changing amounts/notes.
+- Each linked transaction can follow **application date**, **move-in date**, **first of the month after application**, or **first of the month after move-in**, with a signed day offset (−365..365). Defaults: application fees on application day; rent/deposits/setup/truck at move-in; supplies/food seven days later; new monthly rent/utilities/renter's insurance the following month. Property-specific upfront payment dates may differ: edit each rule to match lease requirements.
+- Changing the test dates shifts linked transaction dates within **this plan only**. If an anchor date is blank, the transaction falls back to its original date. Unlinking a still-planned cost restores its original plan date. Already-cleared transactions retain their cleared date even if the hypothetical move changes. All original plan amounts, notes, account routing, and financial recurrence settings are preserved; never touches Real, other scenarios, or Supabase schema. Recurring transactions with custom individual occurrence/date overrides cannot be linked until those exceptions are resolved, to prevent corrupting their schedule.
+- Scenario metadata adds optional `hypotheticalApplicationDate`, `moveDateMode`, and `movingCostRules` alongside the existing `hypotheticalMoveDate` and `endOnMoveSeriesIds`. Normalized JSON/cloud backups preserve these inside the existing scenario record; schema remains **230**, with no new storage keys, Supabase tables, or migrations.
+- Validated **35/35** synthetic regression checks; tested original November 11 Moving backup on desktop and iPhone including application-date shifts, 13 selected costs, recurring rent timing, manual unlink/restoration, no horizontal overflow or browser errors.
+
+## v2-334 — Reversible what-if moving date for recurring expenses
+
+- Planning scenarios now have an optional **hypothetical move-in date** and a searchable checklist of **recurring bills to stop when moving**. This lets Mak model Storage/Leesa disappearing after a hypothetical move without deleting series, altering real records, or creating fake transfer transactions. Moving the date from December to February brings back earlier skipped bills automatically; clearing the date or unchecking a bill reverses the simulation.
+- **Effective payment date controls suppression:** a recurring payment shifted to the previous Friday still counts if it actually lands before move-in. Saved cleared history remains visible. Only planned instances on/after the move date disappear from calendar chips and cashflow forecasts. This is an expansion-only overlay: `recurrenceUntil`, `occurrenceOverrides`, and live-mirror transaction fingerprints remain unchanged.
+- The Planning scenario settings support searching by bill name/account and show the account, amount, and series start date to distinguish similarly named rules. Desktop right-click / phone long-press on a recurring transaction adds **Stop bill when we move** / **Keep bill after move (undo)**; when no move date is set, the action opens scenario settings with the bill selected.
+- In the November 11 Moving backup, one Storage recurring series and **two Leesa recurring series** are eligible; select all matching ongoing rules that should stop. Existing manual plan-specific deletions/edits are not undone by this new what-if switch; the user can avoid those deletions going forward.
+- Plan date and series IDs are optional scenario metadata stored inside the existing JSON/optional Supabase blob. New and old backups remain compatible; data schema stays **230**, no new Supabase tables, no changes to Real finances, budgets, or existing transaction categorization. 34 synthetic regression checks; actual Moving backup tested on desktop and iPhone.
+
 ## v2-333 — Combined cash calendar view
 - Added Calendar → View → **Combined cash (checking + savings)** in Real and Planning modes. Running projected and cleared day balances sum selected checking/cash and savings account balances; HSA is excluded. Internal transfers cancel (and are hidden in this group), while a deposit/expense to or from outside the group affects the pooled total. It is neither true net worth (which subtracts liabilities) nor an assertion that the paying account has enough funds.
 - The selected group survives normal UI preferences and Real/Planning changes; no synthetic group ID may be used as a transaction account. Day detail and iPhone balance shortcut use the same group. No saved financial data, JSON/CSV, Supabase, or schema changes (230). Synthetic regression suite now includes combined-cash transfer accounting (33 checks).
@@ -729,7 +746,7 @@ Maintenance follow-up: Recent Changes is now capped by bytes instead of only ite
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-333`
+Current version: `money-nest-v2-335`
 
 ## Important Notes
 

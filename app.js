@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-333";
+const APP_VERSION = "2-335";
 const CURRENT_SCHEMA_VERSION = 230;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -1172,6 +1172,11 @@ function createPlanningScenario(name, accountIds, requestedStartDate=todayISO())
     mirrorBaseline:{},
     overriddenSourceIds:[],
     excludedSourceIds:[],
+    hypotheticalMoveDate:"",
+    hypotheticalApplicationDate:"",
+    moveDateMode:"next-month",
+    endOnMoveSeriesIds:[],
+    movingCostRules:{},
     dataset:normalizePlanningScenarioDataset(dataset,{id:scenarioId,name:scenarioName,snapshotDate},root)
   };
   scenario.mirrorBaseline=Object.fromEntries(scenario.dataset.transactions.map(tx=>[tx.id,planningTransactionFingerprint(tx)]));
@@ -1218,6 +1223,86 @@ function openCreatePlanningScenario(){
   deleteSimpleBtn.style.display="none";
   simpleModal.showModal();
 }
+// v2-335: Date rules for existing PLAN-ONLY moving costs. The rule stores the
+// original plan date and changes only that scenario's transaction date; actual
+// transaction amounts, notes, recurrence and real-world records are untouched.
+const PLANNING_COST_ANCHORS=["application","move","month-after-application","month-after-move"];
+function planningMovingCosts(scenario){
+  if(!scenario?.dataset) return [];
+  const inherited=new Set(Object.keys(scenario.mirrorBaseline || {}));
+  return (scenario.dataset.transactions || [])
+    .filter(tx=>!inherited.has(tx.id) && tx.type==="expense" && (tx.status!=="cleared" || !!scenario.movingCostRules?.[tx.id]) && !tx.billArchived && !!tx.accountId)
+    .sort((a,b)=>{
+      const sa=planningSuggestedCostRule(a), sb=planningSuggestedCostRule(b);
+      return Number(!!sb)-Number(!!sa) || String(a.date || "").localeCompare(String(b.date || "")) || String(a.title).localeCompare(String(b.title));
+    });
+}
+function planningSuggestedCostRule(tx){
+  const title=String(tx?.title || "").toLowerCase().trim().replace(/[’]/g,"'");
+  const recurring=isRecurring(tx);
+  if(title==="application fees" || title==="application fee") return {anchor:"application",offsetDays:0};
+  if(/^(first months? rent|first month's rent|security deposit|pet\(?s?\)? deposit|pet deposit)$/.test(title)) return {anchor:"move",offsetDays:0};
+  if(/^(utility deposits?\b|internet install|renter's insurance|moving truck)/.test(title)){
+    return {anchor:recurring?"month-after-move":"move",offsetDays:0};
+  }
+  if(/^(essential supplies stock|food stock)$/.test(title)) return {anchor:"move",offsetDays:7};
+  if(recurring && /^(rent|utilities|renter's insurance)$/.test(title)) return {anchor:"month-after-move",offsetDays:0};
+  return null;
+}
+function planningFirstOfFollowingMonth(dateISO){
+  const d=parseDate(dateISO);
+  return toISO(new Date(d.getFullYear(),d.getMonth()+1,1,12));
+}
+function planningCostDate(rule,applicationDate,moveDate){
+  if(!rule || !PLANNING_COST_ANCHORS.includes(rule.anchor)) return "";
+  let date="";
+  if(rule.anchor==="application" || rule.anchor==="month-after-application") date=applicationDate;
+  else date=moveDate;
+  if(!date) return "";
+  if(rule.anchor.startsWith("month-after-")) date=planningFirstOfFollowingMonth(date);
+  return toISO(addDays(parseDate(date),Number(rule.offsetDays || 0)));
+}
+function updatePlanningMoveDatePreview(){
+  const app=document.getElementById("planningApplicationDate");
+  const move=document.getElementById("planningMoveDate");
+  const mode=document.getElementById("planningMoveDateMode");
+  if(!app || !move || !mode) return;
+  if(mode.value==="next-month") move.value=app.value ? planningFirstOfFollowingMonth(app.value) : "";
+  move.disabled=mode.value==="next-month";
+  const hint=document.getElementById("planningMoveDateHint");
+  if(hint) hint.textContent=mode.value==="next-month"
+    ? (move.value ? `Automatically set to ${move.value} (first of the month after applying).` : "Choose an application date to calculate move-in.")
+    : "Choose a move-in date to test; you can change it any time.";
+}
+window.updatePlanningMoveDatePreview=updatePlanningMoveDatePreview;
+window.suggestPlanningMovingCosts=()=>{
+  document.querySelectorAll(".planning-cost-row").forEach(row=>{
+    const suggestion=planningSuggestedCostRule({title:row.dataset.title,recurrence:{type:row.dataset.repeat === "true"?"monthly":"none"}});
+    if(!suggestion) return;
+    row.querySelector(".planning-cost-enabled").checked=true;
+    row.querySelector(".planning-cost-anchor").value=suggestion.anchor;
+    row.querySelector(".planning-cost-offset").value=String(suggestion.offsetDays);
+  });
+};
+function applyPlanningMovingCostRules(scenario,oldRules,newRules,applicationDate,moveDate){
+  const txById=new Map((scenario.dataset.transactions || []).map(tx=>[tx.id,tx]));
+  // Unlinking restores the date the transaction had before it was ever linked.
+  for(const [id,rule] of Object.entries(oldRules || {})){
+    if(newRules[id]) continue;
+    const tx=txById.get(id);
+    if(tx && tx.status!=="cleared" && rule.originalDate) tx.date=rule.originalDate;
+  }
+  for(const [id,rule] of Object.entries(newRules || {})){
+    const tx=txById.get(id);
+    if(!tx || tx.status==="cleared") continue;
+    tx.date=planningCostDate(rule,applicationDate,moveDate) || rule.originalDate;
+  }
+  scenario.movingCostRules=newRules;
+  invalidateExpandedTransactionsCache();
+}
+function planningMoveCostHasOverrides(tx){
+  return !!(Object.keys(tx?.occurrenceOverrides || {}).length || Object.keys(tx?.dateOverrides || {}).length);
+}
 function openPlanningScenarioSettings(){
   const scenario=activePlanningScenario();
   if(!scenario){ openCreatePlanningScenario(); return; }
@@ -1225,6 +1310,15 @@ function openPlanningScenarioSettings(){
   scenario.dataset.settings.paycheckProfiles ||= {};
   const makProfile=scenario.dataset.settings.paycheckProfiles.Mak || {};
   const tyProfile=scenario.dataset.settings.paycheckProfiles.Ty || {};
+  const moveCandidates=planningMoveSeriesCandidates(scenario);
+  const selectedMoveIds=new Set(scenario.endOnMoveSeriesIds || []);
+  const stopCount=moveCandidates.filter(tx=>selectedMoveIds.has(tx.id)).length;
+  const movingCosts=planningMovingCosts(scenario);
+  const savedCostRules=scenario.movingCostRules || {};
+  const applicationDate=scenario.hypotheticalApplicationDate || "";
+  const moveDateMode=scenario.moveDateMode || (!scenario.hypotheticalMoveDate ? "next-month" : "manual");
+  const shownMoveDate=moveDateMode==="next-month" && applicationDate ? planningFirstOfFollowingMonth(applicationDate) : (scenario.hypotheticalMoveDate || "");
+  const costLinkCount=movingCosts.filter(tx=>!!savedCostRules[tx.id]).length;
   simpleTitle.textContent="Planning scenario";
   simpleFields.innerHTML=`
     <div class="planning-scenario-card">
@@ -1232,6 +1326,79 @@ function openPlanningScenarioSettings(){
       <label>Name<input id="planningEditName" value="${escapeAttr(scenario.name)}" required></label>
       <p class="hint">Plan starts ${escapeAttr(scenario.snapshotDate)}. ${scenario.syncMode === "live" ? "Live-linked to real transactions; plan-only edits/deletions take priority. Changes here never modify real finances." : "Legacy one-time snapshot. Recreate it to enable automatic real-calendar updates and persistent exclusions."}</p>
       <div class="planning-scenario-accounts">${scenario.dataset.accounts.map(a=>`<span>${a.emoji||"💵"} ${escapeAttr(a.name)}</span>`).join("")}</div>
+    </div>
+    <div class="planning-scenario-card planning-move-settings">
+      <div>
+        <p class="eyebrow">🏠 What-if moving date</p>
+        <p class="hint">Choose a hypothetical move-in date. Checked recurring bills disappear <b>starting on that date</b>, but remain in Real. Change the date to December or February and they automatically return or stop on the new schedule. Cleared history stays visible.</p>
+      </div>
+      <div class="planning-dates-grid">
+        <label>Application date (optional)
+          <input id="planningApplicationDate" type="date" min="${escapeAttr(scenario.snapshotDate)}" value="${escapeAttr(applicationDate)}" onchange="updatePlanningMoveDatePreview()">
+        </label>
+        <label>Move-in date rule
+          <select id="planningMoveDateMode" onchange="updatePlanningMoveDatePreview()">
+            <option value="next-month" ${moveDateMode==="next-month"?"selected":""}>1st of month after application</option>
+            <option value="manual" ${moveDateMode==="manual"?"selected":""}>Set move-in date myself</option>
+          </select>
+        </label>
+        <label>Hypothetical move-in date
+          <input id="planningMoveDate" type="date" min="${escapeAttr(scenario.snapshotDate)}" value="${escapeAttr(shownMoveDate)}">
+          <small id="planningMoveDateHint">Used for bills ending and moving expense dates.</small>
+        </label>
+      </div>
+      <details class="planning-move-list">
+        <summary><b>Recurring bills to stop when we move</b><small>${stopCount} selected • tap to choose</small></summary>
+        <div class="planning-move-list-body">
+          <input id="planningMoveBillSearch" type="search" placeholder="Find Storage, Leesa…" aria-label="Search recurring bills" oninput="filterPlanningMoveSeries(this.value)">
+          <div class="planning-move-choices">
+            ${moveCandidates.length ? moveCandidates.map(tx=>{
+              const acct= (scenario.dataset.accounts || []).find(a=>a.id===tx.accountId)?.name || "Other account";
+              const search=String(tx.title+" "+acct+" "+tx.date).toLowerCase();
+              return `<label class="planning-move-series-option" data-search="${escapeAttr(search)}"><input type="checkbox" class="planning-move-series-choice" value="${escapeAttr(tx.id)}" ${selectedMoveIds.has(tx.id)?"checked":""}><span><b>${escapeAttr(tx.title)}</b><small>${escapeAttr(acct)} • ${money(Number(tx.amount || 0))} • started ${escapeAttr(tx.date)}</small></span></label>`;
+            }).join("") : `<p class="hint">No recurring bills in this plan.</p>`}
+          </div>
+        </div>
+      </details>
+      <p class="hint">This is reversible: uncheck a bill or clear the move date to restore its planned occurrences. It doesn't alter or end the real bill. Bills you already deleted manually in this plan remain deleted.</p>
+    </div>
+    <div class="planning-scenario-card planning-cost-settings">
+      <div>
+        <p class="eyebrow">📦 Moving cost schedule</p>
+        <p class="hint">Link existing <b>planning-only</b> expenses to your application or move-in date. Move the dates above and linked costs follow automatically. Amounts and notes stay unchanged. Unlinking restores the original planned date.</p>
+      </div>
+      <details class="planning-cost-list">
+        <summary><b>Manage moving expenses</b><small>${costLinkCount} linked • ${movingCosts.length} available</small></summary>
+        <div class="planning-cost-list-body">
+          <div class="planning-cost-list-tools"><button type="button" class="ghost small" onclick="suggestPlanningMovingCosts()">Link suggested moving costs</button><small>Review payment timing with the landlord—especially when deposits are due.</small></div>
+          ${movingCosts.length ? movingCosts.map(tx=>{
+            const saved=savedCostRules[tx.id];
+            const suggested=planningSuggestedCostRule(tx) || {anchor:"move",offsetDays:0};
+            const rule=saved || suggested;
+            const recurring=isRecurring(tx);
+            const warning=planningMoveCostHasOverrides(tx);
+            return `<div class="planning-cost-row" data-id="${escapeAttr(tx.id)}" data-title="${escapeAttr(tx.title)}" data-repeat="${recurring?"true":"false"}">
+              <label class="planning-cost-name"><input class="planning-cost-enabled" type="checkbox" ${saved?"checked":""}><span><b>${escapeAttr(tx.title)}</b><small>${money(Number(tx.amount||0))}${recurring?" • monthly":""} • original ${escapeAttr(saved?.originalDate || tx.date)}</small></span></label>
+              <div class="planning-cost-edit">
+                <label>When
+                  <select class="planning-cost-anchor">
+                    <option value="application" ${rule.anchor==="application"?"selected":""}>Application date</option>
+                    <option value="move" ${rule.anchor==="move"?"selected":""}>Move-in date</option>
+                    <option value="month-after-application" ${rule.anchor==="month-after-application"?"selected":""}>1st of month after applying</option>
+                    <option value="month-after-move" ${rule.anchor==="month-after-move"?"selected":""}>1st of month after moving</option>
+                  </select>
+                </label>
+                <label>Days before (−) / after (+)
+                  <input class="planning-cost-offset" type="number" min="-365" max="365" step="1" value="${escapeAttr(rule.offsetDays ?? 0)}">
+                </label>
+              </div>
+              ${tx.status==="cleared"?`<small class="planning-cost-warning">Cleared: its date is locked to preserve history. You can unlink it without changing the cleared date.</small>`:""}
+              ${warning?`<small class="planning-cost-warning">This recurring item has individual date edits; remove those overrides before linking.</small>`:""}
+            </div>`;
+          }).join("") : `<p class="hint">No planning-only expenses yet. Add moving costs directly in Planning, then reopen these settings to link them.</p>`}
+        </div>
+      </details>
+      <p class="hint">Linking an expense changes its <b>planned date only</b>. It won't create a duplicate, change the real calendar, or edit the amount. For first month's rent or deposits, use the actual due date required by the property.</p>
     </div>
     <div class="planning-scenario-card planning-paycheck-settings">
       <div>
@@ -1266,9 +1433,54 @@ function openPlanningScenarioSettings(){
       </div>
     </div>
     <button type="button" class="ghost" onclick="simpleModal.close(); openCreatePlanningScenario();">＋ Create another scenario</button>`;
+  updatePlanningMoveDatePreview();
   simpleSubmit=()=>{
     const name=String(document.getElementById("planningEditName")?.value || "").trim();
     if(!name){ alert("Give the scenario a name."); return false; }
+    updatePlanningMoveDatePreview();
+    const applicationDate=String(document.getElementById("planningApplicationDate")?.value || "");
+    const moveDateMode=String(document.getElementById("planningMoveDateMode")?.value || "manual");
+    const moveDate=String(document.getElementById("planningMoveDate")?.value || "");
+    if(applicationDate && (!/^\d{4}-\d{2}-\d{2}$/.test(applicationDate) || toISO(parseDate(applicationDate))!==applicationDate || applicationDate<scenario.snapshotDate)){
+      alert(`Choose an application date on or after ${scenario.snapshotDate}, or leave it blank.`);
+      return false;
+    }
+    if(moveDate && (!/^\d{4}-\d{2}-\d{2}$/.test(moveDate) || toISO(parseDate(moveDate))!==moveDate || moveDate<scenario.snapshotDate)){
+      alert(`Choose a move date on or after ${scenario.snapshotDate}, or leave it blank.`);
+      return false;
+    }
+    const oldRules=scenario.movingCostRules || {};
+    const newRules={};
+    const costById=new Map(planningMovingCosts(scenario).map(tx=>[tx.id,tx]));
+    for(const row of document.querySelectorAll(".planning-cost-row")){
+      if(!row.querySelector(".planning-cost-enabled")?.checked) continue;
+      const id=row.dataset.id;
+      const tx=costById.get(id);
+      if(!tx) continue;
+      if(planningMoveCostHasOverrides(tx)){
+        alert(`“${tx.title}” has individual recurrence edits. Remove those before linking this cost to moving dates.`);
+        return false;
+      }
+      const anchor=String(row.querySelector(".planning-cost-anchor")?.value || "");
+      const offsetRaw=String(row.querySelector(".planning-cost-offset")?.value || "0");
+      const offsetDays=Number(offsetRaw);
+      if(!PLANNING_COST_ANCHORS.includes(anchor) || !Number.isInteger(offsetDays) || Math.abs(offsetDays)>365){
+        alert(`Choose a valid timing rule and whole-day offset (−365 to +365) for ${tx.title}.`);
+        return false;
+      }
+      const rule={anchor,offsetDays,originalDate:oldRules[id]?.originalDate || tx.date};
+      const nextDate=planningCostDate(rule,applicationDate,moveDate);
+      if(nextDate && nextDate<scenario.snapshotDate){
+        alert(`“${tx.title}” would fall before the plan starts (${scenario.snapshotDate}). Adjust its timing or the plan start date.`);
+        return false;
+      }
+      newRules[id]=rule;
+    }
+    scenario.hypotheticalApplicationDate=applicationDate;
+    scenario.moveDateMode=moveDateMode;
+    scenario.hypotheticalMoveDate=moveDate;
+    scenario.endOnMoveSeriesIds=[...document.querySelectorAll(".planning-move-series-choice:checked")].map(el=>el.value);
+    applyPlanningMovingCostRules(scenario,oldRules,newRules,applicationDate,moveDate);
     scenario.name=name;
     scenario.dataset.settings ||= {};
     scenario.dataset.settings.planningScenarioMeta ||= {};
@@ -1516,6 +1728,13 @@ function normalizePlanningScenarios(root){
       mirrorBaseline:scenario?.syncMode === "live" && scenario?.mirrorBaseline && typeof scenario.mirrorBaseline === "object" ? {...scenario.mirrorBaseline} : {},
       overriddenSourceIds:scenario?.syncMode === "live" && Array.isArray(scenario?.overriddenSourceIds) ? [...new Set(scenario.overriddenSourceIds.map(String))] : [],
       excludedSourceIds:scenario?.syncMode === "live" && Array.isArray(scenario?.excludedSourceIds) ? [...new Set(scenario.excludedSourceIds.map(String))] : [],
+      hypotheticalMoveDate:/^\d{4}-\d{2}-\d{2}$/.test(String(scenario?.hypotheticalMoveDate || "")) ? String(scenario.hypotheticalMoveDate) : "",
+      hypotheticalApplicationDate:/^\d{4}-\d{2}-\d{2}$/.test(String(scenario?.hypotheticalApplicationDate || "")) ? String(scenario.hypotheticalApplicationDate) : "",
+      moveDateMode:scenario?.moveDateMode==="next-month" || (!scenario?.moveDateMode && !scenario?.hypotheticalMoveDate) ? "next-month" : "manual",
+      movingCostRules:Object.fromEntries(Object.entries(scenario?.movingCostRules && typeof scenario.movingCostRules==="object" && !Array.isArray(scenario.movingCostRules) ? scenario.movingCostRules : {})
+        .filter(([id,rule])=>id && rule && PLANNING_COST_ANCHORS.includes(rule.anchor) && /^\d{4}-\d{2}-\d{2}$/.test(String(rule.originalDate || "")))
+        .map(([id,rule])=>[String(id),{anchor:rule.anchor,offsetDays:Math.max(-365,Math.min(365,Math.trunc(Number(rule.offsetDays)||0))),originalDate:String(rule.originalDate)}])),
+      endOnMoveSeriesIds:Array.isArray(scenario?.endOnMoveSeriesIds) ? [...new Set(scenario.endOnMoveSeriesIds.filter(Boolean).map(String))] : [],
       dataset:normalizePlanningScenarioDataset(scenario?.dataset || {}, {id,name,snapshotDate}, root)
     };
   });
@@ -2603,6 +2822,46 @@ function recurrenceOccursOn(tx, cursor, start=parseDate(tx?.date || todayISO()))
 function recurrenceOriginalDateAllowed(tx, originalISO){
   return !tx?.recurrenceUntil || originalISO <= tx.recurrenceUntil;
 }
+// v2-334: Scenario-wide hypothetical move rules affect recurrence expansion
+// only. No recurrenceUntil mutation, no plan-specific edit fingerprint, and no
+// difference in real mode. The date is the first day the bill won't be paid.
+function planMoveSuppressesRecurringOccurrence(sourceTx, occurrence){
+  if(!isPlanningDataContext() || !isRecurring(sourceTx) || !occurrence) return false;
+  const scenario=activePlanningScenario();
+  const date=String(scenario?.hypotheticalMoveDate || "");
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
+  if(!Array.isArray(scenario.endOnMoveSeriesIds) || !scenario.endOnMoveSeriesIds.includes(String(sourceTx.id))) return false;
+  // Don't hide cleared history when someone tests a move date in the past.
+  return occurrence.status !== "cleared" && occurrence.date >= date;
+}
+function planningMoveSeriesCandidates(scenario){
+  return (scenario?.dataset?.transactions || [])
+    .filter(tx=>isRecurring(tx) && !tx.billArchived)
+    .sort((a,b)=>String(a.title || "").localeCompare(String(b.title || "")) || String(a.id).localeCompare(String(b.id)));
+}
+window.filterPlanningMoveSeries = (value)=>{
+  const q=String(value || "").trim().toLowerCase();
+  document.querySelectorAll(".planning-move-series-option").forEach(row=>{
+    row.hidden=!!q && !String(row.dataset.search || "").includes(q);
+  });
+};
+function togglePlanMoveStopForSeries(id){
+  if(!isPlanningDataContext()) return;
+  const scenario=activePlanningScenario();
+  if(!scenario || !planningMoveSeriesCandidates(scenario).some(tx=>tx.id===id)) return;
+  if(!scenario.hypotheticalMoveDate){
+    openPlanningScenarioSettings();
+    const box=[...document.querySelectorAll(".planning-move-series-choice")].find(input=>input.value===id);
+    if(box) box.checked=true;
+    document.getElementById("planningMoveDate")?.focus();
+    return;
+  }
+  const ids=new Set(scenario.endOnMoveSeriesIds || []);
+  if(ids.has(id)) ids.delete(id); else ids.add(id);
+  scenario.endOnMoveSeriesIds=[...ids];
+  saveData();
+}
+
 
 // Turn one ORIGINAL recurrence date into the concrete transaction that every
 // downstream consumer sees. This is the canonical place for weekend movement,
@@ -2627,6 +2886,10 @@ function materializeRecurrenceOccurrence(tx, originalISO, options={}){
   let occurrence = applyOccurrenceOverride(seed, originalISO, occurrenceISO);
   const routeSource = options.routeSource || tx;
   occurrence = applyPlanningRecurringRoute(routeSource, occurrence, originalISO);
+  // v2-334: A planning move date can suppress SELECTED recurring expenses
+  // from that date forward without changing the saved rule, its mirror
+  // fingerprint, or any real-world history. The effective (moved) date wins.
+  if(occurrence && planMoveSuppressesRecurringOccurrence(tx, occurrence)) return null;
   return occurrence;
 }
 
@@ -3587,6 +3850,14 @@ function setupContextMenuEvents(){
     if(id){ hideTxContextMenu(); openEndRecurringSeries(id, meta); }
   };
 
+  const moveStop=document.getElementById("ctxPlanStopAtMove");
+  if(moveStop) moveStop.onclick=(e)=>{
+    e.stopPropagation();
+    const id=contextTxId;
+    hideTxContextMenu();
+    if(id) togglePlanMoveStopForSeries(id);
+  };
+
   const del = document.getElementById("ctxDelete");
   if(del) del.onclick = (e)=>{
     e.stopPropagation();
@@ -4478,7 +4749,13 @@ function renderCalendarPlanningControls(){
   if(banner){
     if(calendarMode==="planning" && scenario){
       banner.hidden=false;
-      if(bannerCopy) bannerCopy.innerHTML=`<small>🧪 ${scenario.syncMode === "live" ? "Live-linked planning" : "Snapshot planning"} • starts ${escapeAttr(scenario.snapshotDate)} • plan-only changes stay here and never affect real finances.</small>`;
+      if(bannerCopy){
+        const moveCount=(scenario.endOnMoveSeriesIds || []).length;
+        const moveMessage=scenario.hypotheticalMoveDate
+          ? ` • 🏠 move ${escapeAttr(scenario.hypotheticalMoveDate)} (${moveCount} recurring stop)`
+          : "";
+        bannerCopy.innerHTML=`<small>🧪 ${scenario.syncMode === "live" ? "Live-linked planning" : "Snapshot planning"} • starts ${escapeAttr(scenario.snapshotDate)}${moveMessage} • plan-only changes stay here and never affect real finances.</small>`;
+      }
     } else {
       banner.hidden=true;
       if(bannerCopy) bannerCopy.innerHTML="";
@@ -8812,6 +9089,15 @@ function showTxContextMenu(event, id, meta={}){
     const canEndRepeat = isRecurring(tx) && !tx.billArchived;
     endRepeat.style.display = canEndRepeat ? "block" : "none";
     endRepeat.textContent = tx.recurrenceUntil ? "⏹ Change repeat end…" : "⏹ End repeat…";
+  }
+  const stopWhenMove=document.getElementById("ctxPlanStopAtMove");
+  if(stopWhenMove){
+    const canToggle=!!tx && isPlanningDataContext() && isRecurring(tx) && !tx.billArchived;
+    stopWhenMove.style.display=canToggle ? "block" : "none";
+    if(canToggle){
+      const selected=(activePlanningScenario()?.endOnMoveSeriesIds || []).includes(tx.id);
+      stopWhenMove.textContent=selected ? "🏠 Keep bill after move (undo)" : "🏠 Stop bill when we move";
+    }
   }
   menu.classList.add("open");
 
@@ -14308,6 +14594,93 @@ function runMoneyNestRegressionTests(options={}){
       refreshLivePlanningScenario(legacy,real);
       regressionAssert(legacy.dataset.transactions[0]?.id==="legacy-unchanged","Legacy snapshot was silently converted to live-linked");
       return "New and edited real payments appear; recurring deletion, one-off deletion and plan-only expenses persist across refresh and JSON";
+    }));
+
+    results.push(regressionResult("What-if move date hides recurring bills reversibly without freezing live mirroring",()=>{
+      const joint={id:"joint",name:"Joint Checking",owner:"Joint",type:"cash",startingBalance:1500};
+      const storage={id:"storage-live",date:"2026-11-01",title:"Storage",amount:85,type:"expense",status:"planned",accountId:"joint",categoryId:"utilities",recurrence:{type:"monthly",interval:1,weekendHandling:"none"},occurrenceOverrides:{},dateOverrides:{}};
+      const leesa={id:"leesa-live",date:"2026-12-31",title:"Leesa",amount:460,type:"expense",status:"planned",accountId:"joint",categoryId:"utilities",recurrence:{type:"monthly",interval:1,weekendHandling:"previous-friday"},occurrenceOverrides:{},dateOverrides:{}};
+      const real=regressionDataset({accounts:[joint],transactions:[storage,leesa]});
+      setSynthetic(real,false);
+      const meta={id:"move-test",name:"Moving",snapshotDate:"2026-11-01"};
+      const selected=new Set(["joint"]);
+      const cloned=mirroredPlanningTransactions(real,{...meta,sourceAccountIds:[...selected]});
+      const plan={...meta,sourceAccountIds:[...selected],syncMode:"live",mirrorBaseline:Object.fromEntries(cloned.map(tx=>[tx.id,planningTransactionFingerprint(tx)])),overriddenSourceIds:[],excludedSourceIds:[],hypotheticalMoveDate:"2027-01-30",endOnMoveSeriesIds:["storage-live","leesa-live"],dataset:normalizePlanningScenarioDataset({accounts:[{...joint}],transactions:cloned},meta,real)};
+      real.settings.planningScenarios=[plan];
+      data=plan.dataset;rootData=real;calendarMode="planning";planningScenarioId=plan.id;
+      const visible=()=>expandedTransactions("2027-03-31").filter(tx=>tx.title==="Storage"||tx.title==="Leesa");
+      const first=visible();
+      regressionAssert(first.some(tx=>tx.title==="Storage"&&tx.date==="2027-01-01") && !first.some(tx=>tx.title==="Storage"&&tx.date==="2027-02-01"),"Storage was not cut off on the move date");
+      regressionAssert(first.some(tx=>tx.title==="Leesa"&&tx.date==="2027-01-29"),"A Leesa payment actually due BEFORE the move was incorrectly hidden");
+      regressionAssert(!first.some(tx=>tx.title==="Leesa"&&tx.date.startsWith("2027-02")),"Leesa wasn't stopped after the move");
+      plan.hypotheticalMoveDate="2027-03-15";invalidateExpandedTransactionsCache();
+      const later=visible();
+      regressionAssert(later.some(tx=>tx.title==="Storage"&&tx.date==="2027-02-01")&&later.some(tx=>tx.title==="Leesa"&&tx.date.startsWith("2027-02")),"Moving later did not restore earlier bills");
+      const savedMove=plan.hypotheticalMoveDate;
+      // Real-world edits still mirror even when a recurring series is selected
+      // for hypothetical cutoff; this must not set overriddenSourceIds.
+      real.transactions.find(tx=>tx.id==="storage-live").amount=99;
+      refreshLivePlanningScenario(plan,real);
+      regressionAssert(!plan.overriddenSourceIds.includes("storage-live") && plan.dataset.transactions.find(tx=>tx.id==="storage-live")?.amount===99,"Hypothetical cutoff froze the live-linked real bill");
+      plan.hypotheticalMoveDate="2027-01-01";invalidateExpandedTransactionsCache();
+      regressionAssert(!visible().some(tx=>tx.title==="Storage"&&tx.date==="2027-01-01"),"Moved-earlier scenario still counted Storage after moving");
+      plan.endOnMoveSeriesIds=[];invalidateExpandedTransactionsCache();
+      regressionAssert(visible().some(tx=>tx.title==="Storage"&&tx.date==="2027-02-01"),"Unchecking the plan-only rule did not restore Storage");
+      plan.endOnMoveSeriesIds=["storage-live"];
+      plan.hypotheticalMoveDate="";invalidateExpandedTransactionsCache();
+      regressionAssert(visible().some(tx=>tx.title==="Storage"&&tx.date==="2027-02-01"),"Clearing move date did not restore Storage");
+      plan.hypotheticalMoveDate=savedMove;
+      const normalized=normalizeData(JSON.parse(JSON.stringify(real))).settings.planningScenarios[0];
+      regressionAssert(normalized.hypotheticalMoveDate===savedMove && normalized.endOnMoveSeriesIds.includes("storage-live"),"Move assumptions didn't survive JSON/Supabase normalization");
+      data=real;calendarMode="real";invalidateExpandedTransactionsCache();
+      regressionAssert(expandedTransactions("2027-03-31").some(tx=>tx.title==="Storage"&&tx.date==="2027-03-01"),"Real recurring Storage was modified by what-if move rules");
+      return "Move date can shift or clear; selected recurring bills return, live real edits still sync, JSON preserves rules, real finances unchanged";
+    }));
+
+    results.push(regressionResult("Moving cost schedule shifts plan-only dates reversibly and leaves live real bills intact",()=>{
+      const joint={id:"joint",name:"Joint Checking",owner:"Joint",type:"cash",startingBalance:7500};
+      const storage={id:"storage-real",date:"2026-11-01",title:"Storage",amount:85,type:"expense",status:"planned",accountId:"joint",categoryId:"utilities",recurrence:{type:"monthly",interval:1}};
+      const root=regressionDataset({accounts:[joint],transactions:[storage]});
+      setSynthetic(root,false);
+      const meta={id:"moving-rules",name:"Moving",snapshotDate:"2026-11-01"};
+      const selected=new Set(["joint"]);
+      const inherited=mirroredPlanningTransactions(root,{...meta,sourceAccountIds:[...selected]});
+      const newExpenses=[
+        {id:"app-fee",date:"2026-12-28",title:"Application Fees",amount:300,type:"expense",status:"planned",accountId:"joint",categoryId:"unassigned",notes:"fees noted",recurrence:{type:"none",interval:1}},
+        {id:"first-rent",date:"2027-01-11",title:"First Months Rent",amount:1620,type:"expense",status:"planned",accountId:"joint",categoryId:"unassigned",notes:"rent noted",recurrence:{type:"none",interval:1}},
+        {id:"rent",date:"2027-03-01",title:"Rent",amount:1620,type:"expense",status:"planned",accountId:"joint",categoryId:"unassigned",notes:"monthly noted",recurrence:{type:"monthly",interval:1}}
+      ];
+      const plan={...meta,sourceAccountIds:["joint"],syncMode:"live",mirrorBaseline:Object.fromEntries(inherited.map(tx=>[tx.id,planningTransactionFingerprint(tx)])),overriddenSourceIds:[],excludedSourceIds:[],hypotheticalMoveDate:"",endOnMoveSeriesIds:["storage-real"],dataset:normalizePlanningScenarioDataset({accounts:[{...joint}],transactions:[...inherited,...newExpenses]},meta,root)};
+      root.settings.planningScenarios=[plan];rootData=root;data=plan.dataset;calendarMode="planning";planningScenarioId=plan.id;
+      const rules={
+        "app-fee":{anchor:"application",offsetDays:0,originalDate:"2026-12-28"},
+        "first-rent":{anchor:"move",offsetDays:0,originalDate:"2027-01-11"},
+        "rent":{anchor:"month-after-move",offsetDays:0,originalDate:"2027-03-01"}
+      };
+      plan.hypotheticalApplicationDate="2026-11-12";
+      plan.moveDateMode="next-month";
+      plan.hypotheticalMoveDate=planningFirstOfFollowingMonth(plan.hypotheticalApplicationDate);
+      applyPlanningMovingCostRules(plan,{},rules,plan.hypotheticalApplicationDate,plan.hypotheticalMoveDate);
+      regressionAssert(plan.dataset.transactions.find(tx=>tx.id==="app-fee").date==="2026-11-12" && plan.dataset.transactions.find(tx=>tx.id==="first-rent").date==="2026-12-01" && plan.dataset.transactions.find(tx=>tx.id==="rent").date==="2027-01-01", "Move costs didn't follow application and next-month moving dates");
+      regressionAssert(expandedTransactions("2027-02-01").filter(tx=>tx.title==="Rent").some(tx=>tx.date==="2027-02-01"),"New monthly rent didn't repeat after moving");
+      regressionAssert(!expandedTransactions("2027-02-01").some(tx=>tx.title==="Storage" && tx.date==="2027-01-01"),"Storage wasn't suppressed by coordinated move date");
+      const before=plan.dataset.transactions.find(tx=>tx.id==="first-rent");
+      regressionAssert(before.amount===1620 && before.notes==="rent noted","Rescheduling changed amount or notes");
+      plan.hypotheticalApplicationDate="2027-01-12";
+      plan.hypotheticalMoveDate=planningFirstOfFollowingMonth(plan.hypotheticalApplicationDate);
+      applyPlanningMovingCostRules(plan,rules,rules,plan.hypotheticalApplicationDate,plan.hypotheticalMoveDate);
+      regressionAssert(plan.dataset.transactions.find(tx=>tx.id==="first-rent").date==="2027-02-01" && plan.dataset.transactions.find(tx=>tx.id==="rent").date==="2027-03-01","Delaying the application didn't move linked expenses and rent");
+      regressionAssert(expandedTransactions("2027-02-15").some(tx=>tx.title==="Storage" && tx.date==="2027-01-01"),"Storage didn't return when moving date was delayed");
+      applyPlanningMovingCostRules(plan,rules,{},plan.hypotheticalApplicationDate,plan.hypotheticalMoveDate);
+      regressionAssert(plan.dataset.transactions.find(tx=>tx.id==="first-rent").date==="2027-01-11" && plan.dataset.transactions.find(tx=>tx.id==="rent").date==="2027-03-01", "Unlinking didn't restore each original date");
+      applyPlanningMovingCostRules(plan,{},rules,plan.hypotheticalApplicationDate,plan.hypotheticalMoveDate);
+      captureLivePlanningChanges(plan);refreshLivePlanningScenario(plan,root);
+      regressionAssert(plan.dataset.transactions.some(tx=>tx.id==="app-fee" && tx.date==="2027-01-12") && !plan.overriddenSourceIds.includes("storage-real"),"Live refresh overwrote moving costs or froze storage");
+      const normalized=normalizeData(JSON.parse(JSON.stringify(root))).settings.planningScenarios[0];
+      regressionAssert(normalized.moveDateMode==="next-month" && normalized.hypotheticalApplicationDate==="2027-01-12" && normalized.movingCostRules.rent?.originalDate==="2027-03-01", "Moving cost rules didn't survive backup normalization");
+      data=root;calendarMode="real";invalidateExpandedTransactionsCache();
+      regressionAssert(root.transactions.length===1 && root.transactions[0].date==="2026-11-01" && expandedTransactions("2027-02-01").some(tx=>tx.title==="Storage"&&tx.date==="2027-02-01"), "Real Storage was modified by scenario costs");
+      return "Application and move-in shift one-offs/monthly bills; delaying restores Storage; unlink restores dates; backup and live mirroring safe";
     }));
 
     results.push(regressionResult("JSON normalization preserves planning scenarios",()=>{
