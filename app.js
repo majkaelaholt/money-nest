@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-337";
+const APP_VERSION = "2-338";
 const CURRENT_SCHEMA_VERSION = 230;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -305,6 +305,11 @@ Load anyway?`;
   return confirm(message);
 }
 async function saveDataToCloud({silent=false}={}){
+  // Never send the empty starter fallback to cloud after a failed local load.
+  // Keep the existing cloud record untouched until the saved browser copy has
+  // loaded successfully (or the user explicitly imports/loads a backup).
+  if(startupLocalLoadIssue) throw new Error("Cloud save blocked: this session could not load its preserved browser data. Update Money Nest and reload before saving to cloud.");
+  if(lastLocalSaveError) throw new Error("Cloud save blocked: a local browser-data save failed. Export a JSON backup and resolve the storage problem first.");
   const config = loadCloudConfig();
   if(config.mode === "off") throw new Error("Cloud sync is paused/off.");
   const user = await requireCloudUser();
@@ -873,6 +878,8 @@ window.saveCustomMoneyNestPalette=window.saveActiveMoneyNestPalette;
 // This constant must exist before loadData()/normalizeData() runs because startup
 // normalization validates saved transaction and budget bucket ids.
 const SPENDING_BUCKET_IDS = ["mak-spending", "ty-spending"];
+// Must be initialized before loadData(): normalizePlanningScenarios validates saved moving rules/defaults at startup.
+const PLANNING_COST_ANCHORS=["application","move","month-after-application","month-after-move"];
 
 // v2-219/v2-289: load saved data only after every startup normalization constant exists.
 data = loadData();
@@ -1227,7 +1234,7 @@ function openCreatePlanningScenario(){
 // v2-335: Date rules for existing PLAN-ONLY moving costs. The rule stores the
 // original plan date and changes only that scenario's transaction date; actual
 // transaction amounts, notes, recurrence and real-world records are untouched.
-const PLANNING_COST_ANCHORS=["application","move","month-after-application","month-after-move"];
+
 function planningMovingCosts(scenario){
   if(!scenario?.dataset) return [];
   const inherited=new Set(Object.keys(scenario.mirrorBaseline || {}));
@@ -14955,6 +14962,30 @@ function runMoneyNestRegressionTests(options={}){
       return "Saved baseline survives JSON, restores scenario amounts/dates/paychecks/cancellations, respects cleared history and live real updates";
     }));
 
+    results.push(regressionResult("Saved moving rules and default hydrate without losing plan or real transactions",()=>{
+      const real={id:"joint",name:"Joint Checking",type:"cash",owner:"Joint",startingBalance:5000};
+      const source={id:"real-storage",date:"2026-11-01",title:"Storage",amount:85,type:"expense",status:"planned",accountId:"joint",categoryId:"utilities",recurrence:{type:"monthly",interval:1}};
+      const cost={id:"plan-rent",date:"2027-01-01",title:"Rent",amount:1890,type:"expense",status:"planned",accountId:"joint",categoryId:"unassigned",recurrence:{type:"monthly",interval:1}};
+      const root=regressionDataset({accounts:[real],transactions:[source]});
+      const rule={anchor:"month-after-move",offsetDays:0,originalDate:"2027-03-01"};
+      root.settings.planningScenarios=[{
+        id:"moving",name:"Moving",createdAt:"2026-11-11T12:00:00.000Z",snapshotDate:"2026-11-01",
+        sourceAccountIds:["joint"],syncMode:"live",mirrorBaseline:{"real-storage":"fingerprint"},
+        overriddenSourceIds:[],excludedSourceIds:[],hypotheticalApplicationDate:"2026-11-12",hypotheticalMoveDate:"2026-12-01",
+        moveDateMode:"next-month",movingCostSetupDone:true,endOnMoveSeriesIds:["real-storage"],
+        movingCostRules:{"plan-rent":rule},
+        planningDefault:{savedAt:"2026-11-11T12:01:00.000Z",name:"Moving",hypotheticalApplicationDate:"2026-11-12",hypotheticalMoveDate:"2026-12-01",moveDateMode:"next-month",movingCostSetupDone:true,endOnMoveSeriesIds:["real-storage"],movingCostRules:{"plan-rent":rule},movingCosts:{"plan-rent":{date:"2027-01-01",amount:1890}},paycheckProfiles:{}},
+        dataset:{accounts:[real],transactions:[source,cost],settings:{paycheckProfiles:{}}}
+      }];
+      const hydrated=normalizeData(JSON.parse(JSON.stringify(root)));
+      const scenario=hydrated.settings.planningScenarios[0];
+      regressionAssert(hydrated.transactions[0].id==="real-storage" && hydrated.transactions[0].amount===85,"Real transaction was lost");
+      regressionAssert(scenario?.dataset?.transactions?.some(tx=>tx.id==="plan-rent" && tx.amount===1890),"Planning transaction was lost");
+      regressionAssert(scenario.movingCostRules["plan-rent"].anchor==="month-after-move" && scenario.planningDefault.movingCosts["plan-rent"].amount===1890,"Saved timing or default was lost");
+      regressionAssert(scenario.endOnMoveSeriesIds.includes("real-storage"),"Plan-only bill ending did not survive load");
+      return "Saved moving cost timing/default, ended series and both real/plan amounts survived JSON normalization";
+    }));
+
     results.push(regressionResult("JSON normalization preserves planning scenarios",()=>{
       const raw=regressionDataset({
         accounts:[{id:"a",name:"A",owner:"Mak",type:"cash",startingBalance:10}],
@@ -15092,6 +15123,8 @@ const _openBillSeriesEditor223=openBillSeriesEditor; openBillSeriesEditor=functi
 const RECURRING_REPAIR_231_KEY = `${STORAGE_KEY}.recurringRepair231`;
 (function autoRepairKnownSplitRecurringSeries(){
   try{
+    // Startup fallback data is read-only until the preserved local copy loads.
+    if(startupLocalLoadIssue) return;
     if(localStorage.getItem(RECURRING_REPAIR_231_KEY)) return;
     const result = repairSplitRecurringSeriesData();
     localStorage.setItem(RECURRING_REPAIR_231_KEY, JSON.stringify({...result, at:new Date().toISOString()}));

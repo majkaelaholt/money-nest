@@ -1,3 +1,9 @@
+## v2-338 — Startup hydration and cloud overwrite safety
+
+- `loadData()` runs before the plan helper declarations. Keep *all const/let identifiers referenced by `normalizeData` or `normalizePlanningScenarios`* initialized before startup loading. Specifically, `PLANNING_COST_ANCHORS` must live beside other startup-safe constants above `data = loadData()`, not by the later Planning UI functions. v2-337 failed to load saved plans with nonempty moving rules/default timing. Preserve saved local browser data and do not ask the user to reset their plan.
+- `saveDataToCloud` must refuse to overwrite Supabase when `startupLocalLoadIssue` or `lastLocalSaveError` is set; the split-series repair must not persist an emergency starter dataset after a failed initial load. Only a successful startup or an explicit data import/load clears the failed-start state.
+- Browser regressions must seed realistic saved data **before** evaluating `app.js` to catch initialization-order failures. A unit test of `normalizeData` after script startup is not enough. Keep schema 230 and stored planning defaults unchanged.
+
 ## v2-337 — Save and revert a Planning scenario default
 
 - Added **Set as default** and **Revert to default** under Calendar → Planning → Plan settings. Set as default first applies and validates the currently edited form (no separate Save required), then captures a stable per-scenario baseline. Replacing an existing default asks for confirmation; subsequent normal Saves do not overwrite it. Revert asks for confirmation and returns to the calendar showing the restored projection.
@@ -780,7 +786,7 @@ Example README note:
 ### v2-200
 - Banking is excluded from budgeting. Savings transfers net contributions by direction.
 
-- Current version: money-nest-v2-337. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
+- Current version: money-nest-v2-338. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
 
 
 ### v2-205

@@ -1,3 +1,9 @@
+## v2-338 — Recover preserved browser data after Planning startup failure
+
+- Fixed a startup initialization error: a saved Planning scenario with nonempty `movingCostRules` or `planningDefault.movingCostRules` could be normalized **before** `PLANNING_COST_ANCHORS` existed, causing `ReferenceError: Cannot access 'PLANNING_COST_ANCHORS' before initialization`. The app displayed "Local data not loaded" rather than the user's financial records. The anchor list now initializes before `loadData()`, and the original saved browser copy can load again without importing an old backup.
+- Added safety gates: if initial local hydration fails, manual/automatic cloud saves are blocked so an empty fallback cannot overwrite a good Supabase copy; the legacy one-time recurring repair also skips the fallback, preserving local data. The existing local-save block remains.
+- No financial data migrations, clearing, scenario recreation, or new Supabase tables. Schema stays **230**. Added regression for saved moving rules/defaults; also tested actual startup (not just post-start normalization) using a November 11 backup augmented with moving rules and a default, plus failed-load overwrite guards.
+
 ## v2-337 — Save and revert a Planning scenario default
 
 - Added **Set as default** and **Revert to default** under Calendar → Planning → Plan settings. Set as default first applies and validates the currently edited form (no separate Save required), then captures a stable per-scenario baseline. Replacing an existing default asks for confirmation; subsequent normal Saves do not overwrite it. Revert asks for confirmation and returns to the calendar showing the restored projection.
@@ -760,7 +766,7 @@ Maintenance follow-up: Recent Changes is now capped by bytes instead of only ite
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-337`
+Current version: `money-nest-v2-338`
 
 ## Important Notes
 
