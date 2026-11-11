@@ -1,3 +1,10 @@
+## v2-331 account types: Savings and HSA
+
+- Add/Edit Account offers Checking/cash (`type:"cash"`), Savings (`type:"savings"`) and Health Savings Account (`type:"hsa"`). Savings and HSA are reserved balances; show saved goal details/progress, not safe-to-spend. The goal field is per account and is optional. Do not automatically alter existing account types in persisted data or create/delete financial records.
+- Legacy accounts saved as `type:"cash"` whose names include "Savings" or a standalone "HSA" continue to be treated as reserved savings/HSA respectively. This makes the user's existing Fidelity HSA goal visible with no data migration. If explicitly edited, persist the selected type in `account.type`.
+- For a new HSA contribution, user should change the transaction from Expense to Transfer (Checking → HSA), preserving cadence/status and using Banking category if the contribution should not count toward the unrelated general Savings Contribution budget.
+- Account CSV now exports optional `type` and imports when present, preserving old CSV format support. Existing JSON/Supabase payload, schema 230, account balances, budgets and recurring logic are untouched. Synthetic regression suite: 31 checks including legacy HSA recognition and two-sided $100 transfer.
+
 ## v2-330 actionable review guidance and recurring health summary
 
 - Needs Review must give a clear, item-specific **next step** and an optional **why** explanation on both desktop and iPhone. Never imply that dismissing an issue fixes financial data; reviewing is read-only until the user edits/saves a record.
@@ -733,7 +740,7 @@ Example README note:
 ### v2-200
 - Banking is excluded from budgeting. Savings transfers net contributions by direction.
 
-- Current version: money-nest-v2-329. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
+- Current version: money-nest-v2-331. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
 
 
 ### v2-205

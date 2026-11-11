@@ -1,3 +1,11 @@
+## v2-331
+
+- **Cash account type selector:** Add/Edit Account now offers Checking/cash, Savings, and Health Savings Account (HSA). Savings/HSA accounts are reserved balances and show current goal progress rather than checking-style safe-to-spend. No change to real-world bank accounts or balances.
+- **Existing Fidelity HSA recognized automatically:** older backups with `type:"cash"` and a name including `HSA` continue to load, but appear as an HSA with their preexisting goal. Existing accounts named Savings also keep prior behavior. On edit/save, the chosen type persists in the existing `type` field.
+- **Account-specific goal:** the previously saved $5,000 goal is now visible in Accounts and mobile Home for the HSA. Goal progress reflects cleared balance; planned transfers remain forecasts.
+- **CSV compatibility:** account CSV export includes `type`; CSV imports accept the new field when present and continue to support older CSVs without it. No transaction or budget rule changes and no Supabase changes. JSON compatibility and schema 230 remain unchanged. 31 synthetic regression checks.
+- **HSA transaction guidance:** a $100 recurring HSA contribution should be a transfer from Mak Checking into Fidelity HSA; categorize Banking if it should not inflate the separate Mak Savings Contribution budget. Existing financial records are never auto-reclassified.
+
 ## v2-330
 
 - **Needs Review explains findings:** each desktop/mobile finding has a visible suggested next step plus an expandable reason. Guidance covers missed plans, missing accounts/transfer destinations/categories, incomplete loan breakdowns, possible unlinked recurring payments, possible duplicates, and stale recurring rules. Nothing is fixed or dismissed automatically.
@@ -709,7 +717,7 @@ Maintenance follow-up: Recent Changes is now capped by bytes instead of only ite
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-330`
+Current version: `money-nest-v2-331`
 
 ## Important Notes
 

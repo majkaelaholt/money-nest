@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-330";
+const APP_VERSION = "2-331";
 const CURRENT_SCHEMA_VERSION = 230;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -3021,8 +3021,24 @@ function nextPaycheckDate(accountId, includeToday=true){
   return futureIncome[0]?.date || toISO(addMonths(new Date(),1));
 }
 
+// A cash account is spendable; savings and HSAs are reserved balances.
+// Older backups used type:"cash" for all accounts, so recognize existing
+// savings/HSA names without requiring users to recreate their accounts.
+function accountKind(account){
+  if(!account) return "cash";
+  const type = String(account.type || "").trim().toLowerCase();
+  if(type === "savings" || type === "hsa") return type;
+  const name = String(account.name || "").trim().toLowerCase();
+  if(/\bhsa\b/.test(name) || name.includes("health savings account")) return "hsa";
+  if(name.includes("savings")) return "savings";
+  return "cash";
+}
+function accountKindLabel(account){
+  const kind=accountKind(account);
+  return kind === "hsa" ? "HSA" : kind === "savings" ? "Savings" : "Checking / cash";
+}
 function isSavingsAccount(account){
-  return account?.type === "savings" || account?.name?.toLowerCase().includes("savings");
+  return accountKind(account) !== "cash";
 }
 function savingsGoalAmount(account){
   return Number(account?.goalAmount || 0);
@@ -3839,8 +3855,8 @@ function mobileAccountSnapshot(account){
     const progress=savingsGoalProgress(account);
     return {
       actual,
-      label: remaining === null ? "Savings" : `${money(remaining)} left to ${account.goalName || "goal"}`,
-      secondary: progress === null ? "Savings" : `${progress}% of goal`,
+      label: remaining === null ? accountKindLabel(account) : `${money(remaining)} left to ${account.goalName || "goal"}`,
+      secondary: progress === null ? accountKindLabel(account) : `${progress}% of goal`,
       level:"good"
     };
   }
@@ -4253,7 +4269,7 @@ function renderMobileCalendarBalances(){
     const selected=!isSavingsAccount(a) && calendarFilter===a.id;
     if(isSavingsAccount(a)){
       const remaining=savingsGoalRemaining(a);
-      const sub=remaining===null ? "Savings" : `${money(remaining)} to ${a.goalName || "goal"}`;
+      const sub=remaining===null ? accountKindLabel(a) : `${money(remaining)} to ${a.goalName || "goal"}`;
       return `<button type="button" class="mobile-calendar-balance-card savings" onclick="setMobileCalendarAccount('${a.id}')"><span>${a.emoji||"🏦"} ${escapeAttr(a.name)}</span><b>${money(actual)}</b><small>${escapeAttr(sub)}</small></button>`;
     }
     const safe=safeToSpend(a);
@@ -4611,7 +4627,7 @@ function renderAccounts(){
   const ordered = orderedAccounts();
   document.getElementById("accountList").innerHTML = ordered.map((a,index)=>`
     <div class="account-card tinted-card ${accountReorderMode ? "is-arranging" : ""}" draggable="${accountReorderMode ? "true" : "false"}" data-id="${a.id}" style="--card-color:${a.color || "#8c6f4d"}; background:${hexToSoft(a.color || "#8c6f4d")}" onclick="${accountReorderMode ? "event.preventDefault(); event.stopPropagation();" : `openAccountDetail('${a.id}', 'accounts')`}">
-      <div class="account-card-main"><div class="row-title">${a.emoji || "💵"} ${a.name}</div><div class="row-sub">${a.owner} • ${a.paycheckAccount ? "personal/paycheck" : "shared/other"}</div></div>
+      <div class="account-card-main"><div class="row-title">${a.emoji || "💵"} ${a.name}</div><div class="row-sub">${a.owner} • ${isSavingsAccount(a) ? accountKindLabel(a) : (a.paycheckAccount ? "personal/paycheck" : "Checking / cash")}</div></div>
       <div class="account-metric account-metric-actual"><div class="label">Actual</div><div class="amount">${money(accountBalance(a.id,false,todayISO()))}</div></div>
       <div class="account-metric account-metric-secondary"><div class="label">${billsMetricForAccount(a).label}</div><div class="amount ${isSavingsAccount(a) ? "good" : "bad"}">${money(billsMetricForAccount(a).amount)}</div><div class="row-sub">${billsMetricForAccount(a).sub}</div></div>
       ${isSavingsAccount(a)
@@ -4828,7 +4844,7 @@ function renderAccountDetail(){
         <div>
           <h3><span class="visual-dot" style="background:${a.color || "#8c6f4d"}"></span>${a.emoji || "💵"} ${a.name}</h3>
           <p class="hint">${a.owner}${isSavingsAccount(a)
-            ? ` • Savings${savingsGoalAmount(a) ? ` • ${money(savingsGoalRemaining(a))} left to goal` : ""}`
+            ? ` • ${accountKindLabel(a)}${savingsGoalAmount(a) ? ` • ${money(savingsGoalRemaining(a))} left to goal` : ""}`
             : ` • ${metric.label} ${money(metric.amount)} • Safe ${money(safeToSpend(a).amount)}`}</p>
         </div>
       </div>
@@ -9232,6 +9248,20 @@ deleteSimpleBtn.onclick = () => {
 };
 
 addAccountBtn.onclick = () => simpleAccount();
+// Account type controls whether the goal and paycheck-only fields are relevant.
+window.updateAccountTypeFields=()=>{
+  const kind=document.getElementById("sAccountKind")?.value || "cash";
+  const savingsLike=kind === "savings" || kind === "hsa";
+  const goalDetails=document.getElementById("sAccountGoalDetails");
+  if(goalDetails){
+    goalDetails.style.display=savingsLike ? "" : "none";
+    if(savingsLike) goalDetails.open=true;
+  }
+  const paycheckLabel=document.getElementById("sPaycheckLabel");
+  if(paycheckLabel) paycheckLabel.style.display=savingsLike ? "none" : "";
+  const paycheckInput=document.getElementById("sPaycheck");
+  if(savingsLike && paycheckInput) paycheckInput.checked=false;
+};
 window.simpleAccount = (id=null)=>{
   const acc = id ? accountById(id) : null;
   simpleTitle.textContent = acc ? "Edit account" : "Add account";
@@ -9244,32 +9274,43 @@ window.simpleAccount = (id=null)=>{
       <label>Color<input id="sColor" type="color" value="${acc?.color || "#8c6f4d"}"></label>
       <label>Owner<select id="sOwner"><option>Mak</option><option>Ty</option><option>Joint</option></select></label>
     </div>
-    <label>Starting balance<input id="sBalance" type="number" step="0.01" value="${acc?.startingBalance ?? 0}"></label>
+    <div class="two-col">
+      <label>Account type
+        <select id="sAccountKind" onchange="updateAccountTypeFields()">
+          <option value="cash" ${accountKind(acc)==="cash" ? "selected" : ""}>Checking / cash</option>
+          <option value="savings" ${accountKind(acc)==="savings" ? "selected" : ""}>Savings</option>
+          <option value="hsa" ${accountKind(acc)==="hsa" ? "selected" : ""}>Health Savings Account (HSA)</option>
+        </select>
+      </label>
+      <label>Starting balance<input id="sBalance" type="number" step="0.01" value="${acc?.startingBalance ?? 0}"></label>
+    </div>
+    <p class="hint">Savings and HSAs stay separate from checking safe-to-spend. Fund them with a transfer from checking (Banking category if you don't want to count it in your other savings budget).</p>
 
-    <details class="form-details" ${acc && isSavingsAccount(acc) ? "open" : ""}>
-      <summary>Savings goal, optional</summary>
+    <details id="sAccountGoalDetails" class="form-details" ${acc && isSavingsAccount(acc) ? "open" : ""}>
+      <summary>Savings / HSA goal, optional</summary>
       <div class="details-inner">
         <div class="two-col">
           <label>Goal name<input id="sGoalName" value="${acc?.goalName || ""}" placeholder="Emergency fund, moving, etc."></label>
           <label>Goal amount<input id="sGoalAmount" type="number" step="0.01" value="${acc?.goalAmount ?? 0}"></label>
         </div>
-        <p class="hint">Savings uses this to show “Left to Goal” on the Accounts page.</p>
+        <p class="hint">Savings and HSA accounts show “Left to Goal” in Accounts and on mobile Home. Planned transfers affect the forecast; cleared transfers affect current progress.</p>
       </div>
     </details>
 
-    <label class="checkbox"><input id="sPaycheck" type="checkbox" ${acc?.paycheckAccount ? "checked" : ""}> Use next paycheck safe-to-spend logic</label>`;
-  setTimeout(()=>{ if(acc) sOwner.value=acc.owner; },0);
+    <label class="checkbox" id="sPaycheckLabel"><input id="sPaycheck" type="checkbox" ${acc?.paycheckAccount ? "checked" : ""}> Use next paycheck safe-to-spend logic</label>`;
+  if(acc) sOwner.value=acc.owner;
+  updateAccountTypeFields();
   simpleSubmit = ()=>{
     const payload = {
       name:sName.value,
       emoji:sEmoji.value || "💵",
       color:sColor.value || "#8c6f4d",
-      type:"cash",
+      type:document.getElementById("sAccountKind")?.value || "cash",
       owner:sOwner.value,
       startingBalance:Number(sBalance.value || 0),
       goalName:document.getElementById("sGoalName")?.value || "",
       goalAmount:Number(document.getElementById("sGoalAmount")?.value || 0),
-      paycheckAccount:sPaycheck.checked
+      paycheckAccount:(document.getElementById("sAccountKind")?.value === "cash") && sPaycheck.checked
     };
 
     if(acc){
@@ -12417,9 +12458,9 @@ function exportEditableCSVs(){
   const categoryHeaders = ["id","name","emoji","color","paletteRole","spendingType","customColorOverride","customColor","legacyColor"];
   const categoryRows = data.categories.map(c=>({id:c.id,name:c.name,emoji:c.emoji||"",color:effectiveCategoryColor(c),paletteRole:c.paletteRole||"",spendingType:normalizedCategorySpendingType(c),customColorOverride:!!c.customColorOverride,customColor:c.customColor||"",legacyColor:c.legacyColor||c.color||""}));
 
-  const accountHeaders = ["id","order","name","emoji","color","owner","startingBalance","goalName","goalAmount","paycheckAccount"];
+  const accountHeaders = ["id","order","name","emoji","color","owner","type","startingBalance","goalName","goalAmount","paycheckAccount"];
   const accountRows = orderedAccounts().map(a=>({
-    id:a.id, order:a.order ?? "", name:a.name, emoji:a.emoji || "", color:a.color || "", owner:a.owner,
+    id:a.id, order:a.order ?? "", name:a.name, emoji:a.emoji || "", color:a.color || "", owner:a.owner, type:accountKind(a),
     startingBalance:a.startingBalance ?? 0, goalName:a.goalName || "", goalAmount:a.goalAmount ?? 0, paycheckAccount:!!a.paycheckAccount
   }));
 
@@ -12613,10 +12654,11 @@ function importEditedCSV(file){
         a.emoji = row.emoji || a.emoji;
         a.color = row.color || a.color;
         a.owner = row.owner || a.owner;
+        if(headers.includes("type") && ["cash","savings","hsa"].includes(String(row.type || "").toLowerCase())) a.type = String(row.type).toLowerCase();
         a.startingBalance = row.startingBalance === "" ? a.startingBalance : Number(row.startingBalance);
         a.goalName = row.goalName || "";
         a.goalAmount = row.goalAmount === "" ? 0 : Number(row.goalAmount || 0);
-        a.paycheckAccount = String(row.paycheckAccount).toLowerCase() === "true";
+        a.paycheckAccount = !isSavingsAccount(a) && String(row.paycheckAccount).toLowerCase() === "true";
       });
       saveData();
       alert("Accounts CSV imported.");
@@ -13996,6 +14038,34 @@ function runMoneyNestRegressionTests(options={}){
       regressionAssert(historyEl.textContent.includes("1 previously reviewed")&&historyEl.textContent.includes("Restore"),"Advanced tools did not preserve restoration of acknowledged warning");
       regressionAssert(recurringHealthReviewedCount([row])===1,"Warning acknowledgement was altered instead of just moved");
       return "Healthy summary stays clean; acknowledgement and recovery remain in advanced tools";
+    }));
+
+    results.push(regressionResult("Savings and HSA account types show goals and preserve transfers",()=>{
+      const ds=regressionDataset({
+        accounts:[
+          {id:"mak",name:"Mak Checking",owner:"Mak",type:"cash",startingBalance:500,paycheckAccount:true},
+          {id:"hsa",name:"Fidelity HSA",owner:"Mak",type:"cash",startingBalance:0,goalName:"Minimum",goalAmount:5000},
+          {id:"new-hsa",name:"Medical fund",owner:"Mak",type:"hsa",startingBalance:0,goalName:"Medical",goalAmount:5000},
+          {id:"new-savings",name:"Rainy Day",owner:"Mak",type:"savings",startingBalance:0,goalName:"Rainy day",goalAmount:300}
+        ],
+        transactions:[{id:"contribution",date:"2024-02-01",title:"HSA Contribution",amount:100,type:"transfer",status:"cleared",accountId:"mak",transferToAccountId:"hsa",categoryId:"banking",recurrence:{type:"none",interval:1}}]
+      });
+      setSynthetic(ds,false);
+      regressionAssert(accountKind(ds.accounts[1])==="hsa","Legacy Fidelity HSA account did not infer HSA type");
+      regressionAssert(accountKind(ds.accounts[2])==="hsa","Explicit HSA type was lost");
+      regressionAssert(accountKind(ds.accounts[3])==="savings","Explicit Savings type was lost");
+      regressionAssert(!isSavingsAccount(ds.accounts[0]),"Checking was classified as savings");
+      regressionAssert(isSavingsAccount(ds.accounts[1])&&isSavingsAccount(ds.accounts[2])&&isSavingsAccount(ds.accounts[3]),"Reserved accounts should be recognized");
+      regressionApprox(accountBalance("mak",false,todayISO()),400,0.001,"Checking balance after HSA deposit");
+      regressionApprox(accountBalance("hsa",false,todayISO()),100,0.001,"HSA balance after deposit");
+      regressionApprox(savingsGoalRemaining(ds.accounts[1]),4900,0.001,"HSA goal remaining");
+      regressionAssert(savingsGoalProgress(ds.accounts[1])===2,"HSA goal percentage should be 2%");
+      regressionAssert(safeToSpend(ds.accounts[1]).amount===null,"HSA must not show checking safe-to-spend");
+      regressionAssert(mobileAccountSnapshot(ds.accounts[1]).secondary==="2% of goal","Mobile Home did not report HSA goal progress");
+      const roundTrip=normalizeData(JSON.parse(JSON.stringify(ds)));
+      regressionAssert(roundTrip.accounts.find(a=>a.id==="new-hsa")?.type==="hsa","JSON round trip lost explicit HSA type");
+      regressionAssert(roundTrip.accounts.find(a=>a.id==="hsa")?.goalAmount===5000,"JSON round trip lost legacy HSA goal");
+      return "Legacy HSA recognized; $100 transfer moves between accounts; $5,000 goal displays";
     }));
 
     results.push(regressionResult("JSON normalization preserves planning scenarios",()=>{
