@@ -1,3 +1,10 @@
+## v2-336 — Moving plan now responds to date changes, with bulk amount edits
+
+- Fixed a confusing v2-335 setup requirement: moving costs appeared unchanged unless each transaction was separately linked. On first opening an unconfigured Moving Cost Schedule, recognized plan-only moving expenses are PRESELECTED, and saving a date automatically links them. After saving, the `movingCostSetupDone` flag respects explicit unchecked/unlinked costs. No date is changed just by opening settings; press Save.
+- Added a live summary and per-transaction **Will move to YYYY-MM-DD** preview that updates while selecting application/move date, offset, or enabled checkboxes, so changes are visible before saving. The calendar jumps to the first scheduled cost when necessary to show an actual change.
+- Added an editable **Amount ($)** input to every planning-only moving-cost row, including monthly recurring rent/utilities/insurance. Editing amounts doesn't require linking dates. Values validate before changing any records; cleared amounts and dates remain locked. Unlink restores the original date but retains the modified plan amount. Source/real transactions and cloud data are untouched.
+- Existing v2-335 plan-only cost rules, amounts, notes, recurrence, and move assumptions are preserved through normalization, JSON/cloud sync and Real ↔ Planning. Scenario schema remains 230, optional metadata only. Regression suite 36 checks, plus real-backup UI tests.
+
 ## v2-335 — Planning Mode moving-cost schedule linked to application and move dates
 
 - **Planning → Moving → Plan settings** now includes an optional application date and move-in date rule. Move-in can automatically be the **first day of the month after applying** or a manually selected date. The existing reversible **Stop recurring bills when moving** checklist uses the same effective move-in date.
@@ -746,7 +753,7 @@ Maintenance follow-up: Recent Changes is now capped by bytes instead of only ite
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-335`
+Current version: `money-nest-v2-336`
 
 ## Important Notes
 

@@ -1,3 +1,10 @@
+## v2-336 — Moving date usability + planning-only amount editor
+
+- v2-335 only shifted already-linked moving expenses, leading to a silent no-op for dates. On first setup (`movingCostSetupDone` absent/false and no saved rules), show recognized plan-only moving costs as checked by default. A Save persists those suggested rules and flips `movingCostSetupDone=true`, so deliberate later unlinks remain unlinked. If saved rules exist, preserve checked state as-is.
+- `updatePlanningMovingCostPreview` reflects the tentative application/move date, amount, and timing per row without mutating records. The separate `movingCostSetupDone` boolean survives `normalizePlanningScenarios`, no schema bump.
+- In Planning settings, add Amount inputs for ALL listed plan-only expenses, even if date-unlinked. Validate amounts to 0..999999999 with max 2 decimal places before any mutation; update the plan-only series base `amount` once, not individual generated occurrences. Do not edit cleared amounts, notes, or real transactions. Unlink restores the original date only.
+- Saving nonempty linked dates focuses the calendar on a month containing a linked scheduled cost if current month would otherwise show no changes. Existing live mirror/tombstones, reversible recurring stop, combined cash, JSON/cloud payload and real financial records remain unchanged. Regression suite target 36 tests.
+
 ## v2-335 — Scenario-linked moving-cost timing rules
 
 - Plan settings now have `hypotheticalApplicationDate` and `moveDateMode` (`next-month` or `manual`) alongside `hypotheticalMoveDate`. The existing recurring stop-on-move setting uses the computed move date.
@@ -766,7 +773,7 @@ Example README note:
 ### v2-200
 - Banking is excluded from budgeting. Savings transfers net contributions by direction.
 
-- Current version: money-nest-v2-335. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
+- Current version: money-nest-v2-336. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
 
 
 ### v2-205
