@@ -1,5 +1,5 @@
 const STORAGE_KEY = "moneyNest.v2.113";
-const APP_VERSION = "2-338";
+const APP_VERSION = "2-339";
 const CURRENT_SCHEMA_VERSION = 230;
 const UI_PREFS_KEY = `${STORAGE_KEY}.uiPrefs`;
 
@@ -459,6 +459,7 @@ function recurrenceDescription(tx){
   if(!r || r.type === "none") return "One-time";
   if(r.type === "weekly") return `Every ${r.interval || 1} week(s) on ${weekdayName(r.weekday ?? parseDate(tx.date).getDay())}`;
   if(r.type === "biweekly") return "Every 2 weeks";
+  if(r.type === "monthly-due-offset") return `Monthly, ${Math.max(1, Math.min(31, Number(r.daysBeforeDue || 5)))} calendar day(s) before due day ${parseDate(tx.date).getDate()} (or month-end)`;
   if(r.type === "monthly") return `Monthly on day ${parseDate(tx.date).getDate()} (or last day if shorter month)`;
   if(r.type === "last-day-month") return "Monthly on the last day of the month";
   if(r.type === "yearly") return `Yearly on ${parseDate(tx.date).toLocaleDateString(undefined,{month:"short", day:"numeric"})}`;
@@ -2679,7 +2680,12 @@ function occurrenceDateFor(tx, dateObj){
   const overrideDate = tx.dateOverrides?.[originalISO];
   if(isSkippedOccurrenceDate(overrideDate)) return RECURRENCE_SKIP_DATE;
   if(overrideDate) return overrideDate;
-  const moved = moveWeekendDate(dateObj, tx.recurrence?.weekendHandling || "none");
+  // A relative monthly bill is stored by its *due date*, while cash flow
+  // follows the earlier withdrawal date. Shift before applying weekend rules.
+  const relativeDays = tx.recurrence?.type === "monthly-due-offset"
+    ? Math.max(1, Math.min(31, Number(tx.recurrence.daysBeforeDue || 5))) : 0;
+  const scheduled = relativeDays ? addDays(dateObj, -relativeDays) : dateObj;
+  const moved = moveWeekendDate(scheduled, tx.recurrence?.weekendHandling || "none");
   return toISO(moved);
 }
 function displayDateWithOverride(tx){
@@ -2953,6 +2959,13 @@ function recurrenceGenerationUntil(tx, untilISO){
   // A recurrence can land before its original scheduled date. The most common
   // case is "previous Friday": a Saturday/Sunday occurrence must already count
   // in balances/reports even when the original weekend date is still ahead.
+  const daysBeforeDue = tx?.recurrence?.type === "monthly-due-offset"
+    ? Math.max(1, Math.min(31, Number(tx.recurrence.daysBeforeDue || 5))) : 0;
+  if(daysBeforeDue){
+    // Include a due date in the following month when its withdrawal is already
+    // inside the requested balance/calendar window.
+    generationUntil = addDays(generationUntil, daysBeforeDue);
+  }
   if(tx?.recurrence?.weekendHandling === "previous-friday"){
     generationUntil = addDays(generationUntil, 2);
   }
@@ -2996,7 +3009,7 @@ function recurrenceOccursOn(tx, cursor, start=parseDate(tx?.date || todayISO()))
   if(r.type === "biweekly"){
     return cursor.getDay() === start.getDay() && daysBetween(start, cursor) % 14 === 0;
   }
-  if(r.type === "monthly"){
+  if(r.type === "monthly" || r.type === "monthly-due-offset"){
     const interval = Number(r.interval || 1);
     return cursor.getDate() === monthlyTargetDay(start, cursor) && monthDiff(start, cursor) % interval === 0;
   }
@@ -3452,7 +3465,7 @@ function loanEstimatedFeeApplies(settings, tx, context={}){
   const timing = settings.feeTiming || "auto";
   if(timing === "none") return false;
   if(timing === "every-payment") return true;
-  if(timing === "monthly-only") return tx?.recurrence?.type === "monthly" || tx?.recurrence?.type === "last-day-month";
+  if(timing === "monthly-only") return ["monthly", "monthly-due-offset", "last-day-month"].includes(tx?.recurrence?.type);
   if(timing === "first-payment-month") return loanIsFirstPaymentInMonth(tx, context.allPayments || []);
   return true;
 }
@@ -8865,6 +8878,7 @@ function recurringScheduleSignature(tx){
     else if(type === "nth-weekday") anchor = `nth:${Number(r.ordinal || 1)}:${Number(r.weekday ?? start.getDay())}`;
     else if(type === "every-x-days") anchor = `anchor:${String(tx?.date || "")}`;
   } catch(err){}
+  if(type === "monthly-due-offset") anchor = `due-day:${parseDate(tx.date).getDate()}:minus-${Math.max(1,Math.min(31,Number(r.daysBeforeDue || 5)))}`;
   return [type, interval, anchor, weekend].join("|");
 }
 function recurringSeriesCoreKey(tx){
@@ -9037,7 +9051,8 @@ function replaceBillSeriesInPlace(baseTx, formTx, editMeta={}){
   });
 
   const existingLinked = [...(canonical.linkedTransactionIds || [])];
-  const displayedOccurrenceDate = editMeta.occurrenceDate || "";
+  const displayedOccurrenceDate = (canonical.recurrence?.type === "monthly-due-offset")
+    ? (editMeta.originalDate || "") : (editMeta.occurrenceDate || "");
   const dateWasEdited = !!formTx.date && !!displayedOccurrenceDate && formTx.date !== displayedOccurrenceDate;
   const startDate = dateWasEdited
     ? formTx.date
@@ -9682,6 +9697,13 @@ document.getElementById("transactionForm").onsubmit = async (e)=>{
   e.preventDefault();
   const id = document.getElementById("txId").value || uid();
   const existing = data.transactions.find(t=>t.id===id);
+  if(txRepeatRule.value === "monthly-due-offset"){
+    const offsetValue=Number(document.getElementById("txDaysBeforeDue")?.value);
+    if(!Number.isInteger(offsetValue) || offsetValue < 1 || offsetValue > 31){
+      alert("Choose a whole number between 1 and 31 days before the due date.");
+      return;
+    }
+  }
   const formTx = transactionPayloadFromForm(id);
   if(existing?.pendingReimbursement){
     formTx.pendingReimbursement = formTx.status === "cleared" ? false : existing.pendingReimbursement;
@@ -9712,6 +9734,11 @@ document.getElementById("transactionForm").onsubmit = async (e)=>{
   if(isRecurringEdit && !scope) return;
 
   if(existing && isRecurringEdit && scope === "one"){
+    if(formTx.recurrence.type === "monthly-due-offset"){
+      // The editor exposes the due date; one-off overrides must retain the
+      // concrete posting date, or they would incorrectly land on the due day.
+      formTx.date = occurrenceDateFor(formTx, parseDate(formTx.date));
+    }
     saveRecurringOccurrenceOverride(existing, formTx, txEditMeta.originalDate || existing.date, txEditMeta.occurrenceDate || existing.date);
   } else if(existing && isRecurringEdit && scope === "future"){
     if(editingBillSeries) replaceBillSeriesInPlace(existing, formTx, txEditMeta);
@@ -9784,7 +9811,10 @@ window.openTransaction = (id=null, defaults={})=>{
     const info = paycheckAmountForTransaction(tempTx, payDate);
     if(info) txAmount.value = info.amount;
   }
-  txDate.value = tx ? occurrenceDate : (defaults.date || todayISO());
+  // Monthly offset rules are anchored to the due date, not the withdrawal.
+  // Show the editable due date while keeping the clicked posting date in meta.
+  txDate.value = tx && baseTx?.recurrence?.type === "monthly-due-offset"
+    ? occurrenceOriginalDate : (tx ? occurrenceDate : (defaults.date || todayISO()));
   txType.value = tx?.type || defaults.type || "expense";
   txStatus.value = tx?.status || defaults.status || "planned";
   txAccount.value = tx?.accountId || defaults.accountId || "";
@@ -11857,7 +11887,7 @@ function billRecurrenceType(tx){
   return tx?.recurrence?.type || (tx?.repeat ? "monthly" : "none");
 }
 function billIsMonthlySeries(tx){
-  return ["monthly", "last-day-month", "nth-weekday"].includes(billRecurrenceType(tx));
+  return ["monthly", "monthly-due-offset", "last-day-month", "nth-weekday"].includes(billRecurrenceType(tx));
 }
 function billScheduleSortKey(tx){
   const type = billRecurrenceType(tx);
@@ -11867,7 +11897,7 @@ function billScheduleSortKey(tx){
   // "Schedule date" is intentionally independent from whether the current
   // occurrence has already cleared. Monthly bills stay in day-of-month order
   // instead of jumping to next month as soon as they are paid.
-  if(type === "monthly") return `1-${String(start.getDate()).padStart(2,"0")}`;
+  if(type === "monthly" || type === "monthly-due-offset") return `1-${String(start.getDate()).padStart(2,"0")}`;
   if(type === "last-day-month") return "1-32";
   if(type === "nth-weekday") {
     const r = tx?.recurrence || {};
@@ -12674,6 +12704,10 @@ function renderBills(){
 function buildRecurrenceFromForm(){
   const type = txRepeatRule.value;
   if(type === "none") return { type:"none", interval:1, weekendHandling: txWeekendHandling?.value || "none" };
+  if(type === "monthly-due-offset") return {
+    type, interval:1, weekendHandling:txWeekendHandling?.value || "none",
+    daysBeforeDue:Math.max(1, Math.min(31, Number(document.getElementById("txDaysBeforeDue")?.value || 5)))
+  };
   const interval = Math.max(1, Number(txRepeatInterval.value || 1));
   const base = { type, interval, weekendHandling: txWeekendHandling?.value || "none" };
   if(type === "weekly") base.weekday = Number(txRepeatWeekday.value);
@@ -12687,6 +12721,7 @@ function buildRecurrenceFromForm(){
 function setRecurrenceForm(recurrence, dateISO){
   const r = recurrence || { type:"none", interval:1 };
   txRepeatRule.value = r.type || "none";
+  if(document.getElementById("txDaysBeforeDue")) document.getElementById("txDaysBeforeDue").value = r.daysBeforeDue || 5;
   if(document.getElementById("txWeekendHandling")) txWeekendHandling.value = r.weekendHandling || "none";
   txRepeatInterval.value = r.interval || (r.type === "biweekly" ? 2 : 1);
   const dateWeekday = parseDate(dateISO).getDay();
@@ -12698,7 +12733,20 @@ function setRecurrenceForm(recurrence, dateISO){
 function updateRecurrenceUI(){
   const type = txRepeatRule.value;
   if(document.getElementById("txWeekendHandling")) txWeekendHandling.closest("label").style.display = type === "none" ? "none" : "grid";
-  recurrenceDetails.classList.toggle("active", type !== "none" && type !== "biweekly" && type !== "monthly" && type !== "last-day-month" && type !== "yearly");
+  recurrenceDetails.classList.toggle("active", type !== "none" && type !== "biweekly" && type !== "monthly" && type !== "monthly-due-offset" && type !== "last-day-month" && type !== "yearly");
+  const relativeLabel=document.getElementById("txDueOffsetLabel");
+  if(relativeLabel) relativeLabel.style.display=type === "monthly-due-offset" ? "grid" : "none";
+  const relativeHint=document.getElementById("txDueOffsetPreview");
+  const dateLabel=document.getElementById("txDateLabelText");
+  if(dateLabel) dateLabel.textContent=type === "monthly-due-offset" ? "First due date" : "Date";
+  if(relativeHint){
+    if(type === "monthly-due-offset" && /^\d{4}-\d{2}-\d{2}$/.test(txDate.value)){
+      const d=Number(document.getElementById("txDaysBeforeDue")?.value || 5);
+      const valid=Number.isInteger(d) && d >= 1 && d <= 31;
+      const withdrawal=valid ? toISO(moveWeekendDate(addDays(parseDate(txDate.value),-d),txWeekendHandling.value || "none")) : "";
+      relativeHint.textContent=valid ? `First withdrawal: ${withdrawal}. Future withdrawals follow each monthly due date, even when the withdrawal falls in the previous month.` : "Enter 1–31 days before the due date.";
+    } else relativeHint.textContent="";
+  }
 
   if(type === "weekly"){
     repeatIntervalUnitLabel.style.display = "grid";
@@ -12723,7 +12771,7 @@ function updateRecurrenceUI(){
   if(recurrenceUntilLabel) recurrenceUntilLabel.style.display = type === "none" ? "none" : "grid";
   const repeatSummary=document.getElementById("txRepeatSummary");
   if(repeatSummary){
-    const labels={none:"Does not repeat",weekly:"Weekly",biweekly:"Every 2 weeks",monthly:"Monthly","last-day-month":"Last day monthly",yearly:"Yearly","every-x-days":`Every ${Math.max(1,Number(txRepeatInterval.value||1))} days`,"nth-weekday":"Monthly pattern"};
+    const labels={none:"Does not repeat",weekly:"Weekly",biweekly:"Every 2 weeks",monthly:"Monthly","monthly-due-offset":`${document.getElementById("txDaysBeforeDue")?.value || 5} days before due`,"last-day-month":"Last day monthly",yearly:"Yearly","every-x-days":`Every ${Math.max(1,Number(txRepeatInterval.value||1))} days`,"nth-weekday":"Monthly pattern"};
     repeatSummary.textContent=labels[type] || "Custom repeat";
   }
 
@@ -12826,6 +12874,9 @@ if(document.getElementById("calendarCategoryHighlight")) calendarCategoryHighlig
   renderCalendar();
 };
 txRepeatRule.onchange = updateRecurrenceUI;
+document.getElementById("txDaysBeforeDue")?.addEventListener("input",updateRecurrenceUI);
+txDate.addEventListener("change",updateRecurrenceUI);
+txWeekendHandling.addEventListener("change",updateRecurrenceUI);
 txType.onchange = updateTransactionFormUI;
 if(document.getElementById("billAccountFilter")) if(document.getElementById("billAccountFilter")) billAccountFilter.onchange = e=>{ billFilters.account = e.target.value; saveUiPrefs(); renderBills(); };
 const billCategoryDropdownBtnEl = document.getElementById("billCategoryDropdownBtn");
@@ -13146,7 +13197,7 @@ function exportEditableCSVs(){
     "pendingReimbursement","reimbursementToAccountId",
     "loanPrincipalAmount","loanInterestAmount","loanFeeAmount","loanBalanceAdjustment",
     "autoPaycheck","autoMakPaycheck","paycheckHoursOverride","autoPaycheckInfoJSON",
-    "repeatType","repeatInterval","repeatWeekday","repeatOrdinal","weekendHandling","recurrenceUntil","billArchived","billArchivedAt","billArchivedPreviousRecurrenceUntil","recurringSourceId","recurrenceSourceId","originalDate","wasRecurringOccurrence","dateOverridesJSON","occurrenceOverridesJSON","linkedTransactionIdsJSON","notes"
+    "repeatType","repeatInterval","repeatWeekday","repeatOrdinal","weekendHandling","daysBeforeDue","recurrenceUntil","billArchived","billArchivedAt","billArchivedPreviousRecurrenceUntil","recurringSourceId","recurrenceSourceId","originalDate","wasRecurringOccurrence","dateOverridesJSON","occurrenceOverridesJSON","linkedTransactionIdsJSON","notes"
   ];
   const txRows = data.transactions.map(tx=>({
     id:tx.id, date:tx.date, title:tx.title, amount:tx.amount, type:tx.type, status:tx.status,
@@ -13158,6 +13209,7 @@ function exportEditableCSVs(){
     repeatType:tx.recurrence?.type || "none", repeatInterval:tx.recurrence?.interval || 1,
     repeatWeekday:tx.recurrence?.weekday ?? "", repeatOrdinal:tx.recurrence?.ordinal ?? "",
     weekendHandling:tx.recurrence?.weekendHandling || "none",
+    daysBeforeDue:tx.recurrence?.type === "monthly-due-offset" ? (tx.recurrence?.daysBeforeDue || 5) : "",
     recurrenceUntil: tx.recurrenceUntil || "",
     billArchived: !!tx.billArchived,
     billArchivedAt: tx.billArchivedAt || "",
@@ -13406,7 +13458,9 @@ function importEditedCSV(file){
           interval: row.repeatInterval === "" ? (tx.recurrence?.interval || 1) : Number(row.repeatInterval),
           weekday: row.repeatWeekday === "" ? tx.recurrence?.weekday : Number(row.repeatWeekday),
           ordinal: row.repeatOrdinal === "" ? tx.recurrence?.ordinal : Number(row.repeatOrdinal),
-          weekendHandling: row.weekendHandling || tx.recurrence?.weekendHandling || "none"
+          weekendHandling: row.weekendHandling || tx.recurrence?.weekendHandling || "none",
+          daysBeforeDue: row.daysBeforeDue === undefined || row.daysBeforeDue === ""
+            ? tx.recurrence?.daysBeforeDue : Number(row.daysBeforeDue)
         };
         tx.recurrenceUntil = row.recurrenceUntil === undefined ? (tx.recurrenceUntil || "") : (row.recurrenceUntil || "");
         tx.billArchived = row.billArchived === undefined ? !!tx.billArchived : String(row.billArchived).toLowerCase() === "true";
@@ -14073,6 +14127,45 @@ function runMoneyNestRegressionTests(options={}){
       ["2027-03-17","2027-03-24","2027-03-31"].forEach(date=>regressionAssert(dates.includes(date),`Missing ${date}`));
       regressionAssert(daysBetween(parseDate("2027-03-10"),parseDate("2027-03-17"))===7,"Calendar-day difference across DST was not 7");
       return "Mar 17/24/31 all generated";
+    }));
+
+    results.push(regressionResult("Monthly due-day offsets post before due, across months and leap years",()=>{
+      const ds=regressionDataset({accounts:[{id:"joint",name:"Joint Checking",type:"cash",startingBalance:1000}],transactions:[{
+        id:"rent-offset",date:"2026-12-01",title:"Rent",amount:100,type:"expense",status:"planned",accountId:"joint",categoryId:"utilities",
+        recurrence:{type:"monthly-due-offset",interval:1,daysBeforeDue:5,weekendHandling:"none"},dateOverrides:{},occurrenceOverrides:{}
+      }]});
+      setSynthetic(ds,false);
+      const entries=expandedTransactions("2027-03-31").filter(tx=>(tx.originalId||tx.id)==="rent-offset");
+      const dates=entries.map(tx=>tx.date);
+      regressionAssert(JSON.stringify(dates)==='["2026-11-26","2026-12-27","2027-01-27","2027-02-24","2027-03-27"]',`Due-day offset dates wrong: ${dates.join(", ")}`);
+      regressionAssert(entries[0]?.originalDate==="2026-12-01","Base due-date anchor not preserved");
+      regressionApprox(accountBalance("joint",true,"2026-11-26"),900,0.001,"First early withdrawal missing from balance");
+      regressionApprox(accountBalance("joint",true,"2026-12-26"),900,0.001,"Next withdrawal counted too early");
+      regressionApprox(accountBalance("joint",true,"2026-12-27"),800,0.001,"December withdrawal missing");
+      ds.transactions[0].recurrenceUntil="2027-02-01";invalidateExpandedTransactionsCache();
+      regressionAssert(expandedTransactions("2027-06-30").filter(tx=>(tx.originalId||tx.id)==="rent-offset").length===3,"End-due-date constraint ignored");
+      const leap={...ds.transactions[0],id:"leap",date:"2028-03-01",recurrenceUntil:"",occurrenceOverrides:{}};
+      ds.transactions=[leap];invalidateExpandedTransactionsCache();
+      regressionAssert(expandedTransactions("2028-04-30").some(tx=>tx.id==="leap"&&tx.date==="2028-02-25"),"Leap-year February payment not correct");
+      return "Dec 1 due → Nov 26 posting; following months, balance, end-date, leap year checked";
+    }));
+
+    results.push(regressionResult("Due-day offset honors weekend, overrides, and JSON compatibility",()=>{
+      const ds=regressionDataset({accounts:[{id:"joint",name:"Joint",type:"cash",startingBalance:500}],transactions:[{
+        id:"autopay",date:"2027-04-01",title:"Autopay",amount:50,type:"expense",status:"planned",accountId:"joint",categoryId:"utilities",
+        recurrence:{type:"monthly-due-offset",interval:1,daysBeforeDue:5,weekendHandling:"previous-friday"},
+        dateOverrides:{},occurrenceOverrides:{"2027-05-01":{amount:60,status:"cleared"}}
+      }]});
+      setSynthetic(ds,false);
+      const rows=expandedTransactions("2027-06-01").filter(tx=>(tx.originalId||tx.id)==="autopay");
+      regressionAssert(rows.some(tx=>tx.date==="2027-03-26" && tx.originalDate==="2027-04-01"),"First posted date not five days before due");
+      regressionAssert(rows.some(tx=>tx.date==="2027-04-26" && tx.amount===60 && tx.status==="cleared"),"Cleared monthly occurrence override not applied to effective date");
+      const roundTrip=normalizeData(JSON.parse(JSON.stringify(ds)));
+      regressionAssert(roundTrip.transactions[0].recurrence.type==="monthly-due-offset" && roundTrip.transactions[0].recurrence.daysBeforeDue===5,"JSON backup lost the relative recurrence parameters");
+      const ordinary={...roundTrip.transactions[0],date:"2027-04-01",recurrence:{type:"monthly",interval:1,weekendHandling:"none"},occurrenceOverrides:{}};
+      ds.transactions=[ordinary];invalidateExpandedTransactionsCache();
+      regressionAssert(expandedTransactions("2027-05-01").map(tx=>tx.date).includes("2027-05-01"),"Old monthly recurrence shifted unexpectedly");
+      return "Weekend handling, occurrence edits, JSON, and ordinary monthly compatibility checked";
     }));
 
     results.push(regressionResult("Planning recurring transfers are two-sided",()=>{

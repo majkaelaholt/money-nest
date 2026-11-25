@@ -1,3 +1,10 @@
+## v2-339 — Monthly recurring withdrawals relative to a due date
+
+- Added **Monthly · X days before due date** in Add/Edit Transaction → Repeat. Set the **First due date** (for example December 1) and choose **1–31 calendar days before** (for example 5). A live preview shows the **first actual withdrawal date**, which may fall in the prior month. Future months anchor to the same due day (or the last day of shorter months), then apply the optional existing weekend rule to the withdrawal date. Existing monthly/weekly/etc. rules are unchanged.
+- The recurring source stores its *due-date anchor* in `transaction.date`; the calendar, cash balances, Bills, and reports show the **effective withdrawal dates**. The recurring payload has `recurrence.type = "monthly-due-offset"` and `recurrence.daysBeforeDue`. The ordinary `originalDate` remains the due date for stable per-occurrence edits/deletes, recurrence end dates, and Planning mirroring.
+- The one-occurrence editor shows the **due date** and converts it to the actual withdrawal date when saving that occurrence's override, so a changed amount/status does not accidentally move it to the due day. Editing the entire recurring series likewise compares due dates instead of effective posting dates. The current Preview/Calendar projection includes look-ahead for next-month due dates, so early withdrawals are not omitted before month-end.
+- Editable Transactions CSV adds an optional `daysBeforeDue` column; older CSV exports import as before, and JSON/Supabase data structure/schema remain **230**. No existing transaction records were changed. Tested **40/40** synthetic regression checks, seeded real Nov 11 backup startup on desktop, and an iPhone-width transaction form/save test with no page errors/overflow.
+
 ## v2-338 — Recover preserved browser data after Planning startup failure
 
 - Fixed a startup initialization error: a saved Planning scenario with nonempty `movingCostRules` or `planningDefault.movingCostRules` could be normalized **before** `PLANNING_COST_ANCHORS` existed, causing `ReferenceError: Cannot access 'PLANNING_COST_ANCHORS' before initialization`. The app displayed "Local data not loaded" rather than the user's financial records. The anchor list now initializes before `loadData()`, and the original saved browser copy can load again without importing an old backup.
@@ -766,7 +773,7 @@ Maintenance follow-up: Recent Changes is now capped by bytes instead of only ite
 
 Money Nest is a personal budgeting, debt, and cashflow planning app built for paycheck-to-paycheck money management.
 
-Current version: `money-nest-v2-338`
+Current version: `money-nest-v2-339`
 
 ## Important Notes
 

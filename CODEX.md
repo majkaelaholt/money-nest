@@ -1,3 +1,9 @@
+## v2-339 — Relative monthly autopay schedules
+
+- Preserve the difference between the **original due date** (`tx.date`, `originalDate` for occurrences) and the **effective cash posting date** (`occurrence.date`) for `recurrence.type: "monthly-due-offset"`. `daysBeforeDue` is a positive integer 1..31. The UI displays "First due date" when this repeat type is selected and previews the actual withdrawal. Each monthly due date is generated like normal monthly cadence (short-month clamp), then shifted backward by `daysBeforeDue` and optionally adjusted by weekend handling. Never change how older `monthly` rules expand.
+- `recurrenceGenerationUntil` needs a look-ahead of `daysBeforeDue` plus previous-Friday safety to include a later due date whose actual withdrawal is in the requested calendar/balance range. Leave `originalDate` keys anchored to the due day for dateOverrides, occurrenceOverrides, Planning mirroring, and `recurrenceUntil`. In the editor, show due dates for the relative rule, but save a one-off occurrence override with the computed *effective* date; series editor date-change comparisons must compare due dates to due dates.
+- Bills grouping/sorting, recurrence signatures (include due-day and offset), optional transactions CSV daysBeforeDue field and import, and monthly-only loan fee timing should recognize the new rule. JSON and Supabase continue to store the existing blob/schema 230, no new keys/tables. Explicit 1..31 form validation. Regression suite now 40 checks; verify actual startup on seeded backup, and mobile Add Transaction with early payment preview and no overflow.
+
 ## v2-338 — Startup hydration and cloud overwrite safety
 
 - `loadData()` runs before the plan helper declarations. Keep *all const/let identifiers referenced by `normalizeData` or `normalizePlanningScenarios`* initialized before startup loading. Specifically, `PLANNING_COST_ANCHORS` must live beside other startup-safe constants above `data = loadData()`, not by the later Planning UI functions. v2-337 failed to load saved plans with nonempty moving rules/default timing. Preserve saved local browser data and do not ask the user to reset their plan.
@@ -786,7 +792,7 @@ Example README note:
 ### v2-200
 - Banking is excluded from budgeting. Savings transfers net contributions by direction.
 
-- Current version: money-nest-v2-338. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
+- Current version: money-nest-v2-339. Includes the iPhone task-first Home/Future experience and streamlined mobile transaction entry, plus the Bills next-date rendering fix, visual/UX overhaul passes, completed cleared-loan breakdown sampling across recurring occurrences, Dashboard breakdown completeness alerts, in-place recurring bill series replacement, cleared-history preservation, split-series repair, combinable Budget Review filters, global search, and data-health scanning.
 
 
 ### v2-205

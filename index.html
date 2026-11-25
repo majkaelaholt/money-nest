@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <title>Money Nest</title>
-  <link rel="stylesheet" href="styles.css?v=2-338"/>
+  <link rel="stylesheet" href="styles.css?v=2-339"/>
 
   <link rel="icon" href="favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
@@ -624,7 +624,7 @@
               <button type="button" class="amount-calc-toggle" onclick="toggleAmountCalculator()" aria-label="Open amount calculator" title="Amount calculator">−/+</button>
             </div>
           </div>
-          <label class="tx-date-field tx-field-block">Date
+          <label class="tx-date-field tx-field-block"><span id="txDateLabelText">Date</span>
             <input id="txDate" required type="date"/>
           </label>
         </div>
@@ -714,6 +714,7 @@
               <option value="weekly">Weekly / by day of week</option>
               <option value="biweekly">Bi-weekly</option>
               <option value="monthly">Monthly by date</option>
+              <option value="monthly-due-offset">Monthly · X days before due date</option>
               <option value="last-day-month">Last day of month</option>
               <option value="yearly">Yearly</option>
               <option value="every-x-days">Every _ days</option>
@@ -729,6 +730,11 @@
             </select>
           </label>
 
+          <label id="txDueOffsetLabel" style="display:none">Calendar days before due date
+            <input id="txDaysBeforeDue" type="number" min="1" max="31" step="1" value="5" inputmode="numeric"/>
+            <small>Use the Date field for the first due date (for example December 1). Money Nest shows the earlier withdrawal in the calendar.</small>
+          </label>
+          <p class="hint" id="txDueOffsetPreview" aria-live="polite"></p>
           <div id="recurrenceDetails" class="recurrence-details">
             <div class="two-col">
               <label>Every
@@ -934,7 +940,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=2-338"></script>
+  <script src="app.js?v=2-339"></script>
   <dialog id="globalSearchModal" class="global-search-modal">
     <div class="global-search-shell">
       <div class="modal-head"><div><h3>🔎 Search Money Nest</h3><p class="hint">Transactions, merchants, categories, accounts, amounts, and dates.</p></div><button class="icon-btn" onclick="document.getElementById('globalSearchModal').close()">×</button></div>
